@@ -221,13 +221,21 @@ export const AppShell: React.FC<AppShellProps> = ({
           {/* User Profile Header Chip */}
           <div className="flex items-center gap-3 ml-auto">
             {/* Notification Bell */}
-            <button className="relative p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors">
+            <button 
+              onClick={() => onTabChange('notices')}
+              title="View Notices & Circulars"
+              className="relative p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors cursor-pointer"
+            >
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
             </button>
 
             {/* Profile Avatar & Info */}
-            <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 shadow-xs">
+            <button 
+              onClick={() => onTabChange('profile')}
+              title="View Profile"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 hover:border-[#00ff88] transition-colors shadow-xs cursor-pointer text-left"
+            >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-xs shadow-[0_0_12px_rgba(0,255,136,0.3)]">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
@@ -239,7 +247,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   {user?.student?.roll_number ? `Roll: ${user.student.roll_number}` : user?.role?.replace('_', ' ').toUpperCase()}
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </header>
 

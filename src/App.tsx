@@ -3,11 +3,19 @@ import { useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import { AppShell } from './components/layout/AppShell';
 
+// Common Pages
+import { ProfilePage } from './pages/common/ProfilePage';
+import { NoticesPage } from './pages/common/NoticesPage';
+import { SettingsPage } from './pages/common/SettingsPage';
+
 // Student Pages
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
+import { StudentSubjectsPage } from './pages/student/StudentSubjectsPage';
 import { StudentTimetablePage } from './pages/student/StudentTimetablePage';
 import { CorrectionRequestsPage } from './pages/student/CorrectionRequestsPage';
+import { FeedbackPage } from './pages/student/FeedbackPage';
+import { LeaveApplicationPage } from './pages/student/LeaveApplicationPage';
 
 // Faculty Pages
 import { FacultyDashboard } from './pages/faculty/FacultyDashboard';
@@ -37,12 +45,12 @@ export const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white space-y-3">
-        <div className="w-12 h-12 rounded-2xl bg-white p-2 animate-bounce shadow-xl">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-emerald-500/30 p-2 animate-bounce shadow-xl flex items-center justify-center">
           <img src="/vctm-icon.svg" alt="VCTM" className="w-full h-full" />
         </div>
-        <p className="text-sm font-semibold tracking-wide text-amber-400">
-          Loading VCTM Attendance ERP...
+        <p className="text-xs font-bold tracking-wider text-[#00ff88]">
+          Connecting to VCTM ERP Cloud...
         </p>
       </div>
     );
@@ -58,25 +66,38 @@ export const AppContent: React.FC = () => {
   };
 
   const renderContent = () => {
-    // 1. Student Portal Views
+    // 1. Student Portal Routing
     if (role === 'student') {
       switch (activeTab) {
+        case 'profile':
+          return <ProfilePage />;
+        case 'attendance':
+          return <StudentAttendancePage />;
+        case 'subjects':
+          return <StudentSubjectsPage />;
         case 'timetable':
           return <StudentTimetablePage />;
-        case 'attendance':
-        case 'subjects':
-          return <StudentAttendancePage />;
+        case 'notices':
+          return <NoticesPage />;
+        case 'feedback':
+          return <FeedbackPage />;
+        case 'leave':
+          return <LeaveApplicationPage />;
         case 'corrections':
           return <CorrectionRequestsPage />;
+        case 'settings':
+          return <SettingsPage />;
         case 'dashboard':
         default:
           return <StudentDashboard onNavigate={handleNavigate} />;
       }
     }
 
-    // 2. Faculty Portal Views
+    // 2. Faculty Portal Routing
     if (role === 'faculty') {
       switch (activeTab) {
+        case 'profile':
+          return <ProfilePage />;
         case 'take_attendance':
           return (
             <TakeAttendancePage
@@ -86,23 +107,33 @@ export const AppContent: React.FC = () => {
           );
         case 'timetable':
           return <StudentTimetablePage />;
-        case 'corrections':
-          return <ReviewCorrectionsPage />;
         case 'history':
           return (
             <AttendanceHistoryPage
               onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
             />
           );
+        case 'students':
+          return <StudentDirectoryPage />;
+        case 'corrections':
+          return <ReviewCorrectionsPage />;
+        case 'reports':
+          return <ReportsPage />;
+        case 'notices':
+          return <NoticesPage />;
+        case 'settings':
+          return <SettingsPage />;
         case 'dashboard':
         default:
           return <FacultyDashboard onNavigate={handleNavigate} />;
       }
     }
 
-    // 3. HOD Portal Views
+    // 3. HOD Portal Routing
     if (role === 'hod') {
       switch (activeTab) {
+        case 'profile':
+          return <ProfilePage />;
         case 'students':
           return <StudentDirectoryPage />;
         case 'faculty':
@@ -113,14 +144,21 @@ export const AppContent: React.FC = () => {
           return <ReportsPage />;
         case 'corrections':
           return <ReviewCorrectionsPage />;
+        case 'notices':
+          return <NoticesPage />;
+        case 'settings':
+          return <SettingsPage />;
         case 'dashboard':
         default:
           return <HODDashboard />;
       }
     }
 
-    // 4. Super Admin Portal Views
+    // 4. Super Admin Portal Routing
     switch (activeTab) {
+      case 'profile':
+        return <ProfilePage />;
+      case 'departments':
       case 'academic_setup':
         return <AcademicSetupPage />;
       case 'timetable':
@@ -143,6 +181,10 @@ export const AppContent: React.FC = () => {
         return <ReviewCorrectionsPage />;
       case 'audit_logs':
         return <AuditLogsPage />;
+      case 'notices':
+        return <NoticesPage />;
+      case 'settings':
+        return <SettingsPage />;
       case 'dashboard':
       default:
         return <AdminDashboard onNavigate={handleNavigate} />;
@@ -150,8 +192,14 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={handleNavigate}>
+    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
       {renderContent()}
     </AppShell>
   );
 };
+
+export function App() {
+  return <AppContent />;
+}
+
+export default App;
