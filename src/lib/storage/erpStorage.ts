@@ -127,6 +127,42 @@ class ERPStorageService {
     }
   }
 
+  public syncFromSupabase(data: {
+    institutions: Institution[];
+    departments: Department[];
+    programs: Program[];
+    sessions: AcademicSession[];
+    years: AcademicYear[];
+    semesters: Semester[];
+    sections: Section[];
+    subjects: Subject[];
+    faculty: Faculty[];
+    assignments: FacultySubjectAssignment[];
+    students: Student[];
+    timetable: TimetableEntry[];
+    attendanceSessions: AttendanceSession[];
+    attendanceRecords: AttendanceRecord[];
+    corrections: AttendanceCorrection[];
+    auditLogs: AuditLog[];
+  }) {
+    if (data.institutions.length > 0) saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0]);
+    if (data.departments.length > 0) saveToStorage(STORAGE_KEYS.DEPARTMENTS, data.departments);
+    if (data.programs.length > 0) saveToStorage(STORAGE_KEYS.PROGRAMS, data.programs);
+    if (data.sessions.length > 0) saveToStorage(STORAGE_KEYS.SESSIONS, data.sessions);
+    if (data.years.length > 0) saveToStorage(STORAGE_KEYS.YEARS, data.years);
+    if (data.semesters.length > 0) saveToStorage(STORAGE_KEYS.SEMESTERS, data.semesters);
+    if (data.sections.length > 0) saveToStorage(STORAGE_KEYS.SECTIONS, data.sections);
+    if (data.faculty.length > 0) saveToStorage(STORAGE_KEYS.FACULTY, data.faculty);
+    if (data.subjects.length > 0) saveToStorage(STORAGE_KEYS.SUBJECTS, data.subjects);
+    if (data.assignments.length > 0) saveToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
+    if (data.students.length > 0) saveToStorage(STORAGE_KEYS.STUDENTS, data.students);
+    if (data.timetable.length > 0) saveToStorage(STORAGE_KEYS.TIMETABLE, data.timetable);
+    if (data.attendanceSessions.length > 0) saveToStorage(STORAGE_KEYS.ATT_SESSIONS, data.attendanceSessions);
+    if (data.attendanceRecords.length > 0) saveToStorage(STORAGE_KEYS.ATT_RECORDS, data.attendanceRecords);
+    if (data.corrections.length > 0) saveToStorage(STORAGE_KEYS.CORRECTIONS, data.corrections);
+    if (data.auditLogs.length > 0) saveToStorage(STORAGE_KEYS.AUDIT_LOGS, data.auditLogs);
+  }
+
   // Master Data Getters
   public getInstitution(): Institution {
     return loadFromStorage(STORAGE_KEYS.INSTITUTION, INITIAL_INSTITUTION);

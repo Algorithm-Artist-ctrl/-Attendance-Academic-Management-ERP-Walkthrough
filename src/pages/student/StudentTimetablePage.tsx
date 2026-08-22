@@ -5,12 +5,15 @@ import { useAcademic } from '../../context/AcademicContext';
 
 export const StudentTimetablePage: React.FC = () => {
   const { user } = useAuth();
-  const { timetable, subjects, faculty, sections, programs, years } = useAcademic();
+  const { timetable, subjects, faculty, sections, programs, years, students } = useAcademic();
 
-  const student = user?.student;
-  const currentSection = sections.find(s => s.id === student?.section_id) || sections[0];
-  const program = programs.find(p => p.id === student?.program_id);
-  const year = years.find(y => y.id === student?.academic_year_id);
+  // Authoritative student record and section from database
+  const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
+  const currentSection = sections.find(s => s.id === currentStudent?.section_id) || 
+                         sections.find(s => s.name === currentStudent?.section?.name);
+
+  const program = programs.find(p => p.id === currentStudent?.program_id);
+  const year = years.find(y => y.id === currentStudent?.academic_year_id);
 
   const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
   const dayLabels = {
@@ -33,11 +36,11 @@ export const StudentTimetablePage: React.FC = () => {
     { period: 8, label: 'Period VIII', time: '02:50 – 03:40' },
   ];
 
-  const sectionEntries = timetable.filter(t => t.section_id === currentSection?.id);
+  const sectionEntries = currentSection ? timetable.filter(t => t.section_id === currentSection.id) : [];
 
   const isSectionB = currentSection?.name === 'B';
   const branchName = isSectionB ? 'CSE + IT' : 'CSE';
-  const classIncharge = isSectionB ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary';
+  const classIncharge = currentSection?.class_coordinator?.full_name || (isSectionB ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary');
 
   return (
     <div className="space-y-6">
@@ -49,7 +52,7 @@ export const StudentTimetablePage: React.FC = () => {
             Official Academic Timetable
           </h1>
           <p className="text-xs text-slate-300 mt-1 font-medium">
-            B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> 2nd Year • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'A'}</span> • {currentSection?.room_number || 'Room No. A 007'} • Class Incharge: <span className="text-white font-semibold">{classIncharge}</span>
+            B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> 2nd Year • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'Assigned'}</span> • {currentSection?.room_number || 'Room TBD'} • Class Incharge: <span className="text-white font-semibold">{classIncharge}</span>
           </p>
         </div>
 

@@ -195,13 +195,38 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           section: loadedSections.find(sec => sec.id === t.section_id),
         }));
 
-        // Enriched Students
-        const enrichedStudents: Student[] = loadedStudents.map(s => ({
-          ...s,
-          section: loadedSections.find(sec => sec.id === s.section_id),
-          mentor: loadedFaculty.find(f => f.id === s.mentor_faculty_id),
-          department: loadedDepts.find(d => d.id === s.department_id),
-        }));
+        // Enriched Students with authoritative section join
+        const enrichedStudents: Student[] = loadedStudents.map(s => {
+          const matchedSection = loadedSections.find(sec => sec.id === s.section_id) ||
+                                 loadedSections.find(sec => sec.name === (s.section as any)?.name);
+          return {
+            ...s,
+            section: matchedSection,
+            section_id: matchedSection?.id || s.section_id,
+            mentor: loadedFaculty.find(f => f.id === s.mentor_faculty_id),
+            department: loadedDepts.find(d => d.id === s.department_id),
+          };
+        });
+
+        // Sync erpStorage with latest Supabase Cloud records
+        erpStorage.syncFromSupabase({
+          institutions: loadedInst ? [loadedInst] : [],
+          departments: loadedDepts,
+          programs: loadedProgs,
+          sessions: loadedSessions,
+          years: loadedYears,
+          semesters: loadedSemesters,
+          sections: loadedSections,
+          subjects: loadedSubjects,
+          faculty: loadedFaculty,
+          assignments: loadedAssignments,
+          students: enrichedStudents,
+          timetable: enrichedTimetable,
+          attendanceSessions: data.attendanceSessions,
+          attendanceRecords: data.attendanceRecords,
+          corrections: data.corrections,
+          auditLogs: data.auditLogs,
+        });
 
         // Enriched Assignments
         const enrichedAssignments: FacultySubjectAssignment[] = loadedAssignments.map(a => ({

@@ -36,14 +36,17 @@ export const StudentAttendancePage: React.FC = () => {
     sections,
     attendanceSessions,
     attendanceRecords,
-    corrections
+    corrections,
+    students
   } = useAcademic();
 
-  const student = user?.student;
-  const studentId = student?.id || '';
+  const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
+  const student = currentStudent;
+  const studentId = currentStudent?.id || '';
   const stats = getStudentAttendance(studentId);
 
-  const currentSection = sections.find(s => s.id === student?.section_id) || sections[0];
+  const currentSection = sections.find(s => s.id === currentStudent?.section_id) || 
+                         sections.find(s => s.name === currentStudent?.section?.name);
   const isSectionB = currentSection?.name === 'B';
   const branchName = isSectionB ? 'CSE + IT' : 'CSE';
 

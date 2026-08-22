@@ -28,16 +28,19 @@ export const ProfilePage: React.FC = () => {
     semesters, 
     sections, 
     faculty, 
+    students,
     getStudentAttendance
   } = useAcademic();
 
-  const student = user?.student;
+  const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
+  const student = currentStudent;
   const currentFaculty = user?.faculty;
   
-  const studentId = student?.id || '';
+  const studentId = currentStudent?.id || '';
   const stats = role === 'student' && studentId ? getStudentAttendance(studentId) : null;
 
-  const sec = sections.find(s => s.id === student?.section_id) || sections[0];
+  const sec = sections.find(s => s.id === currentStudent?.section_id) || 
+              sections.find(s => s.name === currentStudent?.section?.name);
   const isSectionB = sec?.name === 'B';
   const branchName = isSectionB ? 'Computer Science & Engineering + Information Technology (CSE + IT)' : 'Computer Science & Engineering (CSE)';
 

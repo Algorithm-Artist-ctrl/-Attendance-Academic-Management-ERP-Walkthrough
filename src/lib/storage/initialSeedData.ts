@@ -18,40 +18,40 @@ import {
   UserProfile 
 } from '../../types/database.types';
 
-// Deterministic IDs for cross-referencing
-export const INST_ID = 'inst-vctm-340';
-export const DEPT_CSE_ID = 'dept-cse-01';
-export const PROG_BTECH_CSE_ID = 'prog-btech-cse-01';
-export const SESSION_2026_2027_ID = 'session-2026-2027';
-export const YEAR_2ND_ID = 'year-2nd-btech-01';
-export const SEM_3RD_ID = 'sem-3rd-odd-01';
-export const SEC_A_ID = 'sec-btech-cse-2-a';
-export const SEC_B_ID = 'sec-btech-cse-2-b';
+// Deterministic IDs for cross-referencing - Exactly matching Supabase Cloud Database UUIDs
+export const INST_ID = '22398afa-8679-4d2c-87fc-312152a276e2';
+export const DEPT_CSE_ID = 'fe5bc365-7a68-4290-b05e-acfa274f748a';
+export const PROG_BTECH_CSE_ID = 'c71b3983-9ff8-43e1-a9a0-b778676bf186';
+export const SESSION_2026_2027_ID = 'a358fe68-d746-4242-9f36-2c715cd9526e';
+export const YEAR_2ND_ID = 'ecdc0ed0-e0b7-4ebc-9db5-1db612317334';
+export const SEM_3RD_ID = '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d';
+export const SEC_A_ID = 'fc93a413-c18d-4e72-9624-146767bc286b';
+export const SEC_B_ID = '233957c0-4fef-42c6-8285-40ebf73ea6b7';
 
 // Faculty IDs
-export const FAC_WASIM_ID = 'fac-wasim-01';
-export const FAC_HEMLATA_ID = 'fac-hemlata-02';
-export const FAC_IMRAN_ID = 'fac-imran-03';
-export const FAC_ALOK_ID = 'fac-alok-04';
-export const FAC_KULDEEP_ID = 'fac-kuldeep-05';
-export const FAC_NASEEM_ID = 'fac-naseem-06';
-export const FAC_SHIVANI_ID = 'fac-shivani-07';
-export const FAC_GAGANDEEP_ID = 'fac-gagandeep-08';
-export const FAC_FAIZAN_ID = 'fac-faizan-09';
-export const FAC_PRAVEEN_ID = 'fac-praveen-10';
-export const FAC_ABHISHEK_ID = 'fac-abhishek-11';
+export const FAC_WASIM_ID = 'd97b0c91-91bd-4414-9c9a-315139e752c3';
+export const FAC_HEMLATA_ID = '4743eb90-0e7e-4ba6-875e-ee3348a1de72';
+export const FAC_IMRAN_ID = '727a6e43-a3c6-4b3b-849d-e644bf539eda';
+export const FAC_ALOK_ID = 'ae02a640-0e39-47e7-b1aa-636efc09aaf6';
+export const FAC_KULDEEP_ID = 'd35d339f-508d-40d5-8279-cf068120b0c5';
+export const FAC_NASEEM_ID = '671511f2-73dc-4609-b49b-a5cd375a7cef';
+export const FAC_SHIVANI_ID = 'c899db6d-5949-4e0d-84c4-8f5c4f7866c7';
+export const FAC_GAGANDEEP_ID = '422de2c6-d008-4d22-8b3a-37353ee4af17';
+export const FAC_FAIZAN_ID = '3613c185-4b74-4b9c-8030-195c2e9089b7';
+export const FAC_PRAVEEN_ID = '6cdcdacd-8ff1-46e7-9b81-c13d74dabfc9';
+export const FAC_ABHISHEK_ID = '508c1a21-11a7-4d36-8902-66a843be0aaf';
 
 // Subject IDs
-export const SUB_MATHS4_ID = 'sub-bas303';
-export const SUB_UHV_ID = 'sub-bve301';
-export const SUB_DS_ID = 'sub-bcs301';
-export const SUB_COA_ID = 'sub-bcs302';
-export const SUB_DSTL_ID = 'sub-bcs303';
-export const SUB_DSLAB_ID = 'sub-bcs351';
-export const SUB_COALAB_ID = 'sub-bcs352';
-export const SUB_WDWS_ID = 'sub-bcs353';
-export const SUB_CS_ID = 'sub-bcc301';
-export const SUB_PROJECT_ID = 'sub-bcc351';
+export const SUB_MATHS4_ID = '1d720a3b-9902-45fc-9cbe-111431f4485a';
+export const SUB_UHV_ID = '1e718772-8aa5-49f5-9899-484b751ec1f2';
+export const SUB_DS_ID = '223a68cf-ebf7-445f-abe2-99afaea99933';
+export const SUB_COA_ID = '6dedd926-0155-4f4a-9d04-dd868e9ad674';
+export const SUB_DSTL_ID = '616b013d-a42c-481c-8b43-39ba733b548b';
+export const SUB_DSLAB_ID = 'acb2fe93-f903-42c2-a4a2-24872b16f28e';
+export const SUB_COALAB_ID = 'be34ca80-e9ef-43fe-97c4-01f6c14b39ca';
+export const SUB_WDWS_ID = 'e1271166-5d69-4c9a-8657-910bf88f5a85';
+export const SUB_CS_ID = '65a65d0c-8eda-41e2-98f3-8ee6382948bf';
+export const SUB_PROJECT_ID = '562a70d4-e3e7-44f3-a51f-9304a835d074';
 
 export const INITIAL_INSTITUTION: Institution = {
   id: INST_ID,

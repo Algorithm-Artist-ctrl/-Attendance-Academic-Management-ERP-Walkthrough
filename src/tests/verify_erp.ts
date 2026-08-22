@@ -1,7 +1,21 @@
 import { erpStorage } from '../lib/storage/erpStorage';
 import { parseAndValidateStudentCSV } from '../lib/utils/csvParser';
 import { supabaseService } from '../lib/services/supabaseService';
-import { SEC_A_ID, SEC_B_ID, FAC_HEMLATA_ID, FAC_IMRAN_ID, FAC_ALOK_ID, SUB_DS_ID, SUB_COA_ID } from '../lib/storage/initialSeedData';
+import { 
+  SEC_A_ID, 
+  SEC_B_ID, 
+  FAC_HEMLATA_ID, 
+  FAC_IMRAN_ID, 
+  FAC_ALOK_ID, 
+  FAC_KULDEEP_ID,
+  DEPT_CSE_ID,
+  PROG_BTECH_CSE_ID,
+  SESSION_2026_2027_ID,
+  YEAR_2ND_ID,
+  SEM_3RD_ID,
+  SUB_DS_ID, 
+  SUB_COA_ID 
+} from '../lib/storage/initialSeedData';
 
 // Mock localStorage in Node.js environment
 if (typeof localStorage === 'undefined') {
@@ -129,7 +143,7 @@ async function runVerificationTests() {
   const conflictingFacultyEntry = {
     section_id: SEC_B_ID,
     subject_id: SUB_COA_ID,
-    faculty_id: 'fac-kuldeep-05',
+    faculty_id: FAC_KULDEEP_ID,
     day_of_week: 'MON' as const,
     period_number: 1,
     start_time: '09:00',
@@ -167,11 +181,11 @@ async function runVerificationTests() {
 
   const csvResult = await parseAndValidateStudentCSV(sampleCSV, {
     institutionId: institution.id,
-    departmentId: 'dept-cse-01',
-    programId: 'prog-btech-cse-01',
-    sessionId: 'session-2026-2027',
-    yearId: 'year-2nd-btech-01',
-    semesterId: 'sem-3rd-odd-01',
+    departmentId: DEPT_CSE_ID,
+    programId: PROG_BTECH_CSE_ID,
+    sessionId: SESSION_2026_2027_ID,
+    yearId: YEAR_2ND_ID,
+    semesterId: SEM_3RD_ID,
     defaultSectionId: SEC_A_ID,
     sections: [{ id: SEC_A_ID, name: 'A' }, { id: SEC_B_ID, name: 'B' }],
     faculty: faculty.map(f => ({ id: f.id, full_name: f.full_name, employee_code: f.employee_code })),
