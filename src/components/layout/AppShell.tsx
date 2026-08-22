@@ -52,7 +52,6 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
           { id: 'profile', label: 'My Profile', icon: GraduationCap },
           { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
-          { id: 'subjects', label: 'Subjects', icon: BookOpen },
           { id: 'timetable', label: 'Time Table', icon: Calendar },
           { id: 'notices', label: 'Notices', icon: Bell },
           { id: 'feedback', label: 'Feedback', icon: MessageSquare },

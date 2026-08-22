@@ -11,7 +11,6 @@ import { SettingsPage } from './pages/common/SettingsPage';
 // Student Pages
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
-import { StudentSubjectsPage } from './pages/student/StudentSubjectsPage';
 import { StudentTimetablePage } from './pages/student/StudentTimetablePage';
 import { CorrectionRequestsPage } from './pages/student/CorrectionRequestsPage';
 import { FeedbackPage } from './pages/student/FeedbackPage';
@@ -73,8 +72,6 @@ export const AppContent: React.FC = () => {
           return <ProfilePage />;
         case 'attendance':
           return <StudentAttendancePage />;
-        case 'subjects':
-          return <StudentSubjectsPage />;
         case 'timetable':
           return <StudentTimetablePage />;
         case 'notices':
