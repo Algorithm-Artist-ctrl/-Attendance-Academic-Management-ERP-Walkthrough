@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-vctm-navy-50: #f0f4f8;
+  --color-vctm-navy-100: #d9e2ec;
+  --color-vctm-navy-200: #bcccdc;
+  --color-vctm-navy-300: #9fb3c8;
+  --color-vctm-navy-400: #829ab1;
+  --color-vctm-navy-500: #627d98;
+  --color-vctm-navy-600: #486581;
+  --color-vctm-navy-700: #334e68;
+  --color-vctm-navy-800: #1e3a5f;
+  --color-vctm-navy-900: #0f2744;
+  --color-vctm-navy-950: #081729;
+
+  --color-vctm-maroon-50: #fbf2f2;
+  --color-vctm-maroon-100: #f7dfdf;
+  --color-vctm-maroon-500: #b83232;
+  --color-vctm-maroon-600: #9b2626;
+  --color-vctm-maroon-700: #801f1f;
+  --color-vctm-maroon-800: #6b1414;
+  --color-vctm-maroon-900: #4a0b0b;
+
+  --color-vctm-gold-50: #fefdf0;
+  --color-vctm-gold-100: #fdf9c8;
+  --color-vctm-gold-400: #f5c518;
+  --color-vctm-gold-500: #e5a50a;
+  --color-vctm-gold-600: #c68406;
+}
+
+body {
+  margin: 0;
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
