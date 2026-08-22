@@ -10,7 +10,9 @@ import {
   FileText,
   User,
   Send,
-  MessageSquare
+  MessageSquare,
+  MapPin,
+  Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -28,17 +30,21 @@ export const ReviewCorrectionsPage: React.FC = () => {
     attendanceRecords,
     attendanceSessions,
     subjects,
-    students
+    sections,
+    students,
+    faculty
   } = useAcademic();
 
-  const faculty = user?.faculty;
-  const facultyId = faculty?.id || '';
+  const currentFaculty = faculty.find(f => f.id === user?.faculty_id || f.id === user?.faculty?.id || f.employee_code === user?.faculty?.employee_code) || user?.faculty;
+  const facultyId = currentFaculty?.id || '';
 
-  // Filter requests strictly assigned to this faculty (or all for admin)
+  // Filter requests strictly assigned to this faculty (or all for admin/hod)
   const myClaims = role === 'super_admin' ? corrections : getFacultyCorrectionRequests(facultyId);
 
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Reject Modal State
   const [rejectModalItem, setRejectModalItem] = useState<AttendanceCorrection | null>(null);
@@ -54,17 +60,21 @@ export const ReviewCorrectionsPage: React.FC = () => {
     ? approvedList 
     : rejectedList;
 
-  const handleApprove = async (correctionId: string) => {
-    setProcessingId(correctionId);
+  const handleApprove = async (item: AttendanceCorrection) => {
+    setProcessingId(item.id);
+    setActionError(null);
     try {
       await reviewCorrectionRequest({
-        correctionId,
+        correctionId: item.id,
         status: 'approved',
         reviewerFacultyId: facultyId,
         reviewRemarks: 'Attendance discrepancy verified and rectified in database.',
       });
-    } catch (err) {
+      setSuccessToast(`Attendance claim for ${item.student?.full_name || 'student'} APPROVED successfully! Record updated to Present.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+    } catch (err: any) {
       console.error('Failed to approve claim:', err);
+      setActionError(err?.message || 'Failed to approve attendance claim in database.');
     } finally {
       setProcessingId(null);
     }
@@ -73,6 +83,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
   const handleConfirmReject = async () => {
     if (!rejectModalItem) return;
     setProcessingId(rejectModalItem.id);
+    setActionError(null);
     try {
       await reviewCorrectionRequest({
         correctionId: rejectModalItem.id,
@@ -80,9 +91,12 @@ export const ReviewCorrectionsPage: React.FC = () => {
         reviewerFacultyId: facultyId,
         reviewRemarks: rejectRemarks.trim() || 'Claim rejected after attendance verification.',
       });
+      setSuccessToast(`Attendance claim for ${rejectModalItem.student?.full_name || 'student'} REJECTED.`);
       setRejectModalItem(null);
-    } catch (err) {
+      setTimeout(() => setSuccessToast(null), 4000);
+    } catch (err: any) {
       console.error('Failed to reject claim:', err);
+      setActionError(err?.message || 'Failed to reject attendance claim in database.');
     } finally {
       setProcessingId(null);
     }
@@ -98,14 +112,30 @@ export const ReviewCorrectionsPage: React.FC = () => {
             Student Attendance Claims & Rectifications
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Review and adjudicate attendance discrepancy claims submitted by students enrolled in your lectures
+            Review and adjudicate attendance claims submitted for your assigned lectures
           </p>
         </div>
 
         <div className="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/25 text-[#00ff88]">
-          Reviewer: <strong className="text-white">{faculty?.full_name || 'Faculty Member'}</strong>
+          Reviewer: <strong className="text-white">{currentFaculty?.full_name || user?.full_name || 'Faculty Member'}</strong>
         </div>
       </div>
+
+      {/* Success Notification */}
+      {successToast && (
+        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{successToast}</span>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {actionError && (
+        <div className="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <span>{actionError}</span>
+        </div>
+      )}
 
       {/* Tabs Row */}
       <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 w-fit text-xs font-bold">
@@ -169,18 +199,19 @@ export const ReviewCorrectionsPage: React.FC = () => {
               <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
                 <tr>
                   <th className="px-5 py-3.5">Student Details</th>
-                  <th className="px-5 py-3.5">Lecture & Subject</th>
+                  <th className="px-5 py-3.5">Subject & Lecture</th>
                   <th className="px-5 py-3.5">Date & Time</th>
                   <th className="px-5 py-3.5">Status Change</th>
                   <th className="px-5 py-3.5">Student Reason</th>
-                  <th className="px-5 py-3.5 text-center">Action / Remarks</th>
+                  <th className="px-5 py-3.5 text-center">Action / Review Decision</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-500/10">
                 {currentList.map((item) => {
-                  const record = attendanceRecords.find(r => r.id === item.attendance_record_id);
+                  const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
                   const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
                   const sub = subjects.find(s => s.id === session?.subject_id);
+                  const sec = sections.find(s => s.id === session?.section_id);
                   const stud = item.student || students.find(s => s.id === item.student_id);
 
                   const isProcessing = processingId === item.id;
@@ -192,7 +223,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                           {stud?.full_name || 'Student'}
                         </div>
                         <div className="text-[11px] text-emerald-400 font-mono font-semibold">
-                          Roll: {stud?.roll_number} • Sec {stud?.section?.name || 'A'}
+                          Roll: {stud?.roll_number} • Sec {sec?.name || stud?.section?.name || 'A'}
                         </div>
                       </td>
 
@@ -201,7 +232,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                           {sub?.subject_name || 'Subject'}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
-                          {sub?.subject_code}
+                          {sub?.subject_code} • Room {sec?.room_number || 'A-007'}
                         </div>
                       </td>
 
@@ -233,7 +264,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                               variant="neon"
                               size="sm"
                               disabled={isProcessing}
-                              onClick={() => handleApprove(item.id)}
+                              onClick={() => handleApprove(item)}
                               leftIcon={<Check className="w-3.5 h-3.5 text-slate-950" />}
                               className="text-xs font-bold py-1 px-3"
                             >
@@ -257,7 +288,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                         ) : (
                           <div className="text-left max-w-xs">
                             <span className={clsx(
-                              'px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-block mb-1',
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-block mb-1',
                               item.status === 'approved' 
                                 ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
                                 : 'bg-rose-500/15 border-rose-500/30 text-rose-400'

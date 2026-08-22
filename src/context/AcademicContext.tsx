@@ -699,8 +699,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const myAssignments = assignments.filter(a => a.faculty_id === facultyId);
 
     return corrections.filter(c => {
-      const rec = attendanceRecords.find(r => r.id === c.attendance_record_id);
-      const sess = attendanceSessions.find(s => s.id === rec?.attendance_session_id);
+      // If already reviewed by this faculty
+      if (c.reviewed_by === facultyId) return true;
+
+      const rec = c.record || attendanceRecords.find(r => r.id === c.attendance_record_id);
+      const sess = rec?.session || attendanceSessions.find(s => s.id === rec?.attendance_session_id);
 
       if (!sess) return false;
 

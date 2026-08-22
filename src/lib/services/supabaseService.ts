@@ -247,6 +247,13 @@ export const supabaseService = {
       throw new Error(`Failed to update correction: ${corrErr?.message}`);
     }
 
+    // Fetch reviewer faculty full name for audit fidelity
+    const { data: reviewerInfo } = await supabase
+      .from('faculty')
+      .select('full_name')
+      .eq('id', params.reviewerFacultyId)
+      .single();
+
     // If approved, update the actual attendance record in database
     if (params.status === 'approved' && updatedCorrection.attendance_record_id) {
       await supabase
@@ -259,14 +266,7 @@ export const supabaseService = {
         })
         .eq('id', updatedCorrection.attendance_record_id);
 
-      // Fetch reviewer faculty full name for audit fidelity
-      const { data: reviewerInfo } = await supabase
-        .from('faculty')
-        .select('full_name')
-        .eq('id', params.reviewerFacultyId)
-        .single();
-
-      // Audit Log
+      // Audit Log for Approval
       await supabase.from('audit_logs').insert({
         actor_id: params.reviewerFacultyId,
         actor_name: reviewerInfo?.full_name || 'Faculty Member',
@@ -277,6 +277,21 @@ export const supabaseService = {
         new_values: {
           correctionId: params.correctionId,
           newStatus: updatedCorrection.requested_status,
+          remarks: params.reviewRemarks,
+        },
+      });
+    } else if (params.status === 'rejected') {
+      // Audit Log for Rejection
+      await supabase.from('audit_logs').insert({
+        actor_id: params.reviewerFacultyId,
+        actor_name: reviewerInfo?.full_name || 'Faculty Member',
+        actor_role: 'faculty',
+        action: 'ATTENDANCE_CORRECTION_REJECTED',
+        entity_type: 'attendance_corrections',
+        entity_id: params.correctionId,
+        new_values: {
+          correctionId: params.correctionId,
+          rejectionRemarks: params.reviewRemarks,
         },
       });
     }
