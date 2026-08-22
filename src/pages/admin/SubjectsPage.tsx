@@ -22,24 +22,28 @@ export const SubjectsPage: React.FC = () => {
     (s.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateSubject = (e: React.FormEvent) => {
+  const handleCreateSubject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectCode.trim() || !subjectName.trim()) return;
 
-    addSubject({
-      program_id: programs[0]?.id || 'prog-btech-cse-01',
-      department_id: departments[0]?.id || 'dept-cse-01',
-      semester_id: semesters[0]?.id || 'sem-3rd-odd-01',
-      subject_code: subjectCode.trim().toUpperCase(),
-      subject_name: subjectName.trim(),
-      lecture_type: lectureType,
-      credits: Number(credits),
-      active: true,
-    });
+    try {
+      await addSubject({
+        program_id: programs[0]?.id || 'prog-btech-cse-01',
+        department_id: departments[0]?.id || 'dept-cse-01',
+        semester_id: semesters[0]?.id || 'sem-3rd-odd-01',
+        subject_code: subjectCode.trim().toUpperCase(),
+        subject_name: subjectName.trim(),
+        lecture_type: lectureType,
+        credits: Number(credits),
+        active: true,
+      });
 
-    setSubjectCode('');
-    setSubjectName('');
-    setIsModalOpen(false);
+      setSubjectCode('');
+      setSubjectName('');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to add subject:', err);
+    }
   };
 
   return (

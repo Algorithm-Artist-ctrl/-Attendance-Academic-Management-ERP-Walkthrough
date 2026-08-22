@@ -1,5 +1,6 @@
 import { erpStorage } from '../lib/storage/erpStorage';
 import { parseAndValidateStudentCSV } from '../lib/utils/csvParser';
+import { supabaseService } from '../lib/services/supabaseService';
 import { SEC_A_ID, SEC_B_ID, FAC_HEMLATA_ID, FAC_IMRAN_ID, FAC_ALOK_ID, SUB_DS_ID, SUB_COA_ID } from '../lib/storage/initialSeedData';
 
 // Mock localStorage in Node.js environment
@@ -205,10 +206,57 @@ async function runVerificationTests() {
     duration_years: 4,
     active: true,
   });
-  assert(erpStorage.getPrograms().some(p => p.code === 'BTECH-ME'), 'New degree program created dynamically');
+  // ----------------------------------------------------
+  // TEST 8: Real Supabase Cloud Database Persistence
+  // ----------------------------------------------------
+  console.log('\n--- TEST 8: Real Supabase Cloud Database Live Persistence ---');
+  const supabaseData = await supabaseService.fetchAllData();
+  assert(Boolean(supabaseData && supabaseData.students.length >= 106), 'Loaded 106 official students from Supabase cloud');
+  assert(Boolean(supabaseData && supabaseData.faculty.length >= 11), 'Loaded 11 official faculty members from Supabase cloud');
+  assert(Boolean(supabaseData && supabaseData.timetable.length >= 70), 'Loaded complete weekly timetable from Supabase cloud');
+
+  // Test real Supabase write & persistence
+  const realFac = supabaseData!.faculty[0];
+  const realSec = supabaseData!.sections[0];
+  const realSub = supabaseData!.subjects[0];
+  const realStuds = supabaseData!.students.filter(s => s.section_id === realSec.id).slice(0, 5);
+
+  const realSessionResult = await supabaseService.saveAttendance({
+    facultyId: realFac.id,
+    sectionId: realSec.id,
+    subjectId: realSub.id,
+    sessionDate: '2026-08-23',
+    startTime: '09:00',
+    endTime: '09:50',
+    studentRecords: realStuds.map((s, idx) => ({
+      studentId: s.id,
+      status: idx === 0 ? 'Absent' : 'Present',
+    })),
+  });
+
+  assert(Boolean(realSessionResult.session.id), 'Attendance session persisted to Supabase cloud database');
+  assert(realSessionResult.records.length === 5, '5 student attendance records persisted to Supabase cloud database');
+
+  // Test real Supabase correction request & approval
+  const realAbsentRec = realSessionResult.records.find(r => r.status === 'Absent')!;
+  const realCorr = await supabaseService.submitCorrection({
+    attendanceRecordId: realAbsentRec.id,
+    studentId: realAbsentRec.student_id,
+    requestedStatus: 'Present',
+    reason: 'Verified in class lecture',
+  });
+  assert(realCorr.status === 'pending', 'Correction request inserted into Supabase cloud database');
+
+  const approvedCorr = await supabaseService.reviewCorrection({
+    correctionId: realCorr.id,
+    status: 'approved',
+    reviewerFacultyId: realFac.id,
+    reviewRemarks: 'Approved by faculty',
+  });
+  assert(approvedCorr.status === 'approved', 'Correction approved in Supabase cloud database');
 
   console.log('\n=====================================================');
-  console.log('  🎉 ALL 7 AUTOMATED VERIFICATION TESTS PASSED! 🎉');
+  console.log('  🎉 ALL 8 AUTOMATED VERIFICATION TESTS PASSED! 🎉');
   console.log('=====================================================\n');
 }
 

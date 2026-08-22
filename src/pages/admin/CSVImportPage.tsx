@@ -83,7 +83,7 @@ export const CSVImportPage: React.FC = () => {
     try {
       let importedCount = 0;
       for (const studentData of validationResult.validRows) {
-        addStudent({
+        await addStudent({
           ...studentData,
           active: true,
         });

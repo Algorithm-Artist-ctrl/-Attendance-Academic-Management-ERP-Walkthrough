@@ -39,55 +39,67 @@ export const AcademicSetupPage: React.FC = () => {
   const [newSecRoom, setNewSecRoom] = useState('');
   const [newSecCoordinatorId, setNewSecCoordinatorId] = useState('');
 
-  const handleCreateDept = (e: React.FormEvent) => {
+  const handleCreateDept = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDeptName.trim() || !newDeptCode.trim()) return;
 
-    addDepartment({
-      institution_id: institution.id,
-      name: newDeptName.trim(),
-      code: newDeptCode.trim().toUpperCase(),
-      hod_faculty_id: newDeptHodId || undefined,
-      active: true,
-    });
+    try {
+      await addDepartment({
+        institution_id: institution.id,
+        name: newDeptName.trim(),
+        code: newDeptCode.trim().toUpperCase(),
+        hod_faculty_id: newDeptHodId || undefined,
+        active: true,
+      });
 
-    setNewDeptName('');
-    setNewDeptCode('');
-    setIsDeptModalOpen(false);
+      setNewDeptName('');
+      setNewDeptCode('');
+      setIsDeptModalOpen(false);
+    } catch (err) {
+      console.error('Failed to add department:', err);
+    }
   };
 
-  const handleCreateProg = (e: React.FormEvent) => {
+  const handleCreateProg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProgName.trim() || !newProgCode.trim()) return;
 
-    addProgram({
-      department_id: newProgDeptId,
-      name: newProgName.trim(),
-      code: newProgCode.trim().toUpperCase(),
-      duration_years: Number(newProgDuration),
-      active: true,
-    });
+    try {
+      await addProgram({
+        department_id: newProgDeptId,
+        name: newProgName.trim(),
+        code: newProgCode.trim().toUpperCase(),
+        duration_years: Number(newProgDuration),
+        active: true,
+      });
 
-    setNewProgName('');
-    setNewProgCode('');
-    setIsProgModalOpen(false);
+      setNewProgName('');
+      setNewProgCode('');
+      setIsProgModalOpen(false);
+    } catch (err) {
+      console.error('Failed to add program:', err);
+    }
   };
 
-  const handleCreateSec = (e: React.FormEvent) => {
+  const handleCreateSec = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSecName.trim()) return;
 
-    addSection({
-      semester_id: 'sem-3rd-odd-01',
-      name: newSecName.trim().toUpperCase(),
-      room_number: newSecRoom.trim() || 'TBD',
-      class_coordinator_id: newSecCoordinatorId || undefined,
-      active: true,
-    });
+    try {
+      await addSection({
+        semester_id: 'sem-3rd-odd-01',
+        name: newSecName.trim().toUpperCase(),
+        room_number: newSecRoom.trim() || 'TBD',
+        class_coordinator_id: newSecCoordinatorId || undefined,
+        active: true,
+      });
 
-    setNewSecName('');
-    setNewSecRoom('');
-    setIsSecModalOpen(false);
+      setNewSecName('');
+      setNewSecRoom('');
+      setIsSecModalOpen(false);
+    } catch (err) {
+      console.error('Failed to add section:', err);
+    }
   };
 
   return (

@@ -61,7 +61,7 @@ export const TimetableManagerPage: React.FC = () => {
     }
   };
 
-  const handleValidateAndAdd = (e: React.FormEvent) => {
+  const handleValidateAndAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setDetectedConflict(null);
 
@@ -84,8 +84,15 @@ export const TimetableManagerPage: React.FC = () => {
       return;
     }
 
-    addTimetableEntry(newEntry);
-    setIsAddModalOpen(false);
+    try {
+      await addTimetableEntry(newEntry);
+      setIsAddModalOpen(false);
+    } catch (err: any) {
+      setDetectedConflict({
+        type: 'faculty',
+        message: err.message || 'Failed to schedule timetable slot.'
+      });
+    }
   };
 
   return (

@@ -26,27 +26,31 @@ export const FacultyDirectoryPage: React.FC = () => {
     (f.faculty_code && f.faculty_code.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleCreateFaculty = (e: React.FormEvent) => {
+  const handleCreateFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empCode.trim() || !fullName.trim() || !email.trim()) return;
 
-    addFaculty({
-      department_id: deptId,
-      employee_code: empCode.trim().toUpperCase(),
-      faculty_code: facCode.trim().toUpperCase() || undefined,
-      full_name: fullName.trim(),
-      designation: designation.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone.trim() || undefined,
-      active: true,
-    });
+    try {
+      await addFaculty({
+        department_id: deptId,
+        employee_code: empCode.trim().toUpperCase(),
+        faculty_code: facCode.trim().toUpperCase() || undefined,
+        full_name: fullName.trim(),
+        designation: designation.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim() || undefined,
+        active: true,
+      });
 
-    setEmpCode('');
-    setFacCode('');
-    setFullName('');
-    setEmail('');
-    setPhone('');
-    setIsModalOpen(false);
+      setEmpCode('');
+      setFacCode('');
+      setFullName('');
+      setEmail('');
+      setPhone('');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to add faculty:', err);
+    }
   };
 
   return (

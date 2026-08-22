@@ -46,7 +46,7 @@ export const StudentDirectoryPage: React.FC = () => {
     return matchesSearch && matchesSection && matchesAdmission;
   });
 
-  const handleAddStudent = (e: React.FormEvent) => {
+  const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalError(null);
     if (!newRoll.trim() || !newName.trim()) {
@@ -55,7 +55,7 @@ export const StudentDirectoryPage: React.FC = () => {
     }
 
     try {
-      addStudent({
+      await addStudent({
         institution_id: institution.id,
         department_id: departments[0]?.id || 'dept-cse-01',
         program_id: programs[0]?.id || 'prog-btech-cse-01',

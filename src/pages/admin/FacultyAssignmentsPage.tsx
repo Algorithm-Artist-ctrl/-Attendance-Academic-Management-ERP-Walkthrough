@@ -36,10 +36,10 @@ export const FacultyAssignmentsPage: React.FC = () => {
     );
   });
 
-  const handleAssign = (e: React.FormEvent) => {
+  const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      addAssignment({
+      await addAssignment({
         faculty_id: selectedFacultyId,
         subject_id: selectedSubjectId,
         section_id: selectedSectionId,

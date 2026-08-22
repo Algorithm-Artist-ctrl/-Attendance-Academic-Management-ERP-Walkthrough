@@ -1,14 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://vctm-erp.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'dummy_anon_key';
+const getEnv = (key: string, fallback: string): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+    }
+  } catch {}
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key]!;
+    }
+  } catch {}
+  return fallback;
+};
 
-// Check if valid production supabase credentials are configured
+const supabaseUrl = getEnv('VITE_SUPABASE_URL', 'https://obssoojzryqiudllnlkh.supabase.co');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co');
+
 export const isSupabaseConfigured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY &&
-  !import.meta.env.VITE_SUPABASE_URL.includes('your-project-id') &&
-  !import.meta.env.VITE_SUPABASE_URL.includes('vctm-erp.supabase.co')
+  supabaseUrl &&
+  supabaseAnonKey &&
+  !supabaseUrl.includes('your-project-id')
 );
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
