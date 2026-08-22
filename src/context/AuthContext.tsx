@@ -49,29 +49,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const trimmedId = credentials.identifier.trim().toLowerCase();
     const profiles = erpStorage.getProfiles();
 
-    // 1. Check if student login with Roll Number
+    // 1. Search across all profiles (students, faculty, admin)
+    const cleanId = trimmedId.replace(/[\s\-_]/g, '');
+    const cleanNumeric = cleanId.replace(/\D/g, '');
+
+    // Step A: Exact Roll Number or Code or Email match
     let matchedProfile = profiles.find(p => {
-      if (p.student && p.student.roll_number.toLowerCase() === trimmedId) {
-        return true;
+      if (p.student) {
+        const studRoll = p.student.roll_number.toLowerCase().replace(/[\s\-_]/g, '');
+        if (studRoll === cleanId) return true;
+        if (p.student.email && p.student.email.toLowerCase() === trimmedId) return true;
+        if (p.student.full_name.toLowerCase() === trimmedId) return true;
       }
-      if (p.email.toLowerCase() === trimmedId) {
-        return true;
+      if (p.faculty) {
+        if (p.faculty.employee_code.toLowerCase().replace(/[\s\-_]/g, '') === cleanId) return true;
+        if (p.faculty.faculty_code && p.faculty.faculty_code.toLowerCase() === cleanId) return true;
+        if (p.faculty.email.toLowerCase() === trimmedId) return true;
+        if (p.faculty.full_name.toLowerCase().includes(trimmedId)) return true;
       }
-      if (p.faculty && (p.faculty.employee_code.toLowerCase() === trimmedId || p.faculty.email.toLowerCase() === trimmedId)) {
-        return true;
-      }
+      if (p.email.toLowerCase() === trimmedId) return true;
       return false;
     });
 
+    // Step B: Flexible Student Roll Number suffix match (e.g. 2403400100057 <-> 2503400100057 or last 5-7 digits)
+    if (!matchedProfile && cleanNumeric.length >= 4) {
+      const targetSuffix = cleanNumeric.slice(-6); // e.g. 000057 or 100057
+      matchedProfile = profiles.find(p => {
+        if (p.student) {
+          const studNumeric = p.student.roll_number.replace(/\D/g, '');
+          if (studNumeric.endsWith(targetSuffix) || cleanNumeric.endsWith(studNumeric.slice(-6))) {
+            return true;
+          }
+        }
+        return false;
+      });
+    }
+
+    // Step C: Flexible Name search (e.g., student enters their first name "Tarun")
+    if (!matchedProfile && trimmedId.length >= 3) {
+      matchedProfile = profiles.find(p => {
+        if (p.student) {
+          const names = p.student.full_name.toLowerCase().split(' ');
+          if (names.some(n => n === trimmedId) || p.student.full_name.toLowerCase().includes(trimmedId)) {
+            return true;
+          }
+        }
+        return false;
+      });
+    }
+
+    // Step D: Super Admin check
     if (!matchedProfile) {
-      // Check if it's admin@vctm.in or admin
-      if (trimmedId === 'admin' || trimmedId === 'admin@vctm.in') {
+      if (trimmedId === 'admin' || trimmedId === 'admin@vctm.in' || trimmedId === 'superadmin' || trimmedId === 'principal') {
         matchedProfile = profiles.find(p => p.role === 'super_admin');
       }
     }
 
     if (!matchedProfile) {
-      const errorMsg = 'Invalid Roll Number, Employee Code, or Email address.';
+      const errorMsg = `No student or faculty found matching "${credentials.identifier}". Please verify your Roll Number (e.g. 2503400100057) or Email.`;
       setAuthState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
       return { success: false, error: errorMsg };
     }

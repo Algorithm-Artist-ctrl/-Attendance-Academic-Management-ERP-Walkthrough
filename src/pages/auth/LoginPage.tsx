@@ -15,7 +15,7 @@ import { Button } from '../../components/common/Button';
 export const LoginPage: React.FC = () => {
   const { login, isLoading, error } = useAuth();
   const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'faculty' | 'admin'>('student');
-  const [identifier, setIdentifier] = useState('2403400100047'); // Shazeb Section A
+  const [identifier, setIdentifier] = useState('2503400100057'); // Any registered student/roll number
   const [password, setPassword] = useState('123456');
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -37,13 +37,13 @@ export const LoginPage: React.FC = () => {
     setActiveRoleTab(tab);
     setLocalError(null);
     if (tab === 'student') {
-      setIdentifier('2403400100047'); // Shazeb (Sec A)
+      setIdentifier('2503400100057');
       setPassword('123456');
     } else if (tab === 'faculty') {
-      setIdentifier('hemlata.cse@vctm.in'); // Ms. Hemlata Chaudhary
+      setIdentifier('hemlata.cse@vctm.in');
       setPassword('123456');
     } else {
-      setIdentifier('admin@vctm.in'); // Super Admin
+      setIdentifier('admin@vctm.in');
       setPassword('admin123');
     }
   };

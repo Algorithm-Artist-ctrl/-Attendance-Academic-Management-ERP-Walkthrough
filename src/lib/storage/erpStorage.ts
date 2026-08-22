@@ -419,15 +419,57 @@ class ERPStorageService {
   }
 
   public getProfiles(): UserProfile[] {
-    const profiles = loadFromStorage<UserProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_USER_PROFILES);
+    const rawProfiles = loadFromStorage<UserProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_USER_PROFILES);
     const faculty = this.getFaculty();
     const students = this.getStudents();
 
-    return profiles.map(p => ({
-      ...p,
-      faculty: faculty.find(f => f.id === p.faculty_id),
-      student: students.find(s => s.id === p.student_id),
-    }));
+    const profileMap = new Map<string, UserProfile>();
+
+    // 1. Add raw stored profiles (admin, etc.)
+    rawProfiles.forEach(p => {
+      profileMap.set(p.id, {
+        ...p,
+        faculty: faculty.find(f => f.id === p.faculty_id),
+        student: students.find(s => s.id === p.student_id),
+      });
+    });
+
+    // 2. Ensure every faculty member has a UserProfile
+    faculty.forEach(f => {
+      const existingKey = `user-${f.id}`;
+      if (!profileMap.has(existingKey)) {
+        const isHod = f.designation.toLowerCase().includes('hod') || f.faculty_code === 'WSM';
+        profileMap.set(existingKey, {
+          id: existingKey,
+          email: f.email,
+          role: isHod ? 'hod' : 'faculty',
+          full_name: f.full_name,
+          faculty_id: f.id,
+          department_id: f.department_id,
+          phone: f.phone,
+          faculty: f,
+        });
+      }
+    });
+
+    // 3. Ensure EVERY student has a UserProfile
+    students.forEach(s => {
+      const existingKey = `user-${s.id}`;
+      if (!profileMap.has(existingKey)) {
+        profileMap.set(existingKey, {
+          id: existingKey,
+          email: s.email || `${s.roll_number}@student.vctm.in`,
+          role: 'student',
+          full_name: s.full_name,
+          student_id: s.id,
+          department_id: s.department_id,
+          phone: s.phone,
+          student: s,
+        });
+      }
+    });
+
+    return Array.from(profileMap.values());
   }
 
   // Attendance Management
