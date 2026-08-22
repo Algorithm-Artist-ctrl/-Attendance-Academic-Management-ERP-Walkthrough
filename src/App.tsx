@@ -19,6 +19,7 @@ import { LeaveApplicationPage } from './pages/student/LeaveApplicationPage';
 // Faculty Pages
 import { FacultyDashboard } from './pages/faculty/FacultyDashboard';
 import { TakeAttendancePage } from './pages/faculty/TakeAttendancePage';
+import { FacultyTimetablePage } from './pages/faculty/FacultyTimetablePage';
 import { ReviewCorrectionsPage } from './pages/faculty/ReviewCorrectionsPage';
 import { AttendanceHistoryPage } from './pages/faculty/AttendanceHistoryPage';
 
@@ -103,7 +104,11 @@ export const AppContent: React.FC = () => {
             />
           );
         case 'timetable':
-          return <StudentTimetablePage />;
+          return (
+            <FacultyTimetablePage
+              onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+            />
+          );
         case 'history':
           return (
             <AttendanceHistoryPage

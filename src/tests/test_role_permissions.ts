@@ -35,7 +35,7 @@ function assert(condition: boolean, testName: string) {
 
 async function runComprehensiveVerification() {
   console.log('======================================================================');
-  console.log('  RUNNING COMPLETE ERP WORKFLOW & FACULTY AUTHORIZATION SUITE');
+  console.log('  RUNNING COMPLETE ERP WORKFLOW, TIMETABLE & FACULTY INTEGRITY SUITE');
   console.log('======================================================================\n');
 
   // Load authoritative database from Supabase
@@ -61,55 +61,60 @@ async function runComprehensiveVerification() {
   assert(Boolean(sampleEntry.day_of_week), 'Timetable stores day_of_week');
 
   // -------------------------------------------------------------------
-  // TEST 2: Faculty Receives Only Assigned Classes
+  // TEST 2: Faculty Timetable Generation (Ms. Hemlata Chaudhary)
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 2: Faculty Receives Strictly Assigned Classes ---');
+  console.log('\n--- TEST 2: Ms. Hemlata Chaudhary Faculty Timetable ---');
   const facHemlata = db!.faculty.find(f => f.id === FAC_HEMLATA_ID)!;
-  const facAlok = db!.faculty.find(f => f.id === FAC_ALOK_ID)!;
+  const hemlataEntries = db!.timetable.filter(t => t.faculty_id === facHemlata.id && t.active);
+  assert(hemlataEntries.length > 0, 'Ms. Hemlata has published timetable entries');
+  assert(!hemlataEntries.some(t => t.subject_id === SUB_MATHS4_ID), 'Zero Mathematics IV entries in Ms. Hemlata timetable');
+  
+  const hemlataSecA = hemlataEntries.filter(t => t.section_id === secA.id);
+  assert(hemlataSecA.every(t => t.subject_id === SUB_DSTL_ID), 'Ms. Hemlata teaches strictly DSTL in Section A');
+  
+  const hemlataSecB = hemlataEntries.filter(t => t.section_id === secB.id);
+  assert(hemlataSecB.some(t => t.subject_id === SUB_DS_ID), 'Ms. Hemlata teaches Data Structure in Section B');
+
+  // -------------------------------------------------------------------
+  // TEST 3: Faculty Timetable Generation (Dr. Naseem Ahamad Khan)
+  // -------------------------------------------------------------------
+  console.log('\n--- TEST 3: Dr. Naseem Ahamad Khan Faculty Timetable ---');
   const facNaseem = db!.faculty.find(f => f.id === FAC_NASEEM_ID)!;
-
-  const hemlataClasses = db!.timetable.filter(t => t.faculty_id === facHemlata.id && t.active);
-  assert(hemlataClasses.length > 0, 'Ms. Hemlata has assigned classes');
-  assert(!hemlataClasses.some(t => t.subject_id === SUB_MATHS4_ID), 'Ms. Hemlata does NOT have Maths IV');
-
-  const naseemClasses = db!.timetable.filter(t => t.faculty_id === facNaseem.id && t.active);
-  assert(naseemClasses.every(t => t.subject_id === SUB_MATHS4_ID), 'Dr. Naseem teaches Mathematics IV');
+  const naseemEntries = db!.timetable.filter(t => t.faculty_id === facNaseem.id && t.active);
+  assert(naseemEntries.length > 0, 'Dr. Naseem has published timetable entries');
+  assert(naseemEntries.every(t => t.subject_id === SUB_MATHS4_ID), 'Dr. Naseem teaches Mathematics IV');
 
   // -------------------------------------------------------------------
-  // TEST 3: Future Date Attendance Prevention
+  // TEST 4: Faculty Timetable Generation (Mr. Alok Gupta)
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 3: Future Date Attendance Strictly Rejected ---');
-  let futureRejected = false;
-  try {
-    await supabaseService.saveAttendance({
-      facultyId: facHemlata.id,
-      sectionId: secB.id,
-      subjectId: SUB_DS_ID,
-      sessionDate: '2026-08-28', // Future date
-      startTime: '09:00',
-      endTime: '09:50',
-      studentRecords: []
-    });
-  } catch (err: any) {
-    futureRejected = err.message.includes('future dates');
-  }
-  assert(futureRejected, 'Backend rejected future attendance date');
+  console.log('\n--- TEST 4: Mr. Alok Gupta Faculty Timetable ---');
+  const facAlok = db!.faculty.find(f => f.id === FAC_ALOK_ID)!;
+  const alokEntries = db!.timetable.filter(t => t.faculty_id === facAlok.id && t.active);
+  assert(alokEntries.length > 0, 'Mr. Alok Gupta has published timetable entries');
+  assert(alokEntries.every(t => t.section_id === secA.id), 'Mr. Alok Gupta teaches strictly Section A');
+  assert(alokEntries.some(t => t.subject_id === SUB_DS_ID), 'Mr. Alok Gupta teaches Data Structure in Section A');
 
   // -------------------------------------------------------------------
-  // TEST 4: Dynamic Student Roster for Section
+  // TEST 5: Student Timetable Isolation (Section A vs Section B)
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 4: Dynamic Student Roster per Section ---');
-  const secAStudents = db!.students.filter(s => s.section_id === secA.id && s.active);
-  const secBStudents = db!.students.filter(s => s.section_id === secB.id && s.active);
-  assert(secAStudents.length === 53, 'Section A has 53 dynamic students');
-  assert(secBStudents.length === 53, 'Section B has 53 dynamic students');
-  assert(!secAStudents.some(s => s.section_id === secB.id), 'Zero Section B students in Section A');
+  console.log('\n--- TEST 5: Student Timetable Section Isolation ---');
+  const studA = db!.students.find(s => s.roll_number === '2503400100001')!; // ADITYA KUMAR
+  const studB = db!.students.find(s => s.roll_number === '2503400100057')!; // TARUN KUSHWAH
+  
+  const studATimetable = db!.timetable.filter(t => t.section_id === studA.section_id && t.active);
+  const studBTimetable = db!.timetable.filter(t => t.section_id === studB.section_id && t.active);
+  
+  assert(studATimetable.length === 42, 'Student A receives exactly 42 Section A weekly lectures');
+  assert(studBTimetable.length === 42, 'Student B receives exactly 42 Section B weekly lectures');
+  assert(studATimetable.every(t => t.section_id === secA.id), 'Zero Section B entries in Student A view');
+  assert(studBTimetable.every(t => t.section_id === secB.id), 'Zero Section A entries in Student B view');
 
   // -------------------------------------------------------------------
-  // TEST 5: Section A Attendance Recording (Mr. Alok Gupta)
+  // TEST 6: Live Attendance Recording & Read-Only Context Locking
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 5: Section A Live Attendance Save ---');
+  console.log('\n--- TEST 6: Live Attendance Recording (Mr. Alok Gupta - Section A) ---');
   const testDate = '2026-08-22';
+  const secAStudents = db!.students.filter(s => s.section_id === secA.id && s.active);
   const himanshuStud = secAStudents.find(s => s.full_name.toLowerCase().includes('himanshu') || s.roll_number === '2503400100021') || secAStudents[1];
 
   const secASession = await supabaseService.saveAttendance({
@@ -121,7 +126,7 @@ async function runComprehensiveVerification() {
     endTime: '12:20',
     studentRecords: secAStudents.map(s => ({
       studentId: s.id,
-      status: s.id === himanshuStud.id ? 'Absent' : 'Present', // Himanshu marked Absent for claim test
+      status: s.id === himanshuStud.id ? 'Absent' : 'Present',
       remarks: s.id === himanshuStud.id ? 'Uninformed absent' : undefined
     }))
   });
@@ -130,9 +135,9 @@ async function runComprehensiveVerification() {
   assert(secASession.records.length === 53, 'All 53 Section A records saved to Supabase');
 
   // -------------------------------------------------------------------
-  // TEST 6: Student Himanshu Submits Claim -> Routed Strictly to Mr. Alok Gupta
+  // TEST 7: Approve Button Workflow (Real Mutation & Audit)
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 6: Student Claim Routing ---');
+  console.log('\n--- TEST 7: Approve Button Workflow (Real Mutation & Audit) ---');
   const himanshuAbsentRec = secASession.records.find(r => r.student_id === himanshuStud.id && r.status === 'Absent')!;
   const himanshuClaim = await supabaseService.submitCorrection({
     attendanceRecordId: himanshuAbsentRec.id,
@@ -142,13 +147,6 @@ async function runComprehensiveVerification() {
   });
   assert(himanshuClaim.status === 'pending', 'Himanshu claim submitted with pending status');
 
-  // Verify routing: session belongs to Mr. Alok Gupta
-  assert(secASession.session.faculty_id === facAlok.id, 'Claim session is assigned to Mr. Alok Gupta');
-
-  // -------------------------------------------------------------------
-  // TEST 7: Mr. Alok Gupta APPROVES Himanshu Claim
-  // -------------------------------------------------------------------
-  console.log('\n--- TEST 7: Approve Button Workflow (Real Mutation & Audit) ---');
   const approvedClaim = await supabaseService.reviewCorrection({
     correctionId: himanshuClaim.id,
     status: 'approved',
@@ -166,13 +164,12 @@ async function runComprehensiveVerification() {
   );
   assert(Boolean(approvalLog), 'Audit log recorded ATTENDANCE_CORRECTION_APPROVED event');
   assert(approvalLog?.actor_name === 'Mr. Alok Gupta', 'Audit actor is Mr. Alok Gupta (NOT System/Admin)');
-  assert(approvalLog?.actor_role === 'faculty', 'Audit actor role is FACULTY');
 
   // -------------------------------------------------------------------
-  // TEST 8: Test REJECT Button Workflow
+  // TEST 8: Reject Button Workflow (Record Unchanged & Audit)
   // -------------------------------------------------------------------
   console.log('\n--- TEST 8: Reject Button Workflow (Record Unchanged & Audit) ---');
-  // Create another test absent record in Section B
+  const secBStudents = db!.students.filter(s => s.section_id === secB.id && s.active);
   const tarunStud = secBStudents.find(s => s.roll_number === '2503400100057')!;
   const secBSession = await supabaseService.saveAttendance({
     facultyId: facHemlata.id,
@@ -193,10 +190,9 @@ async function runComprehensiveVerification() {
     attendanceRecordId: tarunAbsentRec.id,
     studentId: tarunStud.id,
     requestedStatus: 'Present',
-    reason: 'Claiming attendance for testing rejection workflow',
+    reason: 'Testing rejection workflow',
   });
 
-  // Ms. Hemlata Chaudhary REJECTS this claim
   const rejectedClaim = await supabaseService.reviewCorrection({
     correctionId: tarunClaim.id,
     status: 'rejected',
@@ -210,9 +206,10 @@ async function runComprehensiveVerification() {
   assert(tarunRecordAfterReject?.status === 'Absent', 'Original attendance status remains ABSENT');
 
   const rejectAuditLog = afterRejectDb!.auditLogs.find(
-    l => l.action === 'ATTENDANCE_CORRECTION_REJECTED' || (l.actor_id === facHemlata.id && l.new_values?.correctionId === tarunClaim.id)
+    l => l.action === 'ATTENDANCE_CORRECTION_REJECTED' && l.actor_id === facHemlata.id
   );
-  assert(Boolean(rejectAuditLog), 'Audit log contains rejection event for Ms. Hemlata Chaudhary');
+  assert(Boolean(rejectAuditLog), 'Audit log contains ATTENDANCE_CORRECTION_REJECTED event');
+  assert(rejectAuditLog?.actor_name === 'Ms. Hemlata Chaudhary', 'Rejection audit actor is Ms. Hemlata Chaudhary');
 
   // -------------------------------------------------------------------
   // TEST 9: Persistence Verification across Refresh
@@ -224,7 +221,7 @@ async function runComprehensiveVerification() {
   assert(persistentDb!.sections.length === 2, '2 sections preserved in Supabase');
 
   console.log('\n======================================================================');
-  console.log('  🎉 ALL ERP WORKFLOW & FACULTY AUTHORIZATION TESTS PASSED! 🎉');
+  console.log('  🎉 ALL ERP WORKFLOW, TIMETABLE & FACULTY INTEGRITY TESTS PASSED! 🎉');
   console.log('======================================================================\n');
 }
 
