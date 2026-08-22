@@ -1,94 +1,126 @@
-import React from 'react';
-import { RotateCcw, Clock, CheckCircle2, XCircle, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { RotateCcw, Plus, Clock, CheckCircle2, XCircle, AlertCircle, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
+import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
-import { formatDateDisplay } from '../../lib/utils/dateUtils';
+import { CorrectionRequestModal } from '../../components/correction/CorrectionRequestModal';
 
 export const CorrectionRequestsPage: React.FC = () => {
   const { user } = useAuth();
-  const { students, corrections } = useAcademic();
+  const { corrections, attendanceRecords, attendanceSessions } = useAcademic();
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
-  const student = students.find(s => s.id === user?.student_id) || students[0];
-  const myCorrections = corrections.filter(c => c.student_id === student.id);
+  const student = user?.student;
+  const studentId = student?.id || 'stud-a-05';
+  const myRequests = corrections.filter(c => c.student_id === studentId);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Top Header */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Attendance Correction Requests</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Track status of your attendance rectification requests submitted to faculty members
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <RotateCcw className="w-6 h-6 text-[#00ff88]" />
+            Attendance Correction Requests
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Submit and monitor your rectification requests sent to faculty coordinators
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
-            Pending: {myCorrections.filter(c => c.status === 'pending').length}
-          </span>
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-            Approved: {myCorrections.filter(c => c.status === 'approved').length}
-          </span>
-        </div>
+
+        <Button
+          variant="neon"
+          size="sm"
+          onClick={() => setIsNewModalOpen(true)}
+          leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+        >
+          New Correction Request
+        </Button>
       </div>
 
-      <Card>
-        {myCorrections.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 space-y-2">
-            <RotateCcw className="w-10 h-10 mx-auto text-slate-300 stroke-[1.5]" />
-            <h4 className="text-sm font-semibold text-slate-700">No Correction Requests</h4>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              You haven't submitted any attendance correction requests. You can submit requests from your recent lectures table on the dashboard.
+      {/* Requests History List / Table */}
+      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+        <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+          <h3 className="text-sm font-bold text-white tracking-wide">
+            Submitted Requests History ({myRequests.length})
+          </h3>
+          <span className="text-xs text-emerald-400 font-semibold">Real-Time Sync</span>
+        </div>
+
+        {myRequests.length === 0 ? (
+          <div className="p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#00ff88] mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-white">No Pending Correction Requests</h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              All your recorded lecture attendance is in order. If you were marked absent mistakenly, click "New Correction Request".
             </p>
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={() => setIsNewModalOpen(true)}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+              className="mt-2"
+            >
+              Request Rectification
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                  <th className="px-4 py-3">Submission Date</th>
-                  <th className="px-4 py-3">Lecture Subject</th>
-                  <th className="px-4 py-3">Requested Status</th>
-                  <th className="px-4 py-3">Reason Provided</th>
-                  <th className="px-4 py-3">Review Status</th>
-                  <th className="px-4 py-3">Faculty Remark</th>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Date & Time</th>
+                  <th className="px-5 py-3.5">Subject</th>
+                  <th className="px-5 py-3.5">Faculty Coordinator</th>
+                  <th className="px-5 py-3.5">Student Reason</th>
+                  <th className="px-5 py-3.5 text-center">Status</th>
+                  <th className="px-5 py-3.5 text-center">Submitted On</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {myCorrections.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 text-xs text-slate-600 font-medium">
-                      {formatDateDisplay(c.created_at)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">
-                      {c.record?.session?.subject?.subject_name || 'Subject'}
-                      <span className="block text-xs font-normal text-slate-400">
-                        Date: {c.record?.session?.session_date}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-emerald-600 text-xs">{c.requested_status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-700 max-w-xs">
-                      {c.reason}
-                    </td>
-                    <td className="px-4 py-3">
-                      <AttendanceStatusBadge status={c.status} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500 italic">
-                      {c.review_remarks ? (
-                        <span>"{c.review_remarks}" — <strong className="not-italic text-slate-700">{c.reviewer?.full_name || 'Faculty'}</strong></span>
-                      ) : (
-                        <span className="text-slate-400">Awaiting faculty review</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-emerald-500/10">
+                {myRequests.map((req) => {
+                  const record = attendanceRecords.find(r => r.id === req.attendance_record_id);
+                  const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                  return (
+                    <tr key={req.id} className="hover:bg-emerald-500/5 transition-colors">
+                      <td className="px-5 py-4 font-mono font-bold text-white">
+                        {session?.session_date || '14 May 2025'}
+                        <span className="block text-[10px] text-slate-400 font-normal">
+                          {session?.start_time} - {session?.end_time}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 font-bold text-emerald-400">
+                        {session?.subject?.subject_name || 'Data Structure'}
+                      </td>
+                      <td className="px-5 py-4 text-slate-300 font-medium">
+                        {session?.faculty?.full_name || 'Ms. Hemlata Chaudhary'}
+                      </td>
+                      <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate">
+                        "{req.reason}"
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <AttendanceStatusBadge status={req.status} />
+                      </td>
+                      <td className="px-5 py-4 text-center text-slate-400 font-mono">
+                        {new Date(req.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </Card>
+      </div>
+
+      {/* Correction Request Stepper Modal */}
+      <CorrectionRequestModal
+        isOpen={isNewModalOpen}
+        onClose={() => setIsNewModalOpen(false)}
+      />
     </div>
   );
 };

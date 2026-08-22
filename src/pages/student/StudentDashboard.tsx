@@ -1,349 +1,316 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  GraduationCap, 
   Calendar, 
-  ClipboardCheck, 
+  Clock, 
   CheckCircle2, 
   XCircle, 
-  Clock, 
-  AlertTriangle, 
+  AlertCircle, 
+  BookOpen, 
+  ArrowRight,
+  TrendingUp,
   RotateCcw,
-  Sparkles,
-  BookOpen,
-  UserCheck
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
-import { CorrectionRequestModal } from '../../components/correction/CorrectionRequestModal';
-import { getISTDayOfWeek, getISTTodayDate, formatDateDisplay, formatTime12H } from '../../lib/utils/dateUtils';
-import { AttendanceRecord } from '../../types/database.types';
+import { CyberGauge3D } from '../../components/3d/CyberGauge3D';
+import { DayOfWeek } from '../../types/database.types';
 
-export const StudentDashboard: React.FC = () => {
+interface StudentDashboardProps {
+  onNavigate: (tab: string) => void;
+}
+
+export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
-  const { students, attendanceRecords, getStudentAttendance, getTodaySchedule } = useAcademic();
+  const { 
+    getStudentAttendance, 
+    timetable, 
+    subjects, 
+    sections, 
+    years, 
+    semesters, 
+    programs,
+    corrections
+  } = useAcademic();
 
-  const [selectedRecordForCorrection, setSelectedRecordForCorrection] = useState<AttendanceRecord | null>(null);
-  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
+  const student = user?.student;
+  const studentId = student?.id || 'stud-a-05';
+  const stats = getStudentAttendance(studentId);
 
-  const student = students.find(s => s.id === user?.student_id) || students[0];
-  const todayDateStr = getISTTodayDate();
-  const todayDay = getISTDayOfWeek(todayDateStr);
+  const section = sections.find(s => s.id === student?.section_id);
+  const year = years.find(y => y.id === student?.academic_year_id);
+  const sem = semesters.find(s => s.id === student?.semester_id);
+  const prog = programs.find(p => p.id === student?.program_id);
 
-  const stats = getStudentAttendance(student.id);
-  const todaySchedule = getTodaySchedule({
-    dayOfWeek: todayDay,
-    sectionId: student.section_id,
-    studentId: student.id,
-    dateStr: todayDateStr,
-  });
+  // Today's Day of Week
+  const days: DayOfWeek[] = ['SUN' as any, 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const todayDay: DayOfWeek = days[new Date().getDay()] === ('SUN' as any) ? 'MON' : days[new Date().getDay()];
 
-  const recentRecords = attendanceRecords
-    .filter(r => r.student_id === student.id)
-    .slice(0, 10);
+  // Today's timetable entries for the student's section
+  const todaySchedule = timetable
+    .filter(t => t.section_id === student?.section_id && t.day_of_week === todayDay)
+    .sort((a, b) => a.period_number - b.period_number);
 
-  const openCorrection = (record: AttendanceRecord) => {
-    setSelectedRecordForCorrection(record);
-    setIsCorrectionModalOpen(true);
-  };
+  const studentCorrections = corrections.filter(c => c.student_id === studentId);
+  const pendingRequests = studentCorrections.filter(c => c.status === 'pending');
+
+  const totalAbsent = stats.totalLectures - stats.presentLectures;
 
   return (
     <div className="space-y-6">
-      {/* Student Profile Card */}
-      <div className="bg-gradient-to-r from-vctm-navy-900 to-vctm-navy-800 rounded-2xl p-6 text-white shadow-md border border-vctm-navy-700">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-400 text-vctm-navy-950 font-black text-2xl flex items-center justify-center shadow-md shrink-0">
-              {student.full_name.charAt(0)}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold tracking-tight">{student.full_name}</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  {student.admission_type}
-                </span>
-              </div>
-              <div className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>Roll No: <strong className="text-white">{student.roll_number}</strong></span>
-                <span>•</span>
-                <span>B.Tech CSE II Year</span>
-                <span>•</span>
-                <span>Section <strong className="text-amber-300">{student.section?.name}</strong></span>
-                <span>•</span>
-                <span>Session: <strong>2026–2027</strong></span>
-              </div>
-            </div>
+      {/* ======================================================== */}
+      {/* 1. WELCOME BANNER (Matching Screen 2) */}
+      {/* ======================================================== */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1 z-10">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              Welcome back, {student?.full_name || user?.full_name || 'Tarun Kushwah'} 👋
+            </h1>
           </div>
+          <p className="text-xs sm:text-sm text-slate-300 font-medium">
+            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '2503400100057'}</span> • {prog?.name || 'B.Tech CSE'} • {year?.name || '2nd Year'} • {sem?.name || 'Sem 3'} • Section {section?.name || 'A'}
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs bg-vctm-navy-950/60 p-3 rounded-xl border border-vctm-navy-700">
-            <div>
-              <span className="text-slate-400 block text-[10px]">Class Coordinator:</span>
-              <span className="font-semibold text-slate-200">{student.section?.class_coordinator?.full_name || 'Coordinator'}</span>
-            </div>
-            <div className="border-l border-vctm-navy-700 pl-3">
-              <span className="text-slate-400 block text-[10px]">Faculty Mentor:</span>
-              <span className="font-semibold text-slate-200">{student.mentor?.full_name || 'Assigned Mentor'}</span>
-            </div>
+        {/* Quick Action */}
+        <div className="z-10 flex items-center gap-3">
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={() => onNavigate('corrections')}
+            leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+          >
+            Correction Request
+          </Button>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 2. STATS KPI CARDS GRID (Matching Screen 2) */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Overall Attendance */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Overall Attendance</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+              {stats.percentage}%
+            </h3>
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+              {stats.percentage >= 75 ? 'Eligible for Exams' : 'Low Attendance'}
+            </span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Total Subjects */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Total Subjects</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {stats.subjectStats?.length || 6}
+            </h3>
+            <span className="text-[10px] text-slate-400 font-medium">Odd Semester 2026-27</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <BookOpen className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Present Lectures */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Present</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">
+              {stats.presentLectures}
+            </h3>
+            <span className="text-[10px] text-emerald-400/80 font-medium">Lectures Attended</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Absent Lectures */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Absent</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-rose-400 mt-1">
+              {totalAbsent}
+            </h3>
+            <span className="text-[10px] text-rose-400/80 font-medium">Lectures Missed</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+            <XCircle className="w-6 h-6" />
           </div>
         </div>
       </div>
 
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Overall Percentage */}
-        <Card className="relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overall Attendance</span>
-            {stats.isDefaulter ? (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> Low (&lt;75%)
-              </span>
+      {/* ======================================================== */}
+      {/* 3. ATTENDANCE OVERVIEW & TODAY'S TIMETABLE */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Card: Attendance Overview with CyberGauge3D */}
+        <div className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">
+              Attendance Overview
+            </h3>
+            <span className="text-xs font-semibold text-emerald-400">Semester 3</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-4">
+            <CyberGauge3D
+              percentage={stats.percentage}
+              size={150}
+              label="Overall"
+              subLabel="Attendance"
+            />
+
+            {/* Legend breakdown */}
+            <div className="space-y-3 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#00ff88]" />
+                  <span className="text-slate-300 font-medium">Present</span>
+                </div>
+                <span className="font-bold text-white ml-auto sm:ml-4">{stats.presentLectures}</span>
+              </div>
+
+              <div className="flex items-center justify-between sm:justify-start gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  <span className="text-slate-300 font-medium">Absent</span>
+                </div>
+                <span className="font-bold text-white ml-auto sm:ml-4">{totalAbsent}</span>
+              </div>
+
+              <div className="flex items-center justify-between sm:justify-start gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                  <span className="text-slate-300 font-medium">Total Held</span>
+                </div>
+                <span className="font-bold text-white ml-auto sm:ml-4">{stats.totalLectures}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-emerald-500/10 text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onNavigate('attendance')}
+              className="w-full text-xs"
+            >
+              View Detailed Attendance Breakdown
+            </Button>
+          </div>
+        </div>
+
+        {/* Right Card: Today's Time Table */}
+        <div className="lg:col-span-7 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide">
+                Today's Time Table
+              </h3>
+              <p className="text-xs text-slate-400">{todayDay}, Odd Semester</p>
+            </div>
+            <button
+              onClick={() => onNavigate('timetable')}
+              className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
+            >
+              View Full Schedule →
+            </button>
+          </div>
+
+          <div className="space-y-2.5 overflow-y-auto max-h-64 pr-1">
+            {todaySchedule.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500">
+                No scheduled lectures for today.
+              </div>
             ) : (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Good Standing
-              </span>
+              todaySchedule.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/35 transition-all flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-slate-900 border border-emerald-500/20 text-emerald-400 font-mono text-xs font-bold shrink-0">
+                      {entry.start_time} - {entry.end_time}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white leading-tight">
+                        {entry.subject?.subject_name || 'Lecture Subject'}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {entry.faculty?.full_name || 'Assigned Faculty'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] font-bold text-xs">
+                      {entry.room_number || 'Room A-007'}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className={`text-3xl font-extrabold ${stats.percentage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {stats.percentage}%
-            </span>
-            <span className="text-xs text-slate-500">
-              ({stats.presentLectures} / {stats.totalLectures} Lectures)
-            </span>
-          </div>
-          <div className="mt-3 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${stats.percentage >= 75 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-              style={{ width: `${Math.min(stats.percentage, 100)}%` }}
-            />
-          </div>
-        </Card>
 
-        {/* Total Lectures Conducted */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Conducted Lectures</span>
-            <BookOpen className="w-4 h-4 text-blue-500" />
+          <div className="pt-3 border-t border-emerald-500/10 text-xs text-slate-400 flex items-center justify-between">
+            <span>Room: {section?.room_number || 'Room A-007'}</span>
+            <span className="text-[#00ff88] font-semibold">Active Odd Session</span>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-slate-900">{stats.totalLectures}</span>
-            <span className="text-xs text-slate-500 ml-2">Total Held</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-2">Odd Semester 2026-2027</p>
-        </Card>
+        </div>
 
-        {/* Lectures Attended */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attended (Present)</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-emerald-600">{stats.presentLectures}</span>
-            <span className="text-xs text-slate-500 ml-2">Lectures Present</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-2">Verified Attendance</p>
-        </Card>
-
-        {/* Absences */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Absences</span>
-            <XCircle className="w-4 h-4 text-rose-500" />
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-rose-600">{stats.totalLectures - stats.presentLectures}</span>
-            <span className="text-xs text-slate-500 ml-2">Missed</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-2">Eligible for correction if missed</p>
-        </Card>
       </div>
 
-      {/* Today's Lectures Schedule */}
-      <Card
-        title={
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-vctm-navy-700" />
-            <span>Today's Lecture Schedule ({formatDateDisplay(todayDateStr)})</span>
+      {/* ======================================================== */}
+      {/* 4. BOTTOM: SUBJECT WISE ATTENDANCE CARDS GRID (Screen 2) */}
+      {/* ======================================================== */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-white tracking-wide">
+              Subject Wise Attendance
+            </h3>
+            <p className="text-xs text-slate-400">Current Semester Performance</p>
           </div>
-        }
-        subtitle="Live attendance recorded in real-time by your professors"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                <th className="px-4 py-2.5">Period</th>
-                <th className="px-4 py-2.5">Time Slot</th>
-                <th className="px-4 py-2.5">Subject</th>
-                <th className="px-4 py-2.5">Faculty</th>
-                <th className="px-4 py-2.5">Room</th>
-                <th className="px-4 py-2.5 text-right">Attendance Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {todaySchedule.map((lec) => (
-                <tr key={lec.timetableEntryId} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-semibold text-slate-800">
-                    Period {lec.periodNumber}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">
-                    {formatTime12H(lec.startTime)} – {formatTime12H(lec.endTime)}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    <div>{lec.subjectName}</div>
-                    <div className="text-xs text-slate-400">{lec.subjectCode} • {lec.lectureType}</div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 text-xs font-medium">
-                    {lec.facultyName}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {lec.roomNumber}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <AttendanceStatusBadge status={lec.studentStatus || 'Not Recorded'} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <button
+            onClick={() => onNavigate('attendance')}
+            className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
+          >
+            View All Subjects
+          </button>
         </div>
-      </Card>
 
-      {/* Subject-Wise Attendance Breakdown Table */}
-      <Card
-        title={
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="w-5 h-5 text-vctm-navy-700" />
-            <span>Subject-Wise Attendance Breakdown</span>
-          </div>
-        }
-        subtitle="Individual course requirements (AKTU Minimum Target: 75%)"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                <th className="px-4 py-2.5">Subject Code</th>
-                <th className="px-4 py-2.5">Subject Name</th>
-                <th className="px-4 py-2.5">Faculty</th>
-                <th className="px-4 py-2.5">Credits</th>
-                <th className="px-4 py-2.5">Attended / Total</th>
-                <th className="px-4 py-2.5">Percentage</th>
-                <th className="px-4 py-2.5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {stats.subjectStats.map((sub) => (
-                <tr key={sub.subjectId} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{sub.subjectCode}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-slate-800">{sub.subjectName}</span>
-                    <span className="text-[11px] text-slate-400 block">{sub.lectureType}</span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600 font-medium">{sub.facultyName}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{sub.credits}</td>
-                  <td className="px-4 py-3 text-xs font-medium text-slate-700">
-                    {sub.attended} / {sub.totalConducted}
-                  </td>
-                  <td className="px-4 py-3 w-44">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold w-10 ${sub.percentage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {sub.percentage}%
-                      </span>
-                      <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${sub.percentage >= 75 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                          style={{ width: `${Math.min(sub.percentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {sub.percentage >= 75 ? (
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-                        Eligible
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700">
-                        Shortage
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {(stats.subjectStats || []).map((sb) => (
+            <div
+              key={sb.subjectId}
+              className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/35 transition-all text-center space-y-2"
+            >
+              <div className="text-xs font-bold text-white truncate" title={sb.subjectName}>
+                {sb.subjectName}
+              </div>
+              <div className="text-[10px] text-slate-400 truncate">
+                {sb.facultyName}
+              </div>
+              <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                {sb.percentage}%
+              </div>
+            </div>
+          ))}
         </div>
-      </Card>
+      </div>
 
-      {/* Recent Attendance History & Correction Option */}
-      <Card
-        title={
-          <div className="flex items-center gap-2">
-            <RotateCcw className="w-5 h-5 text-vctm-navy-700" />
-            <span>Recent Recorded Lectures & Correction Requests</span>
-          </div>
-        }
-        subtitle="If you were marked absent by mistake, click 'Request Correction' to submit a rectification request to your faculty."
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                <th className="px-4 py-2.5">Date</th>
-                <th className="px-4 py-2.5">Subject</th>
-                <th className="px-4 py-2.5">Faculty</th>
-                <th className="px-4 py-2.5">Recorded Status</th>
-                <th className="px-4 py-2.5 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {recentRecords.map((rec) => (
-                <tr key={rec.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 text-xs font-medium text-slate-700">
-                    {rec.session?.session_date}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">
-                    {rec.session?.subject?.subject_name}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">
-                    {rec.session?.faculty?.full_name}
-                  </td>
-                  <td className="px-4 py-3">
-                    <AttendanceStatusBadge status={rec.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {rec.status === 'Absent' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openCorrection(rec)}
-                        leftIcon={<RotateCcw className="w-3.5 h-3.5 text-amber-600" />}
-                      >
-                        Request Correction
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-slate-400">Verified</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Correction Modal */}
-      <CorrectionRequestModal
-        isOpen={isCorrectionModalOpen}
-        onClose={() => setIsCorrectionModalOpen(false)}
-        record={selectedRecordForCorrection}
-        studentId={student.id}
-      />
     </div>
   );
 };

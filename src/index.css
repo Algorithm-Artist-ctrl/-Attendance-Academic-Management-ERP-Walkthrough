@@ -1,58 +1,106 @@
 @import "tailwindcss";
 
 @theme {
-  --color-vctm-navy-50: #f0f4f8;
-  --color-vctm-navy-100: #d9e2ec;
-  --color-vctm-navy-200: #bcccdc;
-  --color-vctm-navy-300: #9fb3c8;
-  --color-vctm-navy-400: #829ab1;
-  --color-vctm-navy-500: #627d98;
-  --color-vctm-navy-600: #486581;
-  --color-vctm-navy-700: #334e68;
-  --color-vctm-navy-800: #1e3a5f;
-  --color-vctm-navy-900: #0f2744;
-  --color-vctm-navy-950: #081729;
+  --color-cyber-bg: #050b14;
+  --color-cyber-surface: #0a1322;
+  --color-cyber-card: #0d1a2d;
+  --color-cyber-card-hover: #11223b;
+  --color-cyber-border: rgba(16, 185, 129, 0.2);
+  --color-cyber-border-active: rgba(0, 255, 136, 0.6);
+  
+  --color-neon-green: #00ff88;
+  --color-neon-green-hover: #10b981;
+  --color-neon-green-glow: rgba(0, 255, 136, 0.25);
+  
+  --color-vctm-navy-950: #040810;
+  --color-vctm-navy-900: #07101e;
+  --color-vctm-navy-800: #0d1b32;
+  --color-vctm-navy-700: #14284b;
+  --color-vctm-navy-600: #1e3a68;
+}
 
-  --color-vctm-maroon-50: #fbf2f2;
-  --color-vctm-maroon-100: #f7dfdf;
-  --color-vctm-maroon-500: #b83232;
-  --color-vctm-maroon-600: #9b2626;
-  --color-vctm-maroon-700: #801f1f;
-  --color-vctm-maroon-800: #6b1414;
-  --color-vctm-maroon-900: #4a0b0b;
-
-  --color-vctm-gold-50: #fefdf0;
-  --color-vctm-gold-100: #fdf9c8;
-  --color-vctm-gold-400: #f5c518;
-  --color-vctm-gold-500: #e5a50a;
-  --color-vctm-gold-600: #c68406;
+:root {
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
-  background-color: #f8fafc;
-  color: #0f172a;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #050b14;
+  color: #f1f5f9;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(at 10% 20%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(0, 255, 136, 0.03) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.02) 0px, transparent 60%);
+  background-attachment: fixed;
 }
 
-/* Custom scrollbars */
+/* Glassmorphic Cyber Panels */
+.glass-panel {
+  background: rgba(10, 19, 34, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card {
+  background: rgba(13, 26, 45, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 255, 136, 0.35);
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.08);
+}
+
+.glass-card-active {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+}
+
+/* Neon Glow Accents */
+.neon-glow {
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.35), 0 0 40px rgba(0, 255, 136, 0.15);
+}
+
+.neon-glow-sm {
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.neon-border {
+  border-color: #00ff88;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
+}
+
+/* Custom Cyber Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #060d19;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: #152945;
+  border-radius: 4px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #00ff88;
 }
 
 @media print {

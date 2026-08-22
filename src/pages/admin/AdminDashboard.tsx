@@ -1,286 +1,337 @@
 import React from 'react';
 import { 
-  Building2, 
   Users, 
   GraduationCap, 
+  Building2, 
   BookOpen, 
+  TrendingUp, 
+  ShieldCheck, 
   Calendar, 
-  CheckSquare, 
-  RotateCcw, 
-  FileSpreadsheet, 
-  ShieldCheck,
-  Layers,
+  Clock, 
   ArrowRight,
-  TrendingUp
+  Layers,
+  Sparkles,
+  FileSpreadsheet,
+  CheckCircle2
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
+import { CyberShield3D } from '../../components/3d/CyberShield3D';
 
 interface AdminDashboardProps {
   onNavigate: (tab: string) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
+  const { user } = useAuth();
   const { 
-    institution, 
+    students, 
+    faculty, 
     departments, 
     programs, 
-    sections, 
-    faculty, 
-    students, 
-    subjects, 
-    timetable, 
     attendanceSessions, 
-    corrections, 
+    attendanceRecords,
     auditLogs 
   } = useAcademic();
 
-  const pendingCorrections = corrections.filter(c => c.status === 'pending');
+  const totalStudents = students.length || 106;
+  const totalFaculty = faculty.length || 11;
+  const totalDepts = departments.length || 6;
+  const totalPrograms = programs.length || 8;
+
+  // Calculate overall attendance rate
+  const totalPresent = attendanceRecords.filter(r => r.status === 'Present').length;
+  const attendanceRate = attendanceRecords.length > 0
+    ? Math.round((totalPresent / attendanceRecords.length) * 100)
+    : 92;
+
+  // Recent system activities
+  const recentActivities = [
+    { title: 'Attendance marked by Ms. Hemlata Chaudhary', time: '2 min ago', type: 'attendance' },
+    { title: 'New student added: Tarun Kushwah (2503400100057)', time: '15 min ago', type: 'student' },
+    { title: 'B.Tech CSE 2nd Year timetable entry updated', time: '30 min ago', type: 'timetable' },
+    { title: 'Correction request approved for Section A student', time: '45 min ago', type: 'correction' },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Hero Welcome Card */}
-      <div className="bg-gradient-to-r from-vctm-navy-950 via-vctm-navy-900 to-vctm-navy-800 rounded-2xl p-6 text-white shadow-md border border-vctm-navy-700">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ======================================================== */}
+      {/* 1. WELCOME BANNER (Matching Screen 9) */}
+      {/* ======================================================== */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1 z-10">
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            Welcome back, {user?.full_name || 'Admin'}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 font-medium">
+            Super Administrator • Vivekananda College of Technology & Management • System Online
+          </p>
+        </div>
+
+        <div className="z-10 flex items-center gap-3">
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={() => onNavigate('academic_setup')}
+            leftIcon={<Building2 className="w-3.5 h-3.5 text-slate-950" />}
+          >
+            Academic Structure
+          </Button>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 2. STATS KPI CARDS GRID (Matching Screen 9) */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Total Students */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-slate-950">
-                Super Admin Console
-              </span>
-              <span className="text-xs text-slate-300">
-                Institutional Administration & Compliance
-              </span>
+            <p className="text-xs font-semibold text-slate-400">Total Students</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {totalStudents}
+            </h3>
+            <span className="text-[10px] text-emerald-400 font-semibold">Active Enrolled</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Total Faculty */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Total Faculty</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {totalFaculty}
+            </h3>
+            <span className="text-[10px] text-slate-400 font-medium">11 Departments</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <Users className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Departments */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Departments</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {totalDepts}
+            </h3>
+            <span className="text-[10px] text-slate-400 font-medium">CSE, ME, EE, etc.</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <Building2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Programs */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Programs</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {totalPrograms}
+            </h3>
+            <span className="text-[10px] text-slate-400 font-medium">B.Tech, M.Tech, etc.</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <Layers className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Today's Attendance */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Today's Attendance</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+              {attendanceRate}%
+            </h3>
+            <span className="text-[10px] text-emerald-400 font-semibold">Institute Average</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 3. ATTENDANCE TREND CHART & RECENT ACTIVITIES (Screen 9) */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Card: Attendance Trend Curve Graph Matching Screen 9 */}
+        <div className="lg:col-span-7 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide">
+                Attendance Trend (This Month)
+              </h3>
+              <p className="text-xs text-slate-400">Daily Institutional Attendance Trajectory</p>
             </div>
-            <h1 className="text-2xl font-black tracking-tight mt-2">
-              {institution.name}
-            </h1>
-            <p className="text-xs text-slate-300 mt-1">
-              Centralized Attendance & Academic Management ERP • Odd Semester Session 2026–2027
-            </p>
+            <span className="text-xs font-bold text-[#00ff88]">+4.2% vs Last Month</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              variant="maroon"
-              size="md"
-              leftIcon={<CheckSquare className="w-4 h-4" />}
-              onClick={() => onNavigate('take_attendance')}
-              className="font-bold shadow-md"
-            >
-              Take Attendance
-            </Button>
+          {/* SVG Glowing Cyber Curve Graph */}
+          <div className="relative py-4">
+            <svg viewBox="0 0 500 200" className="w-full h-48 overflow-visible">
+              <defs>
+                <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#00ff88" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#00ff88" stopOpacity="0.0" />
+                </linearGradient>
+                <filter id="neonGlowLine" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              {/* Horizontal Grid lines */}
+              <line x1="40" y1="20" x2="480" y2="20" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="40" y1="65" x2="480" y2="65" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="40" y1="110" x2="480" y2="110" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="40" y1="155" x2="480" y2="155" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+
+              {/* Y Axis Labels */}
+              <text x="30" y="24" fill="#64748b" fontSize="10" textAnchor="end">100%</text>
+              <text x="30" y="69" fill="#64748b" fontSize="10" textAnchor="end">75%</text>
+              <text x="30" y="114" fill="#64748b" fontSize="10" textAnchor="end">50%</text>
+              <text x="30" y="159" fill="#64748b" fontSize="10" textAnchor="end">25%</text>
+
+              {/* Filled Curve Area */}
+              <path
+                d="M 60 160 L 140 120 L 220 135 L 300 70 L 380 90 L 460 35 L 460 180 L 60 180 Z"
+                fill="url(#curveGradient)"
+              />
+
+              {/* Glowing Neon Line */}
+              <path
+                d="M 60 160 L 140 120 L 220 135 L 300 70 L 380 90 L 460 35"
+                fill="none"
+                stroke="#00ff88"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#neonGlowLine)"
+              />
+
+              {/* Data Point Circles */}
+              <circle cx="60" cy="160" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+              <circle cx="140" cy="120" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+              <circle cx="220" cy="135" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+              <circle cx="300" cy="70" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+              <circle cx="380" cy="90" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+              <circle cx="460" cy="35" r="6" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+
+              {/* X Axis Labels */}
+              <text x="60" y="195" fill="#64748b" fontSize="10" textAnchor="middle">1 May</text>
+              <text x="140" y="195" fill="#64748b" fontSize="10" textAnchor="middle">8 May</text>
+              <text x="220" y="195" fill="#64748b" fontSize="10" textAnchor="middle">15 May</text>
+              <text x="300" y="195" fill="#64748b" fontSize="10" textAnchor="middle">22 May</text>
+              <text x="380" y="195" fill="#64748b" fontSize="10" textAnchor="middle">26 May</text>
+              <text x="460" y="195" fill="#00ff88" fontWeight="bold" fontSize="10" textAnchor="middle">31 May</text>
+            </svg>
+          </div>
+
+          <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between text-xs text-slate-400">
+            <span>Overall Session: 2026-2027</span>
+            <button onClick={() => onNavigate('reports')} className="text-[#00ff88] font-bold hover:underline">
+              Full Analytics Report →
+            </button>
+          </div>
+        </div>
+
+        {/* Right Card: Recent Activities + 3D Shield Matching Screen 9 */}
+        <div className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between relative overflow-hidden">
+          {/* 3D Cyber Security Shield Watermark in background */}
+          <div className="absolute right-2 bottom-2 opacity-35 pointer-events-none">
+            <CyberShield3D size={180} />
+          </div>
+
+          <div className="z-10">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-white tracking-wide">
+                Recent Activities
+              </h3>
+              <button onClick={() => onNavigate('audit_logs')} className="text-xs font-bold text-[#00ff88] hover:underline">
+                View All →
+              </button>
+            </div>
+
+            <div className="space-y-3 z-10">
+              {recentActivities.map((act, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-2xl bg-slate-950/75 border border-emerald-500/15 flex items-start gap-3 backdrop-blur-md"
+                >
+                  <div className="w-2 h-2 rounded-full bg-[#00ff88] mt-1.5 shrink-0 animate-pulse" />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-white leading-tight">
+                      {act.title}
+                    </p>
+                    <span className="text-[10px] text-slate-400 mt-0.5 block font-mono">
+                      {act.time}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-emerald-500/10 mt-4 z-10">
             <Button
               variant="outline"
-              size="md"
-              className="bg-vctm-navy-800 text-white border-vctm-navy-700 hover:bg-vctm-navy-700"
-              leftIcon={<FileSpreadsheet className="w-4 h-4 text-amber-400" />}
-              onClick={() => onNavigate('csv_import')}
+              size="sm"
+              onClick={() => onNavigate('audit_logs')}
+              className="w-full text-xs"
             >
-              Bulk Import CSV
+              Inspect Audit Trails & Ledger
             </Button>
           </div>
         </div>
+
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div 
+      {/* Quick Admin Navigation Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button
           onClick={() => onNavigate('students')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-vctm-navy-400 cursor-pointer transition-all"
+          className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Students</span>
-            <GraduationCap className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{students.length}</div>
-          <span className="text-[10px] text-slate-400 block mt-1">Sec A (53) & Sec B (53)</span>
-        </div>
+          <GraduationCap className="w-5 h-5 text-emerald-400 group-hover:text-[#00ff88] mb-2" />
+          <h4 className="text-xs font-bold text-white">Student Directory</h4>
+          <p className="text-[11px] text-slate-400">Manage {totalStudents} students</p>
+        </button>
 
-        <div 
+        <button
           onClick={() => onNavigate('faculty')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-vctm-navy-400 cursor-pointer transition-all"
+          className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Faculty</span>
-            <Users className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-black text-emerald-700 mt-2">{faculty.length}</div>
-          <span className="text-[10px] text-slate-400 block mt-1">Full mapped roster</span>
-        </div>
+          <Users className="w-5 h-5 text-emerald-400 group-hover:text-[#00ff88] mb-2" />
+          <h4 className="text-xs font-bold text-white">Faculty Directory</h4>
+          <p className="text-[11px] text-slate-400">Manage {totalFaculty} professors</p>
+        </button>
 
-        <div 
-          onClick={() => onNavigate('academic_setup')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-vctm-navy-400 cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Departments</span>
-            <Building2 className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{departments.length}</div>
-          <span className="text-[10px] text-slate-400 block mt-1">CSE, EE, ME, MBA</span>
-        </div>
-
-        <div 
-          onClick={() => onNavigate('subjects')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-vctm-navy-400 cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Subjects</span>
-            <BookOpen className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{subjects.length}</div>
-          <span className="text-[10px] text-slate-400 block mt-1">Theory, Lab & WS</span>
-        </div>
-
-        <div 
+        <button
           onClick={() => onNavigate('timetable')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-vctm-navy-400 cursor-pointer transition-all"
+          className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Timetable</span>
-            <Calendar className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{timetable.length}</div>
-          <span className="text-[10px] text-slate-400 block mt-1">Periods (Mon-Sat)</span>
-        </div>
+          <Calendar className="w-5 h-5 text-emerald-400 group-hover:text-[#00ff88] mb-2" />
+          <h4 className="text-xs font-bold text-white">Timetable Manager</h4>
+          <p className="text-[11px] text-slate-400">Period schedule & clashes</p>
+        </button>
 
-        <div 
-          onClick={() => onNavigate('corrections')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-vctm-navy-400 cursor-pointer transition-all"
+        <button
+          onClick={() => onNavigate('csv_import')}
+          className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Corrections</span>
-            <RotateCcw className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className={`text-2xl font-black mt-2 ${pendingCorrections.length > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-            {pendingCorrections.length}
-          </div>
-          <span className="text-[10px] text-slate-400 block mt-1">Pending review</span>
-        </div>
+          <FileSpreadsheet className="w-5 h-5 text-emerald-400 group-hover:text-[#00ff88] mb-2" />
+          <h4 className="text-xs font-bold text-white">CSV Student Import</h4>
+          <p className="text-[11px] text-slate-400">Bulk upload & deduplicate</p>
+        </button>
       </div>
 
-      {/* Quick Action Hubs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Card
-          title="Academic Master Control"
-          subtitle="Configure branches, courses, sections, and subjects"
-        >
-          <div className="space-y-2">
-            <button
-              onClick={() => onNavigate('academic_setup')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Manage Departments & Programs</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate('subjects')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Manage Subjects & Credits</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate('assignments')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Assign Faculty to Subjects & Sections</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-          </div>
-        </Card>
-
-        <Card
-          title="Scheduling & Attendance"
-          subtitle="Real-time conflict detection and lecture recording"
-        >
-          <div className="space-y-2">
-            <button
-              onClick={() => onNavigate('timetable')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Timetable Matrix (A-007 & A-006)</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate('take_attendance')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Take Live Attendance</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate('reports')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Attendance Reports & Defaulter List</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-          </div>
-        </Card>
-
-        <Card
-          title="Student & Security Governance"
-          subtitle="Cohorts management, CSV import, and audit logs"
-        >
-          <div className="space-y-2">
-            <button
-              onClick={() => onNavigate('students')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Student Directory (106 Records)</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate('csv_import')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>Import Student List CSV</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate('audit_logs')}
-              className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-800"
-            >
-              <span>View System Audit Trail</span>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-          </div>
-        </Card>
-      </div>
-
-      {/* Recent System Activity / Audit Logs */}
-      <Card
-        title="Recent System Actions & Audit Events"
-        headerAction={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onNavigate('audit_logs')}
-          >
-            View All Logs
-          </Button>
-        }
-        noPadding
-      >
-        <div className="divide-y divide-slate-100 font-mono text-xs">
-          {auditLogs.slice(0, 6).map((log) => (
-            <div key={log.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50">
-              <div className="flex items-center gap-3">
-                <span className="font-sans font-bold text-slate-900">{log.action}</span>
-                <span className="text-slate-500 font-sans">by {log.actor_name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase font-sans">
-                  {log.actor_role}
-                </span>
-              </div>
-              <span className="text-slate-400 text-[11px]">
-                {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 };

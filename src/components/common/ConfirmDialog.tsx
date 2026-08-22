@@ -1,7 +1,7 @@
 import React from 'react';
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Modal } from './Modal';
-import { Button } from './Button';
+import { Button, ButtonVariant } from './Button';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface ConfirmDialogProps {
   message: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'danger' | 'primary' | 'navy';
+  variant?: ButtonVariant;
   isLoading?: boolean;
 }
 
@@ -23,7 +23,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  variant = 'primary',
+  variant = 'neon',
   isLoading = false,
 }) => {
   return (
@@ -31,36 +31,26 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
-          {variant === 'danger' ? (
-            <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-              <Info className="w-4 h-4" />
-            </div>
-          )}
+        <div className="flex items-center gap-2.5 text-white">
+          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88]">
+            <AlertTriangle className="w-4 h-4" />
+          </div>
           <span>{title}</span>
         </div>
       }
       maxWidth="md"
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
-          <Button
-            variant={variant === 'danger' ? 'danger' : 'navy'}
-            onClick={onConfirm}
-            isLoading={isLoading}
-          >
+          <Button variant={variant} size="sm" onClick={onConfirm} isLoading={isLoading}>
             {confirmText}
           </Button>
         </>
       }
     >
-      <div className="text-sm text-slate-600 py-1">{message}</div>
+      <div className="text-sm text-slate-300 py-1">{message}</div>
     </Modal>
   );
 };

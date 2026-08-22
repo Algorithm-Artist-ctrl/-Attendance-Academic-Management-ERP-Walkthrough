@@ -13,10 +13,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
+import { clsx } from 'clsx';
 
 export const HODDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -86,237 +86,190 @@ export const HODDashboard: React.FC = () => {
     });
   };
 
+  const avgAttendance = studentStats.length > 0
+    ? Math.round(studentStats.reduce((acc, s) => acc + s.percentage, 0) / studentStats.length)
+    : 85;
+
   return (
     <div className="space-y-6">
       {/* Department Header */}
-      <div className="bg-gradient-to-r from-vctm-navy-950 via-vctm-navy-900 to-vctm-navy-800 rounded-2xl p-6 text-white shadow-md border border-vctm-navy-700">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-400 text-vctm-navy-950 font-black text-2xl flex items-center justify-center shadow-md shrink-0">
-              <Building2 className="w-8 h-8" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight">{dept.name}</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  HOD Portal
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-1">
-                Head of Department: <strong className="text-white">{hodFaculty.full_name}</strong> • VCTM Aligarh (340)
-              </p>
-              <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
-                <span>Total Enrolled: <strong className="text-white">{students.length} Students</strong></span>
-                <span>•</span>
-                <span>Faculty Members: <strong className="text-white">{faculty.length}</strong></span>
-              </div>
-            </div>
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-emerald-500/40 text-[#00ff88] font-black flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.2)] shrink-0">
+            <Building2 className="w-7 h-7" />
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">{dept.name}</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                HOD Portal
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1 font-medium">
+              Head of Department: <strong className="text-white">{hodFaculty.full_name}</strong> • VCTM Aligarh (340)
+            </p>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-vctm-navy-800 text-white border-vctm-navy-700 hover:bg-vctm-navy-700"
-              leftIcon={<Download className="w-4 h-4 text-amber-400" />}
-              onClick={handleExportDefaultersCSV}
-            >
-              Export CSV
-            </Button>
-            <Button
-              variant="maroon"
-              size="sm"
-              leftIcon={<FileSpreadsheet className="w-4 h-4" />}
-              onClick={handleExportDefaultersPDF}
-            >
-              Print PDF Audit Report
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Download className="w-4 h-4 text-[#00ff88]" />}
+            onClick={handleExportDefaultersCSV}
+          >
+            Export CSV
+          </Button>
+          <Button
+            variant="neon"
+            size="sm"
+            leftIcon={<FileSpreadsheet className="w-4 h-4 text-slate-950" />}
+            onClick={handleExportDefaultersPDF}
+          >
+            PDF Defaulter Audit
+          </Button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total CSE Students</span>
-            <GraduationCap className="w-4 h-4 text-blue-500" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Total CSE Students</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {students.length}
+            </h3>
+            <span className="text-[10px] text-emerald-400 font-semibold">53 Sec A • 53 Sec B</span>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-slate-900">{students.length}</span>
-            <span className="text-xs text-slate-500 ml-2">2nd Year (A & B)</span>
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <GraduationCap className="w-5 h-5" />
           </div>
-          <p className="text-xs text-slate-500 mt-2">53 Sec A • 53 Sec B</p>
-        </Card>
+        </div>
 
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department Faculty</span>
-            <Users className="w-4 h-4 text-emerald-500" />
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Department Faculty</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {faculty.length}
+            </h3>
+            <span className="text-[10px] text-slate-400 font-medium">100% Workload Assigned</span>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-emerald-600">{faculty.length}</span>
-            <span className="text-xs text-slate-500 ml-2">Active Faculty</span>
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <Users className="w-5 h-5" />
           </div>
-          <p className="text-xs text-slate-500 mt-2">100% Workload Assigned</p>
-        </Card>
+        </div>
 
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Defaulters (&lt;75%)</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Defaulters (&lt;75%)</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-rose-400 mt-1">
+              {defaulters.length}
+            </h3>
+            <span className="text-[10px] text-rose-400 font-bold">Action Recommended</span>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-rose-600">{defaulters.length}</span>
-            <span className="text-xs text-slate-500 ml-2">Students at Risk</span>
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+            <AlertTriangle className="w-5 h-5" />
           </div>
-          <p className="text-xs text-rose-600 mt-2 font-medium">Action recommended</p>
-        </Card>
+        </div>
 
-        <Card>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Attendance</span>
-            <CheckCircle2 className="w-4 h-4 text-blue-600" />
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Avg Attendance</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+              {avgAttendance}%
+            </h3>
+            <span className="text-[10px] text-emerald-400 font-semibold">Across All Subjects</span>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-vctm-navy-800">
-              {Math.round(studentStats.reduce((acc, s) => acc + s.percentage, 0) / (studentStats.length || 1))}%
-            </span>
-            <span className="text-xs text-slate-500 ml-2">Dept Average</span>
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
-          <p className="text-xs text-slate-500 mt-2">Across all recorded subjects</p>
-        </Card>
+        </div>
       </div>
 
-      {/* Attendance & Defaulters Roster */}
-      <Card
-        title={
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-vctm-navy-700" />
-              <span>Department Attendance Roster & Defaulter Tracking</span>
-            </div>
-
-            {/* Section filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Filter Section:</span>
-              <select
-                value={selectedSectionFilter}
-                onChange={(e) => setSelectedSectionFilter(e.target.value)}
-                className="text-xs font-semibold border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 focus:ring-1 focus:ring-vctm-navy-500"
-              >
-                <option value="ALL">All Sections (A & B)</option>
-                <option value="A">Section A Only</option>
-                <option value="B">Section B Only</option>
-              </select>
-            </div>
+      {/* Department Attendance Roster Table */}
+      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+        <div className="px-6 py-4 border-b border-emerald-500/15 flex flex-wrap items-center justify-between gap-3 bg-slate-950/40">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-[#00ff88]" />
+            <h3 className="text-sm font-bold text-white tracking-wide">
+              Department Attendance Ledger & Defaulter Tracking
+            </h3>
           </div>
-        }
-        noPadding
-      >
+
+          {/* Section Filter Pills */}
+          <div className="bg-slate-950/80 p-1 rounded-xl border border-emerald-500/20 flex items-center text-xs font-bold">
+            {['ALL', 'A', 'B'].map((sec) => (
+              <button
+                key={sec}
+                onClick={() => setSelectedSectionFilter(sec)}
+                className={clsx(
+                  'px-3 py-1 rounded-lg transition-all',
+                  selectedSectionFilter === sec
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_10px_rgba(0,255,136,0.3)]'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                {sec === 'ALL' ? 'All Sections' : `Section ${sec}`}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                <th className="px-4 py-3">Roll Number</th>
-                <th className="px-4 py-3">Student Name</th>
-                <th className="px-4 py-3">Section</th>
-                <th className="px-4 py-3">Lectures Held</th>
-                <th className="px-4 py-3">Present</th>
-                <th className="px-4 py-3">Percentage</th>
-                <th className="px-4 py-3 text-right">Eligibility</th>
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+              <tr>
+                <th className="px-5 py-3.5">Roll Number</th>
+                <th className="px-5 py-3.5">Student Name</th>
+                <th className="px-5 py-3.5 text-center">Section</th>
+                <th className="px-5 py-3.5 text-center">Total Held</th>
+                <th className="px-5 py-3.5 text-center">Attended</th>
+                <th className="px-5 py-3.5 text-center">Percentage</th>
+                <th className="px-5 py-3.5 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredStats.map((st) => (
-                <tr key={st.studentId} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-mono font-bold text-slate-900 text-xs">
-                    {st.rollNumber}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">
-                    {st.fullName}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
-                      Section {st.sectionName}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{st.totalLectures}</td>
-                  <td className="px-4 py-3 text-xs font-bold text-emerald-600">{st.presentLectures}</td>
-                  <td className="px-4 py-3 w-40">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold w-10 ${st.percentage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {st.percentage}%
+            <tbody className="divide-y divide-emerald-500/10">
+              {filteredStats.map((s) => {
+                const isDefaulter = s.percentage < 75;
+                return (
+                  <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
+                      {s.rollNumber}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold text-white">
+                      {s.fullName}
+                    </td>
+                    <td className="px-5 py-3.5 text-center font-bold text-slate-300">
+                      Section {s.sectionName}
+                    </td>
+                    <td className="px-5 py-3.5 text-center text-slate-300">
+                      {s.totalLectures}
+                    </td>
+                    <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
+                      {s.presentLectures}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="font-mono font-black text-sm text-[#00ff88]">
+                        {s.percentage}%
                       </span>
-                      <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${st.percentage >= 75 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                          style={{ width: `${Math.min(st.percentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {st.percentage >= 75 ? (
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-                        Eligible
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className={clsx(
+                        'px-2.5 py-1 rounded-full text-[10px] font-bold border',
+                        isDefaulter
+                          ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                          : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                      )}>
+                        {isDefaulter ? 'Defaulter (<75%)' : 'Eligible'}
                       </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 animate-pulse">
-                        Defaulter (&lt;75%)
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {/* Faculty Workload Overview */}
-      <Card
-        title={
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-vctm-navy-700" />
-            <span>CSE Faculty Directory & Assigned Course Workload</span>
-          </div>
-        }
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {faculty.map((f) => {
-            const facAssignments = assignments.filter(a => a.faculty_id === f.id && a.active);
-            return (
-              <div key={f.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:shadow-xs transition-all">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{f.full_name}</h4>
-                    <p className="text-xs text-slate-500">{f.designation}</p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-100 text-amber-800">
-                    {f.faculty_code}
-                  </span>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-200/80 text-xs space-y-1">
-                  <div className="text-slate-600">
-                    Emp Code: <strong className="text-slate-800">{f.employee_code}</strong>
-                  </div>
-                  <div className="text-slate-600">
-                    Teaching: <strong className="text-vctm-navy-800">{facAssignments.length} course sections</strong>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {facAssignments.map(a => (
-                      <span key={a.id} className="px-1.5 py-0.2 rounded text-[10px] bg-white border border-slate-200 font-semibold text-slate-700">
-                        {a.subject?.subject_code} (Sec {a.section?.name})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+      </div>
     </div>
   );
 };

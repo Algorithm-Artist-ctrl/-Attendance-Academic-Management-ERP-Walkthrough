@@ -23,12 +23,18 @@ export const FacultyAssignmentsPage: React.FC = () => {
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
   const [selectedSectionId, setSelectedSectionId] = useState(sections[0]?.id || '');
 
-  const filtered = assignments.filter(a =>
-    a.faculty?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.subject?.subject_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.subject?.subject_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.section?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = assignments.filter(a => {
+    const fac = faculty.find(f => f.id === a.faculty_id);
+    const sub = subjects.find(s => s.id === a.subject_id);
+    const sec = sections.find(s => s.id === a.section_id);
+
+    return (
+      (fac?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sub?.subject_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sub?.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sec?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   const handleAssign = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,148 +54,146 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Header */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Faculty-Subject Assignments</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Map faculty members to specific subjects and class sections for academic session 2026–2027
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <Layers className="w-6 h-6 text-[#00ff88]" />
+            Faculty Teaching Allocations
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Map professors to specific subjects and sections for academic session 2026–2027
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search faculty or subject..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-vctm-navy-500"
-            />
-          </div>
-
-          <Button
-            size="sm"
-            variant="navy"
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Assign Faculty
-          </Button>
-        </div>
+        <Button
+          variant="neon"
+          size="sm"
+          onClick={() => setIsModalOpen(true)}
+          leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+        >
+          Assign Subject
+        </Button>
       </div>
 
-      <Card noPadding>
+      {/* Search Bar */}
+      <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+            <Search className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by faculty, subject, or section..."
+            className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+          />
+        </div>
+
+        <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
+          {filtered.length} Active Workload Allocations
+        </span>
+      </div>
+
+      {/* Allocations Table */}
+      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                <th className="px-4 py-3">Faculty Member</th>
-                <th className="px-4 py-3">Subject Code & Name</th>
-                <th className="px-4 py-3">Assigned Section</th>
-                <th className="px-4 py-3">Lecture Format</th>
-                <th className="px-4 py-3">Session</th>
-                <th className="px-4 py-3 text-right">Status</th>
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+              <tr>
+                <th className="px-5 py-3.5">Faculty Full Name</th>
+                <th className="px-5 py-3.5">Subject</th>
+                <th className="px-5 py-3.5 text-center">Section</th>
+                <th className="px-5 py-3.5 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-semibold text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-vctm-navy-800">
-                        {a.faculty?.faculty_code || 'F'}
+            <tbody className="divide-y divide-emerald-500/10">
+              {filtered.map((fa) => {
+                const fac = faculty.find(f => f.id === fa.faculty_id);
+                const sub = subjects.find(s => s.id === fa.subject_id);
+                const sec = sections.find(s => s.id === fa.section_id);
+
+                return (
+                  <tr key={fa.id} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-5 py-4 font-bold text-white text-sm">
+                      {fac?.full_name || 'Faculty'}
+                      <span className="block text-[10px] text-emerald-400 font-mono">
+                        Code: {fac?.faculty_code || fac?.employee_code}
                       </span>
-                      <span>{a.faculty?.full_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-bold text-slate-800">{a.subject?.subject_name}</span>
-                    <span className="text-xs text-slate-400 block">{a.subject?.subject_code}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-vctm-navy-100 text-vctm-navy-800">
-                      Section {a.section?.name}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">
-                    {a.subject?.lecture_type}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 font-mono">
-                    2026-2027
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
-                      Active
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-slate-200">
+                      {sub?.subject_name} ({sub?.subject_code})
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                        Section {sec?.name}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                        Assigned
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
-      {/* Modal */}
+      {/* Add Allocation Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Assign Faculty to Course & Section"
+        title="Assign Faculty to Subject"
+        description="Allocate teaching responsibility for a subject & section"
         maxWidth="md"
       >
         <form onSubmit={handleAssign} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Faculty Member
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Faculty Member</label>
             <select
               value={selectedFacultyId}
               onChange={(e) => setSelectedFacultyId(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
             >
               {faculty.map(f => (
-                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code})</option>
+                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.designation})</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Subject
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Subject</label>
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
             >
               {subjects.map(s => (
-                <option key={s.id} value={s.id}>{s.subject_code} — {s.subject_name}</option>
+                <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Class Section
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Section</label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
             >
               {sections.map(sec => (
-                <option key={sec.id} value={sec.id}>Section {sec.name} ({sec.room_number})</option>
+                <option key={sec.id} value={sec.id}>Section {sec.name}</option>
               ))}
             </select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="navy">
-              Save Assignment
-            </Button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="neon" size="sm">Save Allocation</Button>
           </div>
         </form>
       </Modal>

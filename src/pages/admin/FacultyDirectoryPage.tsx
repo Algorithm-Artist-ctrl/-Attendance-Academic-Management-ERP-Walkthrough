@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Plus, Search, Mail, Phone, Building2 } from 'lucide-react';
+import { Users, Plus, Search, Mail, Phone, Building2, UserCheck } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -51,192 +51,199 @@ export const FacultyDirectoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Header */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Faculty Directory</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage teaching staff, designations, employee codes, and timetable shorthand mappings
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <Users className="w-6 h-6 text-[#00ff88]" />
+            Faculty Master Directory
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Teaching staff, designations, employee codes, and timetable shorthand codes
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search faculty..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-vctm-navy-500"
-            />
-          </div>
-
-          <Button
-            size="sm"
-            variant="navy"
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Add Faculty
-          </Button>
-        </div>
+        <Button
+          variant="neon"
+          size="sm"
+          onClick={() => setIsModalOpen(true)}
+          leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+        >
+          Add Faculty Member
+        </Button>
       </div>
 
-      <Card noPadding>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                <th className="px-4 py-3">Emp Code</th>
-                <th className="px-4 py-3">Full Faculty Name</th>
-                <th className="px-4 py-3">Timetable Code</th>
-                <th className="px-4 py-3">Designation</th>
-                <th className="px-4 py-3">Department</th>
-                <th className="px-4 py-3">Contact Email</th>
-                <th className="px-4 py-3 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredFaculty.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-mono font-bold text-vctm-navy-800 text-xs">
-                    {f.employee_code}
-                  </td>
-                  <td className="px-4 py-3 font-semibold text-slate-900">
-                    {f.full_name}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                      {f.faculty_code || '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-700 font-medium">
-                    {f.designation}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">
-                    {f.department?.name || 'CSE'}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 font-mono">
-                    {f.email}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
-                      Active
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Search Bar */}
+      <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+            <Search className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search faculty by name, code, or employee ID..."
+            className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+          />
         </div>
-      </Card>
+
+        <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
+          Showing {filteredFaculty.length} of {faculty.length} Faculty
+        </span>
+      </div>
+
+      {/* Faculty Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredFaculty.map((f) => {
+          const dept = departments.find(d => d.id === f.department_id);
+          const isHOD = f.designation.toLowerCase().includes('hod') || f.faculty_code === 'WSM';
+
+          return (
+            <div
+              key={f.id}
+              className="glass-panel rounded-3xl p-5 border border-emerald-500/15 hover:border-emerald-500/35 transition-all space-y-3 relative overflow-hidden"
+            >
+              {isHOD && (
+                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                  HOD
+                </span>
+              )}
+
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-sm shadow-[0_0_12px_rgba(0,255,136,0.3)]">
+                  {f.faculty_code || f.full_name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white leading-tight">
+                    {f.full_name}
+                  </h3>
+                  <p className="text-xs text-emerald-400 font-medium mt-0.5">
+                    {f.designation}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Employee Code:</span>
+                  <span className="font-mono font-bold text-white">{f.employee_code}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Timetable Code:</span>
+                  <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Department:</span>
+                  <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Official Email:</span>
+                  <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]">{f.email}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Add Faculty Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Add Faculty Member"
-        description="Add a new professor or instructor to the college directory"
+        description="Register a teaching faculty member into the institution directory"
         maxWidth="md"
       >
         <form onSubmit={handleCreateFaculty} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Employee Code <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Employee Code <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. FAC-CSE-012"
                 value={empCode}
                 onChange={(e) => setEmpCode(e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500 uppercase"
+                placeholder="e.g. FAC-CSE-012"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               />
             </div>
-
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Timetable Code (Abbr.)
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Timetable Code (3 letters)
               </label>
               <input
                 type="text"
-                placeholder="e.g. RKS"
+                maxLength={4}
                 value={facCode}
                 onChange={(e) => setFacCode(e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500 uppercase"
+                placeholder="e.g. RKS"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Full Faculty Name <span className="text-rose-500">*</span>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Full Name with Title <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. Dr. Rajesh Kumar Sharma"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. Dr. Rajesh Kumar Sharma"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Designation
-              </label>
-              <select
-                value={designation}
-                onChange={(e) => setDesignation(e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
-              >
-                <option value="Assistant Professor">Assistant Professor</option>
-                <option value="Associate Professor">Associate Professor</option>
-                <option value="Professor">Professor</option>
-                <option value="Head of Department">Head of Department</option>
-                <option value="Lab Instructor">Lab Instructor</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Department
-              </label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Department</label>
               <select
                 value={deptId}
                 onChange={(e) => setDeptId(e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               >
                 {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Designation</label>
+              <input
+                type="text"
+                required
+                value={designation}
+                onChange={(e) => setDesignation(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Official Email <span className="text-rose-500">*</span>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Official Email <span className="text-rose-400">*</span>
             </label>
             <input
               type="email"
               required
-              placeholder="e.g. rajesh.cse@vctm.in"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. rajesh.cse@vctm.in"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="navy">
-              Add Faculty
+            <Button type="submit" variant="neon" size="sm">
+              Save Faculty Member
             </Button>
           </div>
         </form>

@@ -4,6 +4,7 @@ import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
   const { 
@@ -92,37 +93,49 @@ export const AcademicSetupPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Academic Hierarchy & Master Setup</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage college departments, degree programs, semesters, and class sections without source code changes
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <Layers className="w-6 h-6 text-[#00ff88]" />
+            Academic Hierarchy & Structure
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Configure departments, degree programs, semesters, and class sections dynamically
           </p>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+        {/* Tab switcher pills */}
+        <div className="flex items-center bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 text-xs font-bold">
           <button
             onClick={() => setActiveTab('departments')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'departments' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={clsx(
+              'px-3.5 py-1.5 rounded-xl transition-all',
+              activeTab === 'departments'
+                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            )}
           >
             Departments ({departments.length})
           </button>
           <button
             onClick={() => setActiveTab('programs')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'programs' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={clsx(
+              'px-3.5 py-1.5 rounded-xl transition-all',
+              activeTab === 'programs'
+                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            )}
           >
             Programs ({programs.length})
           </button>
           <button
             onClick={() => setActiveTab('sections')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'sections' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={clsx(
+              'px-3.5 py-1.5 rounded-xl transition-all',
+              activeTab === 'sections'
+                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            )}
           >
             Class Sections ({sections.length})
           </button>
@@ -131,215 +144,198 @@ export const AcademicSetupPage: React.FC = () => {
 
       {/* Departments Tab */}
       {activeTab === 'departments' && (
-        <Card
-          title="College Departments"
-          subtitle="Configure engineering and management branches"
-          headerAction={
+        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide">College Departments</h3>
+              <p className="text-xs text-slate-400">Engineering and management branches</p>
+            </div>
             <Button
               size="sm"
-              variant="navy"
-              leftIcon={<Plus className="w-4 h-4" />}
+              variant="neon"
+              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
               onClick={() => setIsDeptModalOpen(true)}
             >
               Add Department
             </Button>
-          }
-          noPadding
-        >
+          </div>
+
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Department Name</th>
-                  <th className="px-4 py-3">Head of Department (HOD)</th>
-                  <th className="px-4 py-3 text-right">Status</th>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Code</th>
+                  <th className="px-5 py-3.5">Department Name</th>
+                  <th className="px-5 py-3.5">Head of Department (HOD)</th>
+                  <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {departments.map((d) => (
-                  <tr key={d.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-mono font-bold text-vctm-navy-800 text-xs">
-                      {d.code}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">{d.name}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600">
-                      {d.hod?.full_name || 'Not Assigned'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-emerald-500/10">
+                {departments.map((dept) => {
+                  const hod = faculty.find(f => f.id === dept.hod_faculty_id);
+                  return (
+                    <tr key={dept.id} className="hover:bg-emerald-500/5 transition-colors">
+                      <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{dept.code}</td>
+                      <td className="px-5 py-4 font-bold text-white text-sm">{dept.name}</td>
+                      <td className="px-5 py-4 text-slate-300 font-medium">
+                        {hod ? (
+                          <span className="text-white font-semibold flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+                            {hod.full_name} ({hod.faculty_code || 'HOD'})
+                          </span>
+                        ) : 'Not Appointed'}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Programs Tab */}
       {activeTab === 'programs' && (
-        <Card
-          title="Degree Programs & Courses"
-          subtitle="Configure academic programs (B.Tech, MBA, MCA, Diploma)"
-          headerAction={
+        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide">Degree Programs</h3>
+              <p className="text-xs text-slate-400">Undergraduate & postgraduate courses</p>
+            </div>
             <Button
               size="sm"
-              variant="navy"
-              leftIcon={<Plus className="w-4 h-4" />}
+              variant="neon"
+              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
               onClick={() => setIsProgModalOpen(true)}
             >
               Add Program
             </Button>
-          }
-          noPadding
-        >
+          </div>
+
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                  <th className="px-4 py-3">Program Code</th>
-                  <th className="px-4 py-3">Program Name</th>
-                  <th className="px-4 py-3">Duration</th>
-                  <th className="px-4 py-3 text-right">Status</th>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Code</th>
+                  <th className="px-5 py-3.5">Degree Program</th>
+                  <th className="px-5 py-3.5">Department</th>
+                  <th className="px-5 py-3.5 text-center">Duration</th>
+                  <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {programs.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-mono font-bold text-vctm-navy-800 text-xs">
-                      {p.code}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">{p.name}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600 font-medium">
-                      {p.duration_years} Years
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-emerald-500/10">
+                {programs.map((prog) => {
+                  const dept = departments.find(d => d.id === prog.department_id);
+                  return (
+                    <tr key={prog.id} className="hover:bg-emerald-500/5 transition-colors">
+                      <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{prog.code}</td>
+                      <td className="px-5 py-4 font-bold text-white text-sm">{prog.name}</td>
+                      <td className="px-5 py-4 text-slate-300 font-medium">{dept?.name || 'CSE'}</td>
+                      <td className="px-5 py-4 text-center font-bold text-white">{prog.duration_years} Years</td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Sections Tab */}
       {activeTab === 'sections' && (
-        <Card
-          title="Class Sections"
-          subtitle="Configure class sections, designated classrooms, and class coordinators"
-          headerAction={
+        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide">Class Sections</h3>
+              <p className="text-xs text-slate-400">Classrooms and student divisions</p>
+            </div>
             <Button
               size="sm"
-              variant="navy"
-              leftIcon={<Plus className="w-4 h-4" />}
+              variant="neon"
+              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
               onClick={() => setIsSecModalOpen(true)}
             >
               Add Section
             </Button>
-          }
-          noPadding
-        >
+          </div>
+
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                  <th className="px-4 py-3">Section</th>
-                  <th className="px-4 py-3">Designated Classroom</th>
-                  <th className="px-4 py-3">Class Coordinator</th>
-                  <th className="px-4 py-3 text-right">Status</th>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Section Name</th>
+                  <th className="px-5 py-3.5">Assigned Classroom</th>
+                  <th className="px-5 py-3.5">Class Coordinator</th>
+                  <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {sections.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-bold text-vctm-navy-800 text-sm">
-                      Section {s.name}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-700">
-                      {s.room_number}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-700 font-semibold">
-                      {s.class_coordinator?.full_name || 'Not Assigned'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-emerald-500/10">
+                {sections.map((sec) => {
+                  const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
+                  return (
+                    <tr key={sec.id} className="hover:bg-emerald-500/5 transition-colors">
+                      <td className="px-5 py-4 font-bold text-white text-sm">Section {sec.name}</td>
+                      <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'Room A-007'}</td>
+                      <td className="px-5 py-4 text-slate-300 font-medium">
+                        {coordinator ? `${coordinator.full_name} (${coordinator.faculty_code || 'Faculty'})` : '—'}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Add Department Modal */}
       <Modal
         isOpen={isDeptModalOpen}
         onClose={() => setIsDeptModalOpen(false)}
-        title="Add New Department"
+        title="Add College Department"
         maxWidth="md"
       >
         <form onSubmit={handleCreateDept} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Department Name
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Department Name</label>
             <input
               type="text"
               required
-              placeholder="e.g. Electrical Engineering"
               value={newDeptName}
               onChange={(e) => setNewDeptName(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. Electrical Engineering"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
             />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Department Code
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Department Code</label>
             <input
               type="text"
               required
-              placeholder="e.g. EE"
               value={newDeptCode}
               onChange={(e) => setNewDeptCode(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white uppercase focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. EE"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
             />
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Assign Head of Department (HOD)
-            </label>
-            <select
-              value={newDeptHodId}
-              onChange={(e) => setNewDeptHodId(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
-            >
-              <option value="">-- Select Faculty Member --</option>
-              {faculty.map(f => (
-                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code})</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" onClick={() => setIsDeptModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="navy">
-              Create Department
-            </Button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsDeptModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="neon" size="sm">Save Department</Button>
           </div>
         </form>
       </Modal>
@@ -353,71 +349,30 @@ export const AcademicSetupPage: React.FC = () => {
       >
         <form onSubmit={handleCreateProg} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Program / Degree Name
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Program Name</label>
             <input
               type="text"
               required
-              placeholder="e.g. Master of Business Administration"
               value={newProgName}
               onChange={(e) => setNewProgName(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. Master of Business Administration"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
             />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Program Code
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Program Code</label>
             <input
               type="text"
               required
-              placeholder="e.g. MBA"
               value={newProgCode}
               onChange={(e) => setNewProgCode(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white uppercase focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. MBA"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Department
-              </label>
-              <select
-                value={newProgDeptId}
-                onChange={(e) => setNewProgDeptId(e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
-              >
-                {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Duration (Years)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={6}
-                value={newProgDuration}
-                onChange={(e) => setNewProgDuration(Number(e.target.value))}
-                className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" onClick={() => setIsProgModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="navy">
-              Create Program
-            </Button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsProgModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="neon" size="sm">Save Program</Button>
           </div>
         </form>
       </Modal>
@@ -431,55 +386,30 @@ export const AcademicSetupPage: React.FC = () => {
       >
         <form onSubmit={handleCreateSec} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Section Identifier
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Section Identifier (e.g. C)</label>
             <input
               type="text"
               required
-              placeholder="e.g. C or Section C"
+              maxLength={2}
               value={newSecName}
               onChange={(e) => setNewSecName(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white uppercase focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. C"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
             />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Designated Room Number
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Classroom Number</label>
             <input
               type="text"
-              placeholder="e.g. Room No. A 008"
               value={newSecRoom}
               onChange={(e) => setNewSecRoom(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
+              placeholder="e.g. Room A-008"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
             />
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Class Coordinator
-            </label>
-            <select
-              value={newSecCoordinatorId}
-              onChange={(e) => setNewSecCoordinatorId(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-vctm-navy-500"
-            >
-              <option value="">-- Select Faculty Coordinator --</option>
-              {faculty.map(f => (
-                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code})</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" onClick={() => setIsSecModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="navy">
-              Create Section
-            </Button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsSecModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="neon" size="sm">Save Section</Button>
           </div>
         </form>
       </Modal>

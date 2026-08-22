@@ -5,6 +5,7 @@ import { AppShell } from './components/layout/AppShell';
 
 // Student Pages
 import { StudentDashboard } from './pages/student/StudentDashboard';
+import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
 import { StudentTimetablePage } from './pages/student/StudentTimetablePage';
 import { CorrectionRequestsPage } from './pages/student/CorrectionRequestsPage';
 
@@ -63,12 +64,13 @@ export const AppContent: React.FC = () => {
         case 'timetable':
           return <StudentTimetablePage />;
         case 'attendance':
-          return <StudentDashboard />;
+        case 'subjects':
+          return <StudentAttendancePage />;
         case 'corrections':
           return <CorrectionRequestsPage />;
         case 'dashboard':
         default:
-          return <StudentDashboard />;
+          return <StudentDashboard onNavigate={handleNavigate} />;
       }
     }
 

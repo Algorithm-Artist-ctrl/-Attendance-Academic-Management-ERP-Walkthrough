@@ -1,195 +1,121 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckSquare, 
   Users, 
+  Save, 
   Calendar, 
   Clock, 
   CheckCircle2, 
   XCircle, 
-  AlertCircle, 
-  Save, 
-  Filter,
-  Search,
+  AlertCircle,
   Sparkles,
-  MapPin
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { getISTTodayDate, getISTDayOfWeek, formatTime12H } from '../../lib/utils/dateUtils';
-import { AttendanceStatus, DayOfWeek, Student } from '../../types/database.types';
+import { AttendanceStatus } from '../../types/database.types';
+import { clsx } from 'clsx';
 
 interface TakeAttendancePageProps {
   initialTimetableEntryId?: string;
   onFinished?: () => void;
 }
 
-export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
-  initialTimetableEntryId,
-  onFinished,
+export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({ 
+  initialTimetableEntryId, 
+  onFinished 
 }) => {
   const { user } = useAuth();
   const { 
-    faculty, 
-    sections, 
     subjects, 
-    assignments, 
+    sections, 
     students, 
     timetable, 
-    saveAttendance, 
-    attendanceSessions,
-    attendanceRecords 
+    saveAttendance 
   } = useAcademic();
 
-  const currentFaculty = faculty.find(f => f.id === user?.faculty_id) || faculty[1]; // Default to Ms. Hemlata if admin testing
-  const todayDateStr = getISTTodayDate();
-  const todayDay = getISTDayOfWeek(todayDateStr);
+  const facultyId = user?.faculty?.id || 'fac-hemlata-02';
 
-  // Faculty's assigned sections & subjects
-  const myAssignments = assignments.filter(a => a.faculty_id === currentFaculty.id && a.active);
-  const myTimetable = timetable.filter(t => t.faculty_id === currentFaculty.id && t.active);
+  // State for session parameters
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(sections[0]?.id || 'sec-cse-2a-01');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || 'sub-ds-01');
+  const [sessionDate, setSessionDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [timeSlot, setTimeSlot] = useState<string>('09:00 - 09:50');
+  const [roomNumber, setRoomNumber] = useState<string>('Room A-007');
 
-  // Selection states
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
-    if (initialTimetableEntryId) {
-      const entry = timetable.find(t => t.id === initialTimetableEntryId);
-      if (entry) return entry.section_id;
-    }
-    return myAssignments[0]?.section_id || sections[0]?.id || '';
-  });
+  // Attendance state: Map of student_id -> 'Present' | 'Absent'
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+  const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
-    if (initialTimetableEntryId) {
-      const entry = timetable.find(t => t.id === initialTimetableEntryId);
-      if (entry) return entry.subject_id;
-    }
-    return myAssignments[0]?.subject_id || subjects[0]?.id || '';
-  });
+  // Filter students for current section
+  const sectionStudents = students.filter(s => s.section_id === selectedSectionId && s.active);
 
-  const [selectedDate, setSelectedDate] = useState<string>(todayDateStr);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [studentAttendanceMap, setStudentAttendanceMap] = useState<Record<string, { status: AttendanceStatus; remarks: string }>>({});
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
-
-  // Get students in the selected section
-  const sectionStudents = useMemo(() => {
-    return students
-      .filter(s => s.section_id === selectedSectionId && s.active)
-      .sort((a, b) => a.roll_number.localeCompare(b.roll_number));
-  }, [students, selectedSectionId]);
-
-  // Load existing attendance if already taken for this date/subject/section
+  // Initialize attendance (default all Present)
   useEffect(() => {
-    const existingSession = attendanceSessions.find(
-      s => s.section_id === selectedSectionId &&
-           s.subject_id === selectedSubjectId &&
-           s.session_date === selectedDate
-    );
-
-    const initialMap: Record<string, { status: AttendanceStatus; remarks: string }> = {};
-    
-    if (existingSession) {
-      const existingRecs = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
-      sectionStudents.forEach(s => {
-        const rec = existingRecs.find(r => r.student_id === s.id);
-        initialMap[s.id] = {
-          status: rec ? rec.status : 'Present',
-          remarks: rec?.remarks || '',
-        };
-      });
-    } else {
-      // Default all to Present for rapid 1-click marking
-      sectionStudents.forEach(s => {
-        initialMap[s.id] = {
-          status: 'Present',
-          remarks: '',
-        };
-      });
-    }
-    setStudentAttendanceMap(initialMap);
-  }, [selectedSectionId, selectedSubjectId, selectedDate, sectionStudents, attendanceSessions, attendanceRecords]);
-
-  // Quick batch actions
-  const markAll = (status: AttendanceStatus) => {
-    const updated: Record<string, { status: AttendanceStatus; remarks: string }> = {};
+    const initialMap: Record<string, AttendanceStatus> = {};
     sectionStudents.forEach(s => {
-      updated[s.id] = {
-        status,
-        remarks: studentAttendanceMap[s.id]?.remarks || '',
-      };
+      initialMap[s.id] = 'Present';
     });
-    setStudentAttendanceMap(updated);
-  };
+    setAttendanceMap(initialMap);
+  }, [selectedSectionId, students]);
 
-  const toggleStudent = (studentId: string) => {
-    setStudentAttendanceMap(prev => ({
+  const handleToggleStatus = (studentId: string) => {
+    setAttendanceMap(prev => ({
       ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        status: prev[studentId]?.status === 'Present' ? 'Absent' : 'Present',
-      }
+      [studentId]: prev[studentId] === 'Present' ? 'Absent' : 'Present',
     }));
   };
 
-  const updateRemark = (studentId: string, remarks: string) => {
-    setStudentAttendanceMap(prev => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        remarks,
-      }
-    }));
+  const handleMarkAllPresent = () => {
+    const updated: Record<string, AttendanceStatus> = {};
+    sectionStudents.forEach(s => {
+      updated[s.id] = 'Present';
+    });
+    setAttendanceMap(updated);
   };
 
-  // Stats calculation
-  const totalCount = sectionStudents.length;
-  const presentCount = Object.values(studentAttendanceMap).filter(v => v.status === 'Present').length;
-  const absentCount = totalCount - presentCount;
-  const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+  const handleClearAll = () => {
+    const updated: Record<string, AttendanceStatus> = {};
+    sectionStudents.forEach(s => {
+      updated[s.id] = 'Absent';
+    });
+    setAttendanceMap(updated);
+  };
 
-  // Filtered students for search
-  const filteredStudents = sectionStudents.filter(
-    s => s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         s.roll_number.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const presentCount = Object.values(attendanceMap).filter(st => st === 'Present').length;
+  const absentCount = sectionStudents.length - presentCount;
 
-  const handleSave = () => {
+  const handleSaveAttendance = async () => {
     setIsSaving(true);
     try {
-      const recordsToSave = Object.entries(studentAttendanceMap).map(([studentId, data]) => ({
-        studentId,
-        status: data.status,
-        remarks: data.remarks || undefined,
-      }));
+      const [startTime, endTime] = timeSlot.split(' - ');
 
-      // Find matching timetable entry if exists
-      const matchedTimetableEntry = myTimetable.find(
-        t => t.section_id === selectedSectionId && t.subject_id === selectedSubjectId
-      );
-
-      saveAttendance({
-        timetableEntryId: matchedTimetableEntry?.id,
-        facultyId: currentFaculty.id,
+      await saveAttendance({
+        timetableEntryId: initialTimetableEntryId,
+        facultyId,
         sectionId: selectedSectionId,
         subjectId: selectedSubjectId,
-        sessionDate: selectedDate,
-        startTime: matchedTimetableEntry?.start_time || '09:00',
-        endTime: matchedTimetableEntry?.end_time || '09:50',
-        studentRecords: recordsToSave,
+        sessionDate,
+        startTime: startTime || '09:00',
+        endTime: endTime || '09:50',
+        studentRecords: sectionStudents.map(s => ({
+          studentId: s.id,
+          status: attendanceMap[s.id] || ('Present' as AttendanceStatus),
+        })),
       });
 
       setIsConfirmOpen(false);
-      setSaveSuccessMessage(`Attendance saved successfully for ${presentCount} Present & ${absentCount} Absent students!`);
+      setSaveSuccess(true);
       setTimeout(() => {
-        setSaveSuccessMessage(null);
+        setSaveSuccess(false);
         if (onFinished) onFinished();
-      }, 2500);
-    } catch (err: any) {
-      alert(`Failed to save attendance: ${err.message}`);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to save attendance', err);
     } finally {
       setIsSaving(false);
     }
@@ -199,263 +125,227 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const currentSection = sections.find(s => s.id === selectedSectionId);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header Banner */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Top Header & Session Selector Matching Screen 7 */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-              Live Attendance Entry
-            </span>
-            <span className="text-xs font-semibold text-slate-500">
-              Faculty: <strong className="text-slate-800">{currentFaculty.full_name}</strong>
-            </span>
-          </div>
-          <h2 className="text-xl font-extrabold text-slate-900 mt-1">
-            {currentSubject?.subject_name} ({currentSubject?.subject_code})
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-            <span>Section: <strong>{currentSection?.name}</strong></span>
-            <span>•</span>
-            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {currentSection?.room_number}</span>
-            <span>•</span>
-            <span>Odd Semester 2026-2027</span>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <CheckSquare className="w-6 h-6 text-[#00ff88]" />
+            Live Lecture Attendance Marking
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Official real-time attendance ledger synchronized with Supabase cloud database
           </p>
         </div>
 
-        {/* Date Selector */}
-        <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
-          <Calendar className="w-4 h-4 text-vctm-navy-700" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent font-semibold text-slate-800 focus:outline-none"
-          />
-        </div>
+        {saveSuccess && (
+          <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Attendance Saved to Supabase!</span>
+          </div>
+        )}
       </div>
 
-      {saveSuccessMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm font-semibold flex items-center gap-2 animate-in zoom-in-95 shadow-sm">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>{saveSuccessMessage}</span>
-        </div>
-      )}
-
-      {/* Class & Subject Selector Controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-slate-200">
+      {/* Session Controls Grid (Subject, Section, Room, Date, Time) */}
+      <div className="glass-card rounded-2xl p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Select Section:
-          </label>
-          <select
-            value={selectedSectionId}
-            onChange={(e) => setSelectedSectionId(e.target.value)}
-            className="w-full text-sm font-medium border border-slate-200 rounded-lg p-2 bg-slate-50 focus:ring-2 focus:ring-vctm-navy-500"
-          >
-            {sections.map(s => (
-              <option key={s.id} value={s.id}>
-                Section {s.name} ({s.room_number})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Select Subject:
-          </label>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Subject</label>
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="w-full text-sm font-medium border border-slate-200 rounded-lg p-2 bg-slate-50 focus:ring-2 focus:ring-vctm-navy-500"
+            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
           >
-            {subjects.map(sub => (
-              <option key={sub.id} value={sub.id}>
-                {sub.subject_code} — {sub.subject_name} ({sub.lecture_type})
-              </option>
+            {subjects.map(s => (
+              <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Section</label>
+          <select
+            value={selectedSectionId}
+            onChange={(e) => setSelectedSectionId(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+          >
+            {sections.map(sec => (
+              <option key={sec.id} value={sec.id}>Section {sec.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Room</label>
+          <input
+            type="text"
+            value={roomNumber}
+            onChange={(e) => setRoomNumber(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Date</label>
+          <input
+            type="date"
+            value={sessionDate}
+            onChange={(e) => setSessionDate(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Lecture Time</label>
+          <select
+            value={timeSlot}
+            onChange={(e) => setTimeSlot(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+          >
+            <option value="09:00 - 09:50">09:00 - 09:50</option>
+            <option value="09:50 - 10:40">09:50 - 10:40</option>
+            <option value="10:40 - 11:30">10:40 - 11:30</option>
+            <option value="11:30 - 12:20">11:30 - 12:20</option>
+            <option value="13:10 - 14:00">13:10 - 14:00</option>
+            <option value="14:00 - 14:50">14:00 - 14:50</option>
+            <option value="14:50 - 15:40">14:50 - 15:40</option>
           </select>
         </div>
       </div>
 
-      {/* Quick Action & Stats Summary Bar (Sticky on mobile) */}
-      <div className="sticky top-16 z-30 bg-vctm-navy-900 text-white p-4 rounded-xl shadow-lg border border-vctm-navy-700 flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Real-time counters */}
-        <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-slate-300" />
-            <span>Total: <strong>{totalCount}</strong></span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Present: <strong>{presentCount}</strong></span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30">
-            <XCircle className="w-3.5 h-3.5" />
-            <span>Absent: <strong>{absentCount}</strong></span>
-          </div>
-          <div className="hidden md:block font-bold text-amber-400">
-            {percentage}% Attendance
-          </div>
-        </div>
-
-        {/* Batch buttons & Save */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+      {/* Quick Action Toolbar Matching Screen 7 */}
+      <div className="glass-panel rounded-2xl p-4 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
           <Button
-            size="sm"
+            type="button"
             variant="outline"
-            className="text-xs bg-vctm-navy-800 text-slate-200 border-vctm-navy-700 hover:bg-vctm-navy-700"
-            onClick={() => markAll('Present')}
+            size="sm"
+            onClick={handleMarkAllPresent}
+            leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" />}
           >
             Mark All Present
           </Button>
           <Button
+            type="button"
+            variant="ghost"
             size="sm"
-            variant="outline"
-            className="text-xs bg-vctm-navy-800 text-slate-200 border-vctm-navy-700 hover:bg-vctm-navy-700"
-            onClick={() => markAll('Absent')}
+            onClick={handleClearAll}
+            leftIcon={<XCircle className="w-3.5 h-3.5 text-rose-400" />}
           >
-            Clear All (Absent)
+            Clear All
           </Button>
-          <Button
-            size="sm"
-            variant="success"
-            className="font-bold shadow-md"
-            leftIcon={<Save className="w-4 h-4" />}
-            onClick={() => setIsConfirmOpen(true)}
-          >
-            Save Attendance
-          </Button>
+        </div>
+
+        {/* Live Counters */}
+        <div className="flex items-center gap-3 text-xs font-bold">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Present: {presentCount}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
+            <XCircle className="w-3.5 h-3.5" />
+            <span>Absent: {absentCount}</span>
+          </div>
+          <div className="text-slate-400 font-medium">
+            Total: {sectionStudents.length} Students
+          </div>
         </div>
       </div>
 
-      {/* Student Roster List / Grid */}
-      <Card
-        title={
-          <div className="flex items-center justify-between w-full">
-            <span>Student Roster (Section {currentSection?.name} • {sectionStudents.length} Students)</span>
-            <div className="relative w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search name or roll no..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-vctm-navy-500"
-              />
-            </div>
-          </div>
-        }
-        noPadding
-      >
-        <div className="divide-y divide-slate-100">
-          {filteredStudents.map((stud, idx) => {
-            const currentStatus = studentAttendanceMap[stud.id]?.status || 'Present';
-            const isPresent = currentStatus === 'Present';
-
-            return (
-              <div 
-                key={stud.id}
-                className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                  isPresent ? 'bg-white hover:bg-emerald-50/20' : 'bg-rose-50/40 hover:bg-rose-50/60'
-                }`}
-              >
-                {/* Student Info */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-slate-400 w-6 text-right">
-                    {idx + 1}.
-                  </span>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900">
-                        {stud.full_name}
-                      </span>
-                      {stud.admission_type === 'Lateral Entry' && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-purple-100 text-purple-700">
-                          Lateral Entry
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs font-mono text-slate-500">
-                      Roll No: <strong className="text-slate-700">{stud.roll_number}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Toggle Button + Remark */}
-                <div className="flex items-center gap-3 ml-9 sm:ml-0">
-                  <input
-                    type="text"
-                    placeholder="Remark (optional)"
-                    value={studentAttendanceMap[stud.id]?.remarks || ''}
-                    onChange={(e) => updateRemark(stud.id, e.target.value)}
-                    className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 w-36 sm:w-44 focus:ring-1 focus:ring-vctm-navy-500 bg-white"
-                  />
-
-                  {/* Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={() => toggleStudent(stud.id)}
-                    className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-xs select-none ${
-                      isPresent
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/20'
-                        : 'bg-rose-600 hover:bg-rose-700 text-white ring-2 ring-rose-500/20'
-                    }`}
-                  >
-                    {isPresent ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>PRESENT</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4" />
-                        <span>ABSENT</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      {/* Student Roster Table & Touch Toggles Matching Screen 7 */}
+      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+              <tr>
+                <th className="px-6 py-4">Roll Number</th>
+                <th className="px-6 py-4">Student Full Name</th>
+                <th className="px-6 py-4 text-center">Status Toggle</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-emerald-500/10">
+              {sectionStudents.map((s) => {
+                const isPresent = attendanceMap[s.id] === 'Present';
+                return (
+                  <tr key={s.id} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-6 py-3.5 font-mono font-bold text-emerald-400 text-sm">
+                      {s.roll_number}
+                    </td>
+                    <td className="px-6 py-3.5 font-bold text-white text-sm">
+                      {s.full_name}
+                    </td>
+                    <td className="px-6 py-3.5 text-center">
+                      {/* Mobile & Desktop Touch Toggle Switch */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(s.id)}
+                        className={clsx(
+                          'inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-extrabold text-xs transition-all cursor-pointer select-none border',
+                          isPresent
+                            ? 'bg-emerald-500/20 text-[#00ff88] border-emerald-500/40 shadow-[0_0_12px_rgba(0,255,136,0.25)]'
+                            : 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                        )}
+                      >
+                        {isPresent ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Present</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-4 h-4" />
+                            <span>Absent</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      </Card>
+      </div>
 
-      {/* Confirmation Dialog before saving */}
+      {/* Bottom Sticky Save Bar Matching Screen 7 */}
+      <div className="sticky bottom-4 z-20 glass-panel rounded-2xl p-4 border border-emerald-500/30 flex items-center justify-between gap-4 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+        <div>
+          <span className="text-xs text-slate-400 font-medium">Ready to record: </span>
+          <span className="text-xs font-bold text-white">
+            {presentCount} Present, {absentCount} Absent for Section {currentSection?.name}
+          </span>
+        </div>
+
+        <Button
+          type="button"
+          variant="neon"
+          size="lg"
+          onClick={() => setIsConfirmOpen(true)}
+          leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+          className="shadow-[0_0_20px_rgba(0,255,136,0.4)]"
+        >
+          Save Attendance
+        </Button>
+      </div>
+
+      {/* Confirmation Dialog */}
       <ConfirmDialog
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={handleSave}
-        title="Confirm Attendance Submission"
+        onConfirm={handleSaveAttendance}
         isLoading={isSaving}
-        confirmText="Confirm & Save"
+        title="Confirm Attendance Submission"
+        confirmText="Save to Cloud Database"
         message={
-          <div className="space-y-3">
+          <div className="space-y-2">
             <p>
-              Are you sure you want to submit attendance for <strong>{currentSubject?.subject_name}</strong> (Section {currentSection?.name}) on <strong>{selectedDate}</strong>?
+              Are you sure you want to commit this attendance record for{' '}
+              <strong className="text-white">{currentSubject?.subject_name}</strong> (Section{' '}
+              {currentSection?.name}) on <strong className="text-emerald-400">{sessionDate}</strong>?
             </p>
-            <div className="p-3 bg-slate-100 rounded-xl space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span>Total Students:</span>
-                <strong className="text-slate-900">{totalCount}</strong>
-              </div>
-              <div className="flex justify-between text-emerald-700 font-bold">
-                <span>Present:</span>
-                <span>{presentCount} Students</span>
-              </div>
-              <div className="flex justify-between text-rose-700 font-bold">
-                <span>Absent:</span>
-                <span>{absentCount} Students</span>
-              </div>
-              <div className="flex justify-between text-vctm-navy-800 font-bold border-t border-slate-200 pt-1">
-                <span>Calculated Attendance:</span>
-                <span>{percentage}%</span>
-              </div>
+            <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-xs font-semibold text-slate-300">
+              Present: <span className="text-[#00ff88]">{presentCount}</span> • Absent:{' '}
+              <span className="text-rose-400">{absentCount}</span>
             </div>
-            <p className="text-xs text-slate-500">
-              Submitted attendance will be immediately visible to all students in this section.
-            </p>
           </div>
         }
       />
