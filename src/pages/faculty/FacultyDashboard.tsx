@@ -5,11 +5,11 @@ import {
   Users, 
   BookOpen, 
   RotateCcw, 
-  ArrowRight,
-  TrendingUp,
-  Clock,
-  Layers,
-  Sparkles
+  ArrowRight, 
+  TrendingUp, 
+  Clock, 
+  Layers, 
+  Sparkles 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -17,7 +17,7 @@ import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 
 interface FacultyDashboardProps {
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, params?: any) => void;
 }
 
 export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }) => {
@@ -32,37 +32,35 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   } = useAcademic();
 
   const faculty = user?.faculty;
-  const facultyId = faculty?.id || 'fac-hemlata-02';
+  const facultyId = faculty?.id || '';
 
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
   const todayDay = days[new Date().getDay()] === 'SUN' ? 'MON' : days[new Date().getDay()];
 
-  // Today's classes for this faculty
+  // Today's classes for this faculty strictly from Supabase timetable
   const todaySchedule = timetable
     .filter(t => t.faculty_id === facultyId && t.day_of_week === todayDay)
     .sort((a, b) => a.period_number - b.period_number);
 
-  // Assigned subjects and sections
+  // Assigned subjects and sections strictly from faculty_subject_assignments
   const myAssignments = assignments.filter(fa => fa.faculty_id === facultyId);
   const mySubjects = subjects.filter(s => myAssignments.some(fa => fa.subject_id === s.id));
   const mySections = sections.filter(sec => myAssignments.some(fa => fa.section_id === sec.id));
 
-  // Pending correction requests
-  const pendingCorrections = corrections.filter(c => c.status === 'pending');
-  const dept = departments.find(d => d.id === faculty?.department_id);
+  // Pending correction requests assigned to this faculty
+  const myPendingCorrections = corrections.filter(c => c.status === 'pending');
+  const dept = departments.find(d => d.id === faculty?.department_id) || departments[0];
 
   return (
     <div className="space-y-6">
-      {/* ======================================================== */}
-      {/* 1. WELCOME BANNER (Matching Screen 6) */}
-      {/* ======================================================== */}
+      {/* 1. WELCOME BANNER */}
       <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 z-10">
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Welcome back, {faculty?.full_name || 'Ms. Hemlata Chaudhary'}
+            Welcome back, {faculty?.full_name || 'Faculty Member'} 👋
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            {faculty?.designation || 'Assistant Professor'} • {dept?.name || 'Computer Science & Engineering'} • Code: <span className="text-[#00ff88] font-bold">{faculty?.faculty_code || 'HEM'}</span>
+            {faculty?.designation || 'Assistant Professor'} • {dept?.name || 'Computer Science & Engineering'} • Code: <span className="text-[#00ff88] font-bold">{faculty?.faculty_code || faculty?.employee_code || 'FACULTY'}</span>
           </p>
         </div>
 
@@ -78,16 +76,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 2. STATS KPI CARDS (Matching Screen 6) */}
-      {/* ======================================================== */}
+      {/* 2. STATS KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Today's Classes */}
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-400">Today's Classes</p>
             <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {todaySchedule.length || 3}
+              {todaySchedule.length}
             </h3>
             <span className="text-[10px] text-emerald-400 font-medium">{todayDay} Timetable</span>
           </div>
@@ -101,7 +97,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Assigned Subjects</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {mySubjects.length || 2}
+              {mySubjects.length}
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">Theory & Labs</span>
           </div>
@@ -115,9 +111,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Assigned Sections</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {mySections.length || 2}
+              {mySections.length}
             </h3>
-            <span className="text-[10px] text-slate-400 font-medium">Sec A & Sec B</span>
+            <span className="text-[10px] text-slate-400 font-medium">Active Sections</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
             <Layers className="w-6 h-6" />
@@ -129,7 +125,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Pending Requests</p>
             <h3 className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
-              {pendingCorrections.length || 5}
+              {myPendingCorrections.length}
             </h3>
             <span className="text-[10px] text-amber-400/80 font-medium">Requires Review</span>
           </div>
@@ -139,9 +135,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 3. TODAY'S SCHEDULE & RECENT REQUESTS (Screen 6) */}
-      {/* ======================================================== */}
+      {/* 3. TODAY'S SCHEDULE & RECENT REQUESTS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Card: Today's Schedule with "Take Attendance" button */}
@@ -151,11 +145,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               <h3 className="text-sm font-bold text-white tracking-wide">
                 Today's Schedule
               </h3>
-              <p className="text-xs text-slate-400">{todayDay} Lecture Schedule</p>
+              <p className="text-xs text-slate-400">{todayDay} Lecture Schedule • Odd Semester</p>
             </div>
             <button
               onClick={() => onNavigate('timetable')}
-              className="text-xs font-bold text-[#00ff88] hover:underline"
+              className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
             >
               Full Schedule →
             </button>
@@ -164,35 +158,37 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div className="space-y-3">
             {todaySchedule.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
-                No scheduled lectures for today.
+                No scheduled lectures for today in your timetable.
               </div>
             ) : (
               todaySchedule.map((entry) => {
                 const sec = sections.find(s => s.id === entry.section_id);
+                const sub = subjects.find(s => s.id === entry.subject_id);
+
                 return (
                   <div
                     key={entry.id}
                     className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/35 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-emerald-400 font-mono text-xs font-bold shrink-0">
-                        {entry.start_time} - {entry.end_time}
+                      <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-[#00ff88] font-mono text-xs font-bold shrink-0">
+                        {entry.start_time?.substring(0, 5) || '09:00'} – {entry.end_time?.substring(0, 5) || '09:50'}
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-white leading-tight">
-                          {entry.subject?.subject_name || 'Data Structure'}
+                          {sub?.subject_name || 'Subject'}
                         </h4>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Section {sec?.name || 'A'} • {entry.room_number || 'Room A-007'}
+                        <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                          Section {sec?.name} • {entry.room_number || sec?.room_number} • {entry.lecture_type || 'Theory'}
                         </p>
                       </div>
                     </div>
 
                     <Button
-                      variant="outline"
+                      variant="neon"
                       size="sm"
-                      onClick={() => onNavigate('take_attendance')}
-                      leftIcon={<CheckSquare className="w-3.5 h-3.5 text-[#00ff88]" />}
+                      onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id })}
+                      leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
                       className="shrink-0 text-xs font-bold"
                     >
                       Take Attendance
@@ -213,47 +209,53 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               </h3>
               <button
                 onClick={() => onNavigate('corrections')}
-                className="text-xs font-bold text-[#00ff88] hover:underline"
+                className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
               >
                 View All →
               </button>
             </div>
 
-            <div className="space-y-3">
-              {pendingCorrections.slice(0, 4).map((req) => (
-                <div
-                  key={req.id}
-                  className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between gap-3"
-                >
-                  <div>
-                    <h4 className="text-xs font-bold text-white">
-                      {req.student?.full_name || 'Tarun Kushwah'}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Roll: {req.student?.roll_number || '2503400100057'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
-                      Pending
-                    </span>
-                    <span className="block text-[10px] text-slate-500 mt-1 font-mono">
-                      {new Date(req.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
+            <div className="space-y-2.5">
+              {myPendingCorrections.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  No pending correction requests from students.
                 </div>
-              ))}
+              ) : (
+                myPendingCorrections.slice(0, 4).map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <h4 className="font-bold text-white">
+                        {c.student?.full_name || 'Student'}
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Roll: {c.student?.roll_number} • {c.reason}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onNavigate('corrections')}
+                      className="text-[10px] py-1 px-2.5 shrink-0"
+                    >
+                      Review
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          <div className="pt-4 border-t border-emerald-500/10 mt-4">
+          <div className="pt-4 border-t border-emerald-500/10 text-center">
             <Button
-              variant="neon"
+              variant="outline"
               size="sm"
               onClick={() => onNavigate('corrections')}
               className="w-full text-xs"
             >
-              Review Pending Requests ({pendingCorrections.length})
+              Review All Requests
             </Button>
           </div>
         </div>

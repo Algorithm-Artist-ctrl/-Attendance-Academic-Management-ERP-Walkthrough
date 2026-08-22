@@ -39,17 +39,33 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const facultyId = user?.faculty?.id || 'fac-hemlata-02';
 
   // State for session parameters
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(sections[0]?.id || 'sec-cse-2a-01');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || 'sub-ds-01');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(sections[0]?.id || '');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
   const [sessionDate, setSessionDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [timeSlot, setTimeSlot] = useState<string>('09:00 - 09:50');
-  const [roomNumber, setRoomNumber] = useState<string>('Room A-007');
+  const [timeSlot, setTimeSlot] = useState<string>('09:00 – 09:50');
+  const [roomNumber, setRoomNumber] = useState<string>('Room No. A 007');
 
   // Attendance state: Map of student_id -> 'Present' | 'Absent'
   const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+
+  // Auto-fill from timetable entry if provided
+  useEffect(() => {
+    if (initialTimetableEntryId) {
+      const entry = timetable.find(t => t.id === initialTimetableEntryId);
+      if (entry) {
+        setSelectedSectionId(entry.section_id);
+        setSelectedSubjectId(entry.subject_id);
+        setTimeSlot(`${entry.start_time?.substring(0, 5) || '09:00'} – ${entry.end_time?.substring(0, 5) || '09:50'}`);
+        setRoomNumber(entry.room_number || 'Room No. A 007');
+      }
+    } else if (sections.length > 0 && !selectedSectionId) {
+      setSelectedSectionId(sections[0].id);
+      setSelectedSubjectId(subjects[0]?.id || '');
+    }
+  }, [initialTimetableEntryId, timetable, sections, subjects]);
 
   // Filter students for current section
   const sectionStudents = students.filter(s => s.section_id === selectedSectionId && s.active);
@@ -201,13 +217,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             onChange={(e) => setTimeSlot(e.target.value)}
             className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
           >
-            <option value="09:00 - 09:50">09:00 - 09:50</option>
-            <option value="09:50 - 10:40">09:50 - 10:40</option>
-            <option value="10:40 - 11:30">10:40 - 11:30</option>
-            <option value="11:30 - 12:20">11:30 - 12:20</option>
-            <option value="13:10 - 14:00">13:10 - 14:00</option>
-            <option value="14:00 - 14:50">14:00 - 14:50</option>
-            <option value="14:50 - 15:40">14:50 - 15:40</option>
+            <option value="09:00 – 09:50">09:00 – 09:50 (Period I)</option>
+            <option value="09:50 – 10:40">09:50 – 10:40 (Period II)</option>
+            <option value="10:40 – 11:30">10:40 – 11:30 (Period III)</option>
+            <option value="11:30 – 12:20">11:30 – 12:20 (Period IV)</option>
+            <option value="01:10 – 02:00">01:10 – 02:00 (Period VI)</option>
+            <option value="02:00 – 02:50">02:00 – 02:50 (Period VII)</option>
+            <option value="02:50 – 03:40">02:50 – 03:40 (Period VIII)</option>
           </select>
         </div>
       </div>

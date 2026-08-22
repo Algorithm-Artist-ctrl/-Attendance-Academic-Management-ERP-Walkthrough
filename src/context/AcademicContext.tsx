@@ -120,30 +120,90 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [corrections, setCorrections] = useState<AttendanceCorrection[]>(() => erpStorage.getCorrections());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => erpStorage.getAuditLogs());
 
-  // Function to load latest records from Supabase
+  // Function to load and enrich latest records from Supabase
   const loadDataFromSupabase = useCallback(async () => {
     try {
       const data = await supabaseService.fetchAllData();
       if (data) {
-        if (data.institutions.length > 0) setInstitution(data.institutions[0]);
-        if (data.departments.length > 0) setDepartments(data.departments);
-        if (data.programs.length > 0) setPrograms(data.programs);
-        if (data.sessions.length > 0) setSessions(data.sessions);
-        if (data.years.length > 0) setYears(data.years);
-        if (data.semesters.length > 0) setSemesters(data.semesters);
-        if (data.sections.length > 0) setSections(data.sections);
-        if (data.subjects.length > 0) setSubjects(data.subjects);
-        if (data.faculty.length > 0) setFaculty(data.faculty);
-        if (data.assignments.length > 0) setAssignments(data.assignments);
-        if (data.students.length > 0) setStudents(data.students);
-        if (data.timetable.length > 0) setTimetable(data.timetable);
-        setAttendanceSessions(data.attendanceSessions);
-        setAttendanceRecords(data.attendanceRecords);
-        setCorrections(data.corrections);
+        const loadedInst = data.institutions.length > 0 ? data.institutions[0] : erpStorage.getInstitution();
+        const loadedDepts = data.departments.length > 0 ? data.departments : erpStorage.getDepartments();
+        const loadedProgs = data.programs.length > 0 ? data.programs : erpStorage.getPrograms();
+        const loadedSessions = data.sessions.length > 0 ? data.sessions : erpStorage.getSessions();
+        const loadedYears = data.years.length > 0 ? data.years : erpStorage.getYears();
+        const loadedSemesters = data.semesters.length > 0 ? data.semesters : erpStorage.getSemesters();
+        const loadedSections = data.sections.length > 0 ? data.sections : erpStorage.getSections();
+        const loadedSubjects = data.subjects.length > 0 ? data.subjects : erpStorage.getSubjects();
+        const loadedFaculty = data.faculty.length > 0 ? data.faculty : erpStorage.getFaculty();
+        const loadedAssignments = data.assignments.length > 0 ? data.assignments : erpStorage.getAssignments();
+        const loadedStudents = data.students.length > 0 ? data.students : erpStorage.getStudents();
+        const rawTimetable = data.timetable.length > 0 ? data.timetable : erpStorage.getTimetable();
+
+        // Enriched Timetable entries with joined references
+        const enrichedTimetable: TimetableEntry[] = rawTimetable.map(t => ({
+          ...t,
+          subject: loadedSubjects.find(s => s.id === t.subject_id),
+          faculty: loadedFaculty.find(f => f.id === t.faculty_id),
+          section: loadedSections.find(sec => sec.id === t.section_id),
+        }));
+
+        // Enriched Students
+        const enrichedStudents: Student[] = loadedStudents.map(s => ({
+          ...s,
+          section: loadedSections.find(sec => sec.id === s.section_id),
+          mentor: loadedFaculty.find(f => f.id === s.mentor_faculty_id),
+          department: loadedDepts.find(d => d.id === s.department_id),
+        }));
+
+        // Enriched Assignments
+        const enrichedAssignments: FacultySubjectAssignment[] = loadedAssignments.map(a => ({
+          ...a,
+          faculty: loadedFaculty.find(f => f.id === a.faculty_id),
+          subject: loadedSubjects.find(s => s.id === a.subject_id),
+          section: loadedSections.find(sec => sec.id === a.section_id),
+        }));
+
+        // Enriched Attendance Sessions
+        const enrichedSessions: AttendanceSession[] = data.attendanceSessions.map(sess => ({
+          ...sess,
+          faculty: loadedFaculty.find(f => f.id === sess.faculty_id),
+          subject: loadedSubjects.find(s => s.id === sess.subject_id),
+          section: loadedSections.find(sec => sec.id === sess.section_id),
+        }));
+
+        // Enriched Attendance Records
+        const enrichedRecords: AttendanceRecord[] = data.attendanceRecords.map(rec => ({
+          ...rec,
+          student: enrichedStudents.find(s => s.id === rec.student_id),
+          session: enrichedSessions.find(sess => sess.id === rec.attendance_session_id),
+        }));
+
+        // Enriched Corrections
+        const enrichedCorrections: AttendanceCorrection[] = data.corrections.map(c => ({
+          ...c,
+          student: enrichedStudents.find(s => s.id === c.student_id),
+          record: enrichedRecords.find(r => r.id === c.attendance_record_id),
+          reviewer: loadedFaculty.find(f => f.id === c.reviewed_by),
+        }));
+
+        setInstitution(loadedInst);
+        setDepartments(loadedDepts);
+        setPrograms(loadedProgs);
+        setSessions(loadedSessions);
+        setYears(loadedYears);
+        setSemesters(loadedSemesters);
+        setSections(loadedSections);
+        setSubjects(loadedSubjects);
+        setFaculty(loadedFaculty);
+        setAssignments(enrichedAssignments);
+        setStudents(enrichedStudents);
+        setTimetable(enrichedTimetable);
+        setAttendanceSessions(enrichedSessions);
+        setAttendanceRecords(enrichedRecords);
+        setCorrections(enrichedCorrections);
         setAuditLogs(data.auditLogs);
       }
     } catch (err) {
-      console.error('Failed to sync from Supabase, relying on local cache:', err);
+      console.error('Failed to sync from Supabase, using local cache:', err);
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +222,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         'postgres_changes',
         { event: '*', schema: 'public' },
         (payload) => {
-          console.log('⚡ Realtime database mutation received from Supabase:', payload.table, payload.eventType);
+          console.log('⚡ Realtime database mutation received:', payload.table, payload.eventType);
           loadDataFromSupabase();
         }
       )
@@ -173,7 +233,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [loadDataFromSupabase]);
 
-  // Manual refresh
   const refreshData = async () => {
     await loadDataFromSupabase();
   };
@@ -193,13 +252,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       remarks?: string;
     }>;
   }) => {
-    // Save to Supabase
     const result = await supabaseService.saveAttendance(params);
-    
-    // Also update local cache
     erpStorage.saveAttendanceSession(params);
     await refreshData();
-
     return result;
   };
 
@@ -337,20 +392,32 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return null;
   };
 
-  // 6. Calculate Student Attendance from Real Database Records
+  // 6. Calculate Student Attendance strictly based on Authenticated Student's Section and Database Records
   const getStudentAttendance = (studentId: string): StudentOverallAttendance => {
     const student = students.find(s => s.id === studentId);
-    const studSection = sections.find(s => s.id === student?.section_id);
+    const studSectionId = student?.section_id;
+    const studSection = sections.find(s => s.id === studSectionId);
 
-    // Get all records for this student
+    // All registered attendance records for this student
     const studentRecords = attendanceRecords.filter(r => r.student_id === studentId);
 
-    // Group by subject
-    const subjectStats: SubjectAttendanceStat[] = subjects.map(sub => {
+    // Filter subjects for the student's semester/program
+    const targetSubjects = subjects.filter(s => s.active);
+
+    const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
+      // Find the specific assignment for THIS student's section
+      const assignment = assignments.find(
+        a => a.subject_id === sub.id && a.section_id === studSectionId
+      ) || assignments.find(a => a.subject_id === sub.id);
+
+      const assignedFac = faculty.find(f => f.id === assignment?.faculty_id);
+
+      // Sessions conducted for this subject and this student's section
       const subSessions = attendanceSessions.filter(
-        sess => sess.subject_id === sub.id && (student?.section_id ? sess.section_id === student.section_id : true)
+        sess => sess.subject_id === sub.id && (studSectionId ? sess.section_id === studSectionId : true)
       );
 
+      // Student's individual records for this subject
       const subRecords = studentRecords.filter(r => {
         const sess = attendanceSessions.find(s => s.id === r.attendance_session_id);
         return sess && sess.subject_id === sub.id;
@@ -358,10 +425,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const totalConducted = subSessions.length;
       const attended = subRecords.filter(r => r.status === 'Present').length;
-      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : 100;
-
-      const assignment = assignments.find(a => a.subject_id === sub.id && (student?.section_id ? a.section_id === student.section_id : true));
-      const assignedFac = faculty.find(f => f.id === assignment?.faculty_id) || faculty[0];
+      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : 0;
 
       return {
         subjectId: sub.id,
@@ -378,17 +442,17 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const totalLectures = subjectStats.reduce((acc, curr) => acc + curr.totalConducted, 0);
     const presentLectures = subjectStats.reduce((acc, curr) => acc + curr.attended, 0);
-    const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : 100;
+    const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : 0;
 
     return {
       studentId,
       rollNumber: student?.roll_number || '2503400100057',
       fullName: student?.full_name || 'Student',
-      sectionName: studSection?.name || 'A',
+      sectionName: studSection?.name || (studSectionId ? 'Section' : 'A'),
       totalLectures,
       presentLectures,
       percentage: overallPercentage,
-      isDefaulter: overallPercentage < 75,
+      isDefaulter: totalLectures > 0 && overallPercentage < 75,
       subjectStats,
     };
   };

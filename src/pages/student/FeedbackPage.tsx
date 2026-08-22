@@ -9,14 +9,32 @@ import {
   BookOpen,
   Sparkles
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 
 export const FeedbackPage: React.FC = () => {
-  const { subjects, faculty } = useAcademic();
+  const { user } = useAuth();
+  const { subjects, faculty, assignments } = useAcademic();
+  const student = user?.student;
 
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
-  const [selectedFacultyId, setSelectedFacultyId] = useState(faculty[0]?.id || '');
+  const [selectedFacultyId, setSelectedFacultyId] = useState('');
+
+  // Auto-sync assigned faculty when subject changes
+  React.useEffect(() => {
+    if (selectedSubjectId) {
+      const match = assignments.find(
+        a => a.subject_id === selectedSubjectId && a.section_id === student?.section_id
+      ) || assignments.find(a => a.subject_id === selectedSubjectId);
+
+      if (match) {
+        setSelectedFacultyId(match.faculty_id);
+      } else if (faculty.length > 0) {
+        setSelectedFacultyId(faculty[0].id);
+      }
+    }
+  }, [selectedSubjectId, assignments, student, faculty]);
   
   // Rating categories (1 to 5 stars)
   const [ratingKnowledge, setRatingKnowledge] = useState(5);

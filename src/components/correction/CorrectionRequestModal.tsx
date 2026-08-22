@@ -21,24 +21,32 @@ import { AttendanceStatus } from '../../types/database.types';
 interface CorrectionRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
+  preselectedSubjectId?: string;
+  preselectedRecordId?: string;
 }
 
-export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({ isOpen, onClose }) => {
+export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({ 
+  isOpen, 
+  onClose,
+  preselectedSubjectId,
+  preselectedRecordId,
+}) => {
   const { user } = useAuth();
   const { 
     subjects, 
     faculty, 
+    assignments,
     attendanceRecords, 
     submitCorrectionRequest
   } = useAcademic();
 
   const student = user?.student;
-  const studentId = student?.id || 'stud-a-05';
+  const studentId = student?.id || '';
 
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [selectedDate, setSelectedDate] = useState<string>('2026-08-14');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('10:40 - 11:30');
+  const [selectedDate, setSelectedDate] = useState<string>('2026-08-24');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(preselectedSubjectId || subjects[0]?.id || '');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('09:00 – 09:50');
   const [currentStatus, setCurrentStatus] = useState<'Absent' | 'Present'>('Absent');
   const [requestedStatus, setRequestedStatus] = useState<AttendanceStatus>('Present');
   const [reason, setReason] = useState<string>('');
@@ -47,7 +55,12 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({ 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId) || subjects[0];
-  const assignedFaculty = faculty[0];
+  
+  // Section-specific faculty lookup
+  const currentAssignment = assignments.find(
+    a => a.subject_id === selectedSubject?.id && a.section_id === student?.section_id
+  ) || assignments.find(a => a.subject_id === selectedSubject?.id);
+  const assignedFaculty = faculty.find(f => f.id === currentAssignment?.faculty_id) || faculty[0];
 
   const steps = [
     { num: 1, title: 'Select Lecture' },
@@ -66,10 +79,12 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({ 
     setErrorMessage(null);
 
     try {
-      const studentRecord = attendanceRecords.find(r => r.student_id === studentId) || attendanceRecords[0];
+      const studentRecord = preselectedRecordId 
+        ? attendanceRecords.find(r => r.id === preselectedRecordId)
+        : (attendanceRecords.find(r => r.student_id === studentId) || attendanceRecords[0]);
 
       if (studentRecord) {
-        submitCorrectionRequest({
+        await submitCorrectionRequest({
           attendanceRecordId: studentRecord.id,
           studentId,
           requestedStatus,

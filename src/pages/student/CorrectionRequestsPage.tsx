@@ -12,7 +12,7 @@ export const CorrectionRequestsPage: React.FC = () => {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const student = user?.student;
-  const studentId = student?.id || 'stud-a-05';
+  const studentId = student?.id || '';
   const myRequests = corrections.filter(c => c.student_id === studentId);
 
   return (
@@ -87,16 +87,16 @@ export const CorrectionRequestsPage: React.FC = () => {
                   return (
                     <tr key={req.id} className="hover:bg-emerald-500/5 transition-colors">
                       <td className="px-5 py-4 font-mono font-bold text-white">
-                        {session?.session_date || '14 May 2025'}
+                        {session?.session_date || '2026-08-24'}
                         <span className="block text-[10px] text-slate-400 font-normal">
-                          {session?.start_time} - {session?.end_time}
+                          {session?.start_time?.substring(0, 5) || '09:00'} – {session?.end_time?.substring(0, 5) || '09:50'}
                         </span>
                       </td>
                       <td className="px-5 py-4 font-bold text-emerald-400">
-                        {session?.subject?.subject_name || 'Data Structure'}
+                        {session?.subject?.subject_name || 'Subject'}
                       </td>
                       <td className="px-5 py-4 text-slate-300 font-medium">
-                        {session?.faculty?.full_name || 'Ms. Hemlata Chaudhary'}
+                        {session?.faculty?.full_name || 'Faculty Coordinator'}
                       </td>
                       <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate">
                         "{req.reason}"

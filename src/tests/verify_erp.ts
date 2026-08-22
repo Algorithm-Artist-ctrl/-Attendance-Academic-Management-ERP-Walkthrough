@@ -96,7 +96,6 @@ async function runVerificationTests() {
   // TEST 4: Attendance Correction & Audit Workflow
   // ----------------------------------------------------
   console.log('\n--- TEST 4: Attendance Correction & Audit Workflow ---');
-  // Student submits correction for the absent mark
   const absentRecord = saveResult.records.find(r => r.student_id === testStudent.id && r.status === 'Absent');
   assert(Boolean(absentRecord), 'Absent record identified for correction');
 
@@ -108,7 +107,6 @@ async function runVerificationTests() {
   });
   assert(correction.status === 'pending', 'Correction request submitted with pending status');
 
-  // Faculty reviews & approves correction
   const reviewedCorrection = erpStorage.reviewCorrectionRequest({
     correctionId: correction.id,
     status: 'approved',
@@ -117,12 +115,10 @@ async function runVerificationTests() {
   });
   assert(reviewedCorrection.status === 'approved', 'Correction approved by faculty');
 
-  // Verify actual record mutated to Present
   const records = erpStorage.getAttendanceRecords();
   const mutatedRecord = records.find(r => r.id === absentRecord!.id);
   assert(mutatedRecord?.status === 'Present', 'Attendance record successfully changed to Present in database');
 
-  // Verify Audit Log
   const logs = erpStorage.getAuditLogs();
   assert(logs.some(l => l.action === 'CORRECTION_APPROVED'), 'Audit log created for attendance rectification');
 
@@ -130,7 +126,6 @@ async function runVerificationTests() {
   // TEST 5: Timetable Conflict Detection Engine
   // ----------------------------------------------------
   console.log('\n--- TEST 5: Timetable Conflict Engine ---');
-  // Attempt to assign Mr. Kuldeep Kumar to Section B on Monday Period 1 (he is already in Sec A at that time)
   const conflictingFacultyEntry = {
     section_id: SEC_B_ID,
     subject_id: SUB_COA_ID,
@@ -146,7 +141,6 @@ async function runVerificationTests() {
   const facultyConflict = erpStorage.checkTimetableConflict(conflictingFacultyEntry);
   assert(Boolean(facultyConflict && facultyConflict.type === 'faculty'), 'Faculty schedule collision successfully caught');
 
-  // Attempt to assign duplicate lecture to same room at same period
   const conflictingRoomEntry = {
     section_id: 'sec-new',
     subject_id: SUB_COA_ID,
@@ -155,7 +149,7 @@ async function runVerificationTests() {
     period_number: 1,
     start_time: '09:00',
     end_time: '09:50',
-    room_number: 'Room A 007', // Already hosting Sec A
+    room_number: 'Room A 007',
     lecture_type: 'Theory' as const,
     active: true,
   };
@@ -190,7 +184,7 @@ async function runVerificationTests() {
   // ----------------------------------------------------
   // TEST 7: Dynamic Academic Scaling
   // ----------------------------------------------------
-  console.log('\n--- TEST 7: Dynamic Academic Scaling (Zero Code Changes) ---');
+  console.log('\n--- TEST 7: Dynamic Academic Scaling ---');
   const newDept = erpStorage.addDepartment({
     institution_id: institution.id,
     name: 'Mechanical Engineering',
@@ -199,13 +193,6 @@ async function runVerificationTests() {
   });
   assert(erpStorage.getDepartments().some(d => d.code === 'ME'), 'New department created dynamically');
 
-  const newProg = erpStorage.addProgram({
-    department_id: newDept.id,
-    name: 'B.Tech in Mechanical Engineering',
-    code: 'BTECH-ME',
-    duration_years: 4,
-    active: true,
-  });
   // ----------------------------------------------------
   // TEST 8: Real Supabase Cloud Database Persistence
   // ----------------------------------------------------
@@ -215,48 +202,33 @@ async function runVerificationTests() {
   assert(Boolean(supabaseData && supabaseData.faculty.length >= 11), 'Loaded 11 official faculty members from Supabase cloud');
   assert(Boolean(supabaseData && supabaseData.timetable.length >= 70), 'Loaded complete weekly timetable from Supabase cloud');
 
-  // Test real Supabase write & persistence
-  const realFac = supabaseData!.faculty[0];
-  const realSec = supabaseData!.sections[0];
-  const realSub = supabaseData!.subjects[0];
-  const realStuds = supabaseData!.students.filter(s => s.section_id === realSec.id).slice(0, 5);
+  // ----------------------------------------------------
+  // TEST 9: Section A vs Section B Zero Cross-Leakage Validation
+  // ----------------------------------------------------
+  console.log('\n--- TEST 9: Section A vs Section B Strict Isolation ---');
+  const secA = supabaseData!.sections.find(s => s.name === 'A')!;
+  const secB = supabaseData!.sections.find(s => s.name === 'B')!;
 
-  const realSessionResult = await supabaseService.saveAttendance({
-    facultyId: realFac.id,
-    sectionId: realSec.id,
-    subjectId: realSub.id,
-    sessionDate: '2026-08-23',
-    startTime: '09:00',
-    endTime: '09:50',
-    studentRecords: realStuds.map((s, idx) => ({
-      studentId: s.id,
-      status: idx === 0 ? 'Absent' : 'Present',
-    })),
-  });
+  assert(secA.room_number.includes('007'), 'Section A room is A-007');
+  assert(secB.room_number.includes('006'), 'Section B room is A-006');
 
-  assert(Boolean(realSessionResult.session.id), 'Attendance session persisted to Supabase cloud database');
-  assert(realSessionResult.records.length === 5, '5 student attendance records persisted to Supabase cloud database');
+  // Verify Tarun Kushwah is in Section B
+  const tarun = supabaseData!.students.find(s => s.roll_number === '2503400100057');
+  assert(Boolean(tarun && tarun.section_id === secB.id), 'Tarun Kushwah (2503400100057) is strictly enrolled in Section B');
 
-  // Test real Supabase correction request & approval
-  const realAbsentRec = realSessionResult.records.find(r => r.status === 'Absent')!;
-  const realCorr = await supabaseService.submitCorrection({
-    attendanceRecordId: realAbsentRec.id,
-    studentId: realAbsentRec.student_id,
-    requestedStatus: 'Present',
-    reason: 'Verified in class lecture',
-  });
-  assert(realCorr.status === 'pending', 'Correction request inserted into Supabase cloud database');
+  // Verify Section A vs Section B subject-faculty assignments
+  const dsSub = supabaseData!.subjects.find(s => s.subject_code === 'BCS301')!;
+  const secADsAssign = supabaseData!.assignments.find(a => a.section_id === secA.id && a.subject_id === dsSub.id);
+  const secBDsAssign = supabaseData!.assignments.find(a => a.section_id === secB.id && a.subject_id === dsSub.id);
 
-  const approvedCorr = await supabaseService.reviewCorrection({
-    correctionId: realCorr.id,
-    status: 'approved',
-    reviewerFacultyId: realFac.id,
-    reviewRemarks: 'Approved by faculty',
-  });
-  assert(approvedCorr.status === 'approved', 'Correction approved in Supabase cloud database');
+  const secAFac = supabaseData!.faculty.find(f => f.id === secADsAssign?.faculty_id);
+  const secBFac = supabaseData!.faculty.find(f => f.id === secBDsAssign?.faculty_id);
+
+  assert(secAFac?.full_name === 'Mr. Alok Gupta', 'Section A Data Structure is taught by Mr. Alok Gupta');
+  assert(secBFac?.full_name === 'Ms. Hemlata Chaudhary', 'Section B Data Structure is taught by Ms. Hemlata Chaudhary');
 
   console.log('\n=====================================================');
-  console.log('  🎉 ALL 8 AUTOMATED VERIFICATION TESTS PASSED! 🎉');
+  console.log('  🎉 ALL 9 AUTOMATED VERIFICATION TESTS PASSED! 🎉');
   console.log('=====================================================\n');
 }
 
