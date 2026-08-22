@@ -173,67 +173,6 @@ export const LoginPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Quick Demo Credentials Help */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Quick One-Click Test Logins:</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('2403400100047');
-                  setPassword('123456');
-                  setActiveRoleTab('student');
-                }}
-                className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left"
-              >
-                <span className="font-semibold text-slate-800 block">Student (Shazeb - A)</span>
-                <span className="text-slate-500 text-[10px]">Roll: 2403400100047</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('hemlata.cse@vctm.in');
-                  setPassword('123456');
-                  setActiveRoleTab('faculty');
-                }}
-                className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left"
-              >
-                <span className="font-semibold text-slate-800 block">Faculty (Ms. Hemlata)</span>
-                <span className="text-slate-500 text-[10px]">Coordinator Sec A</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('wasim.cse@vctm.in');
-                  setPassword('hod123');
-                  setActiveRoleTab('faculty');
-                }}
-                className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left"
-              >
-                <span className="font-semibold text-slate-800 block">HOD (Mr. Wasim)</span>
-                <span className="text-slate-500 text-[10px]">CSE Department</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('admin@vctm.in');
-                  setPassword('admin123');
-                  setActiveRoleTab('admin');
-                }}
-                className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left"
-              >
-                <span className="font-semibold text-slate-800 block">Super Admin</span>
-                <span className="text-slate-500 text-[10px]">Full ERP Control</span>
-              </button>
-            </div>
-          </div>
-
         </div>
 
         {/* Security badge */}

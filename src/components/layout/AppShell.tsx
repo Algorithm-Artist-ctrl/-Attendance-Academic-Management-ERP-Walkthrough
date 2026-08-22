@@ -34,10 +34,9 @@ export const AppShell: React.FC<AppShellProps> = ({
   activeTab,
   onTabChange,
 }) => {
-  const { user, role, logout, switchUser } = useAuth();
-  const { institution, corrections, resetToInitialSeed } = useAcademic();
+  const { user, role, logout } = useAuth();
+  const { institution, corrections } = useAcademic();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
   const pendingCorrectionsCount = corrections.filter(c => c.status === 'pending').length;
 
@@ -107,18 +106,6 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   const navItems = getNavItems();
 
-  // Switch to standard mock accounts for quick testing across roles
-  const testAccounts = [
-    { label: 'Super Admin (College Admin)', id: 'user-admin-01', role: 'super_admin' },
-    { label: 'HOD CSE (Mr. Wasim)', id: 'user-fac-wasim-01', role: 'hod' },
-    { label: 'Faculty Sec A (Ms. Hemlata Chaudhary)', id: 'user-fac-hemlata-02', role: 'faculty' },
-    { label: 'Faculty Sec B (Mr. Imran Raza Khan)', id: 'user-fac-imran-03', role: 'faculty' },
-    { label: 'Faculty (Mr. Alok Gupta)', id: 'user-fac-alok-04', role: 'faculty' },
-    { label: 'Student Sec A (Shazeb - 2403400100047)', id: 'user-stud-a-04', role: 'student' },
-    { label: 'Student Sec A (Aditya - 2503400100001)', id: 'user-stud-a-05', role: 'student' },
-    { label: 'Student Sec B (Lubhnesh - 2403400130012)', id: 'user-stud-b-01', role: 'student' },
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Top Main Navigation Bar */}
@@ -155,82 +142,31 @@ export const AppShell: React.FC<AppShellProps> = ({
               </div>
             </div>
 
-            {/* User Profile & Role Switcher */}
+            {/* User Profile Badge & Logout */}
             <div className="flex items-center gap-3">
-              {/* Quick Role Persona Switcher */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-vctm-navy-800 hover:bg-vctm-navy-700 text-xs text-slate-200 border border-vctm-navy-700 transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Role:</span>
-                  <span className="font-semibold text-amber-300 capitalize">{role?.replace('_', ' ')}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
-                </button>
-
-                {isRoleDropdownOpen && (
-                  <div 
-                    className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 text-slate-800 text-xs"
-                    onClick={() => setIsRoleDropdownOpen(false)}
-                  >
-                    <div className="px-3 py-1.5 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Switch Role Persona (Test & Verify)
-                    </div>
-                    {testAccounts.map(acc => (
-                      <button
-                        key={acc.id}
-                        onClick={() => {
-                          switchUser(acc.id);
-                          onTabChange('dashboard');
-                        }}
-                        className={clsx(
-                          'w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center justify-between',
-                          user?.id === acc.id && 'bg-blue-50 font-semibold text-blue-700'
-                        )}
-                      >
-                        <span>{acc.label}</span>
-                        {user?.id === acc.id && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
-                      </button>
-                    ))}
-                    <div className="px-3 pt-2 border-t border-slate-100">
-                      <button
-                        onClick={() => {
-                          if (confirm('Reset database to initial VCTM seed data? All custom modifications will be re-seeded.')) {
-                            resetToInitialSeed();
-                          }
-                        }}
-                        className="w-full text-center py-1 text-slate-500 hover:text-rose-600 font-medium"
-                      >
-                        Re-Seed Initial VCTM Data
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* User badge */}
-              <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-vctm-navy-700">
-                <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-900 font-bold flex items-center justify-center text-xs">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-vctm-navy-800 border border-vctm-navy-700">
+                <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-900 font-extrabold flex items-center justify-center text-xs shrink-0 shadow-xs">
                   {user?.full_name?.charAt(0) || 'U'}
                 </div>
                 <div className="text-left">
-                  <div className="text-xs font-semibold text-white leading-tight">
+                  <div className="text-xs font-bold text-white leading-tight">
                     {user?.full_name}
                   </div>
-                  <div className="text-[10px] text-slate-300">
-                    {user?.student?.roll_number ? `Roll: ${user.student.roll_number}` : user?.email}
+                  <div className="text-[10px] text-amber-300 font-medium">
+                    {user?.student?.roll_number ? `Roll: ${user.student.roll_number}` : user?.role?.replace('_', ' ').toUpperCase()}
                   </div>
                 </div>
               </div>
 
-              {/* Logout */}
+              {/* Logout button */}
               <button
                 onClick={logout}
                 title="Logout"
-                className="p-2 rounded-lg text-slate-300 hover:text-rose-300 hover:bg-vctm-navy-800 transition-colors"
+                className="p-2 rounded-lg text-slate-300 hover:text-rose-300 hover:bg-vctm-navy-800 transition-colors flex items-center gap-1.5 text-xs font-semibold"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           </div>
