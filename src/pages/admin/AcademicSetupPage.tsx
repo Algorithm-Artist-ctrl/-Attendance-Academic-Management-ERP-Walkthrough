@@ -15,10 +15,14 @@ export const AcademicSetupPage: React.FC = () => {
     faculty, 
     addDepartment, 
     addProgram, 
-    addSection 
+    addSection,
+    claimWindowDays,
+    setClaimWindowDays
   } = useAcademic();
 
-  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections'>('departments');
+  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>('departments');
+  const [tempClaimDays, setTempClaimDays] = useState(claimWindowDays);
+  const [policySaved, setPolicySaved] = useState(false);
 
   // New Department Modal state
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -151,6 +155,17 @@ export const AcademicSetupPage: React.FC = () => {
           >
             Class Sections ({sections.length})
           </button>
+          <button
+            onClick={() => setActiveTab('policy')}
+            className={clsx(
+              'px-3.5 py-1.5 rounded-xl transition-all',
+              activeTab === 'policy'
+                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            )}
+          >
+            Claim Policy & Settings
+          </button>
         </div>
       </div>
 
@@ -268,8 +283,8 @@ export const AcademicSetupPage: React.FC = () => {
         <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
           <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">Class Sections</h3>
-              <p className="text-xs text-slate-400">Classrooms and student divisions</p>
+              <h3 className="text-sm font-bold text-white tracking-wide">Class Sections & Room Allocation</h3>
+              <p className="text-xs text-slate-400">Classrooms and assigned coordinators</p>
             </div>
             <Button
               size="sm"
@@ -287,7 +302,7 @@ export const AcademicSetupPage: React.FC = () => {
                 <tr>
                   <th className="px-5 py-3.5">Section Name</th>
                   <th className="px-5 py-3.5">Assigned Classroom</th>
-                  <th className="px-5 py-3.5">Class Coordinator</th>
+                  <th className="px-5 py-3.5">Class Coordinator / Incharge</th>
                   <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
@@ -312,6 +327,74 @@ export const AcademicSetupPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Policy & Claim Window Tab */}
+      {activeTab === 'policy' && (
+        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-6">
+          <div className="flex items-center justify-between border-b border-emerald-500/15 pb-4">
+            <div>
+              <h3 className="text-base font-bold text-white tracking-wide">
+                Institutional Attendance Policy & Rectification Rules
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Configure student claim periods, AKTU threshold, and audit requirements
+              </p>
+            </div>
+            {policySaved && (
+              <span className="px-3 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold animate-in zoom-in-95">
+                Settings Saved Successfully!
+              </span>
+            )}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setClaimWindowDays(Number(tempClaimDays));
+              setPolicySaved(true);
+              setTimeout(() => setPolicySaved(false), 2500);
+            }}
+            className="space-y-5 max-w-2xl"
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Attendance Claim Window (Days)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    value={tempClaimDays}
+                    onChange={(e) => setTempClaimDays(Number(e.target.value))}
+                    className="w-32 px-3.5 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-sm font-black text-[#00ff88] focus:outline-none focus:border-[#00ff88]"
+                  />
+                  <span className="text-xs text-slate-400">
+                    Days allowed for students to report discrepancy after lecture date
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 space-y-2 text-xs">
+                <h4 className="font-bold text-white">Active College Rules:</h4>
+                <ul className="list-disc list-inside text-slate-300 space-y-1 text-[11px]">
+                  <li>Minimum AKTU attendance eligibility requirement: <strong>75%</strong></li>
+                  <li>Absence calculation formula: <code>Present ÷ (Present + Absent) × 100</code></li>
+                  <li>Unconducted / Not Recorded lectures are strictly omitted from attendance denominator</li>
+                  <li>Student claims are routed directly and exclusively to the subject's designated section faculty</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" variant="neon" size="sm">
+                Save Policy Configuration
+              </Button>
+            </div>
+          </form>
         </div>
       )}
 

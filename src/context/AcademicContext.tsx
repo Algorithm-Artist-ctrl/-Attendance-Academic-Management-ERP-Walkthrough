@@ -29,6 +29,42 @@ import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { erpStorage } from '../lib/storage/erpStorage';
 
+export interface TodayAttendanceLecture {
+  timetableEntryId: string;
+  dayOfWeek: DayOfWeek;
+  periodNumber: number;
+  startTime: string;
+  endTime: string;
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  facultyId: string;
+  facultyName: string;
+  facultyCode?: string;
+  roomNumber: string;
+  lectureType: string;
+  sectionId: string;
+  sectionName: string;
+  sessionDate: string;
+  status: 'Present' | 'Absent' | 'Not Recorded';
+  attendanceRecordId?: string;
+  attendanceSessionId?: string;
+  claimId?: string;
+  claimStatus?: 'pending' | 'approved' | 'rejected';
+  claimReason?: string;
+  claimReviewRemarks?: string;
+}
+
+export interface DateWiseAttendanceSummary {
+  dateStr: string;
+  dayOfWeek: DayOfWeek;
+  lectures: TodayAttendanceLecture[];
+  totalLectures: number;
+  presentCount: number;
+  absentCount: number;
+  notRecordedCount: number;
+}
+
 interface AcademicContextType {
   institution: Institution;
   departments: Department[];
@@ -47,6 +83,8 @@ interface AcademicContextType {
   corrections: AttendanceCorrection[];
   auditLogs: AuditLog[];
   isLoading: boolean;
+  claimWindowDays: number;
+  setClaimWindowDays: (days: number) => void;
   refreshData: () => Promise<void>;
 
   // Real Database Actions
@@ -86,7 +124,17 @@ interface AcademicContextType {
     reviewerFacultyId: string;
     reviewRemarks?: string;
   }) => Promise<AttendanceCorrection>;
-  getStudentAttendance: (studentId: string) => StudentOverallAttendance;
+  canSubmitClaim: (params: {
+    attendanceRecordId: string;
+    sessionDate: string;
+  }) => { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection };
+  getStudentAttendance: (studentId: string) => StudentOverallAttendance & {
+    notRecordedCount: number;
+    pendingClaimsCount: number;
+  };
+  getTodayLecturesForStudent: (studentId: string, customDateStr?: string) => TodayAttendanceLecture[];
+  getDateLecturesForStudent: (studentId: string, dateStr: string) => DateWiseAttendanceSummary;
+  getFacultyCorrectionRequests: (facultyId: string) => AttendanceCorrection[];
   getTodaySchedule: (params: {
     dayOfWeek: DayOfWeek;
     sectionId?: string;
@@ -101,6 +149,7 @@ const AcademicContext = createContext<AcademicContextType | undefined>(undefined
 
 export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [claimWindowDays, setClaimWindowDays] = useState<number>(7);
 
   // State populated from Supabase
   const [institution, setInstitution] = useState<Institution>(() => erpStorage.getInstitution());
@@ -178,12 +227,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }));
 
         // Enriched Corrections
-        const enrichedCorrections: AttendanceCorrection[] = data.corrections.map(c => ({
-          ...c,
-          student: enrichedStudents.find(s => s.id === c.student_id),
-          record: enrichedRecords.find(r => r.id === c.attendance_record_id),
-          reviewer: loadedFaculty.find(f => f.id === c.reviewed_by),
-        }));
+        const enrichedCorrections: AttendanceCorrection[] = data.corrections.map(c => {
+          const rec = enrichedRecords.find(r => r.id === c.attendance_record_id);
+          const sess = rec?.session || enrichedSessions.find(s => s.id === rec?.attendance_session_id);
+          return {
+            ...c,
+            student: enrichedStudents.find(s => s.id === c.student_id),
+            record: rec,
+            reviewer: loadedFaculty.find(f => f.id === c.reviewed_by),
+          };
+        });
 
         setInstitution(loadedInst);
         setDepartments(loadedDepts);
@@ -258,13 +311,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return result;
   };
 
-  // 2. Submit Attendance Correction Request
+  // 2. Submit Attendance Correction / Claim Request
   const submitCorrectionRequest = async (params: {
     attendanceRecordId: string;
     studentId: string;
     requestedStatus: AttendanceStatus;
     reason: string;
   }) => {
+    // Validate duplicate
+    const existing = corrections.find(
+      c => c.attendance_record_id === params.attendanceRecordId &&
+           (c.status === 'pending' || c.status === 'approved')
+    );
+    if (existing) {
+      throw new Error(`A claim for this lecture has already been submitted (Status: ${existing.status.toUpperCase()}).`);
+    }
+
     const res = await supabaseService.submitCorrection(params);
     erpStorage.submitCorrectionRequest(params);
     await refreshData();
@@ -284,7 +346,39 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
-  // 4. Admin CRUD Operations
+  // 4. Validate whether student can submit a claim
+  const canSubmitClaim = (params: {
+    attendanceRecordId: string;
+    sessionDate: string;
+  }): { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection } => {
+    // Check duplicate
+    const existing = corrections.find(
+      c => c.attendance_record_id === params.attendanceRecordId &&
+           (c.status === 'pending' || c.status === 'approved')
+    );
+    if (existing) {
+      return {
+        canSubmit: false,
+        message: `Claim already submitted (Status: ${existing.status.toUpperCase()}).`,
+        existingClaim: existing,
+      };
+    }
+
+    // Check time window
+    const sessionTime = new Date(params.sessionDate).getTime();
+    const nowTime = new Date().getTime();
+    const diffDays = Math.floor((nowTime - sessionTime) / (1000 * 60 * 60 * 24));
+    if (diffDays > claimWindowDays) {
+      return {
+        canSubmit: false,
+        message: `Attendance claim period has expired (Limit: ${claimWindowDays} days).`,
+      };
+    }
+
+    return { canSubmit: true };
+  };
+
+  // 5. Admin Master Data Operations
   const addDepartment = async (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addDepartment(dept);
     erpStorage.addDepartment(dept);
@@ -352,7 +446,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
-  // 5. Timetable Conflict Engine
+  // 6. Timetable Conflict Engine
   const checkTimetableConflict = (entry: Omit<TimetableEntry, 'id'>, excludeId?: string): TimetableConflict | null => {
     const activeEntries = timetable.filter(t => t.active && t.id !== excludeId);
 
@@ -392,8 +486,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return null;
   };
 
-  // 6. Calculate Student Attendance strictly based on Authenticated Student's Section and Database Records
-  const getStudentAttendance = (studentId: string): StudentOverallAttendance => {
+  // 7. Calculate Student Overall Attendance strictly based on Supabase database
+  const getStudentAttendance = (studentId: string): StudentOverallAttendance & {
+    notRecordedCount: number;
+    pendingClaimsCount: number;
+  } => {
     const student = students.find(s => s.id === studentId);
     const studSectionId = student?.section_id;
     const studSection = sections.find(s => s.id === studSectionId);
@@ -401,7 +498,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // All registered attendance records for this student
     const studentRecords = attendanceRecords.filter(r => r.student_id === studentId);
 
-    // Filter subjects for the student's semester/program
+    // Target subjects
     const targetSubjects = subjects.filter(s => s.active);
 
     const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
@@ -444,20 +541,156 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const presentLectures = subjectStats.reduce((acc, curr) => acc + curr.attended, 0);
     const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : 0;
 
+    // Student claims count
+    const studentClaims = corrections.filter(c => c.student_id === studentId);
+    const pendingClaimsCount = studentClaims.filter(c => c.status === 'pending').length;
+
+    // Not recorded count for today
+    const todayLectures = getTodayLecturesForStudent(studentId);
+    const notRecordedCount = todayLectures.filter(l => l.status === 'Not Recorded').length;
+
     return {
       studentId,
       rollNumber: student?.roll_number || '2503400100057',
       fullName: student?.full_name || 'Student',
-      sectionName: studSection?.name || (studSectionId ? 'Section' : 'A'),
+      sectionName: studSection?.name || 'A',
       totalLectures,
       presentLectures,
       percentage: overallPercentage,
       isDefaulter: totalLectures > 0 && overallPercentage < 75,
       subjectStats,
+      notRecordedCount,
+      pendingClaimsCount,
     };
   };
 
-  // 7. Get Today's Schedule
+  // 8. Get Today's Live Attendance Lectures for Student
+  const getTodayLecturesForStudent = (studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return [];
+
+    const days: DayOfWeek[] = ['SUN' as any, 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const now = new Date();
+    const defaultDateStr = now.toISOString().split('T')[0];
+    const targetDateStr = customDateStr || defaultDateStr;
+
+    const targetDateObj = new Date(targetDateStr);
+    const dayOfWeek: DayOfWeek = days[targetDateObj.getDay()] === ('SUN' as any) ? 'MON' : days[targetDateObj.getDay()];
+
+    const sectionEntries = timetable
+      .filter(t => t.section_id === student.section_id && t.day_of_week === dayOfWeek && t.active)
+      .sort((a, b) => a.period_number - b.period_number);
+
+    return sectionEntries.map(entry => {
+      const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
+      const fac = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
+      const sec = sections.find(s => s.id === entry.section_id) || entry.section;
+
+      // Check if session was conducted on this date
+      const session = attendanceSessions.find(
+        s => s.section_id === entry.section_id &&
+             s.subject_id === entry.subject_id &&
+             s.session_date === targetDateStr
+      );
+
+      let status: 'Present' | 'Absent' | 'Not Recorded' = 'Not Recorded';
+      let recordId: string | undefined = undefined;
+      let claimId: string | undefined = undefined;
+      let claimStatus: 'pending' | 'approved' | 'rejected' | undefined = undefined;
+      let claimReason: string | undefined = undefined;
+      let claimReviewRemarks: string | undefined = undefined;
+
+      if (session) {
+        const rec = attendanceRecords.find(
+          r => r.attendance_session_id === session.id && r.student_id === studentId
+        );
+        if (rec) {
+          status = rec.status;
+          recordId = rec.id;
+
+          // Check if there is an attendance claim
+          const claim = corrections.find(c => c.attendance_record_id === rec.id);
+          if (claim) {
+            claimId = claim.id;
+            claimStatus = claim.status;
+            claimReason = claim.reason;
+            claimReviewRemarks = claim.review_remarks;
+          }
+        }
+      }
+
+      return {
+        timetableEntryId: entry.id,
+        dayOfWeek: entry.day_of_week,
+        periodNumber: entry.period_number,
+        startTime: entry.start_time?.substring(0, 5) || '09:00',
+        endTime: entry.end_time?.substring(0, 5) || '09:50',
+        subjectId: entry.subject_id,
+        subjectCode: sub?.subject_code || '',
+        subjectName: sub?.subject_name || 'Subject',
+        facultyId: entry.faculty_id,
+        facultyName: fac?.full_name || 'Faculty Member',
+        facultyCode: fac?.faculty_code || fac?.employee_code,
+        roomNumber: entry.room_number || sec?.room_number || 'Room A-007',
+        lectureType: entry.lecture_type || 'Theory',
+        sectionId: entry.section_id,
+        sectionName: sec?.name || 'A',
+        sessionDate: targetDateStr,
+        status,
+        attendanceRecordId: recordId,
+        attendanceSessionId: session?.id,
+        claimId,
+        claimStatus,
+        claimReason,
+        claimReviewRemarks,
+      };
+    });
+  };
+
+  // 9. Get Date-wise Historical Lectures for Student
+  const getDateLecturesForStudent = (studentId: string, dateStr: string): DateWiseAttendanceSummary => {
+    const days: DayOfWeek[] = ['SUN' as any, 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const dateObj = new Date(dateStr);
+    const dayOfWeek: DayOfWeek = days[dateObj.getDay()] === ('SUN' as any) ? 'MON' : days[dateObj.getDay()];
+
+    const lectures = getTodayLecturesForStudent(studentId, dateStr);
+    const presentCount = lectures.filter(l => l.status === 'Present').length;
+    const absentCount = lectures.filter(l => l.status === 'Absent').length;
+    const notRecordedCount = lectures.filter(l => l.status === 'Not Recorded').length;
+
+    return {
+      dateStr,
+      dayOfWeek,
+      lectures,
+      totalLectures: lectures.length,
+      presentCount,
+      absentCount,
+      notRecordedCount,
+    };
+  };
+
+  // 10. Filter Attendance Claims strictly for the assigned faculty
+  const getFacultyCorrectionRequests = (facultyId: string): AttendanceCorrection[] => {
+    const myAssignments = assignments.filter(a => a.faculty_id === facultyId);
+
+    return corrections.filter(c => {
+      const rec = attendanceRecords.find(r => r.id === c.attendance_record_id);
+      const sess = attendanceSessions.find(s => s.id === rec?.attendance_session_id);
+
+      if (!sess) return false;
+
+      // Match 1: Faculty conducted this session
+      if (sess.faculty_id === facultyId) return true;
+
+      // Match 2: Faculty is assigned to this subject & section
+      const isAssigned = myAssignments.some(
+        a => a.subject_id === sess.subject_id && a.section_id === sess.section_id
+      );
+      return isAssigned;
+    });
+  };
+
+  // 11. Legacy getTodaySchedule adapter
   const getTodaySchedule = (params: {
     dayOfWeek: DayOfWeek;
     sectionId?: string;
@@ -540,6 +773,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         corrections,
         auditLogs,
         isLoading,
+        claimWindowDays,
+        setClaimWindowDays,
         refreshData,
         addDepartment,
         addProgram,
@@ -554,7 +789,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         saveAttendance,
         submitCorrectionRequest,
         reviewCorrectionRequest,
+        canSubmitClaim,
         getStudentAttendance,
+        getTodayLecturesForStudent,
+        getDateLecturesForStudent,
+        getFacultyCorrectionRequests,
         getTodaySchedule,
         resetToInitialSeed,
       }}

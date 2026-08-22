@@ -194,7 +194,7 @@ async function runVerificationTests() {
   assert(erpStorage.getDepartments().some(d => d.code === 'ME'), 'New department created dynamically');
 
   // ----------------------------------------------------
-  // TEST 8: Real Supabase Cloud Database Persistence
+  // TEST 8: Real Supabase Cloud Database Live Persistence
   // ----------------------------------------------------
   console.log('\n--- TEST 8: Real Supabase Cloud Database Live Persistence ---');
   const supabaseData = await supabaseService.fetchAllData();
@@ -203,7 +203,7 @@ async function runVerificationTests() {
   assert(Boolean(supabaseData && supabaseData.timetable.length >= 70), 'Loaded complete weekly timetable from Supabase cloud');
 
   // ----------------------------------------------------
-  // TEST 9: Section A vs Section B Zero Cross-Leakage Validation
+  // TEST 9: Section A vs Section B Strict Isolation
   // ----------------------------------------------------
   console.log('\n--- TEST 9: Section A vs Section B Strict Isolation ---');
   const secA = supabaseData!.sections.find(s => s.name === 'A')!;
@@ -227,8 +227,55 @@ async function runVerificationTests() {
   assert(secAFac?.full_name === 'Mr. Alok Gupta', 'Section A Data Structure is taught by Mr. Alok Gupta');
   assert(secBFac?.full_name === 'Ms. Hemlata Chaudhary', 'Section B Data Structure is taught by Ms. Hemlata Chaudhary');
 
+  // ----------------------------------------------------
+  // TEST 10: End-to-End Today's Attendance & Claim Workflow in Supabase
+  // ----------------------------------------------------
+  console.log('\n--- TEST 10: Live Supabase Attendance Claim & Approval Cycle ---');
+  const targetStudent = tarun!;
+  const targetFaculty = secBFac!; // Ms. Hemlata Chaudhary
+
+  // 1. Mark target student Absent in Section B Data Structure
+  const liveSessionDate = '2026-08-22';
+  const liveSessionRes = await supabaseService.saveAttendance({
+    facultyId: targetFaculty.id,
+    sectionId: secB.id,
+    subjectId: dsSub.id,
+    sessionDate: liveSessionDate,
+    startTime: '09:00',
+    endTime: '09:50',
+    studentRecords: [
+      { studentId: targetStudent.id, status: 'Absent', remarks: 'Test marked absent' }
+    ]
+  });
+
+  const liveAbsentRec = liveSessionRes.records.find(r => r.student_id === targetStudent.id);
+  assert(liveAbsentRec?.status === 'Absent', 'Student successfully marked Absent in live Supabase');
+
+  // 2. Student Submits Attendance Claim
+  const liveClaim = await supabaseService.submitCorrection({
+    attendanceRecordId: liveAbsentRec!.id,
+    studentId: targetStudent.id,
+    requestedStatus: 'Present',
+    reason: 'Was present in Room A 006 with faculty',
+  });
+  assert(liveClaim.status === 'pending', 'Attendance claim successfully submitted to Supabase as pending');
+
+  // 3. Faculty Approves Claim
+  const approvedClaim = await supabaseService.reviewCorrection({
+    correctionId: liveClaim.id,
+    status: 'approved',
+    reviewerFacultyId: targetFaculty.id,
+    reviewRemarks: 'Attendance verified with physical log',
+  });
+  assert(approvedClaim.status === 'approved', 'Faculty approved claim in Supabase');
+
+  // 4. Verify Attendance Record in Supabase changed to Present
+  const refreshedData = await supabaseService.fetchAllData();
+  const finalRecord = refreshedData!.attendanceRecords.find(r => r.id === liveAbsentRec!.id);
+  assert(finalRecord?.status === 'Present', 'Supabase Attendance Record mutated from Absent to Present');
+
   console.log('\n=====================================================');
-  console.log('  🎉 ALL 9 AUTOMATED VERIFICATION TESTS PASSED! 🎉');
+  console.log('  🎉 ALL 10 AUTOMATED VERIFICATION TESTS PASSED! 🎉');
   console.log('=====================================================\n');
 }
 
