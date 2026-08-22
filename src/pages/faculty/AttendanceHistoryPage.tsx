@@ -12,13 +12,13 @@ interface AttendanceHistoryProps {
 export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = ({ onTakeAttendance }) => {
   const { user } = useAuth();
   const { faculty, attendanceSessions, attendanceRecords } = useAcademic();
-
-  const currentFaculty = faculty.find(f => f.id === user?.faculty_id) || faculty[0];
+  const currentFaculty = faculty.find(f => f.id === user?.faculty_id || f.id === user?.faculty?.id || f.employee_code === user?.faculty?.employee_code) || user?.faculty;
+  const facultyId = currentFaculty?.id || '';
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter sessions marked by current faculty or all if admin
+  // Filter sessions marked strictly by current faculty
   const facultySessions = attendanceSessions
-    .filter(s => s.faculty_id === currentFaculty.id || user?.role === 'super_admin')
+    .filter(s => (facultyId ? s.faculty_id === facultyId : false) || user?.role === 'super_admin')
     .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
 
   const filtered = facultySessions.filter(s =>
@@ -37,7 +37,7 @@ export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = ({ onTake
             Lecture Attendance History
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Archive of all previously marked lecture periods and attendance tallies
+            Archive of attendance sessions recorded by <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name || user?.full_name}</span>
           </p>
         </div>
 

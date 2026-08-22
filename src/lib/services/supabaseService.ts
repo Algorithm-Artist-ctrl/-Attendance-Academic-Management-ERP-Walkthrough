@@ -98,6 +98,12 @@ export const supabaseService = {
       remarks?: string;
     }>;
   }) {
+    // 1. Validation: Prevent future attendance dates
+    const today = new Date().toISOString().split('T')[0];
+    if (params.sessionDate > today) {
+      throw new Error(`Invalid attendance date: ${params.sessionDate}. Attendance cannot be recorded for future dates.`);
+    }
+
     // Check if session already exists for this date, section, and subject
     const { data: existingSessions } = await supabase
       .from('attendance_sessions')
@@ -162,15 +168,23 @@ export const supabaseService = {
       throw new Error(`Failed to insert attendance records: ${recordsErr.message}`);
     }
 
+    // Fetch faculty full name for audit fidelity
+    const { data: facultyInfo } = await supabase
+      .from('faculty')
+      .select('full_name')
+      .eq('id', params.facultyId)
+      .single();
+
     // Audit Log
     const presentCount = params.studentRecords.filter(r => r.status === 'Present').length;
     const absentCount = params.studentRecords.length - presentCount;
 
     await supabase.from('audit_logs').insert({
       actor_id: params.facultyId,
+      actor_name: facultyInfo?.full_name || 'Faculty Member',
       actor_role: 'faculty',
       action: 'ATTENDANCE_RECORDED',
-      entity_type: 'attendance_session',
+      entity_type: 'attendance_sessions',
       entity_id: session.id,
       new_values: {
         sessionDate: params.sessionDate,
@@ -245,12 +259,20 @@ export const supabaseService = {
         })
         .eq('id', updatedCorrection.attendance_record_id);
 
+      // Fetch reviewer faculty full name for audit fidelity
+      const { data: reviewerInfo } = await supabase
+        .from('faculty')
+        .select('full_name')
+        .eq('id', params.reviewerFacultyId)
+        .single();
+
       // Audit Log
       await supabase.from('audit_logs').insert({
         actor_id: params.reviewerFacultyId,
+        actor_name: reviewerInfo?.full_name || 'Faculty Member',
         actor_role: 'faculty',
         action: 'ATTENDANCE_CORRECTION_APPROVED',
-        entity_type: 'attendance_record',
+        entity_type: 'attendance_records',
         entity_id: updatedCorrection.attendance_record_id,
         new_values: {
           correctionId: params.correctionId,

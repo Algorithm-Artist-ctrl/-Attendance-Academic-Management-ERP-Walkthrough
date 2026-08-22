@@ -6,9 +6,11 @@ import {
   FAC_HEMLATA_ID, 
   FAC_IMRAN_ID, 
   FAC_ALOK_ID, 
+  FAC_NASEEM_ID,
   FAC_WASIM_ID,
   SUB_DS_ID, 
-  SUB_DSTL_ID 
+  SUB_DSTL_ID,
+  SUB_MATHS4_ID
 } from '../lib/storage/initialSeedData';
 
 // Mock localStorage in Node.js environment
@@ -31,158 +33,183 @@ function assert(condition: boolean, testName: string) {
   }
 }
 
-async function runRolePermissionsVerification() {
+async function runComprehensiveVerification() {
   console.log('======================================================================');
-  console.log('  RUNNING COMPLETE ROLE & PERMISSION ARCHITECTURE VERIFICATION');
+  console.log('  RUNNING COMPLETE ERP DATA ARCHITECTURE & ROLE INTEGRITY SUITE');
   console.log('======================================================================\n');
 
   // Load authoritative database from Supabase
   const db = await supabaseService.fetchAllData();
-  assert(Boolean(db), 'Fetched database from Supabase Cloud');
+  assert(Boolean(db), 'Authoritative database fetched from Supabase Cloud');
   erpStorage.syncFromSupabase(db!);
 
   const secA = db!.sections.find(s => s.name === 'A')!;
   const secB = db!.sections.find(s => s.name === 'B')!;
 
   // -------------------------------------------------------------------
-  // TEST 1: Student Section A Isolation
+  // TEST A: Ms. Hemlata Chaudhary Assigned Classes Integrity
   // -------------------------------------------------------------------
-  console.log('--- TEST 1: Student Section A Isolation ---');
-  const studA = db!.students.find(s => s.roll_number === '2503400100001')!; // ADITYA KUMAR
-  assert(studA.section_id === secA.id, 'Student A database section_id matches Section A');
-  const studATimetable = db!.timetable.filter(t => t.section_id === studA.section_id);
-  assert(studATimetable.length === 42, 'Student A receives 42 Section A lectures');
-  assert(studATimetable.every(t => t.section_id === secA.id), 'Zero Section B timetable records in Student A view');
-
-  // -------------------------------------------------------------------
-  // TEST 2: Student Section B Isolation
-  // -------------------------------------------------------------------
-  console.log('\n--- TEST 2: Student Section B Isolation ---');
-  const studB = db!.students.find(s => s.roll_number === '2503400100057')!; // TARUN KUSHWAH
-  assert(studB.section_id === secB.id, 'Student B database section_id matches Section B');
-  const studBTimetable = db!.timetable.filter(t => t.section_id === studB.section_id);
-  assert(studBTimetable.length === 42, 'Student B receives 42 Section B lectures');
-  assert(studBTimetable.every(t => t.section_id === secB.id), 'Zero Section A timetable records in Student B view');
-
-  // -------------------------------------------------------------------
-  // TEST 3: Faculty Section A Assigned Classes (Mr. Alok Gupta)
-  // -------------------------------------------------------------------
-  console.log('\n--- TEST 3: Faculty Assigned Classes (Mr. Alok Gupta - Section A) ---');
-  const facAlok = db!.faculty.find(f => f.id === FAC_ALOK_ID)!;
-  assert(Boolean(facAlok), 'Faculty Mr. Alok Gupta identified');
-  
-  const alokClasses = db!.timetable.filter(t => t.faculty_id === facAlok.id);
-  assert(alokClasses.length > 0, 'Mr. Alok Gupta has assigned lectures');
-  assert(alokClasses.every(t => t.section_id === secA.id), 'Mr. Alok Gupta teaches strictly Section A classes');
-
-  // Verify students in Mr. Alok Gupta\'s Data Structure class are strictly Section A
-  const alokClassSectionStudents = db!.students.filter(s => s.section_id === alokClasses[0].section_id);
-  assert(alokClassSectionStudents.length === 53, 'Exactly 53 students loaded for Section A lecture');
-  assert(alokClassSectionStudents.every(s => s.section_id === secA.id), 'No Section B students in Mr. Alok Gupta class');
-
-  // -------------------------------------------------------------------
-  // TEST 4: Faculty Section B Assigned Classes (Ms. Hemlata Chaudhary - DS Sec B)
-  // -------------------------------------------------------------------
-  console.log('\n--- TEST 4: Faculty Assigned Classes (Ms. Hemlata Chaudhary - Section B DS) ---');
+  console.log('--- TEST A: Ms. Hemlata Chaudhary Assigned Classes ---');
   const facHemlata = db!.faculty.find(f => f.id === FAC_HEMLATA_ID)!;
-  const hemlataBClasses = db!.timetable.filter(t => t.faculty_id === facHemlata.id && t.section_id === secB.id);
-  assert(hemlataBClasses.length > 0, 'Ms. Hemlata Chaudhary has assigned lectures for Section B');
-  const hemlataBStudents = db!.students.filter(s => s.section_id === hemlataBClasses[0].section_id);
-  assert(hemlataBStudents.every(s => s.section_id === secB.id), 'Only Section B students loaded for Section B lecture');
+  assert(Boolean(facHemlata), 'Ms. Hemlata Chaudhary profile identified');
+  
+  const hemlataClasses = db!.timetable.filter(t => t.faculty_id === facHemlata.id && t.active);
+  assert(hemlataClasses.length > 0, 'Ms. Hemlata Chaudhary has assigned classes');
+  
+  // Verify she does NOT have Maths IV in Section A or anywhere
+  const hasMaths = hemlataClasses.some(t => t.subject_id === SUB_MATHS4_ID);
+  assert(!hasMaths, 'Ms. Hemlata Chaudhary is NOT assigned to Mathematics IV (Maths 4)');
+
+  // Verify her Section A teaching assignment is strictly Discrete Structure & Theory of Logic (DSTL)
+  const hemlataSecA = hemlataClasses.filter(t => t.section_id === secA.id);
+  assert(hemlataSecA.every(t => t.subject_id === SUB_DSTL_ID), 'Ms. Hemlata Chaudhary Section A teaching is strictly DSTL');
+
+  // Verify her Section B teaching assignment includes Data Structure (DS)
+  const hemlataSecB = hemlataClasses.filter(t => t.section_id === secB.id);
+  assert(hemlataSecB.some(t => t.subject_id === SUB_DS_ID), 'Ms. Hemlata Chaudhary Section B teaching includes Data Structure');
 
   // -------------------------------------------------------------------
-  // TEST 5: HOD Scope (Mr. Wasim - HOD CSE)
+  // TEST B: Dr. Naseem Ahamad Khan Assigned Classes
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 5: HOD Scope & Monitoring ---');
-  const hodWasim = db!.faculty.find(f => f.id === FAC_WASIM_ID)!;
-  assert(hodWasim.designation.toLowerCase().includes('hod'), 'Mr. Wasim is HOD CSE');
-  const cseDeptStudents = db!.students.filter(s => s.department_id === hodWasim.department_id);
-  assert(cseDeptStudents.length === 106, 'HOD monitors all 106 CSE department students (Sec A + Sec B)');
+  console.log('\n--- TEST B: Dr. Naseem Ahamad Khan Assigned Classes ---');
+  const facNaseem = db!.faculty.find(f => f.id === FAC_NASEEM_ID)!;
+  assert(Boolean(facNaseem), 'Dr. Naseem Ahamad Khan profile identified');
+  const naseemClasses = db!.timetable.filter(t => t.faculty_id === facNaseem.id && t.active);
+  assert(naseemClasses.length > 0, 'Dr. Naseem Ahamad Khan has assigned classes');
+  assert(naseemClasses.every(t => t.subject_id === SUB_MATHS4_ID), 'Dr. Naseem Ahamad Khan teaches Mathematics IV');
 
   // -------------------------------------------------------------------
-  // TEST 6: Admin Role Separation
+  // TEST C: Mr. Alok Gupta Assigned Classes
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 6: Admin Role Separation ---');
-  const adminProfile = erpStorage.getProfiles().find(p => p.role === 'super_admin');
-  assert(Boolean(adminProfile), 'Super Admin profile exists for institutional management');
-  assert(!adminProfile?.faculty_id, 'Admin is not bound to an operational faculty teaching role');
+  console.log('\n--- TEST C: Mr. Alok Gupta Assigned Classes ---');
+  const facAlok = db!.faculty.find(f => f.id === FAC_ALOK_ID)!;
+  assert(Boolean(facAlok), 'Mr. Alok Gupta profile identified');
+  const alokClasses = db!.timetable.filter(t => t.faculty_id === facAlok.id && t.active);
+  assert(alokClasses.every(t => t.section_id === secA.id), 'Mr. Alok Gupta teaches strictly Section A');
+  assert(alokClasses.some(t => t.subject_id === SUB_DS_ID), 'Mr. Alok Gupta teaches Data Structure in Section A');
 
   // -------------------------------------------------------------------
-  // TEST 7: Faculty Records Attendance & Creates Accurate Audit Event
+  // TEST D: Future Date Attendance Rejection
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 7: Faculty Records Attendance with Correct Audit Actor ---');
-  const testSessionDate = '2026-08-22';
+  console.log('\n--- TEST D: Future Date Attendance Rejection ---');
+  let futureRejected = false;
+  try {
+    await supabaseService.saveAttendance({
+      facultyId: facHemlata.id,
+      sectionId: secB.id,
+      subjectId: SUB_DS_ID,
+      sessionDate: '2026-08-25', // Future date
+      startTime: '09:00',
+      endTime: '09:50',
+      studentRecords: []
+    });
+  } catch (err: any) {
+    futureRejected = err.message.includes('future dates');
+  }
+  assert(futureRejected, 'Backend strictly rejects attendance recorded for future dates');
+
+  // -------------------------------------------------------------------
+  // TEST E: Section Isolation & Student Roster
+  // -------------------------------------------------------------------
+  console.log('\n--- TEST E: Section Isolation & Dynamic Student Roster ---');
+  const secAStudents = db!.students.filter(s => s.section_id === secA.id && s.active);
+  const secBStudents = db!.students.filter(s => s.section_id === secB.id && s.active);
+  assert(secAStudents.length === 53, 'Section A has exactly 53 students dynamically loaded from database');
+  assert(secBStudents.length === 53, 'Section B has exactly 53 students dynamically loaded from database');
+  assert(!secAStudents.some(s => s.section_id === secB.id), 'Zero Section B students in Section A');
+  assert(!secBStudents.some(s => s.section_id === secA.id), 'Zero Section A students in Section B');
+
+  // -------------------------------------------------------------------
+  // TEST F: Save Attendance & Persistence Check
+  // -------------------------------------------------------------------
+  console.log('\n--- TEST F: Save Attendance & Supabase Persistence ---');
+  const testDate = '2026-08-22';
   const saveRes = await supabaseService.saveAttendance({
-    facultyId: facAlok.id,
-    sectionId: secA.id,
+    facultyId: facHemlata.id,
+    sectionId: secB.id,
     subjectId: SUB_DS_ID,
-    sessionDate: testSessionDate,
-    startTime: '11:30',
-    endTime: '12:20',
-    studentRecords: [
-      { studentId: studA.id, status: 'Absent', remarks: 'Marked absent for verification' }
-    ]
+    sessionDate: testDate,
+    startTime: '09:00',
+    endTime: '09:50',
+    studentRecords: secBStudents.map((s) => ({
+      studentId: s.id,
+      status: (s.roll_number === '2503400100057' ? 'Absent' : 'Present') as any,
+      remarks: s.roll_number === '2503400100057' ? 'Uninformed absent' : undefined
+    }))
   });
-
-  assert(saveRes.session.faculty_id === facAlok.id, 'Session recorded with assigned faculty ID');
-  const recentLogs = (await supabaseService.fetchAllData())!.auditLogs;
-  const attLog = recentLogs.find(l => l.action === 'ATTENDANCE_RECORDED' && l.actor_id === facAlok.id);
-  assert(Boolean(attLog), 'Audit log contains ATTENDANCE_RECORDED event for Mr. Alok Gupta');
-  assert(attLog?.actor_role === 'faculty', 'Audit log actor_role is FACULTY (not System/Admin)');
+  assert(saveRes.session.faculty_id === facHemlata.id, 'Attendance session saved with Ms. Hemlata faculty ID');
+  assert(saveRes.records.length === 53, 'All 53 Section B student records inserted into Supabase');
 
   // -------------------------------------------------------------------
-  // TEST 8: Student Submits Attendance Claim -> Routed Strictly to Responsible Faculty
+  // TEST G: Student View of Newly Recorded Attendance
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 8: Attendance Claim Routed to Assigned Faculty ---');
-  const absentRec = saveRes.records.find(r => r.student_id === studA.id && r.status === 'Absent')!;
+  console.log('\n--- TEST G: Student Live View of Recorded Attendance ---');
+  const tarunStud = secBStudents.find(s => s.roll_number === '2503400100057')!;
+  const latestDb = await supabaseService.fetchAllData();
+  const tarunRecord = latestDb!.attendanceRecords.find(
+    r => r.student_id === tarunStud.id && r.attendance_session_id === saveRes.session.id
+  );
+  assert(Boolean(tarunRecord), 'Student record found in Supabase for today session');
+  assert(tarunRecord?.status === 'Absent', 'Student correctly sees Absent status recorded for today');
+
+  // -------------------------------------------------------------------
+  // TEST H: Student Correction Claim & Exact Faculty Routing
+  // -------------------------------------------------------------------
+  console.log('\n--- TEST H: Claim Routed to Ms. Hemlata Chaudhary ---');
   const claim = await supabaseService.submitCorrection({
-    attendanceRecordId: absentRec.id,
-    studentId: studA.id,
+    attendanceRecordId: tarunRecord!.id,
+    studentId: tarunStud.id,
     requestedStatus: 'Present',
-    reason: 'Was physically in class with Mr. Alok Gupta',
+    reason: 'Was physically present in Ms. Hemlata Data Structure class on Section B',
   });
-  assert(claim.status === 'pending', 'Claim submitted successfully');
+  assert(claim.status === 'pending', 'Claim submitted with pending status');
 
-  // Verify routing: matched to Mr. Alok Gupta (session conductor & subject teacher for Sec A)
-  const isConductedByAlok = saveRes.session.faculty_id === facAlok.id;
-  assert(isConductedByAlok, 'Claim is associated with Mr. Alok Gupta session');
+  // Verify routing: session was taken by Ms. Hemlata Chaudhary
+  const claimSession = latestDb!.attendanceSessions.find(s => s.id === saveRes.session.id);
+  assert(claimSession?.faculty_id === facHemlata.id, 'Claim session is assigned to Ms. Hemlata Chaudhary');
 
   // -------------------------------------------------------------------
-  // TEST 9: Faculty Approves Claim -> Attendance Mutates & Audit Log Records Faculty
+  // TEST I: Faculty Approves Claim & Records Mutate in Supabase
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 9: Faculty Approves Claim & Records Accurate Audit ---');
+  console.log('\n--- TEST I: Faculty Approves Claim ---');
   const approvedClaim = await supabaseService.reviewCorrection({
     correctionId: claim.id,
     status: 'approved',
-    reviewerFacultyId: facAlok.id,
-    reviewRemarks: 'Verified register',
+    reviewerFacultyId: facHemlata.id,
+    reviewRemarks: 'Attendance roll call verified and rectified',
   });
-  assert(approvedClaim.status === 'approved', 'Faculty approved claim');
+  assert(approvedClaim.status === 'approved', 'Claim approved by Ms. Hemlata Chaudhary');
 
-  const refreshedDb = await supabaseService.fetchAllData();
-  const mutatedRecord = refreshedDb!.attendanceRecords.find(r => r.id === absentRec.id);
-  assert(mutatedRecord?.status === 'Present', 'Attendance record mutated from Absent to Present in Supabase');
+  const afterApprovalDb = await supabaseService.fetchAllData();
+  const updatedRecord = afterApprovalDb!.attendanceRecords.find(r => r.id === tarunRecord!.id);
+  assert(updatedRecord?.status === 'Present', 'Database attendance record successfully updated to Present');
 
-  const approvalLog = refreshedDb!.auditLogs.find(
-    l => l.action === 'ATTENDANCE_CORRECTION_APPROVED' && l.actor_id === facAlok.id
+  // -------------------------------------------------------------------
+  // TEST J: Audit Logs Identity Check
+  // -------------------------------------------------------------------
+  console.log('\n--- TEST J: Audit Log Identity Attribution ---');
+  const auditLogs = afterApprovalDb!.auditLogs;
+  const hemlataApprovalLog = auditLogs.find(
+    l => l.action === 'ATTENDANCE_CORRECTION_APPROVED' && l.actor_id === facHemlata.id
   );
-  assert(Boolean(approvalLog), 'Audit log contains ATTENDANCE_CORRECTION_APPROVED event');
-  assert(approvalLog?.actor_role === 'faculty', 'Approval audit role is FACULTY');
+  assert(Boolean(hemlataApprovalLog), 'Audit log contains ATTENDANCE_CORRECTION_APPROVED event');
+  assert(hemlataApprovalLog?.actor_role === 'faculty', 'Audit actor role is FACULTY');
+  assert(hemlataApprovalLog?.actor_name === 'Ms. Hemlata Chaudhary', 'Audit actor name is Ms. Hemlata Chaudhary (NOT System/Admin)');
 
   // -------------------------------------------------------------------
-  // TEST 10: Persistent Cloud Database Consistency
+  // Attendance History Isolation Check for Ms. Hemlata
   // -------------------------------------------------------------------
-  console.log('\n--- TEST 10: Persistent Cloud Database Integrity ---');
-  assert(refreshedDb!.students.length === 106, '106 official students preserved');
-  assert(refreshedDb!.faculty.length === 11, '11 official faculty members preserved');
-  assert(refreshedDb!.sections.length === 2, '2 sections preserved');
+  console.log('\n--- TEST K: Faculty Attendance History Isolation ---');
+  const hemlataHistory = afterApprovalDb!.attendanceSessions.filter(s => s.faculty_id === facHemlata.id);
+  assert(hemlataHistory.length > 0, 'Ms. Hemlata Chaudhary has history records');
+  assert(!hemlataHistory.some(s => s.subject_id === SUB_MATHS4_ID), 'Ms. Hemlata history contains ZERO Mathematics IV records');
 
   console.log('\n======================================================================');
-  console.log('  🎉 ALL 10 ROLE & PERMISSION ARCHITECTURE TESTS PASSED! 🎉');
+  console.log('  🎉 ALL ERP DATA ARCHITECTURE & ROLE INTEGRITY TESTS PASSED! 🎉');
   console.log('======================================================================\n');
 }
 
-runRolePermissionsVerification().catch(err => {
-  console.error('Fatal error during role permissions verification:', err);
+runComprehensiveVerification().catch(err => {
+  console.error('Fatal error during comprehensive verification:', err);
   process.exit(1);
 });

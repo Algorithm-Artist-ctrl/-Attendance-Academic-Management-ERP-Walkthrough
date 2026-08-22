@@ -10,8 +10,11 @@ import {
   AlertCircle,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   ShieldAlert,
-  GraduationCap
+  GraduationCap,
+  MapPin,
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -36,20 +39,29 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     students, 
     timetable, 
     faculty,
+    attendanceSessions,
+    attendanceRecords,
     saveAttendance 
   } = useAcademic();
 
-  // 1. Authorize: Only faculty can mark daily attendance
+  // 1. Authorize: Only teaching faculty or HOD
   const isAuthorized = role === 'faculty' || role === 'hod';
-  const currentFaculty = faculty.find(f => f.id === user?.faculty_id || f.employee_code === user?.faculty?.employee_code) || user?.faculty;
+  const currentFaculty = faculty.find(f => f.id === user?.faculty_id || f.id === user?.faculty?.id || f.employee_code === user?.faculty?.employee_code) || user?.faculty;
   const facultyId = currentFaculty?.id || '';
 
   // 2. Filter classes assigned STRICTLY to this faculty member
   const assignedClasses = timetable.filter(t => t.faculty_id === facultyId && t.active);
 
-  // Selected Class from faculty's assigned timetable
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [sessionDate, setSessionDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+  const todayDay = days[new Date().getDay()] === 'SUN' ? 'MON' : days[new Date().getDay()];
+  const [selectedDayFilter, setSelectedDayFilter] = useState<string>(todayDay);
+
+  // Selected Class ID for active attendance marking session
+  const [activeClassId, setActiveClassId] = useState<string | null>(initialTimetableEntryId || null);
+  
+  // Today's date (max date locked to today)
+  const todayISO = new Date().toISOString().split('T')[0];
+  const [sessionDate, setSessionDate] = useState<string>(todayISO);
 
   // Attendance state: Map of student_id -> 'Present' | 'Absent'
   const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
@@ -58,36 +70,50 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Initialize selected class
+  // If initialTimetableEntryId is passed in props, open that class directly
   useEffect(() => {
     if (initialTimetableEntryId) {
-      setSelectedClassId(initialTimetableEntryId);
-    } else if (assignedClasses.length > 0 && !selectedClassId) {
-      setSelectedClassId(assignedClasses[0].id);
+      setActiveClassId(initialTimetableEntryId);
     }
-  }, [initialTimetableEntryId, assignedClasses]);
+  }, [initialTimetableEntryId]);
 
   // Derive class context strictly from assigned timetable
-  const selectedClass = assignedClasses.find(c => c.id === selectedClassId) || assignedClasses[0];
+  const activeClass = assignedClasses.find(c => c.id === activeClassId);
+  const activeSubject = subjects.find(s => s.id === activeClass?.subject_id) || activeClass?.subject;
+  const activeSection = sections.find(s => s.id === activeClass?.section_id) || activeClass?.section;
+  const roomNumber = activeClass?.room_number || activeSection?.room_number || 'Room TBD';
+  const timeSlot = activeClass ? `${activeClass.start_time?.substring(0, 5) || '09:00'} – ${activeClass.end_time?.substring(0, 5) || '09:50'}` : '09:00 – 09:50';
 
-  const selectedSubject = subjects.find(s => s.id === selectedClass?.subject_id) || selectedClass?.subject;
-  const selectedSection = sections.find(s => s.id === selectedClass?.section_id) || selectedClass?.section;
-  const roomNumber = selectedClass?.room_number || selectedSection?.room_number || 'Room TBD';
-  const timeSlot = selectedClass ? `${selectedClass.start_time?.substring(0, 5) || '09:00'} – ${selectedClass.end_time?.substring(0, 5) || '09:50'}` : '09:00 – 09:50';
-
-  // 3. Load students strictly belonging to the class's section
-  const sectionStudents = selectedSection
-    ? students.filter(s => s.section_id === selectedSection.id && s.active)
+  // 3. Load students strictly belonging to the active class's section
+  const sectionStudents = activeSection
+    ? students.filter(s => s.section_id === activeSection.id && s.active)
     : [];
 
-  // Reset/Initialize attendance (default all Present) when class changes
+  // Initialize attendance when an active class is selected
   useEffect(() => {
+    if (!activeClass || !activeSection) return;
+
+    // Check if attendance already exists in database for this class/section/date
+    const existingSession = attendanceSessions.find(
+      s => s.section_id === activeSection.id && 
+           s.subject_id === activeClass.subject_id && 
+           s.session_date === sessionDate
+    );
+
     const initialMap: Record<string, AttendanceStatus> = {};
-    sectionStudents.forEach(s => {
-      initialMap[s.id] = 'Present';
-    });
+    if (existingSession) {
+      const records = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
+      sectionStudents.forEach(s => {
+        const found = records.find(r => r.student_id === s.id);
+        initialMap[s.id] = found ? (found.status as AttendanceStatus) : 'Present';
+      });
+    } else {
+      sectionStudents.forEach(s => {
+        initialMap[s.id] = 'Present';
+      });
+    }
     setAttendanceMap(initialMap);
-  }, [selectedClassId, selectedSection?.id, students]);
+  }, [activeClassId, sessionDate, activeSection?.id, attendanceSessions, attendanceRecords]);
 
   // Access Denied for unauthorized roles
   if (!isAuthorized) {
@@ -146,8 +172,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const absentCount = sectionStudents.length - presentCount;
 
   const handleSaveAttendance = async () => {
-    if (!selectedClass || !selectedSection || !selectedSubject) {
+    if (!activeClass || !activeSection || !activeSubject) {
       setSaveError('Please select a valid assigned class to take attendance.');
+      return;
+    }
+
+    if (sessionDate > todayISO) {
+      setSaveError('Invalid attendance date. Attendance cannot be marked for future dates.');
       return;
     }
 
@@ -158,10 +189,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       const [startTime, endTime] = timeSlot.split(' – ');
 
       await saveAttendance({
-        timetableEntryId: selectedClass.id,
+        timetableEntryId: activeClass.id,
         facultyId,
-        sectionId: selectedSection.id,
-        subjectId: selectedSubject.id,
+        sectionId: activeSection.id,
+        subjectId: activeSubject.id,
         sessionDate,
         startTime: startTime || '09:00',
         endTime: endTime || '09:50',
@@ -175,8 +206,9 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
+        setActiveClassId(null);
         if (onFinished) onFinished();
-      }, 2000);
+      }, 1800);
     } catch (err: any) {
       console.error('Failed to save attendance', err);
       setSaveError(err?.message || 'Failed to record attendance in database.');
@@ -185,18 +217,169 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     }
   };
 
+  // =========================================================================
+  // VIEW 1: TODAY'S ASSIGNED CLASSES CARD LIST
+  // =========================================================================
+  if (!activeClassId) {
+    const dayClasses = assignedClasses
+      .filter(t => t.day_of_week === selectedDayFilter)
+      .sort((a, b) => a.period_number - b.period_number);
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+              <CheckSquare className="w-6 h-6 text-[#00ff88]" />
+              Today's Assigned Classes
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
+            </p>
+          </div>
+
+          {/* Day Selector Tabs */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20">
+            {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map(d => (
+              <button
+                key={d}
+                onClick={() => setSelectedDayFilter(d)}
+                className={clsx(
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all',
+                  selectedDayFilter === d
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Classes Cards Grid */}
+        {dayClasses.length === 0 ? (
+          <div className="glass-panel rounded-3xl p-12 border border-emerald-500/20 text-center space-y-3">
+            <Calendar className="w-8 h-8 text-slate-500 mx-auto" />
+            <p className="text-xs text-slate-400">
+              No teaching lectures scheduled for <strong className="text-white">{selectedDayFilter}</strong> in your timetable.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dayClasses.map(cls => {
+              const sub = subjects.find(s => s.id === cls.subject_id) || cls.subject;
+              const sec = sections.find(s => s.id === cls.section_id) || cls.section;
+              const enrolledStudents = students.filter(s => s.section_id === sec?.id && s.active);
+
+              // Check if already recorded today
+              const existingSess = attendanceSessions.find(
+                s => s.section_id === sec?.id && 
+                     s.subject_id === cls.subject_id && 
+                     s.session_date === todayISO
+              );
+
+              const records = existingSess 
+                ? attendanceRecords.filter(r => r.attendance_session_id === existingSess.id)
+                : [];
+              const presentCount = records.filter(r => r.status === 'Present').length;
+
+              return (
+                <div
+                  key={cls.id}
+                  className="glass-card rounded-3xl p-5 flex flex-col justify-between space-y-4 border border-emerald-500/20 hover:border-emerald-500/40 transition-all hover:shadow-[0_0_20px_rgba(0,255,136,0.1)]"
+                >
+                  <div className="space-y-3">
+                    {/* Top Row: Time & Section */}
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-950 border border-emerald-500/30 text-[#00ff88]">
+                        {cls.start_time?.substring(0, 5)} – {cls.end_time?.substring(0, 5)} (P{cls.period_number})
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                        Section {sec?.name}
+                      </span>
+                    </div>
+
+                    {/* Subject Details */}
+                    <div>
+                      <h3 className="text-base font-bold text-white tracking-tight leading-snug">
+                        {sub?.subject_name}
+                      </h3>
+                      <p className="text-xs font-mono text-[#00ff88] mt-0.5">
+                        {sub?.subject_code} • {cls.lecture_type || 'Theory'}
+                      </p>
+                    </div>
+
+                    {/* Meta info */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 pt-2 border-t border-emerald-500/10">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{cls.room_number || sec?.room_number || 'Room TBD'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{enrolledStudents.length} Students</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attendance Status & Action */}
+                  <div className="pt-3 border-t border-emerald-500/15 flex items-center justify-between gap-2">
+                    {existingSess ? (
+                      <div className="text-[11px] font-bold text-[#00ff88] flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Marked ({presentCount}/{records.length})</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Not Recorded</span>
+                      </div>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant={existingSess ? 'outline' : 'neon'}
+                      onClick={() => setActiveClassId(cls.id)}
+                      rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                    >
+                      {existingSess ? 'Update' : 'Take Attendance'}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: ACTIVE LECTURE ATTENDANCE MARKING SHEET
+  // =========================================================================
   return (
     <div className="space-y-6">
-      {/* Top Header */}
+      {/* Top Navigation & Breadcrumb */}
       <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <CheckSquare className="w-6 h-6 text-[#00ff88]" />
-            Live Lecture Attendance Marking
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveClassId(null)}
+            className="p-2 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/10 transition-all shrink-0"
+            title="Back to Assigned Classes"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+              <CheckSquare className="w-6 h-6 text-[#00ff88]" />
+              {activeSubject?.subject_name}
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {activeSubject?.subject_code} • Section {activeSection?.name} • Room: <span className="text-[#00ff88] font-bold">{roomNumber}</span> • {timeSlot}
+            </p>
+          </div>
         </div>
 
         {saveSuccess && (
@@ -214,68 +397,32 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         </div>
       )}
 
-      {/* Assigned Lecture Context Card */}
-      <div className="glass-panel rounded-3xl p-5 border border-emerald-500/20 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
-          <div className="flex-1">
-            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-              Select Your Assigned Lecture
-            </label>
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
-            >
-              {assignedClasses.map(ac => {
-                const sub = subjects.find(s => s.id === ac.subject_id) || ac.subject;
-                const sec = sections.find(s => s.id === ac.section_id) || ac.section;
-                return (
-                  <option key={ac.id} value={ac.id}>
-                    {sub?.subject_name} ({sub?.subject_code}) • Section {sec?.name} • {ac.day_of_week} Period {ac.period_number} ({ac.start_time} - {ac.end_time})
-                  </option>
-                );
-              })}
-            </select>
+      {/* Date and Context Lock */}
+      <div className="glass-panel rounded-3xl p-5 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-emerald-500/20">
+            <span className="text-slate-400 block text-[10px]">Faculty</span>
+            <span className="font-bold text-white">{currentFaculty?.full_name}</span>
           </div>
-
-          <div className="w-full sm:w-48">
-            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-              Session Date
-            </label>
-            <input
-              type="date"
-              value={sessionDate}
-              onChange={(e) => setSessionDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
-            />
+          <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-emerald-500/20">
+            <span className="text-slate-400 block text-[10px]">Target Section</span>
+            <span className="font-bold text-[#00ff88]">Section {activeSection?.name}</span>
+          </div>
+          <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-emerald-500/20">
+            <span className="text-slate-400 block text-[10px]">Room Number</span>
+            <span className="font-bold text-white">{roomNumber}</span>
           </div>
         </div>
 
-        {/* Auto-Derived Context Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
-            <span className="text-[10px] text-slate-400 block font-semibold">Subject & Code</span>
-            <span className="font-bold text-white block mt-0.5 truncate">{selectedSubject?.subject_name}</span>
-            <span className="text-[10px] text-[#00ff88] font-mono">{selectedSubject?.subject_code}</span>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
-            <span className="text-[10px] text-slate-400 block font-semibold">Target Section</span>
-            <span className="font-bold text-white block mt-0.5">Section {selectedSection?.name}</span>
-            <span className="text-[10px] text-slate-400">{selectedSection?.name === 'B' ? 'CSE + IT' : 'CSE'} 2nd Year</span>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
-            <span className="text-[10px] text-slate-400 block font-semibold">Room Number</span>
-            <span className="font-bold text-white block mt-0.5">{roomNumber}</span>
-            <span className="text-[10px] text-slate-400">Classroom</span>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
-            <span className="text-[10px] text-slate-400 block font-semibold">Lecture Period</span>
-            <span className="font-bold text-white block mt-0.5">{timeSlot}</span>
-            <span className="text-[10px] text-[#00ff88] font-semibold">{selectedClass?.lecture_type || 'Theory'}</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-300 whitespace-nowrap">Session Date:</label>
+          <input
+            type="date"
+            max={todayISO}
+            value={sessionDate}
+            onChange={(e) => setSessionDate(e.target.value)}
+            className="px-3.5 py-2 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+          />
         </div>
       </div>
 
@@ -283,7 +430,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-4 rounded-2xl">
         <div className="flex items-center gap-4 text-xs font-bold">
           <span className="text-slate-300">
-            Enrolled in Section {selectedSection?.name}: <strong className="text-white">{sectionStudents.length}</strong>
+            Enrolled in Section {activeSection?.name}: <strong className="text-white">{sectionStudents.length}</strong>
           </span>
           <span className="text-emerald-400">
             Present: <strong className="text-white">{presentCount}</strong>
@@ -374,7 +521,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleSaveAttendance}
         title="Confirm Attendance Submission"
-        message={`Are you sure you want to record attendance for Section ${selectedSection?.name} (${selectedSubject?.subject_name}) on ${sessionDate}? Total Students: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}).`}
+        message={`Are you sure you want to record attendance for Section ${activeSection?.name} (${activeSubject?.subject_name}) on ${sessionDate}? Total Students: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}).`}
         confirmText={isSaving ? 'Submitting...' : 'Confirm & Save to Supabase'}
         variant="neon"
         isLoading={isSaving}
