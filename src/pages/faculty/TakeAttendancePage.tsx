@@ -9,7 +9,9 @@ import {
   XCircle, 
   AlertCircle,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  ShieldAlert,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -27,57 +29,95 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   initialTimetableEntryId, 
   onFinished 
 }) => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { 
     subjects, 
     sections, 
     students, 
     timetable, 
+    faculty,
     saveAttendance 
   } = useAcademic();
 
-  const facultyId = user?.faculty?.id || 'fac-hemlata-02';
+  // 1. Authorize: Only faculty can mark daily attendance
+  const isAuthorized = role === 'faculty' || role === 'hod';
+  const currentFaculty = faculty.find(f => f.id === user?.faculty_id || f.employee_code === user?.faculty?.employee_code) || user?.faculty;
+  const facultyId = currentFaculty?.id || '';
 
-  // State for session parameters
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(sections[0]?.id || '');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
+  // 2. Filter classes assigned STRICTLY to this faculty member
+  const assignedClasses = timetable.filter(t => t.faculty_id === facultyId && t.active);
+
+  // Selected Class from faculty's assigned timetable
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [sessionDate, setSessionDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [timeSlot, setTimeSlot] = useState<string>('09:00 – 09:50');
-  const [roomNumber, setRoomNumber] = useState<string>('Room No. A 007');
 
   // Attendance state: Map of student_id -> 'Present' | 'Absent'
   const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Auto-fill from timetable entry if provided
+  // Initialize selected class
   useEffect(() => {
     if (initialTimetableEntryId) {
-      const entry = timetable.find(t => t.id === initialTimetableEntryId);
-      if (entry) {
-        setSelectedSectionId(entry.section_id);
-        setSelectedSubjectId(entry.subject_id);
-        setTimeSlot(`${entry.start_time?.substring(0, 5) || '09:00'} – ${entry.end_time?.substring(0, 5) || '09:50'}`);
-        setRoomNumber(entry.room_number || 'Room No. A 007');
-      }
-    } else if (sections.length > 0 && !selectedSectionId) {
-      setSelectedSectionId(sections[0].id);
-      setSelectedSubjectId(subjects[0]?.id || '');
+      setSelectedClassId(initialTimetableEntryId);
+    } else if (assignedClasses.length > 0 && !selectedClassId) {
+      setSelectedClassId(assignedClasses[0].id);
     }
-  }, [initialTimetableEntryId, timetable, sections, subjects]);
+  }, [initialTimetableEntryId, assignedClasses]);
 
-  // Filter students for current section
-  const sectionStudents = students.filter(s => s.section_id === selectedSectionId && s.active);
+  // Derive class context strictly from assigned timetable
+  const selectedClass = assignedClasses.find(c => c.id === selectedClassId) || assignedClasses[0];
 
-  // Initialize attendance (default all Present)
+  const selectedSubject = subjects.find(s => s.id === selectedClass?.subject_id) || selectedClass?.subject;
+  const selectedSection = sections.find(s => s.id === selectedClass?.section_id) || selectedClass?.section;
+  const roomNumber = selectedClass?.room_number || selectedSection?.room_number || 'Room TBD';
+  const timeSlot = selectedClass ? `${selectedClass.start_time?.substring(0, 5) || '09:00'} – ${selectedClass.end_time?.substring(0, 5) || '09:50'}` : '09:00 – 09:50';
+
+  // 3. Load students strictly belonging to the class's section
+  const sectionStudents = selectedSection
+    ? students.filter(s => s.section_id === selectedSection.id && s.active)
+    : [];
+
+  // Reset/Initialize attendance (default all Present) when class changes
   useEffect(() => {
     const initialMap: Record<string, AttendanceStatus> = {};
     sectionStudents.forEach(s => {
       initialMap[s.id] = 'Present';
     });
     setAttendanceMap(initialMap);
-  }, [selectedSectionId, students]);
+  }, [selectedClassId, selectedSection?.id, students]);
+
+  // Access Denied for unauthorized roles
+  if (!isAuthorized) {
+    return (
+      <div className="glass-panel rounded-3xl p-8 border border-rose-500/30 text-center space-y-4 max-w-xl mx-auto my-12">
+        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+          <ShieldAlert className="w-6 h-6" />
+        </div>
+        <h2 className="text-lg font-bold text-white">Access Restricted</h2>
+        <p className="text-xs text-slate-300">
+          Live lecture attendance marking is reserved strictly for authenticated teaching faculty. Administrative staff and students cannot take daily attendance.
+        </p>
+      </div>
+    );
+  }
+
+  // No assigned classes state
+  if (assignedClasses.length === 0) {
+    return (
+      <div className="glass-panel rounded-3xl p-8 border border-amber-500/30 text-center space-y-4 max-w-xl mx-auto my-12">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h2 className="text-lg font-bold text-white">No Assigned Classes Found</h2>
+        <p className="text-xs text-slate-300">
+          Your faculty profile (<span className="text-[#00ff88] font-semibold">{currentFaculty?.full_name || user?.full_name}</span>) has no active teaching lectures assigned in the academic timetable.
+        </p>
+      </div>
+    );
+  }
 
   const handleToggleStatus = (studentId: string) => {
     setAttendanceMap(prev => ({
@@ -106,15 +146,22 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const absentCount = sectionStudents.length - presentCount;
 
   const handleSaveAttendance = async () => {
+    if (!selectedClass || !selectedSection || !selectedSubject) {
+      setSaveError('Please select a valid assigned class to take attendance.');
+      return;
+    }
+
     setIsSaving(true);
+    setSaveError(null);
+
     try {
-      const [startTime, endTime] = timeSlot.split(' - ');
+      const [startTime, endTime] = timeSlot.split(' – ');
 
       await saveAttendance({
-        timetableEntryId: initialTimetableEntryId,
+        timetableEntryId: selectedClass.id,
         facultyId,
-        sectionId: selectedSectionId,
-        subjectId: selectedSubjectId,
+        sectionId: selectedSection.id,
+        subjectId: selectedSubject.id,
         sessionDate,
         startTime: startTime || '09:00',
         endTime: endTime || '09:50',
@@ -130,19 +177,17 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         setSaveSuccess(false);
         if (onFinished) onFinished();
       }, 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save attendance', err);
+      setSaveError(err?.message || 'Failed to record attendance in database.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-  const currentSection = sections.find(s => s.id === selectedSectionId);
-
   return (
     <div className="space-y-6">
-      {/* Top Header & Session Selector Matching Screen 7 */}
+      {/* Top Header */}
       <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
@@ -150,7 +195,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             Live Lecture Attendance Marking
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Official real-time attendance ledger synchronized with Supabase cloud database
+            Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
           </p>
         </div>
 
@@ -162,156 +207,157 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         )}
       </div>
 
-      {/* Session Controls Grid (Subject, Section, Room, Date, Time) */}
-      <div className="glass-card rounded-2xl p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Subject</label>
-          <select
-            value={selectedSubjectId}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-          >
-            {subjects.map(s => (
-              <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
-            ))}
-          </select>
+      {saveError && (
+        <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      {/* Assigned Lecture Context Card */}
+      <div className="glass-panel rounded-3xl p-5 border border-emerald-500/20 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
+          <div className="flex-1">
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Select Your Assigned Lecture
+            </label>
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+            >
+              {assignedClasses.map(ac => {
+                const sub = subjects.find(s => s.id === ac.subject_id) || ac.subject;
+                const sec = sections.find(s => s.id === ac.section_id) || ac.section;
+                return (
+                  <option key={ac.id} value={ac.id}>
+                    {sub?.subject_name} ({sub?.subject_code}) • Section {sec?.name} • {ac.day_of_week} Period {ac.period_number} ({ac.start_time} - {ac.end_time})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div className="w-full sm:w-48">
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Session Date
+            </label>
+            <input
+              type="date"
+              value={sessionDate}
+              onChange={(e) => setSessionDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Section</label>
-          <select
-            value={selectedSectionId}
-            onChange={(e) => setSelectedSectionId(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-          >
-            {sections.map(sec => (
-              <option key={sec.id} value={sec.id}>Section {sec.name}</option>
-            ))}
-          </select>
-        </div>
+        {/* Auto-Derived Context Chips */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
+            <span className="text-[10px] text-slate-400 block font-semibold">Subject & Code</span>
+            <span className="font-bold text-white block mt-0.5 truncate">{selectedSubject?.subject_name}</span>
+            <span className="text-[10px] text-[#00ff88] font-mono">{selectedSubject?.subject_code}</span>
+          </div>
 
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Room</label>
-          <input
-            type="text"
-            value={roomNumber}
-            onChange={(e) => setRoomNumber(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-          />
-        </div>
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
+            <span className="text-[10px] text-slate-400 block font-semibold">Target Section</span>
+            <span className="font-bold text-white block mt-0.5">Section {selectedSection?.name}</span>
+            <span className="text-[10px] text-slate-400">{selectedSection?.name === 'B' ? 'CSE + IT' : 'CSE'} 2nd Year</span>
+          </div>
 
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Date</label>
-          <input
-            type="date"
-            value={sessionDate}
-            onChange={(e) => setSessionDate(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-          />
-        </div>
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
+            <span className="text-[10px] text-slate-400 block font-semibold">Room Number</span>
+            <span className="font-bold text-white block mt-0.5">{roomNumber}</span>
+            <span className="text-[10px] text-slate-400">Classroom</span>
+          </div>
 
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Lecture Time</label>
-          <select
-            value={timeSlot}
-            onChange={(e) => setTimeSlot(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-          >
-            <option value="09:00 – 09:50">09:00 – 09:50 (Period I)</option>
-            <option value="09:50 – 10:40">09:50 – 10:40 (Period II)</option>
-            <option value="10:40 – 11:30">10:40 – 11:30 (Period III)</option>
-            <option value="11:30 – 12:20">11:30 – 12:20 (Period IV)</option>
-            <option value="01:10 – 02:00">01:10 – 02:00 (Period VI)</option>
-            <option value="02:00 – 02:50">02:00 – 02:50 (Period VII)</option>
-            <option value="02:50 – 03:40">02:50 – 03:40 (Period VIII)</option>
-          </select>
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
+            <span className="text-[10px] text-slate-400 block font-semibold">Lecture Period</span>
+            <span className="font-bold text-white block mt-0.5">{timeSlot}</span>
+            <span className="text-[10px] text-[#00ff88] font-semibold">{selectedClass?.lecture_type || 'Theory'}</span>
+          </div>
         </div>
       </div>
 
-      {/* Quick Action Toolbar Matching Screen 7 */}
-      <div className="glass-panel rounded-2xl p-4 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-4">
+      {/* Attendance Stats & Quick Actions Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-4 rounded-2xl">
+        <div className="flex items-center gap-4 text-xs font-bold">
+          <span className="text-slate-300">
+            Enrolled in Section {selectedSection?.name}: <strong className="text-white">{sectionStudents.length}</strong>
+          </span>
+          <span className="text-emerald-400">
+            Present: <strong className="text-white">{presentCount}</strong>
+          </span>
+          <span className="text-rose-400">
+            Absent: <strong className="text-white">{absentCount}</strong>
+          </span>
+        </div>
+
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAllPresent}
-            leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" />}
-          >
+          <Button size="sm" variant="outline" onClick={handleMarkAllPresent}>
             Mark All Present
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleClearAll}
-            leftIcon={<XCircle className="w-3.5 h-3.5 text-rose-400" />}
-          >
-            Clear All
+          <Button size="sm" variant="outline" onClick={handleClearAll}>
+            Clear (All Absent)
           </Button>
-        </div>
-
-        {/* Live Counters */}
-        <div className="flex items-center gap-3 text-xs font-bold">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Present: {presentCount}</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
-            <XCircle className="w-3.5 h-3.5" />
-            <span>Absent: {absentCount}</span>
-          </div>
-          <div className="text-slate-400 font-medium">
-            Total: {sectionStudents.length} Students
-          </div>
+          <Button 
+            size="sm" 
+            variant="neon" 
+            leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+            onClick={() => setIsConfirmOpen(true)}
+            disabled={sectionStudents.length === 0 || isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Attendance'}
+          </Button>
         </div>
       </div>
 
-      {/* Student Roster Table & Touch Toggles Matching Screen 7 */}
-      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+      {/* Student List Table */}
+      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+            <thead className="bg-slate-950/90 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
               <tr>
-                <th className="px-6 py-4">Roll Number</th>
-                <th className="px-6 py-4">Student Full Name</th>
-                <th className="px-6 py-4 text-center">Status Toggle</th>
+                <th className="px-5 py-3.5 w-16">#</th>
+                <th className="px-5 py-3.5">Roll Number</th>
+                <th className="px-5 py-3.5">Student Name</th>
+                <th className="px-5 py-3.5">Admission Type</th>
+                <th className="px-5 py-3.5 text-center">Status Toggle</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-emerald-500/10">
-              {sectionStudents.map((s) => {
-                const isPresent = attendanceMap[s.id] === 'Present';
+            <tbody className="divide-y divide-emerald-500/10 font-medium">
+              {sectionStudents.map((stud, idx) => {
+                const status = attendanceMap[stud.id] || 'Present';
+                const isPresent = status === 'Present';
+
                 return (
-                  <tr key={s.id} className="hover:bg-emerald-500/5 transition-colors">
-                    <td className="px-6 py-3.5 font-mono font-bold text-emerald-400 text-sm">
-                      {s.roll_number}
-                    </td>
-                    <td className="px-6 py-3.5 font-bold text-white text-sm">
-                      {s.full_name}
-                    </td>
-                    <td className="px-6 py-3.5 text-center">
-                      {/* Mobile & Desktop Touch Toggle Switch */}
+                  <tr 
+                    key={stud.id}
+                    onClick={() => handleToggleStatus(stud.id)}
+                    className={clsx(
+                      'cursor-pointer transition-colors',
+                      isPresent ? 'hover:bg-emerald-500/5' : 'bg-rose-500/5 hover:bg-rose-500/10'
+                    )}
+                  >
+                    <td className="px-5 py-3.5 font-mono text-slate-500 text-[11px]">{idx + 1}</td>
+                    <td className="px-5 py-3.5 font-mono font-bold text-white">{stud.roll_number}</td>
+                    <td className="px-5 py-3.5 font-bold text-white">{stud.full_name}</td>
+                    <td className="px-5 py-3.5 text-slate-400">{stud.admission_type}</td>
+                    <td className="px-5 py-3.5 text-center">
                       <button
                         type="button"
-                        onClick={() => handleToggleStatus(s.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(stud.id);
+                        }}
                         className={clsx(
-                          'inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-extrabold text-xs transition-all cursor-pointer select-none border',
+                          'px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm',
                           isPresent
-                            ? 'bg-emerald-500/20 text-[#00ff88] border-emerald-500/40 shadow-[0_0_12px_rgba(0,255,136,0.25)]'
-                            : 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                            ? 'bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40 hover:bg-emerald-500/30'
+                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30'
                         )}
                       >
-                        {isPresent ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>Present</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-4 h-4" />
-                            <span>Absent</span>
-                          </>
-                        )}
+                        {isPresent ? '● PRESENT' : '○ ABSENT'}
                       </button>
                     </td>
                   </tr>
@@ -322,48 +368,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         </div>
       </div>
 
-      {/* Bottom Sticky Save Bar Matching Screen 7 */}
-      <div className="sticky bottom-4 z-20 glass-panel rounded-2xl p-4 border border-emerald-500/30 flex items-center justify-between gap-4 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
-        <div>
-          <span className="text-xs text-slate-400 font-medium">Ready to record: </span>
-          <span className="text-xs font-bold text-white">
-            {presentCount} Present, {absentCount} Absent for Section {currentSection?.name}
-          </span>
-        </div>
-
-        <Button
-          type="button"
-          variant="neon"
-          size="lg"
-          onClick={() => setIsConfirmOpen(true)}
-          leftIcon={<Save className="w-4 h-4 text-slate-950" />}
-          className="shadow-[0_0_20px_rgba(0,255,136,0.4)]"
-        >
-          Save Attendance
-        </Button>
-      </div>
-
       {/* Confirmation Dialog */}
       <ConfirmDialog
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleSaveAttendance}
-        isLoading={isSaving}
         title="Confirm Attendance Submission"
-        confirmText="Save to Cloud Database"
-        message={
-          <div className="space-y-2">
-            <p>
-              Are you sure you want to commit this attendance record for{' '}
-              <strong className="text-white">{currentSubject?.subject_name}</strong> (Section{' '}
-              {currentSection?.name}) on <strong className="text-emerald-400">{sessionDate}</strong>?
-            </p>
-            <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-xs font-semibold text-slate-300">
-              Present: <span className="text-[#00ff88]">{presentCount}</span> • Absent:{' '}
-              <span className="text-rose-400">{absentCount}</span>
-            </div>
-          </div>
-        }
+        message={`Are you sure you want to record attendance for Section ${selectedSection?.name} (${selectedSubject?.subject_name}) on ${sessionDate}? Total Students: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}).`}
+        confirmText={isSaving ? 'Submitting...' : 'Confirm & Save to Supabase'}
+        variant="neon"
+        isLoading={isSaving}
       />
     </div>
   );

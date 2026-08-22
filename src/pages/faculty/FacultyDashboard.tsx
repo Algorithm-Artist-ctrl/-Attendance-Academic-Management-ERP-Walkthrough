@@ -28,7 +28,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     subjects, 
     sections, 
     corrections, 
-    departments 
+    departments,
+    getFacultyCorrectionRequests
   } = useAcademic();
 
   const faculty = user?.faculty;
@@ -47,8 +48,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   const mySubjects = subjects.filter(s => myAssignments.some(fa => fa.subject_id === s.id));
   const mySections = sections.filter(sec => myAssignments.some(fa => fa.section_id === sec.id));
 
-  // Pending correction requests assigned to this faculty
-  const myPendingCorrections = corrections.filter(c => c.status === 'pending');
+  // Pending correction requests assigned strictly to this faculty
+  const myPendingCorrections = getFacultyCorrectionRequests(facultyId).filter(c => c.status === 'pending');
   const dept = departments.find(d => d.id === faculty?.department_id) || departments[0];
 
   return (

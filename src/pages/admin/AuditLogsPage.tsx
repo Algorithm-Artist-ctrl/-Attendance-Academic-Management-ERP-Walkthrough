@@ -67,7 +67,7 @@ export const AuditLogsPage: React.FC = () => {
                     })}
                   </td>
                   <td className="px-5 py-3.5 font-bold text-white">
-                    {log.actor_name || 'System / Admin'}
+                    {log.actor_name || (log.actor_role === 'faculty' ? 'Faculty Member' : log.actor_role === 'student' ? 'Student' : log.actor_role === 'hod' ? 'HOD' : 'Central Admin')}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 border border-emerald-500/20 text-emerald-400 uppercase">

@@ -108,14 +108,14 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'faculty', label: 'Faculty', icon: Users },
           { id: 'departments', label: 'Departments', icon: Building2 },
           { id: 'academic_setup', label: 'Academic Structure', icon: Layers },
-          { id: 'subjects', label: 'Subjects', icon: BookOpen },
-          { id: 'timetable', label: 'Timetable', icon: Calendar },
-          { id: 'take_attendance', label: 'Take Attendance', icon: CheckSquare },
+          { id: 'subjects', label: 'Subject Master', icon: BookOpen },
+          { id: 'assignments', label: 'Faculty Assignments', icon: CheckSquare },
+          { id: 'timetable', label: 'Timetable Master', icon: Calendar },
           { id: 'csv_import', label: 'CSV Import', icon: FileSpreadsheet },
           { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
           { 
             id: 'corrections', 
-            label: 'Correction Requests', 
+            label: 'Correction Oversight', 
             icon: RotateCcw, 
             badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
           },

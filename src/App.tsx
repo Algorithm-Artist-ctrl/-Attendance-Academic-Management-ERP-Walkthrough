@@ -170,8 +170,6 @@ export const AppContent: React.FC = () => {
         return <FacultyAssignmentsPage />;
       case 'csv_import':
         return <CSVImportPage />;
-      case 'take_attendance':
-        return <TakeAttendancePage onFinished={() => setActiveTab('dashboard')} />;
       case 'reports':
         return <ReportsPage />;
       case 'corrections':
