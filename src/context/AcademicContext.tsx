@@ -676,8 +676,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // All registered attendance records for this student
     const studentRecords = attendanceRecords.filter(r => r.student_id === studentId);
 
-    // Target subjects
-    const targetSubjects = subjects.filter(s => s.active);
+    // Target subjects for THIS student's section or assignments
+    const sectionSubjectIds = new Set([
+      ...assignments.filter(a => a.section_id === studSectionId && a.active !== false).map(a => a.subject_id),
+      ...timetable.filter(t => t.section_id === studSectionId && t.active).map(t => t.subject_id)
+    ]);
+
+    const targetSubjects = subjects.filter(s => s.active && (sectionSubjectIds.size === 0 || sectionSubjectIds.has(s.id)));
 
     const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
       // Find the specific assignment for THIS student's section
@@ -685,7 +690,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         a => a.subject_id === sub.id && a.section_id === studSectionId
       ) || assignments.find(a => a.subject_id === sub.id);
 
-      const assignedFac = faculty.find(f => f.id === assignment?.faculty_id);
+      const assignedFac = faculty.find(f => f.id === assignment?.faculty_id) ||
+                          faculty.find(f => timetable.some(t => t.subject_id === sub.id && t.section_id === studSectionId && t.faculty_id === f.id));
 
       // Sessions conducted for this subject and this student's section
       const subSessions = attendanceSessions.filter(
@@ -695,7 +701,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Student's individual records for this subject
       const subRecords = studentRecords.filter(r => {
         const sess = attendanceSessions.find(s => s.id === r.attendance_session_id);
-        return sess && sess.subject_id === sub.id;
+        return sess && sess.subject_id === sub.id && (studSectionId ? sess.section_id === studSectionId : true);
       });
 
       const totalConducted = subSessions.length;

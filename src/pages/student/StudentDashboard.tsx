@@ -34,6 +34,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     sections, 
     years, 
     semesters, 
+    sessions,
     programs,
     corrections,
     students
@@ -51,6 +52,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
 
   const year = years.find(y => y.id === currentStudent?.academic_year_id);
   const prog = programs.find(p => p.id === currentStudent?.program_id);
+  const sem = semesters.find(s => s.id === currentStudent?.semester_id);
+  const session = sessions.find(s => s.id === currentStudent?.academic_session_id) || sessions[0];
+  const sessionName = session?.name || 'Academic Session';
+  const semTitle = sem?.name ? `${sem.name} Attendance Ratio` : 'Semester Attendance Ratio';
 
   // Today's Date in Asia/Kolkata (IST)
   const todayDateStr = getISTTodayDate();
@@ -284,10 +289,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Overall Attendance</p>
             <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {stats.percentage}%
+              {stats.totalLectures > 0 ? `${stats.percentage}%` : 'No Class Yet'}
             </h3>
             <span className="text-[10px] text-emerald-400 font-medium">
-              {stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
+              {stats.totalLectures === 0 ? 'No attendance recorded' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
@@ -302,7 +307,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
               {stats.totalLectures}
             </h3>
-            <span className="text-[10px] text-slate-400 font-medium">Odd Semester 2026–27</span>
+            <span className="text-[10px] text-slate-400 font-medium">{sessionName}</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
             <BookOpen className="w-6 h-6" />
@@ -345,16 +350,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         <div className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-white tracking-wide">
-              Semester 3 Attendance Ratio
+              {semTitle}
             </h3>
-            <span className="text-xs font-semibold text-emerald-400">Odd Sem 2026–27</span>
+            <span className="text-xs font-semibold text-emerald-400">{sessionName}</span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-4">
             <CyberGauge3D
-              percentage={stats.percentage}
+              percentage={stats.totalLectures > 0 ? stats.percentage : 0}
               size={150}
-              label="Overall"
+              label={stats.totalLectures > 0 ? "Overall" : "No Data"}
               subLabel="Attendance"
             />
 
@@ -404,7 +409,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               <h3 className="text-sm font-bold text-white tracking-wide">
                 Subject Wise Performance
               </h3>
-              <p className="text-xs text-slate-400">Assigned Faculty & Eligibility • Section {section?.name}</p>
+              <p className="text-xs text-slate-400">Assigned Faculty & Eligibility{section?.name ? ` • Section ${section.name}` : ''}</p>
             </div>
             <button
               onClick={() => onNavigate('attendance')}
@@ -443,7 +448,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
 
           <div className="pt-3 border-t border-emerald-500/10 text-xs text-slate-400 flex items-center justify-between">
             <span>Minimum AKTU Requirement: <strong>75%</strong></span>
-            <span className="text-[#00ff88] font-semibold">Odd Session 2026–2027</span>
+            <span className="text-[#00ff88] font-semibold">{sessionName}</span>
           </div>
         </div>
 

@@ -86,14 +86,14 @@ export const HODDashboard: React.FC = () => {
     ]);
 
     exportAttendanceReportPDF({
-      title: 'DEPARTMENT OF CSE — ATTENDANCE DEFAULTER REPORT (<75%)',
+      title: `DEPARTMENT OF ${dept?.code || 'ACADEMIC'} — ATTENDANCE DEFAULTER REPORT (<75%)`,
       subtitle: 'Official Academic Audit Report — VCTM Aligarh',
-      department: 'Computer Science & Engineering',
-      section: selectedSectionFilter === 'ALL' ? 'Sections A & B' : `Section ${selectedSectionFilter}`,
-      academicYear: 'B.Tech 2nd Year (2026-2027)',
+      department: dept?.name || 'Academic Department',
+      section: selectedSectionFilter === 'ALL' ? 'All Sections' : `Section ${selectedSectionFilter}`,
+      academicYear: 'Academic Session 2026-2027',
       tableHeaders: headers,
       tableRows: rows,
-      filename: `VCTM_CSE_Defaulters_${getISTTodayDate()}`,
+      filename: `VCTM_${dept?.code || 'Dept'}_Defaulters_${getISTTodayDate()}`,
     });
   };
 
