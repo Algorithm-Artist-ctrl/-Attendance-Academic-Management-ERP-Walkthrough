@@ -7,6 +7,7 @@ import { AppShell } from './components/layout/AppShell';
 import { ProfilePage } from './pages/common/ProfilePage';
 import { NoticesPage } from './pages/common/NoticesPage';
 import { SettingsPage } from './pages/common/SettingsPage';
+import vctmOfficialLogo from './assets/vctm-logo.png';
 
 // Student Pages
 import { StudentDashboard } from './pages/student/StudentDashboard';
@@ -47,7 +48,7 @@ export const AppContent: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-3">
         <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-emerald-500/30 p-2 animate-bounce shadow-xl flex items-center justify-center">
-          <img src="/vctm-logo.png" alt="VCTM" className="w-full h-full object-contain" />
+          <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
         </div>
         <p className="text-xs font-bold tracking-wider text-[#00ff88]">
           Connecting to VCTM ERP Cloud...

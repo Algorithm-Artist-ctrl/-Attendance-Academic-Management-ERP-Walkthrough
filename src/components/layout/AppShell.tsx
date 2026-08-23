@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import vctmOfficialLogo from '../../assets/vctm-logo.png';
 import { clsx } from 'clsx';
 
 interface AppShellProps {
@@ -136,7 +137,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         {/* VCTM Brand Logo */}
         <div className="p-5 border-b border-emerald-500/15 flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-slate-950/80 border border-emerald-500/30 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
-            <img src="/vctm-logo.png" alt="VCTM Official Logo" className="w-full h-full object-contain" />
+            <img src={vctmOfficialLogo} alt="VCTM Official Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
@@ -212,7 +213,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             </button>
             
             <div className="md:hidden flex items-center gap-2">
-              <img src="/vctm-logo.png" alt="VCTM" className="w-7 h-7 object-contain" />
+              <img src={vctmOfficialLogo} alt="VCTM" className="w-7 h-7 object-contain" />
               <span className="font-extrabold text-sm text-white">VCTM <span className="text-[#00ff88]">ERP</span></span>
             </div>
           </div>
