@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { 
   Download, 
   Filter, 
+  Calendar,
   Calendar as CalendarIcon, 
   Table as TableIcon,
   CheckCircle2, 
@@ -545,8 +546,18 @@ export const StudentAttendancePage: React.FC = () => {
             </div>
 
             {historyData.lectures.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500">
-                No lectures scheduled on this date for Section {currentSection?.name}.
+              <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
+                <Calendar className="w-8 h-8 text-emerald-500/40 mx-auto mb-2" />
+                <p className="font-bold text-white text-sm">
+                  {new Date(selectedHistoryDate).getDay() === 0 
+                    ? 'Sunday — No Academic Classes Scheduled (Weekend / Holiday)' 
+                    : `No lectures scheduled on this date for Section ${currentSection?.name}.`}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {new Date(selectedHistoryDate).getDay() === 0 
+                    ? 'College academic sessions operate Monday through Saturday.' 
+                    : 'No timetable slots exist for this date in your section.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">

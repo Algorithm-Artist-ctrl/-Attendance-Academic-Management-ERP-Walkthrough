@@ -45,12 +45,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
-  const todayDay = days[new Date().getDay()] === 'SUN' ? 'MON' : days[new Date().getDay()];
+  const todayDay = days[new Date().getDay()];
 
   // Today's classes for this faculty strictly from Supabase timetable
-  const todaySchedule = timetable
-    .filter(t => t.faculty_id === facultyId && t.day_of_week === todayDay)
-    .sort((a, b) => a.period_number - b.period_number);
+  const todaySchedule = todayDay === 'SUN' 
+    ? [] 
+    : timetable
+        .filter(t => t.faculty_id === facultyId && t.day_of_week === todayDay)
+        .sort((a, b) => a.period_number - b.period_number);
 
   // Assigned subjects and sections strictly from faculty_subject_assignments
   const myAssignments = assignments.filter(fa => fa.faculty_id === facultyId);
@@ -167,8 +169,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
           <div className="space-y-3">
             {todaySchedule.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500">
-                No scheduled lectures for today in your timetable.
+              <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
+                <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
+                <p className="font-bold text-white text-sm">
+                  {todayDay === 'SUN' ? 'Today is Sunday (Weekend / Holiday)' : 'No scheduled lectures for today in your timetable'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {todayDay === 'SUN' ? 'College academic classes are not held on Sundays.' : 'Check your full timetable schedule for weekly lecture distribution.'}
+                </p>
               </div>
             ) : (
               todaySchedule.map((entry) => {

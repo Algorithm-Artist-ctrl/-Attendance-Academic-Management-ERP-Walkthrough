@@ -15,19 +15,20 @@ export function getISTTodayDate(): string {
   return `${year}-${month}-${day}`;
 }
 
-// Get day of week code ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT') in IST
+// Get day of week code ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN') in IST
 export function getISTDayOfWeek(dateStr?: string): DayOfWeek {
   const date = dateStr ? new Date(dateStr) : new Date();
   const dayIndex = date.getDay(); // 0 is Sunday, 1 is Monday, ... 6 is Saturday
   
   switch (dayIndex) {
+    case 0: return 'SUN';
     case 1: return 'MON';
     case 2: return 'TUE';
     case 3: return 'WED';
     case 4: return 'THU';
     case 5: return 'FRI';
     case 6: return 'SAT';
-    default: return 'MON'; // Sunday defaults to Monday schedule view
+    default: return 'SUN';
   }
 }
 

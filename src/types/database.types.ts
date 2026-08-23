@@ -8,7 +8,7 @@ export type AttendanceStatus = 'Present' | 'Absent';
 
 export type CorrectionStatus = 'pending' | 'approved' | 'rejected';
 
-export type DayOfWeek = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
+export type DayOfWeek = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
 
 export interface Institution {
   id: string;

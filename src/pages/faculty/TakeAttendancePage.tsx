@@ -61,7 +61,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const assignedClasses = timetable.filter(t => t.faculty_id === facultyId && t.active);
 
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
-  const todayDay = days[new Date().getDay()] === 'SUN' ? 'MON' : days[new Date().getDay()];
+  const todayDay = days[new Date().getDay()];
   const [selectedDayFilter, setSelectedDayFilter] = useState<string>(todayDay);
 
   // Selected Class ID for active attendance marking session
@@ -249,12 +249,12 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
           {/* Day Selector Tabs */}
           <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20">
-            {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map(d => (
+            {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const).map(d => (
               <button
                 key={d}
                 onClick={() => setSelectedDayFilter(d)}
                 className={clsx(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all',
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
                   selectedDayFilter === d
                     ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
                     : 'text-slate-400 hover:text-white'
@@ -270,8 +270,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         {dayClasses.length === 0 ? (
           <div className="glass-panel rounded-3xl p-12 border border-emerald-500/20 text-center space-y-3">
             <Calendar className="w-8 h-8 text-slate-500 mx-auto" />
-            <p className="text-xs text-slate-400">
-              No teaching lectures scheduled for <strong className="text-white">{selectedDayFilter}</strong> in your timetable.
+            <p className="font-bold text-white text-sm">
+              {selectedDayFilter === 'SUN' ? 'Today is Sunday (Weekend / Holiday)' : `No teaching lectures scheduled for ${selectedDayFilter}`}
+            </p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              {selectedDayFilter === 'SUN' 
+                ? 'College academic lectures are not held on Sundays. Classes resume on Monday. You can select Monday–Saturday tabs to review weekly assignments.'
+                : `No active teaching periods are assigned to you on ${selectedDayFilter} in the published timetable.`}
             </p>
           </div>
         ) : (

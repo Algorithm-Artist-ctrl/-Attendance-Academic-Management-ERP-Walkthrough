@@ -52,8 +52,8 @@ export const ProfilePage: React.FC = () => {
 
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
-  const [phone, setPhone] = useState(student?.phone || currentFaculty?.phone || '+91 98765 43210');
-  const [email, setEmail] = useState(user?.email || (student ? `${student.roll_number}@student.vctm.in` : 'faculty@vctm.in'));
+  const [phone, setPhone] = useState(student?.phone || currentFaculty?.phone || user?.phone || '');
+  const [email, setEmail] = useState(user?.email || (student ? `${student.roll_number}@student.vctm.in` : ''));
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
@@ -101,7 +101,7 @@ export const ProfilePage: React.FC = () => {
 
           <div>
             <h2 className="text-lg font-black text-white tracking-tight">
-              {user?.full_name || 'Tarun Kushwah'}
+              {user?.full_name || 'User Profile'}
             </h2>
             <p className="text-xs font-bold text-emerald-400 font-mono mt-0.5">
               {student ? `Roll: ${student.roll_number}` : currentFaculty ? `Code: ${currentFaculty.faculty_code || currentFaculty.employee_code}` : 'ADMINISTRATOR'}

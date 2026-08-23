@@ -166,8 +166,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
 
         {/* Lectures List for Today */}
         {todayLectures.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500">
-            No scheduled lectures found for today in the academic timetable.
+          <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
+            <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
+            <p className="font-bold text-white text-sm">
+              {new Date().getDay() === 0 ? 'Today is Sunday (Weekend / Holiday)' : 'No scheduled lectures found for today'}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {new Date().getDay() === 0 
+                ? 'Academic lectures are not held on Sundays. Classes resume on Monday.' 
+                : 'Check your semester timetable for weekly class timings.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -35,13 +35,14 @@ export const TimetableManagerPage: React.FC = () => {
   const [detectedConflict, setDetectedConflict] = useState<TimetableConflict | null>(null);
 
   const days: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  const dayLabels = {
+  const dayLabels: Record<DayOfWeek, string> = {
     MON: 'Monday',
     TUE: 'Tuesday',
     WED: 'Wednesday',
     THU: 'Thursday',
     FRI: 'Friday',
     SAT: 'Saturday',
+    SUN: 'Sunday',
   };
 
   const periods = [1, 2, 3, 4, 6, 7, 8];

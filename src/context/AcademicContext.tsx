@@ -728,7 +728,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return {
       studentId,
-      rollNumber: student?.roll_number || '2503400100057',
+      rollNumber: student?.roll_number || '—',
       fullName: student?.full_name || 'Student',
       sectionName: studSection?.name || 'A',
       totalLectures,
@@ -752,11 +752,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const targetDateStr = customDateStr || defaultDateStr;
 
     const targetDateObj = new Date(targetDateStr);
-    const dayOfWeek: DayOfWeek = days[targetDateObj.getDay()] === ('SUN' as any) ? 'MON' : days[targetDateObj.getDay()];
+    const dayOfWeek: DayOfWeek = days[targetDateObj.getDay()];
 
-    const sectionEntries = timetable
-      .filter(t => t.section_id === student.section_id && t.day_of_week === dayOfWeek && t.active)
-      .sort((a, b) => a.period_number - b.period_number);
+    const sectionEntries = dayOfWeek === 'SUN' 
+      ? [] 
+      : timetable
+          .filter(t => t.section_id === student.section_id && t.day_of_week === dayOfWeek && t.active)
+          .sort((a, b) => a.period_number - b.period_number);
 
     return sectionEntries.map(entry => {
       const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
@@ -826,9 +828,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 9. Get Date-wise Historical Lectures for Student
   const getDateLecturesForStudent = (studentId: string, dateStr: string): DateWiseAttendanceSummary => {
-    const days: DayOfWeek[] = ['SUN' as any, 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const days: DayOfWeek[] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const dateObj = new Date(dateStr);
-    const dayOfWeek: DayOfWeek = days[dateObj.getDay()] === ('SUN' as any) ? 'MON' : days[dateObj.getDay()];
+    const dayOfWeek: DayOfWeek = days[dateObj.getDay()];
 
     const lectures = getTodayLecturesForStudent(studentId, dateStr);
     const presentCount = lectures.filter(l => l.status === 'Present').length;
