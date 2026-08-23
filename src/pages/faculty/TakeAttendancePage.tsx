@@ -46,8 +46,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
   // 1. Authorize: Only teaching faculty or HOD
   const isAuthorized = role === 'faculty' || role === 'hod';
-  const currentFaculty = faculty.find(f => f.id === user?.faculty_id || f.id === user?.faculty?.id || f.employee_code === user?.faculty?.employee_code) || user?.faculty;
-  const facultyId = currentFaculty?.id || '';
+  const currentFaculty = faculty.find(
+    f => f.id === user?.faculty_id || 
+         f.id === user?.faculty?.id || 
+         f.id === user?.id ||
+         (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+         (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+         (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+  ) || user?.faculty;
+  
+  const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
   // 2. Filter classes assigned STRICTLY to this faculty member
   const assignedClasses = timetable.filter(t => t.faculty_id === facultyId && t.active);

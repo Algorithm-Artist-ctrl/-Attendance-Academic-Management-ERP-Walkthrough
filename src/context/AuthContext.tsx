@@ -60,6 +60,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        // Ensure faculty profile is deeply hydrated
+        if (latestProfile.role === 'faculty' || latestProfile.role === 'hod' || latestProfile.faculty || savedUser.faculty) {
+          const targetFacId = latestProfile.faculty_id || latestProfile.faculty?.id || savedUser.faculty_id || savedUser.faculty?.id || savedUser.id;
+          const targetCode = latestProfile.faculty?.employee_code || savedUser.faculty?.employee_code || latestProfile.faculty?.faculty_code || savedUser.faculty?.faculty_code;
+          const targetName = latestProfile.full_name || savedUser.full_name;
+          const targetEmail = latestProfile.email || savedUser.email;
+
+          const freshFaculty = faculty.find(
+            f => f.id === targetFacId ||
+                 (targetCode && (f.employee_code === targetCode || f.faculty_code === targetCode)) ||
+                 (targetName && f.full_name.toLowerCase().trim() === targetName.toLowerCase().trim()) ||
+                 (targetEmail && f.email.toLowerCase().trim() === targetEmail.toLowerCase().trim())
+          );
+
+          if (freshFaculty) {
+            latestProfile = {
+              ...latestProfile,
+              faculty_id: freshFaculty.id,
+              faculty: freshFaculty,
+            };
+          }
+        }
+
         setAuthState({
           user: latestProfile,
           role: latestProfile.role,
@@ -130,6 +153,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             section: studSec,
             section_id: studSec?.id || matchedStudent.section_id,
           },
+        };
+      }
+    }
+
+    // Also search direct faculty list if profile mapping wasn't found directly
+    if (!matchedProfile) {
+      const matchedFaculty = faculty.find(f => {
+        if (f.employee_code.toLowerCase().replace(/[\s\-_]/g, '') === cleanId) return true;
+        if (f.faculty_code && f.faculty_code.toLowerCase() === cleanId) return true;
+        if (f.email.toLowerCase() === trimmedId) return true;
+        if (f.full_name.toLowerCase() === trimmedId || f.full_name.toLowerCase().includes(trimmedId)) return true;
+        return false;
+      });
+
+      if (matchedFaculty) {
+        const isHod = matchedFaculty.designation.toLowerCase().includes('hod') || matchedFaculty.faculty_code === 'WSM';
+        matchedProfile = {
+          id: `user-${matchedFaculty.id}`,
+          email: matchedFaculty.email,
+          role: isHod ? 'hod' : 'faculty',
+          full_name: matchedFaculty.full_name,
+          department_id: matchedFaculty.department_id,
+          faculty_id: matchedFaculty.id,
+          phone: matchedFaculty.phone,
+          faculty: matchedFaculty,
         };
       }
     }

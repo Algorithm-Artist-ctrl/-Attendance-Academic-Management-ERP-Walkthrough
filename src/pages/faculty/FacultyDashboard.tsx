@@ -29,11 +29,20 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     sections, 
     corrections, 
     departments,
+    faculty: facultyList,
     getFacultyCorrectionRequests
   } = useAcademic();
 
-  const faculty = user?.faculty;
-  const facultyId = faculty?.id || '';
+  const currentFaculty = facultyList.find(
+    f => f.id === user?.faculty_id || 
+         f.id === user?.faculty?.id || 
+         f.id === user?.id ||
+         (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+         (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+         (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+  ) || user?.faculty;
+
+  const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
   const todayDay = days[new Date().getDay()] === 'SUN' ? 'MON' : days[new Date().getDay()];
@@ -50,7 +59,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
   // Pending correction requests assigned strictly to this faculty
   const myPendingCorrections = getFacultyCorrectionRequests(facultyId).filter(c => c.status === 'pending');
-  const dept = departments.find(d => d.id === faculty?.department_id) || departments[0];
+  const dept = departments.find(d => d.id === currentFaculty?.department_id) || departments[0];
 
   return (
     <div className="space-y-6">
@@ -58,10 +67,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 z-10">
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Welcome back, {faculty?.full_name || 'Faculty Member'} 👋
+            Welcome back, {currentFaculty?.full_name || user?.full_name || 'Faculty Member'} 👋
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            {faculty?.designation || 'Assistant Professor'} • {dept?.name || 'Computer Science & Engineering'} • Code: <span className="text-[#00ff88] font-bold">{faculty?.faculty_code || faculty?.employee_code || 'FACULTY'}</span>
+            {currentFaculty?.designation || 'Assistant Professor'} • {dept?.name || 'Computer Science & Engineering'} • Code: <span className="text-[#00ff88] font-bold">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
           </p>
         </div>
 
