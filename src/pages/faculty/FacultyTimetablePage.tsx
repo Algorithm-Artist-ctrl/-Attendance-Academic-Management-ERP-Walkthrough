@@ -94,7 +94,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
             Official Faculty Teaching Schedule
           </h1>
           <p className="text-xs text-slate-300 mt-1 font-medium">
-            Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • {dept?.name || 'Computer Science & Engineering'}
+            Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • {dept?.name || 'Academic Department'}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
             <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-emerald-500/25 text-[#00ff88] font-bold">

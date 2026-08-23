@@ -58,7 +58,7 @@ export const StudentTimetablePage: React.FC = () => {
             Official Academic Timetable
           </h1>
           <p className="text-xs text-slate-300 mt-1 font-medium">
-            B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> 2nd Year • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'Assigned'}</span> • {currentSection?.room_number || 'Room TBD'} • Class Incharge: <span className="text-white font-semibold">{classIncharge}</span>
+            {program?.name || 'Academic Program'}{year?.name ? ` • ${year.name}` : ''} • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'Assigned'}</span> • {currentSection?.room_number || 'Room TBD'} • Class Coordinator: <span className="text-white font-semibold">{classIncharge}</span>
           </p>
         </div>
 
