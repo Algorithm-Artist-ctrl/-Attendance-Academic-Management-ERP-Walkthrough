@@ -27,25 +27,7 @@ import {
   TimetableConflict
 } from '../../types/academic.types';
 
-import {
-  INITIAL_INSTITUTION,
-  INITIAL_DEPARTMENTS,
-  INITIAL_PROGRAMS,
-  INITIAL_SESSIONS,
-  INITIAL_YEARS,
-  INITIAL_SEMESTERS,
-  INITIAL_SECTIONS,
-  INITIAL_FACULTY,
-  INITIAL_SUBJECTS,
-  INITIAL_ASSIGNMENTS,
-  INITIAL_TIMETABLE,
-  ALL_INITIAL_STUDENTS,
-  INITIAL_USER_PROFILES,
-  INITIAL_ATTENDANCE_SESSIONS,
-  INITIAL_ATTENDANCE_RECORDS,
-  INITIAL_CORRECTIONS,
-  INITIAL_AUDIT_LOGS,
-} from './initialSeedData';
+import { INITIAL_INSTITUTION } from './initialSeedData';
 
 const STORAGE_KEYS = {
   INSTITUTION: 'vctm_erp_institution',
@@ -582,7 +564,7 @@ class ERPStorageService {
   }
 
   public getProfiles(): UserProfile[] {
-    const rawProfiles = loadFromStorage<UserProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_USER_PROFILES);
+    const rawProfiles = loadFromStorage<UserProfile[]>(STORAGE_KEYS.PROFILES, []);
     const faculty = this.getFaculty();
     const students = this.getStudents();
 
