@@ -89,14 +89,28 @@ interface AcademicContextType {
 
   // Real Database Actions
   addDepartment: (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => Promise<Department>;
+  updateDepartment: (id: string, updates: Partial<Department>) => Promise<Department>;
+  deleteDepartment: (id: string) => Promise<boolean>;
   addProgram: (prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) => Promise<Program>;
+  updateProgram: (id: string, updates: Partial<Program>) => Promise<Program>;
+  deleteProgram: (id: string) => Promise<boolean>;
   addSection: (sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) => Promise<Section>;
+  updateSection: (id: string, updates: Partial<Section>) => Promise<Section>;
+  deleteSection: (id: string) => Promise<boolean>;
   addFaculty: (fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) => Promise<Faculty>;
+  updateFaculty: (id: string, updates: Partial<Faculty>) => Promise<Faculty>;
+  deleteFaculty: (id: string) => Promise<boolean>;
   addSubject: (sub: Omit<Subject, 'id' | 'created_at' | 'updated_at'>) => Promise<Subject>;
+  updateSubject: (id: string, updates: Partial<Subject>) => Promise<Subject>;
+  deleteSubject: (id: string) => Promise<boolean>;
   addAssignment: (assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) => Promise<FacultySubjectAssignment>;
+  deleteAssignment: (id: string) => Promise<boolean>;
   addStudent: (student: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => Promise<Student>;
   updateStudent: (id: string, updates: Partial<Student>) => Promise<Student>;
+  deleteStudent: (id: string) => Promise<boolean>;
   addTimetableEntry: (entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) => Promise<TimetableEntry>;
+  updateTimetableEntry: (id: string, updates: Partial<TimetableEntry>) => Promise<TimetableEntry>;
+  deleteTimetableEntry: (id: string) => Promise<boolean>;
   checkTimetableConflict: (entry: Omit<TimetableEntry, 'id'>, excludeId?: string) => TimetableConflict | null;
   saveAttendance: (params: {
     timetableEntryId?: string;
@@ -179,18 +193,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const data = await supabaseService.fetchAllData();
       if (data) {
-        const loadedInst = data.institutions.length > 0 ? data.institutions[0] : erpStorage.getInstitution();
-        const loadedDepts = data.departments.length > 0 ? data.departments : erpStorage.getDepartments();
-        const loadedProgs = data.programs.length > 0 ? data.programs : erpStorage.getPrograms();
-        const loadedSessions = data.sessions.length > 0 ? data.sessions : erpStorage.getSessions();
-        const loadedYears = data.years.length > 0 ? data.years : erpStorage.getYears();
-        const loadedSemesters = data.semesters.length > 0 ? data.semesters : erpStorage.getSemesters();
-        const loadedSections = data.sections.length > 0 ? data.sections : erpStorage.getSections();
-        const loadedSubjects = data.subjects.length > 0 ? data.subjects : erpStorage.getSubjects();
-        const loadedFaculty = data.faculty.length > 0 ? data.faculty : erpStorage.getFaculty();
-        const loadedAssignments = data.assignments.length > 0 ? data.assignments : erpStorage.getAssignments();
-        const loadedStudents = data.students.length > 0 ? data.students : erpStorage.getStudents();
-        const rawTimetable = data.timetable.length > 0 ? data.timetable : erpStorage.getTimetable();
+        const loadedInst = data.institutions[0] || erpStorage.getInstitution();
+        const loadedDepts = data.departments || [];
+        const loadedProgs = data.programs || [];
+        const loadedSessions = data.sessions || [];
+        const loadedYears = data.years || [];
+        const loadedSemesters = data.semesters || [];
+        const loadedSections = data.sections || [];
+        const loadedSubjects = data.subjects || [];
+        const loadedFaculty = data.faculty || [];
+        const loadedAssignments = data.assignments || [];
+        const loadedStudents = data.students || [];
+        const rawTimetable = data.timetable || [];
 
         // Enriched Timetable entries with joined references
         const enrichedTimetable: TimetableEntry[] = rawTimetable.map(t => ({
@@ -451,9 +465,37 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const updateDepartment = async (id: string, updates: Partial<Department>) => {
+    const res = await supabaseService.updateDepartment(id, updates);
+    erpStorage.updateDepartment(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteDepartment = async (id: string) => {
+    const res = await supabaseService.deleteDepartment(id);
+    erpStorage.deleteDepartment(id);
+    await refreshData();
+    return res;
+  };
+
   const addProgram = async (prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addProgram(prog);
     erpStorage.addProgram(prog);
+    await refreshData();
+    return res;
+  };
+
+  const updateProgram = async (id: string, updates: Partial<Program>) => {
+    const res = await supabaseService.updateProgram(id, updates);
+    erpStorage.updateProgram(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteProgram = async (id: string) => {
+    const res = await supabaseService.deleteProgram(id);
+    erpStorage.deleteProgram(id);
     await refreshData();
     return res;
   };
@@ -465,9 +507,37 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const updateSection = async (id: string, updates: Partial<Section>) => {
+    const res = await supabaseService.updateSection(id, updates);
+    erpStorage.updateSection(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteSection = async (id: string) => {
+    const res = await supabaseService.deleteSection(id);
+    erpStorage.deleteSection(id);
+    await refreshData();
+    return res;
+  };
+
   const addFaculty = async (fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addFaculty(fac);
     erpStorage.addFaculty(fac);
+    await refreshData();
+    return res;
+  };
+
+  const updateFaculty = async (id: string, updates: Partial<Faculty>) => {
+    const res = await supabaseService.updateFaculty(id, updates);
+    erpStorage.updateFaculty(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteFaculty = async (id: string) => {
+    const res = await supabaseService.deleteFaculty(id);
+    erpStorage.deleteFaculty(id);
     await refreshData();
     return res;
   };
@@ -479,9 +549,30 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const updateSubject = async (id: string, updates: Partial<Subject>) => {
+    const res = await supabaseService.updateSubject(id, updates);
+    erpStorage.updateSubject(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteSubject = async (id: string) => {
+    const res = await supabaseService.deleteSubject(id);
+    erpStorage.deleteSubject(id);
+    await refreshData();
+    return res;
+  };
+
   const addAssignment = async (assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) => {
     const res = await supabaseService.addAssignment(assign);
     erpStorage.addAssignment(assign);
+    await refreshData();
+    return res;
+  };
+
+  const deleteAssignment = async (id: string) => {
+    const res = await supabaseService.deleteAssignment(id);
+    erpStorage.deleteAssignment(id);
     await refreshData();
     return res;
   };
@@ -500,6 +591,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const deleteStudent = async (id: string) => {
+    const res = await supabaseService.deleteStudent(id);
+    erpStorage.deleteStudent(id);
+    await refreshData();
+    return res;
+  };
+
   const addTimetableEntry = async (entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) => {
     const conflict = checkTimetableConflict(entry);
     if (conflict) {
@@ -507,6 +605,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const res = await supabaseService.addTimetableEntry(entry);
     erpStorage.addTimetableEntry(entry);
+    await refreshData();
+    return res;
+  };
+
+  const updateTimetableEntry = async (id: string, updates: Partial<TimetableEntry>) => {
+    const res = await supabaseService.updateTimetableEntry(id, updates);
+    erpStorage.updateTimetableEntry(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteTimetableEntry = async (id: string) => {
+    const res = await supabaseService.deleteTimetableEntry(id);
+    erpStorage.deleteTimetableEntry(id);
     await refreshData();
     return res;
   };
@@ -845,14 +957,28 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setClaimWindowDays,
         refreshData,
         addDepartment,
+        updateDepartment,
+        deleteDepartment,
         addProgram,
+        updateProgram,
+        deleteProgram,
         addSection,
+        updateSection,
+        deleteSection,
         addFaculty,
+        updateFaculty,
+        deleteFaculty,
         addSubject,
+        updateSubject,
+        deleteSubject,
         addAssignment,
+        deleteAssignment,
         addStudent,
         updateStudent,
+        deleteStudent,
         addTimetableEntry,
+        updateTimetableEntry,
+        deleteTimetableEntry,
         checkTimetableConflict,
         saveAttendance,
         submitCorrectionRequest,

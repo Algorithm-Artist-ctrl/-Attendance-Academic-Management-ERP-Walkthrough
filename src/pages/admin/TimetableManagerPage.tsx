@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Plus, AlertTriangle, CheckCircle2, User, MapPin } from 'lucide-react';
+import { Calendar, Clock, Plus, AlertTriangle, CheckCircle2, User, MapPin, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -15,7 +15,8 @@ export const TimetableManagerPage: React.FC = () => {
     subjects, 
     faculty, 
     timetable, 
-    addTimetableEntry, 
+    addTimetableEntry,
+    deleteTimetableEntry,
     checkTimetableConflict 
   } = useAcademic();
 
@@ -47,6 +48,16 @@ export const TimetableManagerPage: React.FC = () => {
 
   const sectionTimetable = timetable.filter(t => t.section_id === selectedSectionId && t.active);
   const currentSection = sections.find(s => s.id === selectedSectionId);
+
+  const handleDeleteSlot = async (id: string, period: number, day: string) => {
+    if (window.confirm(`Are you sure you want to remove ${dayLabels[day as DayOfWeek]} Period ${period} from timetable?`)) {
+      try {
+        await deleteTimetableEntry(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete timetable entry');
+      }
+    }
+  };
 
   const handlePeriodChange = (period: number) => {
     setPeriodNumber(period);
@@ -166,10 +177,19 @@ export const TimetableManagerPage: React.FC = () => {
 
                     return (
                       <td key={period} className="p-2.5 border-r border-emerald-500/10">
-                        <div className="p-2.5 rounded-xl bg-slate-950/70 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left space-y-1">
-                          <span className="font-bold text-white block text-xs truncate" title={entry.subject?.subject_name}>
-                            {entry.subject?.subject_name || 'Subject'}
-                          </span>
+                        <div className="p-2.5 rounded-xl bg-slate-950/70 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left space-y-1 group relative">
+                          <div className="flex items-start justify-between">
+                            <span className="font-bold text-white block text-xs truncate max-w-[100px]" title={entry.subject?.subject_name}>
+                              {entry.subject?.subject_name || 'Subject'}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteSlot(entry.id, period, day)}
+                              className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-0.5 rounded transition-opacity cursor-pointer"
+                              title="Delete Slot"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           <span className="text-[11px] text-slate-400 block truncate" title={entry.faculty?.full_name}>
                             {entry.faculty?.full_name || 'Faculty'}
                           </span>

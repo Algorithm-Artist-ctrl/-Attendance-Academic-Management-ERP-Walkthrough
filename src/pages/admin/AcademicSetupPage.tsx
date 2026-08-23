@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -13,9 +13,12 @@ export const AcademicSetupPage: React.FC = () => {
     programs, 
     sections, 
     faculty, 
-    addDepartment, 
-    addProgram, 
+    addDepartment,
+    deleteDepartment, 
+    addProgram,
+    deleteProgram, 
     addSection,
+    deleteSection,
     claimWindowDays,
     setClaimWindowDays
   } = useAcademic();
@@ -42,6 +45,36 @@ export const AcademicSetupPage: React.FC = () => {
   const [newSecName, setNewSecName] = useState('');
   const [newSecRoom, setNewSecRoom] = useState('');
   const [newSecCoordinatorId, setNewSecCoordinatorId] = useState('');
+
+  const handleDeleteDept = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete department "${name}"?`)) {
+      try {
+        await deleteDepartment(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete department');
+      }
+    }
+  };
+
+  const handleDeleteProg = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete program "${name}"?`)) {
+      try {
+        await deleteProgram(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete program');
+      }
+    }
+  };
+
+  const handleDeleteSec = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete section "${name}"?`)) {
+      try {
+        await deleteSection(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete section');
+      }
+    }
+  };
 
   const handleCreateDept = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,42 +220,60 @@ export const AcademicSetupPage: React.FC = () => {
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-                <tr>
-                  <th className="px-5 py-3.5">Code</th>
-                  <th className="px-5 py-3.5">Department Name</th>
-                  <th className="px-5 py-3.5">Head of Department (HOD)</th>
-                  <th className="px-5 py-3.5 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-500/10">
-                {departments.map((dept) => {
-                  const hod = faculty.find(f => f.id === dept.hod_faculty_id);
-                  return (
-                    <tr key={dept.id} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{dept.code}</td>
-                      <td className="px-5 py-4 font-bold text-white text-sm">{dept.name}</td>
-                      <td className="px-5 py-4 text-slate-300 font-medium">
-                        {hod ? (
-                          <span className="text-white font-semibold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
-                            {hod.full_name} ({hod.faculty_code || 'HOD'})
+          {departments.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              <Building2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="font-semibold text-slate-300">No departments configured</p>
+              <p className="text-xs text-slate-500 mt-1">Create academic departments using the "Add Department" button</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                  <tr>
+                    <th className="px-5 py-3.5">Code</th>
+                    <th className="px-5 py-3.5">Department Name</th>
+                    <th className="px-5 py-3.5">Head of Department (HOD)</th>
+                    <th className="px-5 py-3.5 text-center">Status</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-emerald-500/10">
+                  {departments.map((dept) => {
+                    const hod = faculty.find(f => f.id === dept.hod_faculty_id);
+                    return (
+                      <tr key={dept.id} className="hover:bg-emerald-500/5 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{dept.code}</td>
+                        <td className="px-5 py-4 font-bold text-white text-sm">{dept.name}</td>
+                        <td className="px-5 py-4 text-slate-300 font-medium">
+                          {hod ? (
+                            <span className="text-white font-semibold flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+                              {hod.full_name} ({hod.faculty_code || 'HOD'})
+                            </span>
+                          ) : 'Not Appointed'}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                            Active
                           </span>
-                        ) : 'Not Appointed'}
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteDept(dept.id, dept.name)}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete Department"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -244,37 +295,55 @@ export const AcademicSetupPage: React.FC = () => {
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-                <tr>
-                  <th className="px-5 py-3.5">Code</th>
-                  <th className="px-5 py-3.5">Degree Program</th>
-                  <th className="px-5 py-3.5">Department</th>
-                  <th className="px-5 py-3.5 text-center">Duration</th>
-                  <th className="px-5 py-3.5 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-500/10">
-                {programs.map((prog) => {
-                  const dept = departments.find(d => d.id === prog.department_id);
-                  return (
-                    <tr key={prog.id} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{prog.code}</td>
-                      <td className="px-5 py-4 font-bold text-white text-sm">{prog.name}</td>
-                      <td className="px-5 py-4 text-slate-300 font-medium">{dept?.name || 'CSE'}</td>
-                      <td className="px-5 py-4 text-center font-bold text-white">{prog.duration_years} Years</td>
-                      <td className="px-5 py-4 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {programs.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="font-semibold text-slate-300">No programs configured</p>
+              <p className="text-xs text-slate-500 mt-1">Create degree courses using the "Add Program" button</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                  <tr>
+                    <th className="px-5 py-3.5">Code</th>
+                    <th className="px-5 py-3.5">Degree Program</th>
+                    <th className="px-5 py-3.5">Department</th>
+                    <th className="px-5 py-3.5 text-center">Duration</th>
+                    <th className="px-5 py-3.5 text-center">Status</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-emerald-500/10">
+                  {programs.map((prog) => {
+                    const dept = departments.find(d => d.id === prog.department_id);
+                    return (
+                      <tr key={prog.id} className="hover:bg-emerald-500/5 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{prog.code}</td>
+                        <td className="px-5 py-4 font-bold text-white text-sm">{prog.name}</td>
+                        <td className="px-5 py-4 text-slate-300 font-medium">{dept?.name || 'CSE'}</td>
+                        <td className="px-5 py-4 text-center font-bold text-white">{prog.duration_years} Years</td>
+                        <td className="px-5 py-4 text-center">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                            Active
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteProg(prog.id, prog.name)}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete Program"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -296,37 +365,55 @@ export const AcademicSetupPage: React.FC = () => {
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-                <tr>
-                  <th className="px-5 py-3.5">Section Name</th>
-                  <th className="px-5 py-3.5">Assigned Classroom</th>
-                  <th className="px-5 py-3.5">Class Coordinator / Incharge</th>
-                  <th className="px-5 py-3.5 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-500/10">
-                {sections.map((sec) => {
-                  const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
-                  return (
-                    <tr key={sec.id} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-5 py-4 font-bold text-white text-sm">Section {sec.name}</td>
-                      <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'Room A-007'}</td>
-                      <td className="px-5 py-4 text-slate-300 font-medium">
-                        {coordinator ? `${coordinator.full_name} (${coordinator.faculty_code || 'Faculty'})` : '—'}
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {sections.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              <Layers className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="font-semibold text-slate-300">No sections configured</p>
+              <p className="text-xs text-slate-500 mt-1">Configure sections and room mappings with "Add Section"</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                  <tr>
+                    <th className="px-5 py-3.5">Section Name</th>
+                    <th className="px-5 py-3.5">Assigned Classroom</th>
+                    <th className="px-5 py-3.5">Class Coordinator / Incharge</th>
+                    <th className="px-5 py-3.5 text-center">Status</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-emerald-500/10">
+                  {sections.map((sec) => {
+                    const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
+                    return (
+                      <tr key={sec.id} className="hover:bg-emerald-500/5 transition-colors">
+                        <td className="px-5 py-4 font-bold text-white text-sm">Section {sec.name}</td>
+                        <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'Room A-007'}</td>
+                        <td className="px-5 py-4 text-slate-300 font-medium">
+                          {coordinator ? `${coordinator.full_name} (${coordinator.faculty_code || 'Faculty'})` : '—'}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                            Active
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteSec(sec.id, sec.name)}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete Section"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

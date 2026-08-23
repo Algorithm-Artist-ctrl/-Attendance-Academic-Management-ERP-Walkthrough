@@ -32,30 +32,15 @@ export const LeaveApplicationPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Application list state
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([
-    {
-      id: 'lv-01',
-      leaveType: 'Duty Leave (OD)',
-      fromDate: '2026-08-12',
-      toDate: '2026-08-13',
-      days: 2,
-      reason: 'Represented VCTM College in State Inter-College Hackathon Championship.',
-      status: 'Approved',
-      appliedAt: '2026-08-10',
-      documentName: 'Hackathon_Certificate.pdf'
-    },
-    {
-      id: 'lv-02',
-      leaveType: 'Medical Leave',
-      fromDate: '2026-08-19',
-      toDate: '2026-08-21',
-      days: 3,
-      reason: 'Suffering from viral fever and throat infection, advised bed rest by doctor.',
-      status: 'Pending Mentor',
-      appliedAt: '2026-08-18',
-      documentName: 'Medical_Prescription.pdf'
+  const storageKey = `vctm_leave_requests_${user?.id || 'guest'}`;
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  ]);
+  });
 
   // Form state
   const [leaveType, setLeaveType] = useState<LeaveRequest['leaveType']>('Medical Leave');
@@ -84,7 +69,13 @@ export const LeaveApplicationPage: React.FC = () => {
         documentName: fileName || undefined
       };
 
-      setLeaveRequests(prev => [newLeave, ...prev]);
+      setLeaveRequests(prev => {
+        const updated = [newLeave, ...prev];
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setIsSubmitting(false);
       setIsModalOpen(false);
       setReason('');
@@ -139,44 +130,52 @@ export const LeaveApplicationPage: React.FC = () => {
 
       {/* Leave Ledger Table */}
       <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-              <tr>
-                <th className="px-5 py-3.5">Leave Type</th>
-                <th className="px-5 py-3.5">Duration (From - To)</th>
-                <th className="px-5 py-3.5 text-center">Days</th>
-                <th className="px-5 py-3.5">Reason / Justification</th>
-                <th className="px-5 py-3.5">Supporting Document</th>
-                <th className="px-5 py-3.5 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-500/10">
-              {leaveRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-emerald-500/5 transition-colors">
-                  <td className="px-5 py-4 font-bold text-white text-sm">
-                    {req.leaveType}
-                  </td>
-                  <td className="px-5 py-4 font-mono font-semibold text-emerald-400">
-                    {req.fromDate} to {req.toDate}
-                  </td>
-                  <td className="px-5 py-4 text-center font-bold text-white">
-                    {req.days} {req.days === 1 ? 'Day' : 'Days'}
-                  </td>
-                  <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate" title={req.reason}>
-                    "{req.reason}"
-                  </td>
-                  <td className="px-5 py-4 text-slate-400 font-mono text-[11px]">
-                    {req.documentName ? `📎 ${req.documentName}` : '—'}
-                  </td>
-                  <td className="px-5 py-4 text-center">
-                    {getStatusBadge(req.status)}
-                  </td>
+        {leaveRequests.length === 0 ? (
+          <div className="p-12 text-center text-slate-400">
+            <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <p className="font-semibold text-slate-300">No leave applications submitted yet</p>
+            <p className="text-xs text-slate-500 mt-1">Submit a medical leave or duty permission (OD) whenever needed</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Leave Type</th>
+                  <th className="px-5 py-3.5">Duration (From - To)</th>
+                  <th className="px-5 py-3.5 text-center">Days</th>
+                  <th className="px-5 py-3.5">Reason / Justification</th>
+                  <th className="px-5 py-3.5">Supporting Document</th>
+                  <th className="px-5 py-3.5 text-center">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-emerald-500/10">
+                {leaveRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-5 py-4 font-bold text-white text-sm">
+                      {req.leaveType}
+                    </td>
+                    <td className="px-5 py-4 font-mono font-semibold text-emerald-400">
+                      {req.fromDate} to {req.toDate}
+                    </td>
+                    <td className="px-5 py-4 text-center font-bold text-white">
+                      {req.days} {req.days === 1 ? 'Day' : 'Days'}
+                    </td>
+                    <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate" title={req.reason}>
+                      "{req.reason}"
+                    </td>
+                    <td className="px-5 py-4 text-slate-400 font-mono text-[11px]">
+                      {req.documentName ? `📎 ${req.documentName}` : '—'}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      {getStatusBadge(req.status)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Apply Leave Modal */}

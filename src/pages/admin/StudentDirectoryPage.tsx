@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraduationCap, Search, Plus, Filter, UserCheck, Mail, Phone, BookOpen, Layers } from 'lucide-react';
+import { GraduationCap, Search, Plus, Filter, UserCheck, Mail, Phone, BookOpen, Layers, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -18,7 +18,8 @@ export const StudentDirectoryPage: React.FC = () => {
     sections, 
     faculty, 
     students, 
-    addStudent 
+    addStudent,
+    deleteStudent
   } = useAcademic();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +46,16 @@ export const StudentDirectoryPage: React.FC = () => {
 
     return matchesSearch && matchesSection && matchesAdmission;
   });
+
+  const handleDelete = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to remove student "${name}" from the database?`)) {
+      try {
+        await deleteStudent(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete student');
+      }
+    }
+  };
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,57 +163,75 @@ export const StudentDirectoryPage: React.FC = () => {
 
       {/* Student List Table */}
       <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-              <tr>
-                <th className="px-5 py-3.5">#</th>
-                <th className="px-5 py-3.5">Roll Number</th>
-                <th className="px-5 py-3.5">Student Name</th>
-                <th className="px-5 py-3.5 text-center">Section</th>
-                <th className="px-5 py-3.5 text-center">Admission Type</th>
-                <th className="px-5 py-3.5">Assigned Mentor</th>
-                <th className="px-5 py-3.5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-500/10">
-              {filteredStudents.map((stud, idx) => (
-                <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-slate-500">{idx + 1}</td>
-                  <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm">
-                    {stud.roll_number}
-                  </td>
-                  <td className="px-5 py-3.5 font-bold text-white text-sm">
-                    {stud.full_name}
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
-                      Sec {stud.section?.name}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <span className={clsx(
-                      'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
-                      stud.admission_type === 'Lateral Entry'
-                        ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                        : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                    )}>
-                      {stud.admission_type}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-300 font-medium">
-                    {stud.mentor?.full_name || '—'}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                      Active
-                    </span>
-                  </td>
+        {filteredStudents.length === 0 ? (
+          <div className="p-12 text-center text-slate-400">
+            <GraduationCap className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <p className="font-semibold text-slate-300">No student records found</p>
+            <p className="text-xs text-slate-500 mt-1">Enroll students using "Add Student" or upload a batch CSV</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">#</th>
+                  <th className="px-5 py-3.5">Roll Number</th>
+                  <th className="px-5 py-3.5">Student Name</th>
+                  <th className="px-5 py-3.5 text-center">Section</th>
+                  <th className="px-5 py-3.5 text-center">Admission Type</th>
+                  <th className="px-5 py-3.5">Assigned Mentor</th>
+                  <th className="px-5 py-3.5 text-center">Status</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-emerald-500/10">
+                {filteredStudents.map((stud, idx) => (
+                  <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-slate-500">{idx + 1}</td>
+                    <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm">
+                      {stud.roll_number}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold text-white text-sm">
+                      {stud.full_name}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                        Sec {stud.section?.name}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className={clsx(
+                        'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
+                        stud.admission_type === 'Lateral Entry'
+                          ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+                          : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                      )}>
+                        {stud.admission_type}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-300 font-medium">
+                      {stud.mentor?.full_name || '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                        Active
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        onClick={() => handleDelete(stud.id, stud.full_name)}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Delete Student"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add Student Modal */}

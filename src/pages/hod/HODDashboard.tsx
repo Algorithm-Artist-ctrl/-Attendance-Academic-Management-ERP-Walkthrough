@@ -88,7 +88,7 @@ export const HODDashboard: React.FC = () => {
 
   const avgAttendance = studentStats.length > 0
     ? Math.round(studentStats.reduce((acc, s) => acc + s.percentage, 0) / studentStats.length)
-    : 85;
+    : 0;
 
   return (
     <div className="space-y-6">

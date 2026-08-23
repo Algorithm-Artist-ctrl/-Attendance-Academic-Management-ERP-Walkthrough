@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { CyberShield3D } from '../../components/3d/CyberShield3D';
+import { formatTimeAgo } from '../../lib/utils/dateUtils';
 
 interface AdminDashboardProps {
   onNavigate: (tab: string) => void;
@@ -35,24 +36,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     auditLogs 
   } = useAcademic();
 
-  const totalStudents = students.length || 106;
-  const totalFaculty = faculty.length || 11;
-  const totalDepts = departments.length || 6;
-  const totalPrograms = programs.length || 8;
+  const totalStudents = students.length;
+  const totalFaculty = faculty.length;
+  const totalDepts = departments.length;
+  const totalPrograms = programs.length;
 
   // Calculate overall attendance rate
   const totalPresent = attendanceRecords.filter(r => r.status === 'Present').length;
   const attendanceRate = attendanceRecords.length > 0
     ? Math.round((totalPresent / attendanceRecords.length) * 100)
-    : 92;
+    : 0;
 
-  // Recent system activities
-  const recentActivities = [
-    { title: 'Attendance marked by Ms. Hemlata Chaudhary', time: '2 min ago', type: 'attendance' },
-    { title: 'New student added: Tarun Kushwah (2503400100057)', time: '15 min ago', type: 'student' },
-    { title: 'B.Tech CSE 2nd Year timetable entry updated', time: '30 min ago', type: 'timetable' },
-    { title: 'Correction request approved for Section A student', time: '45 min ago', type: 'correction' },
-  ];
+  // Dynamic live system activities mapped directly from Supabase auditLogs
+  const recentActivities = auditLogs.length > 0
+    ? auditLogs.slice(0, 5).map(log => ({
+        title: `${log.action.replace(/_/g, ' ')}${log.actor_name ? ` by ${log.actor_name}` : ''}`,
+        time: formatTimeAgo(log.created_at),
+        type: log.entity_type
+      }))
+    : [
+        { title: 'System initialized and connected to Supabase', time: 'Active', type: 'system' }
+      ];
 
   return (
     <div className="space-y-6">

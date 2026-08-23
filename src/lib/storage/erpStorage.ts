@@ -99,7 +99,6 @@ function saveToStorage<T>(key: string, data: T): void {
 }
 
 class ERPStorageService {
-  // Initialize storage with seed data if empty
   constructor() {
     this.init();
   }
@@ -108,22 +107,22 @@ class ERPStorageService {
     const existing = loadFromStorage(STORAGE_KEYS.INSTITUTION, null);
     if (forceReset || !existing) {
       saveToStorage(STORAGE_KEYS.INSTITUTION, INITIAL_INSTITUTION);
-      saveToStorage(STORAGE_KEYS.DEPARTMENTS, INITIAL_DEPARTMENTS);
-      saveToStorage(STORAGE_KEYS.PROGRAMS, INITIAL_PROGRAMS);
-      saveToStorage(STORAGE_KEYS.SESSIONS, INITIAL_SESSIONS);
-      saveToStorage(STORAGE_KEYS.YEARS, INITIAL_YEARS);
-      saveToStorage(STORAGE_KEYS.SEMESTERS, INITIAL_SEMESTERS);
-      saveToStorage(STORAGE_KEYS.SECTIONS, INITIAL_SECTIONS);
-      saveToStorage(STORAGE_KEYS.FACULTY, INITIAL_FACULTY);
-      saveToStorage(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS);
-      saveToStorage(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
-      saveToStorage(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
-      saveToStorage(STORAGE_KEYS.STUDENTS, ALL_INITIAL_STUDENTS);
-      saveToStorage(STORAGE_KEYS.PROFILES, INITIAL_USER_PROFILES);
-      saveToStorage(STORAGE_KEYS.ATT_SESSIONS, INITIAL_ATTENDANCE_SESSIONS);
-      saveToStorage(STORAGE_KEYS.ATT_RECORDS, INITIAL_ATTENDANCE_RECORDS);
-      saveToStorage(STORAGE_KEYS.CORRECTIONS, INITIAL_CORRECTIONS);
-      saveToStorage(STORAGE_KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
+      saveToStorage(STORAGE_KEYS.DEPARTMENTS, []);
+      saveToStorage(STORAGE_KEYS.PROGRAMS, []);
+      saveToStorage(STORAGE_KEYS.SESSIONS, []);
+      saveToStorage(STORAGE_KEYS.YEARS, []);
+      saveToStorage(STORAGE_KEYS.SEMESTERS, []);
+      saveToStorage(STORAGE_KEYS.SECTIONS, []);
+      saveToStorage(STORAGE_KEYS.FACULTY, []);
+      saveToStorage(STORAGE_KEYS.SUBJECTS, []);
+      saveToStorage(STORAGE_KEYS.ASSIGNMENTS, []);
+      saveToStorage(STORAGE_KEYS.TIMETABLE, []);
+      saveToStorage(STORAGE_KEYS.STUDENTS, []);
+      saveToStorage(STORAGE_KEYS.PROFILES, []);
+      saveToStorage(STORAGE_KEYS.ATT_SESSIONS, []);
+      saveToStorage(STORAGE_KEYS.ATT_RECORDS, []);
+      saveToStorage(STORAGE_KEYS.CORRECTIONS, []);
+      saveToStorage(STORAGE_KEYS.AUDIT_LOGS, []);
     }
   }
 
@@ -145,22 +144,22 @@ class ERPStorageService {
     corrections: AttendanceCorrection[];
     auditLogs: AuditLog[];
   }) {
-    if (data.institutions.length > 0) saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0]);
-    if (data.departments.length > 0) saveToStorage(STORAGE_KEYS.DEPARTMENTS, data.departments);
-    if (data.programs.length > 0) saveToStorage(STORAGE_KEYS.PROGRAMS, data.programs);
-    if (data.sessions.length > 0) saveToStorage(STORAGE_KEYS.SESSIONS, data.sessions);
-    if (data.years.length > 0) saveToStorage(STORAGE_KEYS.YEARS, data.years);
-    if (data.semesters.length > 0) saveToStorage(STORAGE_KEYS.SEMESTERS, data.semesters);
-    if (data.sections.length > 0) saveToStorage(STORAGE_KEYS.SECTIONS, data.sections);
-    if (data.faculty.length > 0) saveToStorage(STORAGE_KEYS.FACULTY, data.faculty);
-    if (data.subjects.length > 0) saveToStorage(STORAGE_KEYS.SUBJECTS, data.subjects);
-    if (data.assignments.length > 0) saveToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
-    if (data.students.length > 0) saveToStorage(STORAGE_KEYS.STUDENTS, data.students);
-    if (data.timetable.length > 0) saveToStorage(STORAGE_KEYS.TIMETABLE, data.timetable);
-    if (data.attendanceSessions.length > 0) saveToStorage(STORAGE_KEYS.ATT_SESSIONS, data.attendanceSessions);
-    if (data.attendanceRecords.length > 0) saveToStorage(STORAGE_KEYS.ATT_RECORDS, data.attendanceRecords);
-    if (data.corrections.length > 0) saveToStorage(STORAGE_KEYS.CORRECTIONS, data.corrections);
-    if (data.auditLogs.length > 0) saveToStorage(STORAGE_KEYS.AUDIT_LOGS, data.auditLogs);
+    saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0] || INITIAL_INSTITUTION);
+    saveToStorage(STORAGE_KEYS.DEPARTMENTS, data.departments || []);
+    saveToStorage(STORAGE_KEYS.PROGRAMS, data.programs || []);
+    saveToStorage(STORAGE_KEYS.SESSIONS, data.sessions || []);
+    saveToStorage(STORAGE_KEYS.YEARS, data.years || []);
+    saveToStorage(STORAGE_KEYS.SEMESTERS, data.semesters || []);
+    saveToStorage(STORAGE_KEYS.SECTIONS, data.sections || []);
+    saveToStorage(STORAGE_KEYS.FACULTY, data.faculty || []);
+    saveToStorage(STORAGE_KEYS.SUBJECTS, data.subjects || []);
+    saveToStorage(STORAGE_KEYS.ASSIGNMENTS, data.assignments || []);
+    saveToStorage(STORAGE_KEYS.STUDENTS, data.students || []);
+    saveToStorage(STORAGE_KEYS.TIMETABLE, data.timetable || []);
+    saveToStorage(STORAGE_KEYS.ATT_SESSIONS, data.attendanceSessions || []);
+    saveToStorage(STORAGE_KEYS.ATT_RECORDS, data.attendanceRecords || []);
+    saveToStorage(STORAGE_KEYS.CORRECTIONS, data.corrections || []);
+    saveToStorage(STORAGE_KEYS.AUDIT_LOGS, data.auditLogs || []);
   }
 
   // Master Data Getters
@@ -169,7 +168,7 @@ class ERPStorageService {
   }
 
   public getDepartments(): Department[] {
-    const depts = loadFromStorage<Department[]>(STORAGE_KEYS.DEPARTMENTS, INITIAL_DEPARTMENTS);
+    const depts = loadFromStorage<Department[]>(STORAGE_KEYS.DEPARTMENTS, []);
     const faculty = this.getFaculty();
     return depts.map(d => ({
       ...d,
@@ -190,8 +189,27 @@ class ERPStorageService {
     return newDept;
   }
 
+  public updateDepartment(id: string, updates: Partial<Department>): Department {
+    const depts = this.getDepartments();
+    const idx = depts.findIndex(d => d.id === id);
+    if (idx === -1) throw new Error('Department not found');
+    const old = depts[idx];
+    const updated = { ...old, ...updates };
+    depts[idx] = updated;
+    saveToStorage(STORAGE_KEYS.DEPARTMENTS, depts);
+    this.addAuditLog('DEPARTMENT_UPDATED', 'departments', id, old, updated);
+    return updated;
+  }
+
+  public deleteDepartment(id: string): boolean {
+    const depts = this.getDepartments().filter(d => d.id !== id);
+    saveToStorage(STORAGE_KEYS.DEPARTMENTS, depts);
+    this.addAuditLog('DEPARTMENT_DELETED', 'departments', id);
+    return true;
+  }
+
   public getPrograms(): Program[] {
-    return loadFromStorage(STORAGE_KEYS.PROGRAMS, INITIAL_PROGRAMS);
+    return loadFromStorage<Program[]>(STORAGE_KEYS.PROGRAMS, []);
   }
 
   public addProgram(prog: Omit<Program, 'id' | 'created_at'>): Program {
@@ -207,20 +225,39 @@ class ERPStorageService {
     return newProg;
   }
 
+  public updateProgram(id: string, updates: Partial<Program>): Program {
+    const programs = this.getPrograms();
+    const idx = programs.findIndex(p => p.id === id);
+    if (idx === -1) throw new Error('Program not found');
+    const old = programs[idx];
+    const updated = { ...old, ...updates };
+    programs[idx] = updated;
+    saveToStorage(STORAGE_KEYS.PROGRAMS, programs);
+    this.addAuditLog('PROGRAM_UPDATED', 'programs', id, old, updated);
+    return updated;
+  }
+
+  public deleteProgram(id: string): boolean {
+    const programs = this.getPrograms().filter(p => p.id !== id);
+    saveToStorage(STORAGE_KEYS.PROGRAMS, programs);
+    this.addAuditLog('PROGRAM_DELETED', 'programs', id);
+    return true;
+  }
+
   public getSessions(): AcademicSession[] {
-    return loadFromStorage(STORAGE_KEYS.SESSIONS, INITIAL_SESSIONS);
+    return loadFromStorage<AcademicSession[]>(STORAGE_KEYS.SESSIONS, []);
   }
 
   public getYears(): AcademicYear[] {
-    return loadFromStorage(STORAGE_KEYS.YEARS, INITIAL_YEARS);
+    return loadFromStorage<AcademicYear[]>(STORAGE_KEYS.YEARS, []);
   }
 
   public getSemesters(): Semester[] {
-    return loadFromStorage(STORAGE_KEYS.SEMESTERS, INITIAL_SEMESTERS);
+    return loadFromStorage<Semester[]>(STORAGE_KEYS.SEMESTERS, []);
   }
 
   public getSections(): Section[] {
-    const sections = loadFromStorage<Section[]>(STORAGE_KEYS.SECTIONS, INITIAL_SECTIONS);
+    const sections = loadFromStorage<Section[]>(STORAGE_KEYS.SECTIONS, []);
     const faculty = this.getFaculty();
     return sections.map(s => ({
       ...s,
@@ -240,9 +277,28 @@ class ERPStorageService {
     return newSec;
   }
 
+  public updateSection(id: string, updates: Partial<Section>): Section {
+    const sections = this.getSections();
+    const idx = sections.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Section not found');
+    const old = sections[idx];
+    const updated = { ...old, ...updates };
+    sections[idx] = updated;
+    saveToStorage(STORAGE_KEYS.SECTIONS, sections);
+    this.addAuditLog('SECTION_UPDATED', 'sections', id, old, updated);
+    return updated;
+  }
+
+  public deleteSection(id: string): boolean {
+    const sections = this.getSections().filter(s => s.id !== id);
+    saveToStorage(STORAGE_KEYS.SECTIONS, sections);
+    this.addAuditLog('SECTION_DELETED', 'sections', id);
+    return true;
+  }
+
   public getFaculty(): Faculty[] {
-    const facList = loadFromStorage<Faculty[]>(STORAGE_KEYS.FACULTY, INITIAL_FACULTY);
-    const depts = loadFromStorage<Department[]>(STORAGE_KEYS.DEPARTMENTS, INITIAL_DEPARTMENTS);
+    const facList = loadFromStorage<Faculty[]>(STORAGE_KEYS.FACULTY, []);
+    const depts = loadFromStorage<Department[]>(STORAGE_KEYS.DEPARTMENTS, []);
     return facList.map(f => ({
       ...f,
       department: depts.find(d => d.id === f.department_id)
@@ -275,8 +331,27 @@ class ERPStorageService {
     return newFac;
   }
 
+  public updateFaculty(id: string, updates: Partial<Faculty>): Faculty {
+    const faculty = this.getFaculty();
+    const idx = faculty.findIndex(f => f.id === id);
+    if (idx === -1) throw new Error('Faculty not found');
+    const old = faculty[idx];
+    const updated = { ...old, ...updates };
+    faculty[idx] = updated;
+    saveToStorage(STORAGE_KEYS.FACULTY, faculty);
+    this.addAuditLog('FACULTY_UPDATED', 'faculty', id, old, updated);
+    return updated;
+  }
+
+  public deleteFaculty(id: string): boolean {
+    const faculty = this.getFaculty().filter(f => f.id !== id);
+    saveToStorage(STORAGE_KEYS.FACULTY, faculty);
+    this.addAuditLog('FACULTY_DELETED', 'faculty', id);
+    return true;
+  }
+
   public getSubjects(): Subject[] {
-    return loadFromStorage(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS);
+    return loadFromStorage<Subject[]>(STORAGE_KEYS.SUBJECTS, []);
   }
 
   public addSubject(sub: Omit<Subject, 'id'>): Subject {
@@ -291,8 +366,27 @@ class ERPStorageService {
     return newSub;
   }
 
+  public updateSubject(id: string, updates: Partial<Subject>): Subject {
+    const subjects = this.getSubjects();
+    const idx = subjects.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Subject not found');
+    const old = subjects[idx];
+    const updated = { ...old, ...updates };
+    subjects[idx] = updated;
+    saveToStorage(STORAGE_KEYS.SUBJECTS, subjects);
+    this.addAuditLog('SUBJECT_UPDATED', 'subjects', id, old, updated);
+    return updated;
+  }
+
+  public deleteSubject(id: string): boolean {
+    const subjects = this.getSubjects().filter(s => s.id !== id);
+    saveToStorage(STORAGE_KEYS.SUBJECTS, subjects);
+    this.addAuditLog('SUBJECT_DELETED', 'subjects', id);
+    return true;
+  }
+
   public getAssignments(): FacultySubjectAssignment[] {
-    const assignments = loadFromStorage<FacultySubjectAssignment[]>(STORAGE_KEYS.ASSIGNMENTS, INITIAL_ASSIGNMENTS);
+    const assignments = loadFromStorage<FacultySubjectAssignment[]>(STORAGE_KEYS.ASSIGNMENTS, []);
     const faculty = this.getFaculty();
     const subjects = this.getSubjects();
     const sections = this.getSections();
@@ -316,8 +410,15 @@ class ERPStorageService {
     return newAssign;
   }
 
+  public deleteAssignment(id: string): boolean {
+    const assignments = this.getAssignments().filter(a => a.id !== id);
+    saveToStorage(STORAGE_KEYS.ASSIGNMENTS, assignments);
+    this.addAuditLog('FACULTY_ASSIGNMENT_DELETED', 'faculty_subject_assignments', id);
+    return true;
+  }
+
   public getStudents(): Student[] {
-    const students = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, ALL_INITIAL_STUDENTS);
+    const students = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, []);
     const sections = this.getSections();
     const faculty = this.getFaculty();
     const depts = this.getDepartments();
@@ -374,8 +475,15 @@ class ERPStorageService {
     return updated;
   }
 
+  public deleteStudent(id: string): boolean {
+    const students = this.getStudents().filter(s => s.id !== id);
+    saveToStorage(STORAGE_KEYS.STUDENTS, students);
+    this.addAuditLog('STUDENT_DELETED', 'students', id);
+    return true;
+  }
+
   public getTimetable(): TimetableEntry[] {
-    const entries = loadFromStorage<TimetableEntry[]>(STORAGE_KEYS.TIMETABLE, INITIAL_TIMETABLE);
+    const entries = loadFromStorage<TimetableEntry[]>(STORAGE_KEYS.TIMETABLE, []);
     const subjects = this.getSubjects();
     const faculty = this.getFaculty();
     const sections = this.getSections();
@@ -386,6 +494,25 @@ class ERPStorageService {
       faculty: faculty.find(f => f.id === e.faculty_id),
       section: sections.find(sec => sec.id === e.section_id)
     }));
+  }
+
+  public updateTimetableEntry(id: string, updates: Partial<TimetableEntry>): TimetableEntry {
+    const entries = this.getTimetable();
+    const idx = entries.findIndex(t => t.id === id);
+    if (idx === -1) throw new Error('Timetable entry not found');
+    const old = entries[idx];
+    const updated = { ...old, ...updates };
+    entries[idx] = updated;
+    saveToStorage(STORAGE_KEYS.TIMETABLE, entries);
+    this.addAuditLog('TIMETABLE_ENTRY_UPDATED', 'timetable_entries', id, old, updated);
+    return updated;
+  }
+
+  public deleteTimetableEntry(id: string): boolean {
+    const entries = this.getTimetable().filter(t => t.id !== id);
+    saveToStorage(STORAGE_KEYS.TIMETABLE, entries);
+    this.addAuditLog('TIMETABLE_ENTRY_DELETED', 'timetable_entries', id);
+    return true;
   }
 
   // Conflict detection for timetable entries
@@ -510,7 +637,7 @@ class ERPStorageService {
 
   // Attendance Management
   public getAttendanceSessions(): AttendanceSession[] {
-    const sessions = loadFromStorage<AttendanceSession[]>(STORAGE_KEYS.ATT_SESSIONS, INITIAL_ATTENDANCE_SESSIONS);
+    const sessions = loadFromStorage<AttendanceSession[]>(STORAGE_KEYS.ATT_SESSIONS, []);
     const faculty = this.getFaculty();
     const subjects = this.getSubjects();
     const sections = this.getSections();
@@ -524,7 +651,7 @@ class ERPStorageService {
   }
 
   public getAttendanceRecords(): AttendanceRecord[] {
-    const records = loadFromStorage<AttendanceRecord[]>(STORAGE_KEYS.ATT_RECORDS, INITIAL_ATTENDANCE_RECORDS);
+    const records = loadFromStorage<AttendanceRecord[]>(STORAGE_KEYS.ATT_RECORDS, []);
     const students = this.getStudents();
     const sessions = this.getAttendanceSessions();
 
@@ -642,7 +769,7 @@ class ERPStorageService {
 
   // Attendance Corrections
   public getCorrections(): AttendanceCorrection[] {
-    const corrections = loadFromStorage<AttendanceCorrection[]>(STORAGE_KEYS.CORRECTIONS, INITIAL_CORRECTIONS);
+    const corrections = loadFromStorage<AttendanceCorrection[]>(STORAGE_KEYS.CORRECTIONS, []);
     const students = this.getStudents();
     const records = this.getAttendanceRecords();
     const faculty = this.getFaculty();
@@ -836,7 +963,7 @@ class ERPStorageService {
 
   // Audit Logs
   public getAuditLogs(): AuditLog[] {
-    return loadFromStorage<AuditLog[]>(STORAGE_KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS)
+    return loadFromStorage<AuditLog[]>(STORAGE_KEYS.AUDIT_LOGS, [])
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 

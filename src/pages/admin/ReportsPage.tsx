@@ -168,58 +168,66 @@ export const ReportsPage: React.FC = () => {
 
       {/* Reports Data Table */}
       <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-              <tr>
-                <th className="px-5 py-3.5">Roll Number</th>
-                <th className="px-5 py-3.5">Student Name</th>
-                <th className="px-5 py-3.5 text-center">Section</th>
-                <th className="px-5 py-3.5 text-center">Lectures Held</th>
-                <th className="px-5 py-3.5 text-center">Attended</th>
-                <th className="px-5 py-3.5 text-center">Percentage</th>
-                <th className="px-5 py-3.5 text-right">Audit Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-500/10">
-              {filteredStats.map((s) => {
-                const isDefaulter = s.percentage < 75;
-                return (
-                  <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
-                    <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
-                      {s.rollNumber}
-                    </td>
-                    <td className="px-5 py-3.5 font-bold text-white">
-                      {s.fullName}
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-bold text-slate-300">
-                      Section {s.sectionName}
-                    </td>
-                    <td className="px-5 py-3.5 text-center text-slate-300">
-                      {s.totalLectures}
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
-                      {s.presentLectures}
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-mono font-black text-sm text-[#00ff88]">
-                      {s.percentage}%
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span className={clsx(
-                        'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
-                        isDefaulter
-                          ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                          : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                      )}>
-                        {isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {filteredStats.length === 0 ? (
+          <div className="p-12 text-center text-slate-400">
+            <FileSpreadsheet className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <p className="font-semibold text-slate-300">No attendance records found</p>
+            <p className="text-xs text-slate-500 mt-1">Audit statistics will populate once faculty mark lecture attendance</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Roll Number</th>
+                  <th className="px-5 py-3.5">Student Name</th>
+                  <th className="px-5 py-3.5 text-center">Section</th>
+                  <th className="px-5 py-3.5 text-center">Lectures Held</th>
+                  <th className="px-5 py-3.5 text-center">Attended</th>
+                  <th className="px-5 py-3.5 text-center">Percentage</th>
+                  <th className="px-5 py-3.5 text-right">Audit Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-500/10">
+                {filteredStats.map((s) => {
+                  const isDefaulter = s.percentage < 75;
+                  return (
+                    <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
+                      <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
+                        {s.rollNumber}
+                      </td>
+                      <td className="px-5 py-3.5 font-bold text-white">
+                        {s.fullName}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-bold text-slate-300">
+                        Section {s.sectionName}
+                      </td>
+                      <td className="px-5 py-3.5 text-center text-slate-300">
+                        {s.totalLectures}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
+                        {s.presentLectures}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-mono font-black text-sm text-[#00ff88]">
+                        {s.percentage}%
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <span className={clsx(
+                          'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
+                          isDefaulter
+                            ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                            : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                        )}>
+                          {isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

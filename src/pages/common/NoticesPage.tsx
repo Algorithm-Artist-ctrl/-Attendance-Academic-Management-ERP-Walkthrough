@@ -155,62 +155,70 @@ export const NoticesPage: React.FC = () => {
 
       {/* Notices List */}
       <div className="space-y-4">
-        {filteredNotices.map((n) => (
-          <div
-            key={n.id}
-            className={clsx(
-              'glass-panel rounded-3xl p-6 border transition-all space-y-3.5',
-              n.isPinned
-                ? 'border-emerald-500/40 bg-slate-950/90 shadow-[0_0_20px_rgba(0,255,136,0.08)]'
-                : 'border-emerald-500/20 hover:border-emerald-500/35'
-            )}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                {n.isPinned && (
-                  <span className="flex items-center gap-1 text-[11px] font-bold text-[#00ff88] bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                    <Pin className="w-3 h-3" /> Pinned
-                  </span>
-                )}
-                <span className={clsx('px-2.5 py-0.5 rounded-full text-[10px] font-bold border', getCategoryBadgeClass(n.category))}>
-                  {n.category}
-                </span>
-                <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> {n.date}
-                </span>
-              </div>
-
-              <span className="text-[11px] font-semibold text-slate-400">
-                Issued by: <strong className="text-white">{n.author}</strong>
-              </span>
-            </div>
-
-            <h3 className="text-base font-bold text-white tracking-tight leading-snug">
-              {n.title}
-            </h3>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {n.content}
-            </p>
-
-            {n.attachment && (
-              <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{n.attachment}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => alert(`Downloading official document: ${n.attachment}`)}
-                  className="text-xs"
-                >
-                  Download PDF
-                </Button>
-              </div>
-            )}
+        {filteredNotices.length === 0 ? (
+          <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
+            <Bell className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <p className="font-semibold text-slate-300">No circulars or notices found</p>
+            <p className="text-xs text-slate-500 mt-1">There are no published notices matching your filter</p>
           </div>
-        ))}
+        ) : (
+          filteredNotices.map((n) => (
+            <div
+              key={n.id}
+              className={clsx(
+                'glass-panel rounded-3xl p-6 border transition-all space-y-3.5',
+                n.isPinned
+                  ? 'border-emerald-500/40 bg-slate-950/90 shadow-[0_0_20px_rgba(0,255,136,0.08)]'
+                  : 'border-emerald-500/20 hover:border-emerald-500/35'
+              )}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  {n.isPinned && (
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#00ff88] bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                      <Pin className="w-3 h-3" /> Pinned
+                    </span>
+                  )}
+                  <span className={clsx('px-2.5 py-0.5 rounded-full text-[10px] font-bold border', getCategoryBadgeClass(n.category))}>
+                    {n.category}
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> {n.date}
+                  </span>
+                </div>
+
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Issued by: <strong className="text-white">{n.author}</strong>
+                </span>
+              </div>
+
+              <h3 className="text-base font-bold text-white tracking-tight leading-snug">
+                {n.title}
+              </h3>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {n.content}
+              </p>
+
+              {n.attachment && (
+                <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{n.attachment}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => alert(`Downloading official document: ${n.attachment}`)}
+                    className="text-xs"
+                  >
+                    Download PDF
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

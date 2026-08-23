@@ -86,7 +86,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '2503400100057'}</span> • B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> • {year?.name || '2nd Year'} • Odd Semester 2026–2027 • Section <span className="text-[#00ff88] font-bold">{section?.name}</span> ({section?.room_number})
+            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '—'}</span> • B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> • {year?.name || '2nd Year'} • Odd Semester 2026–2027 • Section <span className="text-[#00ff88] font-bold">{section?.name || 'A'}</span> ({section?.room_number || 'Room A-007'})
           </p>
         </div>
 

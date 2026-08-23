@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Plus, Search, Mail, Phone, Building2, UserCheck } from 'lucide-react';
+import { Users, Plus, Search, Mail, Phone, Building2, UserCheck, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -7,7 +7,7 @@ import { Modal } from '../../components/common/Modal';
 import { Faculty } from '../../types/database.types';
 
 export const FacultyDirectoryPage: React.FC = () => {
-  const { faculty, departments, addFaculty } = useAcademic();
+  const { faculty, departments, addFaculty, deleteFaculty } = useAcademic();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Add Faculty modal state
@@ -25,6 +25,16 @@ export const FacultyDirectoryPage: React.FC = () => {
     f.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (f.faculty_code && f.faculty_code.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleDelete = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to remove faculty member "${name}" from the database?`)) {
+      try {
+        await deleteFaculty(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete faculty member');
+      }
+    }
+  };
 
   const handleCreateFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,58 +108,75 @@ export const FacultyDirectoryPage: React.FC = () => {
       </div>
 
       {/* Faculty Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredFaculty.map((f) => {
-          const dept = departments.find(d => d.id === f.department_id);
-          const isHOD = f.designation.toLowerCase().includes('hod') || f.faculty_code === 'WSM';
+      {filteredFaculty.length === 0 ? (
+        <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
+          <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+          <p className="font-semibold text-slate-300">No faculty members found</p>
+          <p className="text-xs text-slate-500 mt-1">Register faculty using the "Add Faculty Member" button</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredFaculty.map((f) => {
+            const dept = departments.find(d => d.id === f.department_id);
+            const isHOD = f.designation.toLowerCase().includes('hod') || f.faculty_code === 'WSM';
 
-          return (
-            <div
-              key={f.id}
-              className="glass-panel rounded-3xl p-5 border border-emerald-500/15 hover:border-emerald-500/35 transition-all space-y-3 relative overflow-hidden"
-            >
-              {isHOD && (
-                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
-                  HOD
-                </span>
-              )}
-
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-sm shadow-[0_0_12px_rgba(0,255,136,0.3)]">
-                  {f.faculty_code || f.full_name.substring(0, 2).toUpperCase()}
+            return (
+              <div
+                key={f.id}
+                className="glass-panel rounded-3xl p-5 border border-emerald-500/15 hover:border-emerald-500/35 transition-all space-y-3 relative overflow-hidden"
+              >
+                <div className="flex items-center justify-between">
+                  {isHOD ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                      HOD
+                    </span>
+                  ) : <span />}
+                  <button
+                    onClick={() => handleDelete(f.id, f.full_name)}
+                    className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    title="Delete Faculty"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white leading-tight">
-                    {f.full_name}
-                  </h3>
-                  <p className="text-xs text-emerald-400 font-medium mt-0.5">
-                    {f.designation}
-                  </p>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-sm shadow-[0_0_12px_rgba(0,255,136,0.3)]">
+                    {f.faculty_code || f.full_name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white leading-tight">
+                      {f.full_name}
+                    </h3>
+                    <p className="text-xs text-emerald-400 font-medium mt-0.5">
+                      {f.designation}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Employee Code:</span>
+                    <span className="font-mono font-bold text-white">{f.employee_code}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Timetable Code:</span>
+                    <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Department:</span>
+                    <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Official Email:</span>
+                    <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]">{f.email}</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Employee Code:</span>
-                  <span className="font-mono font-bold text-white">{f.employee_code}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Timetable Code:</span>
-                  <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Department:</span>
-                  <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Official Email:</span>
-                  <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]">{f.email}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Faculty Modal */}
       <Modal

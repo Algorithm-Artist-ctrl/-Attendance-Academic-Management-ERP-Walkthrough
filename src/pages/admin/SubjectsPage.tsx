@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Plus, Search, Layers } from 'lucide-react';
+import { BookOpen, Plus, Search, Layers, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -7,7 +7,7 @@ import { Modal } from '../../components/common/Modal';
 import { LectureType } from '../../types/database.types';
 
 export const SubjectsPage: React.FC = () => {
-  const { subjects, departments, programs, semesters, addSubject } = useAcademic();
+  const { subjects, departments, programs, semesters, addSubject, deleteSubject } = useAcademic();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Add Subject modal
@@ -21,6 +21,16 @@ export const SubjectsPage: React.FC = () => {
     (s.subject_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to remove subject "${name}" from curriculum?`)) {
+      try {
+        await deleteSubject(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete subject');
+      }
+    }
+  };
 
   const handleCreateSubject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,44 +102,62 @@ export const SubjectsPage: React.FC = () => {
 
       {/* Subjects Table */}
       <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-              <tr>
-                <th className="px-5 py-3.5">Course Code</th>
-                <th className="px-5 py-3.5">Subject Full Title</th>
-                <th className="px-5 py-3.5 text-center">Format</th>
-                <th className="px-5 py-3.5 text-center">Credits</th>
-                <th className="px-5 py-3.5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-500/10">
-              {filteredSubjects.map((sub) => (
-                <tr key={sub.id} className="hover:bg-emerald-500/5 transition-colors">
-                  <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">
-                    {sub.subject_code}
-                  </td>
-                  <td className="px-5 py-4 font-bold text-white text-sm">
-                    {sub.subject_name}
-                  </td>
-                  <td className="px-5 py-4 text-center">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
-                      {sub.lecture_type || 'Theory'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-center font-bold text-white">
-                    {sub.credits || 4.0}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                      Active
-                    </span>
-                  </td>
+        {filteredSubjects.length === 0 ? (
+          <div className="p-12 text-center text-slate-400">
+            <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <p className="font-semibold text-slate-300">No curriculum subjects registered</p>
+            <p className="text-xs text-slate-500 mt-1">Configure subjects using the "Add New Subject" button</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-5 py-3.5">Course Code</th>
+                  <th className="px-5 py-3.5">Subject Full Title</th>
+                  <th className="px-5 py-3.5 text-center">Format</th>
+                  <th className="px-5 py-3.5 text-center">Credits</th>
+                  <th className="px-5 py-3.5 text-center">Status</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-emerald-500/10">
+                {filteredSubjects.map((sub) => (
+                  <tr key={sub.id} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">
+                      {sub.subject_code}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-white text-sm">
+                      {sub.subject_name}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                        {sub.lecture_type || 'Theory'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-center font-bold text-white">
+                      {sub.credits || 4.0}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                        Active
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        onClick={() => handleDelete(sub.id, sub.subject_name)}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Delete Subject"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add Subject Modal */}

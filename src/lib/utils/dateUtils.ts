@@ -59,3 +59,17 @@ export function formatDateDisplay(dateStr: string): string {
     return dateStr;
   }
 }
+
+export function formatTimeAgo(isoString?: string): string {
+  if (!isoString) return 'Just now';
+  try {
+    const diff = (new Date().getTime() - new Date(isoString).getTime()) / 1000;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    return `${Math.floor(diff / 86400)} days ago`;
+  } catch {
+    return 'Recently';
+  }
+}
+

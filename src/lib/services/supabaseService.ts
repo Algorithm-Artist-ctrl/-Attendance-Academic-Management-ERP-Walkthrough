@@ -383,10 +383,28 @@ export const supabaseService = {
     return data as Student;
   },
 
+  async deleteStudent(id: string) {
+    const { error } = await supabase.from('students').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
   async addFaculty(fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('faculty').insert(fac).select().single();
     if (error) throw new Error(error.message);
     return data as Faculty;
+  },
+
+  async updateFaculty(id: string, updates: Partial<Faculty>) {
+    const { data, error } = await supabase.from('faculty').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Faculty;
+  },
+
+  async deleteFaculty(id: string) {
+    const { error } = await supabase.from('faculty').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
   },
 
   async addSubject(sub: Omit<Subject, 'id' | 'created_at' | 'updated_at'>) {
@@ -395,10 +413,34 @@ export const supabaseService = {
     return data as Subject;
   },
 
+  async updateSubject(id: string, updates: Partial<Subject>) {
+    const { data, error } = await supabase.from('subjects').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Subject;
+  },
+
+  async deleteSubject(id: string) {
+    const { error } = await supabase.from('subjects').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
   async addDepartment(dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('departments').insert(dept).select().single();
     if (error) throw new Error(error.message);
     return data as Department;
+  },
+
+  async updateDepartment(id: string, updates: Partial<Department>) {
+    const { data, error } = await supabase.from('departments').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Department;
+  },
+
+  async deleteDepartment(id: string) {
+    const { error } = await supabase.from('departments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
   },
 
   async addProgram(prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) {
@@ -407,10 +449,34 @@ export const supabaseService = {
     return data as Program;
   },
 
+  async updateProgram(id: string, updates: Partial<Program>) {
+    const { data, error } = await supabase.from('programs').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Program;
+  },
+
+  async deleteProgram(id: string) {
+    const { error } = await supabase.from('programs').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
   async addSection(sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('sections').insert(sec).select().single();
     if (error) throw new Error(error.message);
     return data as Section;
+  },
+
+  async updateSection(id: string, updates: Partial<Section>) {
+    const { data, error } = await supabase.from('sections').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Section;
+  },
+
+  async deleteSection(id: string) {
+    const { error } = await supabase.from('sections').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
   },
 
   async addAssignment(assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) {
@@ -419,9 +485,27 @@ export const supabaseService = {
     return data as FacultySubjectAssignment;
   },
 
+  async deleteAssignment(id: string) {
+    const { error } = await supabase.from('faculty_subject_assignments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
   async addTimetableEntry(entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('timetable_entries').insert(entry).select().single();
     if (error) throw new Error(error.message);
     return data as TimetableEntry;
+  },
+
+  async updateTimetableEntry(id: string, updates: Partial<TimetableEntry>) {
+    const { data, error } = await supabase.from('timetable_entries').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as TimetableEntry;
+  },
+
+  async deleteTimetableEntry(id: string) {
+    const { error } = await supabase.from('timetable_entries').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
   },
 };

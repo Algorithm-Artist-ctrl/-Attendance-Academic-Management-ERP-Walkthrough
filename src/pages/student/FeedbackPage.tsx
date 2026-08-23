@@ -13,6 +13,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 
+import { erpStorage } from '../../lib/storage/erpStorage';
+
 export const FeedbackPage: React.FC = () => {
   const { user } = useAuth();
   const { subjects, faculty, assignments } = useAcademic();
@@ -48,12 +50,29 @@ export const FeedbackPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    erpStorage.addAuditLog(
+      'FEEDBACK_SUBMITTED',
+      'feedback',
+      undefined,
+      undefined,
+      {
+        subjectId: selectedSubjectId,
+        facultyId: selectedFacultyId,
+        ratings: {
+          knowledge: ratingKnowledge,
+          clarity: ratingClarity,
+          punctuality: ratingPunctuality,
+          doubtSolving: ratingDoubtSolving
+        },
+        hasSuggestions: !!suggestions.trim()
+      }
+    );
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSubmitted(true);
       setSuggestions('');
       setTimeout(() => setIsSubmitted(false), 3000);
-    }, 1000);
+    }, 800);
   };
 
   const renderStarRating = (rating: number, setRating: (val: number) => void) => {
@@ -107,20 +126,27 @@ export const FeedbackPage: React.FC = () => {
 
       {/* Feedback Form */}
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-emerald-500/20 max-w-3xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Select Subject</label>
-              <select
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
-              >
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
-                ))}
-              </select>
-            </div>
+        {subjects.length === 0 ? (
+          <div className="py-8 text-center text-slate-400">
+            <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <p className="font-semibold text-slate-300">No subjects registered for evaluation</p>
+            <p className="text-xs text-slate-500 mt-1">Course evaluations will open when curriculum subjects are enrolled</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Select Subject</label>
+                <select
+                  value={selectedSubjectId}
+                  onChange={(e) => setSelectedSubjectId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                >
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
+                  ))}
+                </select>
+              </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Faculty Professor</label>
@@ -204,6 +230,7 @@ export const FeedbackPage: React.FC = () => {
             </Button>
           </div>
         </form>
+      )}
       </div>
     </div>
   );
