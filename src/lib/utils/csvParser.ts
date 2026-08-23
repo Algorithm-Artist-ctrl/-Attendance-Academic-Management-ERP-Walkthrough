@@ -69,7 +69,16 @@ export function parseAndValidateStudentCSV(
           const errors: string[] = [];
 
           // 1. Roll Number Validation
-          const rawRoll = (row.roll_number || row['ROLL NO'] || row['Roll No'] || row['Roll Number'] || '').trim();
+          const rawRoll = (
+            row.roll_number || 
+            row['ROLL NO'] || 
+            row['Roll No'] || 
+            row['Roll Number'] || 
+            row['ROLL NUMBER'] || 
+            row.roll || 
+            row['Roll'] || 
+            ''
+          ).trim();
           if (!rawRoll) {
             errors.push('Roll Number is missing');
           } else {
@@ -84,17 +93,41 @@ export function parseAndValidateStudentCSV(
           }
 
           // 2. Full Name Validation
-          const rawName = (row.full_name || row['STUDENT NAME'] || row['Student Name'] || row['Name'] || '').trim();
+          const rawName = (
+            row.full_name || 
+            row['STUDENT NAME'] || 
+            row['Student Name'] || 
+            row['Full Name'] || 
+            row['FULL NAME'] || 
+            row['Name'] || 
+            row['NAME'] || 
+            row.name || 
+            ''
+          ).trim();
           if (!rawName) {
             errors.push('Student Name is missing');
           }
 
           // 3. Admission Type
-          const rawAdmission = (row.admission_type || row['ADMISSION TYPE'] || row['Admission Type'] || '').trim().toLowerCase();
+          const rawAdmission = (
+            row.admission_type || 
+            row['ADMISSION TYPE'] || 
+            row['Admission Type'] || 
+            row['Type'] || 
+            ''
+          ).trim().toLowerCase();
           const admissionType: AdmissionType = rawAdmission.includes('lateral') ? 'Lateral Entry' : 'Regular';
 
           // 4. Section mapping
-          const rawSec = (row.section || row.section_name || row['SECTION'] || row['Section'] || '').trim().toUpperCase();
+          const rawSec = (
+            row.section || 
+            row.section_name || 
+            row['SECTION'] || 
+            row['Section'] || 
+            row['Sec'] || 
+            row['SEC'] || 
+            ''
+          ).trim().toUpperCase();
           let matchedSectionId = context.defaultSectionId;
           if (rawSec) {
             const foundSec = context.sections.find(s => s.name.toUpperCase() === rawSec);
