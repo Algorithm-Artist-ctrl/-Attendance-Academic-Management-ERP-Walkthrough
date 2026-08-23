@@ -2,34 +2,45 @@ import { DayOfWeek } from '../../types/database.types';
 
 // Format current date in Asia/Kolkata (IST) timezone as YYYY-MM-DD
 export function getISTTodayDate(): string {
-  const options: Intl.DateTimeFormatOptions = {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  };
-  const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(new Date());
+  }).formatToParts(new Date());
   const year = parts.find(p => p.type === 'year')?.value || '2026';
   const month = parts.find(p => p.type === 'month')?.value || '08';
-  const day = parts.find(p => p.type === 'day')?.value || '22';
+  const day = parts.find(p => p.type === 'day')?.value || '23';
   return `${year}-${month}-${day}`;
 }
 
-// Get day of week code ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN') in IST
+// Get day of week code ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN') in Asia/Kolkata (IST)
 export function getISTDayOfWeek(dateStr?: string): DayOfWeek {
-  const date = dateStr ? new Date(dateStr) : new Date();
-  const dayIndex = date.getDay(); // 0 is Sunday, 1 is Monday, ... 6 is Saturday
-  
-  switch (dayIndex) {
-    case 0: return 'SUN';
-    case 1: return 'MON';
-    case 2: return 'TUE';
-    case 3: return 'WED';
-    case 4: return 'THU';
-    case 5: return 'FRI';
-    case 6: return 'SAT';
-    default: return 'SUN';
+  let date: Date;
+
+  if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    // Use UTC noon to guarantee timezone independence when converting to Asia/Kolkata
+    date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  } else if (dateStr) {
+    date = new Date(dateStr);
+  } else {
+    date = new Date();
   }
+
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short',
+  }).format(date).toUpperCase();
+
+  if (weekday.startsWith('SUN')) return 'SUN';
+  if (weekday.startsWith('MON')) return 'MON';
+  if (weekday.startsWith('TUE')) return 'TUE';
+  if (weekday.startsWith('WED')) return 'WED';
+  if (weekday.startsWith('THU')) return 'THU';
+  if (weekday.startsWith('FRI')) return 'FRI';
+  if (weekday.startsWith('SAT')) return 'SAT';
+  return 'SUN';
 }
 
 // Format 24-hour time to 12-hour AM/PM

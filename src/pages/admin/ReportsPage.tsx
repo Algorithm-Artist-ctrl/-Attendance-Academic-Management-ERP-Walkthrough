@@ -13,6 +13,7 @@ import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
+import { getISTTodayDate } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
 import { clsx } from 'clsx';
 
@@ -61,7 +62,7 @@ export const ReportsPage: React.FC = () => {
       Attendance_Percentage: `${s.percentage}%`,
       Audit_Status: s.percentage >= 75 ? 'Eligible for Exams' : 'Defaulter (<75%)',
     }));
-    exportToCSV(data, `VCTM_College_Attendance_Audit_${new Date().toISOString().substring(0, 10)}`);
+    exportToCSV(data, `VCTM_College_Attendance_Audit_${getISTTodayDate()}`);
   };
 
   const handleExportPDF = () => {
@@ -84,7 +85,7 @@ export const ReportsPage: React.FC = () => {
       academicYear: 'B.Tech 2nd Year (2026-2027)',
       tableHeaders: headers,
       tableRows: rows,
-      filename: `VCTM_Attendance_Report_${new Date().toISOString().substring(0, 10)}`,
+      filename: `VCTM_Attendance_Report_${getISTTodayDate()}`,
     });
   };
 

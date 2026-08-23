@@ -21,6 +21,7 @@ import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { AttendanceStatus } from '../../types/database.types';
+import { getISTTodayDate, getISTDayOfWeek } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface TakeAttendancePageProps {
@@ -60,15 +61,14 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // 2. Filter classes assigned STRICTLY to this faculty member
   const assignedClasses = timetable.filter(t => t.faculty_id === facultyId && t.active);
 
-  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
-  const todayDay = days[new Date().getDay()];
+  const todayDay = getISTDayOfWeek();
   const [selectedDayFilter, setSelectedDayFilter] = useState<string>(todayDay);
 
   // Selected Class ID for active attendance marking session
   const [activeClassId, setActiveClassId] = useState<string | null>(initialTimetableEntryId || null);
   
-  // Today's date (max date locked to today)
-  const todayISO = new Date().toISOString().split('T')[0];
+  // Today's date in Asia/Kolkata (max date locked to today)
+  const todayISO = getISTTodayDate();
   const [sessionDate, setSessionDate] = useState<string>(todayISO);
 
   // Attendance state: Map of student_id -> 'Present' | 'Absent'

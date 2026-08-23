@@ -28,6 +28,7 @@ import {
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { erpStorage } from '../lib/storage/erpStorage';
+import { getISTTodayDate, getISTDayOfWeek } from '../lib/utils/dateUtils';
 
 export interface TodayAttendanceLecture {
   timetableEntryId: string;
@@ -746,13 +747,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const student = students.find(s => s.id === studentId);
     if (!student) return [];
 
-    const days: DayOfWeek[] = ['SUN' as any, 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const now = new Date();
-    const defaultDateStr = now.toISOString().split('T')[0];
+    const defaultDateStr = getISTTodayDate();
     const targetDateStr = customDateStr || defaultDateStr;
-
-    const targetDateObj = new Date(targetDateStr);
-    const dayOfWeek: DayOfWeek = days[targetDateObj.getDay()];
+    const dayOfWeek: DayOfWeek = getISTDayOfWeek(targetDateStr);
 
     const sectionEntries = dayOfWeek === 'SUN' 
       ? [] 
@@ -828,9 +825,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 9. Get Date-wise Historical Lectures for Student
   const getDateLecturesForStudent = (studentId: string, dateStr: string): DateWiseAttendanceSummary => {
-    const days: DayOfWeek[] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const dateObj = new Date(dateStr);
-    const dayOfWeek: DayOfWeek = days[dateObj.getDay()];
+    const dayOfWeek: DayOfWeek = getISTDayOfWeek(dateStr);
 
     const lectures = getTodayLecturesForStudent(studentId, dateStr);
     const presentCount = lectures.filter(l => l.status === 'Present').length;

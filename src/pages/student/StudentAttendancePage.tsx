@@ -22,6 +22,7 @@ import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicConte
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
+import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 import { SubjectAttendanceStat } from '../../types/academic.types';
 import { DayOfWeek } from '../../types/database.types';
@@ -70,24 +71,16 @@ export const StudentAttendancePage: React.FC = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const formattedTodayDate = new Date().toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const todayDateStr = getISTTodayDate();
+  const todayDay = getISTDayOfWeek(todayDateStr);
+  const formattedTodayDate = formatDateDisplay(todayDateStr);
 
   // Today's Lectures
   const todayLectures = getTodayLecturesForStudent(studentId, todayDateStr);
 
   // Selected Date Lectures for History Tab
   const historyData = getDateLecturesForStudent(studentId, selectedHistoryDate);
-  const formattedHistoryDate = new Date(selectedHistoryDate).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const formattedHistoryDate = formatDateDisplay(selectedHistoryDate);
 
   // Subject stats list
   const subjectStatsList: SubjectAttendanceStat[] = stats.subjectStats || [];
@@ -112,7 +105,7 @@ export const StudentAttendancePage: React.FC = () => {
     calendarDays.push({
       dayNumber: d,
       dateStr: dStr,
-      isSunday: new Date(dStr).getDay() === 0,
+      isSunday: getISTDayOfWeek(dStr) === 'SUN',
       totalLectures: daySummary.totalLectures,
       presentCount: daySummary.presentCount,
       absentCount: daySummary.absentCount,

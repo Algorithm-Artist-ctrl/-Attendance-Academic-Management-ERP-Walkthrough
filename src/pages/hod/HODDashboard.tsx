@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
+import { getISTTodayDate, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
 import { clsx } from 'clsx';
 
@@ -30,8 +31,18 @@ export const HODDashboard: React.FC = () => {
     getStudentAttendance 
   } = useAcademic();
 
-  const dept = departments.find(d => d.code === 'CSE') || departments[0];
-  const hodFaculty = faculty.find(f => f.id === dept.hod_faculty_id) || faculty[0];
+  const dept = departments.find(
+    d => d.id === user?.faculty?.department_id || 
+         d.hod_faculty_id === user?.faculty_id || 
+         d.hod_faculty_id === user?.faculty?.id ||
+         d.code === 'CSE'
+  ) || departments[0];
+
+  const hodFaculty = faculty.find(
+    f => f.id === user?.faculty_id || 
+         f.id === user?.faculty?.id || 
+         f.id === dept?.hod_faculty_id
+  ) || user?.faculty || faculty[0];
 
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
 
@@ -59,7 +70,7 @@ export const HODDashboard: React.FC = () => {
       Attendance_Percentage: `${d.percentage}%`,
       Status: 'Defaulter (<75%)',
     }));
-    exportToCSV(data, `VCTM_CSE_Defaulters_Report_${new Date().toISOString().substring(0, 10)}`);
+    exportToCSV(data, `VCTM_CSE_Defaulters_Report_${getISTTodayDate()}`);
   };
 
   const handleExportDefaultersPDF = () => {
@@ -82,7 +93,7 @@ export const HODDashboard: React.FC = () => {
       academicYear: 'B.Tech 2nd Year (2026-2027)',
       tableHeaders: headers,
       tableRows: rows,
-      filename: `VCTM_CSE_Defaulters_${new Date().toISOString().substring(0, 10)}`,
+      filename: `VCTM_CSE_Defaulters_${getISTTodayDate()}`,
     });
   };
 

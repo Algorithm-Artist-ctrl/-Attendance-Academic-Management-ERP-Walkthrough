@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
+import { getISTDayOfWeek } from '../../lib/utils/dateUtils';
 
 interface FacultyDashboardProps {
   onNavigate: (tab: string, params?: any) => void;
@@ -44,8 +45,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
-  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
-  const todayDay = days[new Date().getDay()];
+  const todayDay = getISTDayOfWeek();
 
   // Today's classes for this faculty strictly from Supabase timetable
   const todaySchedule = todayDay === 'SUN' 

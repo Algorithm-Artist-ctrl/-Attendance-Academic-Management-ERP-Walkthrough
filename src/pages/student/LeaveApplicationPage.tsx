@@ -13,6 +13,7 @@ import {
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { getISTTodayDate } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface LeaveRequest {
@@ -65,7 +66,7 @@ export const LeaveApplicationPage: React.FC = () => {
         days: 2,
         reason: reason.trim(),
         status: 'Pending Mentor',
-        appliedAt: new Date().toISOString().split('T')[0],
+        appliedAt: getISTTodayDate(),
         documentName: fileName || undefined
       };
 

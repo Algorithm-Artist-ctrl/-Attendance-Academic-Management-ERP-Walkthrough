@@ -18,6 +18,7 @@ import {
   AuditLog, 
   AttendanceStatus 
 } from '../../types/database.types';
+import { getISTTodayDate } from '../utils/dateUtils';
 
 export const supabaseService = {
   // 1. Fetch All Master & Operational Data
@@ -99,7 +100,7 @@ export const supabaseService = {
     }>;
   }) {
     // 1. Validation: Prevent future attendance dates
-    const today = new Date().toISOString().split('T')[0];
+    const today = getISTTodayDate();
     if (params.sessionDate > today) {
       throw new Error(`Invalid attendance date: ${params.sessionDate}. Attendance cannot be recorded for future dates.`);
     }

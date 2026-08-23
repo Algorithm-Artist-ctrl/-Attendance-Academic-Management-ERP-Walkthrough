@@ -19,6 +19,7 @@ import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicConte
 import { Button } from '../../components/common/Button';
 import { CyberGauge3D } from '../../components/3d/CyberGauge3D';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
+import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface StudentDashboardProps {
@@ -51,13 +52,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
   const year = years.find(y => y.id === currentStudent?.academic_year_id);
   const prog = programs.find(p => p.id === currentStudent?.program_id);
 
-  // Today's Date String
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const formattedTodayDate = new Date().toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  // Today's Date in Asia/Kolkata (IST)
+  const todayDateStr = getISTTodayDate();
+  const todayDay = getISTDayOfWeek(todayDateStr);
+  const formattedTodayDate = formatDateDisplay(todayDateStr);
 
   // Today's live scheduled lectures and attendance statuses strictly from Supabase
   const todayLectures = getTodayLecturesForStudent(studentId, todayDateStr);
@@ -169,12 +167,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
             <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
             <p className="font-bold text-white text-sm">
-              {new Date().getDay() === 0 ? 'Today is Sunday (Weekend / Holiday)' : 'No scheduled lectures found for today'}
+              {todayDay === 'SUN' ? 'Sunday — No classes scheduled today' : 'No classes scheduled for today'}
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              {new Date().getDay() === 0 
+              {todayDay === 'SUN' 
                 ? 'Academic lectures are not held on Sundays. Classes resume on Monday.' 
-                : 'Check your semester timetable for weekly class timings.'}
+                : 'No timetable classes are scheduled for today in your section.'}
             </p>
           </div>
         ) : (
