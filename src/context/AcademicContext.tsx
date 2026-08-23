@@ -113,7 +113,12 @@ interface AcademicContextType {
     }>;
   }) => Promise<{ session: AttendanceSession; records: AttendanceRecord[] }>;
   submitCorrectionRequest: (params: {
-    attendanceRecordId: string;
+    attendanceRecordId?: string;
+    timetableEntryId?: string;
+    sessionDate?: string;
+    subjectId?: string;
+    facultyId?: string;
+    sectionId?: string;
     studentId: string;
     requestedStatus: AttendanceStatus;
     reason: string;
@@ -125,7 +130,7 @@ interface AcademicContextType {
     reviewRemarks?: string;
   }) => Promise<AttendanceCorrection>;
   canSubmitClaim: (params: {
-    attendanceRecordId: string;
+    attendanceRecordId?: string;
     sessionDate: string;
   }) => { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection };
   getStudentAttendance: (studentId: string) => StudentOverallAttendance & {
@@ -338,22 +343,56 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 2. Submit Attendance Correction / Claim Request
   const submitCorrectionRequest = async (params: {
-    attendanceRecordId: string;
+    attendanceRecordId?: string;
+    timetableEntryId?: string;
+    sessionDate?: string;
+    subjectId?: string;
+    facultyId?: string;
+    sectionId?: string;
     studentId: string;
     requestedStatus: AttendanceStatus;
     reason: string;
   }) => {
+    let recId = params.attendanceRecordId;
+
+    if (!recId && params.timetableEntryId && params.sessionDate && params.subjectId && params.facultyId && params.sectionId) {
+      const sessionRes = await supabaseService.ensureAttendanceSessionAndRecord({
+        timetableEntryId: params.timetableEntryId,
+        sessionDate: params.sessionDate,
+        subjectId: params.subjectId,
+        facultyId: params.facultyId,
+        sectionId: params.sectionId,
+        studentId: params.studentId,
+        status: 'Absent',
+      });
+      recId = sessionRes.recordId;
+    }
+
+    if (!recId) {
+      throw new Error('Unable to resolve attendance record for this claim.');
+    }
+
     // Validate duplicate
     const existing = corrections.find(
-      c => c.attendance_record_id === params.attendanceRecordId &&
+      c => c.attendance_record_id === recId &&
            (c.status === 'pending' || c.status === 'approved')
     );
     if (existing) {
       throw new Error(`A claim for this lecture has already been submitted (Status: ${existing.status.toUpperCase()}).`);
     }
 
-    const res = await supabaseService.submitCorrection(params);
-    erpStorage.submitCorrectionRequest(params);
+    const res = await supabaseService.submitCorrection({
+      attendanceRecordId: recId,
+      studentId: params.studentId,
+      requestedStatus: params.requestedStatus,
+      reason: params.reason,
+    });
+    erpStorage.submitCorrectionRequest({
+      attendanceRecordId: recId,
+      studentId: params.studentId,
+      requestedStatus: params.requestedStatus,
+      reason: params.reason,
+    });
     await refreshData();
     return res;
   };
@@ -373,20 +412,21 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 4. Validate whether student can submit a claim
   const canSubmitClaim = (params: {
-    attendanceRecordId: string;
+    attendanceRecordId?: string;
     sessionDate: string;
   }): { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection } => {
-    // Check duplicate
-    const existing = corrections.find(
-      c => c.attendance_record_id === params.attendanceRecordId &&
-           (c.status === 'pending' || c.status === 'approved')
-    );
-    if (existing) {
-      return {
-        canSubmit: false,
-        message: `Claim already submitted (Status: ${existing.status.toUpperCase()}).`,
-        existingClaim: existing,
-      };
+    if (params.attendanceRecordId) {
+      const existing = corrections.find(
+        c => c.attendance_record_id === params.attendanceRecordId &&
+             (c.status === 'pending' || c.status === 'approved')
+      );
+      if (existing) {
+        return {
+          canSubmit: false,
+          message: `Claim already submitted (Status: ${existing.status.toUpperCase()}).`,
+          existingClaim: existing,
+        };
+      }
     }
 
     // Check time window

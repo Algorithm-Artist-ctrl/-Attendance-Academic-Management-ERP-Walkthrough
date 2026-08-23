@@ -76,10 +76,6 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lecture.attendanceRecordId) {
-      setErrorMessage('No attendance record found for this lecture.');
-      return;
-    }
 
     const finalReason = reason.trim();
     if (!finalReason) {
@@ -104,12 +100,17 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
     try {
       await submitCorrectionRequest({
         attendanceRecordId: lecture.attendanceRecordId,
+        timetableEntryId: lecture.timetableEntryId,
+        sessionDate: lecture.sessionDate,
+        subjectId: lecture.subjectId,
+        facultyId: lecture.facultyId,
+        sectionId: lecture.sectionId,
         studentId,
         requestedStatus: 'Present',
         reason: finalReason,
       });
 
-      setSuccessMessage('Attendance claim submitted successfully! It has been routed to your assigned faculty coordinator.');
+      setSuccessMessage('Attendance claim submitted successfully! It has been routed to your assigned faculty member.');
       setTimeout(() => {
         setIsSubmitting(false);
         setSuccessMessage(null);

@@ -384,10 +384,29 @@ export const StudentAttendancePage: React.FC = () => {
                         </span>
                       )}
 
-                      {isNotRecorded && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
-                          <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-                          Attendance Not Recorded
+                      {isNotRecorded && !hasPendingClaim && !hasApprovedClaim && (
+                        <div className="flex items-center gap-2.5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                            <Clock className="w-3.5 h-3.5 text-amber-400/80" />
+                            Attendance Not Recorded
+                          </span>
+
+                          <Button
+                            variant="neon"
+                            size="sm"
+                            onClick={() => setSelectedLectureForClaim(lec)}
+                            leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                            className="text-xs font-bold"
+                          >
+                            Claim Attendance
+                          </Button>
+                        </div>
+                      )}
+
+                      {isNotRecorded && hasPendingClaim && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                          <Clock className="w-3.5 h-3.5 animate-spin" />
+                          Claim Pending
                         </span>
                       )}
                     </div>
@@ -559,7 +578,7 @@ export const StudentAttendancePage: React.FC = () => {
                     <div className="shrink-0 flex items-center gap-3">
                       <AttendanceStatusBadge status={lec.status} />
 
-                      {lec.status === 'Absent' && !lec.claimId && (
+                      {lec.status !== 'Present' && !lec.claimId && (
                         <Button
                           variant="neon"
                           size="sm"

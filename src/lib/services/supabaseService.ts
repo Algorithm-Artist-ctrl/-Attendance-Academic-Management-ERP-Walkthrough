@@ -198,7 +198,78 @@ export const supabaseService = {
     return { session, records: insertedRecords as AttendanceRecord[] };
   },
 
-  // 3. Submit Correction Request
+  // 3. Ensure Attendance Session & Record (for unrecorded lecture claims)
+  async ensureAttendanceSessionAndRecord(params: {
+    timetableEntryId: string;
+    sessionDate: string;
+    subjectId: string;
+    facultyId: string;
+    sectionId: string;
+    studentId: string;
+    status: AttendanceStatus;
+  }): Promise<{ sessionId: string; recordId: string }> {
+    // 1. Check if session exists in Supabase
+    let { data: session } = await supabase
+      .from('attendance_sessions')
+      .select('id')
+      .eq('section_id', params.sectionId)
+      .eq('subject_id', params.subjectId)
+      .eq('session_date', params.sessionDate)
+      .maybeSingle();
+
+    if (!session) {
+      const { data: newSession, error: sErr } = await supabase
+        .from('attendance_sessions')
+        .insert({
+          timetable_entry_id: params.timetableEntryId,
+          faculty_id: params.facultyId,
+          section_id: params.sectionId,
+          subject_id: params.subjectId,
+          session_date: params.sessionDate,
+          start_time: '09:00:00',
+          end_time: '09:50:00',
+          status: 'pending',
+        })
+        .select('id')
+        .single();
+
+      if (sErr || !newSession) {
+        throw new Error(`Failed to create attendance session: ${sErr?.message}`);
+      }
+      session = newSession;
+    }
+
+    // 2. Check if student record exists
+    let { data: record } = await supabase
+      .from('attendance_records')
+      .select('id')
+      .eq('attendance_session_id', session.id)
+      .eq('student_id', params.studentId)
+      .maybeSingle();
+
+    if (!record) {
+      const { data: newRec, error: rErr } = await supabase
+        .from('attendance_records')
+        .insert({
+          attendance_session_id: session.id,
+          student_id: params.studentId,
+          status: params.status || 'Absent',
+          marked_by: params.facultyId,
+          remarks: 'Claim initiated for unrecorded lecture',
+        })
+        .select('id')
+        .single();
+
+      if (rErr || !newRec) {
+        throw new Error(`Failed to create attendance record: ${rErr?.message}`);
+      }
+      record = newRec;
+    }
+
+    return { sessionId: session.id, recordId: record.id };
+  },
+
+  // 4. Submit Correction Request
   async submitCorrection(params: {
     attendanceRecordId: string;
     studentId: string;
