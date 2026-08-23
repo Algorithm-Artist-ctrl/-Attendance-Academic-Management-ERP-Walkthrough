@@ -248,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (!matchedProfile) {
-      const errorMsg = `No student or faculty found matching "${credentials.identifier}". Please verify your Roll Number (e.g. 2503400100057) or Email.`;
+      const errorMsg = `No active ERP account found for "${credentials.identifier}". Please check your Roll Number / Employee ID / Email or contact administrator.`;
       setAuthState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
       return { success: false, error: errorMsg };
     }

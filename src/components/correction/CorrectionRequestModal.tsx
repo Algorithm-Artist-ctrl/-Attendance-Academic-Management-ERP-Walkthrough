@@ -227,7 +227,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
                   <input
                     type="text"
                     disabled
-                    value={assignedFaculty?.full_name || 'Ms. Hemlata Chaudhary'}
+                    value={assignedFaculty?.full_name || 'Course Faculty'}
                     className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/10 rounded-xl text-slate-400 font-semibold"
                   />
                 </div>

@@ -59,9 +59,15 @@ export const StudentAttendancePage: React.FC = () => {
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
 
   // History State
-  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(7); // August (0-indexed = 7)
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>('2026-08-22');
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(() => {
+    const d = new Date(getISTTodayDate());
+    return d.getMonth();
+  });
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const d = new Date(getISTTodayDate());
+    return d.getFullYear();
+  });
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>(() => getISTTodayDate());
 
   // Modal State for Claiming Attendance
   const [selectedLectureForClaim, setSelectedLectureForClaim] = useState<TodayAttendanceLecture | null>(null);

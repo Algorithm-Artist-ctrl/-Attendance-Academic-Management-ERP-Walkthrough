@@ -84,7 +84,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '—'}</span> • B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> • {year?.name || '2nd Year'} • Odd Semester 2026–2027 • Section <span className="text-[#00ff88] font-bold">{section?.name || 'A'}</span> ({section?.room_number || 'Room A-007'})
+            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '—'}</span> • B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
           </p>
         </div>
 
@@ -414,24 +414,32 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {(stats.subjectStats || []).slice(0, 6).map((sb) => (
-              <div
-                key={sb.subjectId}
-                className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/35 transition-all text-center space-y-1.5"
-              >
-                <div className="text-xs font-bold text-white truncate" title={sb.subjectName}>
-                  {sb.subjectName}
+          {(!stats.subjectStats || stats.subjectStats.length === 0) ? (
+            <div className="py-8 text-center text-slate-400">
+              <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-300">No subjects assigned yet.</p>
+              <p className="text-[11px] text-slate-500">Subject performance cards will appear upon enrollment</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {stats.subjectStats.slice(0, 6).map((sb) => (
+                <div
+                  key={sb.subjectId}
+                  className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/35 transition-all text-center space-y-1.5"
+                >
+                  <div className="text-xs font-bold text-white truncate" title={sb.subjectName}>
+                    {sb.subjectName}
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-medium truncate" title={sb.facultyName}>
+                    {sb.facultyName}
+                  </div>
+                  <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                    {sb.totalConducted > 0 ? `${sb.percentage}%` : 'No Class Yet'}
+                  </div>
                 </div>
-                <div className="text-[10px] text-emerald-400 font-medium truncate" title={sb.facultyName}>
-                  {sb.facultyName}
-                </div>
-                <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                  {sb.totalConducted > 0 ? `${sb.percentage}%` : 'No Class Yet'}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="pt-3 border-t border-emerald-500/10 text-xs text-slate-400 flex items-center justify-between">
             <span>Minimum AKTU Requirement: <strong>75%</strong></span>

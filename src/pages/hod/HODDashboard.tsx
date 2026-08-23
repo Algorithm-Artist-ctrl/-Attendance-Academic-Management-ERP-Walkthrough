@@ -33,16 +33,16 @@ export const HODDashboard: React.FC = () => {
 
   const dept = departments.find(
     d => d.id === user?.faculty?.department_id || 
+         d.id === user?.department_id ||
          d.hod_faculty_id === user?.faculty_id || 
-         d.hod_faculty_id === user?.faculty?.id ||
-         d.code === 'CSE'
+         d.hod_faculty_id === user?.faculty?.id
   ) || departments[0];
 
   const hodFaculty = faculty.find(
     f => f.id === user?.faculty_id || 
          f.id === user?.faculty?.id || 
          f.id === dept?.hod_faculty_id
-  ) || user?.faculty || faculty[0];
+  ) || user?.faculty;
 
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
 
@@ -117,7 +117,7 @@ export const HODDashboard: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-1 font-medium">
-              Head of Department: <strong className="text-white">{hodFaculty.full_name}</strong> • VCTM Aligarh (340)
+              Head of Department: <strong className="text-white">{hodFaculty?.full_name || user?.full_name || 'Department Head'}</strong> • {dept?.name || 'Academic Department'}
             </p>
           </div>
         </div>

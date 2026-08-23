@@ -45,8 +45,8 @@ export const StudentTimetablePage: React.FC = () => {
   const sectionEntries = currentSection ? timetable.filter(t => t.section_id === currentSection.id) : [];
 
   const isSectionB = currentSection?.name === 'B';
-  const branchName = isSectionB ? 'CSE + IT' : 'CSE';
-  const classIncharge = currentSection?.class_coordinator?.full_name || (isSectionB ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary');
+  const branchName = currentSection ? (isSectionB ? 'CSE + IT' : 'CSE') : 'Curriculum';
+  const classIncharge = currentSection?.class_coordinator?.full_name || 'Academic Incharge';
 
   return (
     <div className="space-y-6">

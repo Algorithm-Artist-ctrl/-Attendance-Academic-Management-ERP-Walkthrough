@@ -72,7 +72,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             Welcome back, {currentFaculty?.full_name || user?.full_name || 'Faculty Member'} 👋
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            {currentFaculty?.designation || 'Assistant Professor'} • {dept?.name || 'Computer Science & Engineering'} • Code: <span className="text-[#00ff88] font-bold">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
+            {currentFaculty?.designation || 'Faculty'} • {dept?.name || 'Academic Department'} • Code: <span className="text-[#00ff88] font-bold">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
           </p>
         </div>
 

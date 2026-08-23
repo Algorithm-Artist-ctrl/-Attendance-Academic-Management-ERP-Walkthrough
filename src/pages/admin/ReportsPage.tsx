@@ -80,9 +80,9 @@ export const ReportsPage: React.FC = () => {
     exportAttendanceReportPDF({
       title: 'COLLEGE ATTENDANCE AUDIT & ELIGIBILITY REPORT',
       subtitle: 'Vivekananda College of Technology & Management, Aligarh (340)',
-      department: 'Computer Science & Engineering',
-      section: selectedSection === 'ALL' ? 'Sections A & B' : `Section ${selectedSection}`,
-      academicYear: 'B.Tech 2nd Year (2026-2027)',
+      department: departments[0]?.name || 'Academic Department',
+      section: selectedSection === 'ALL' ? 'All Sections' : `Section ${selectedSection}`,
+      academicYear: 'Academic Session 2026-2027',
       tableHeaders: headers,
       tableRows: rows,
       filename: `VCTM_Attendance_Report_${getISTTodayDate()}`,

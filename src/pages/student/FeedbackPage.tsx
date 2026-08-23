@@ -20,7 +20,16 @@ export const FeedbackPage: React.FC = () => {
   const { subjects, faculty, assignments } = useAcademic();
   const student = user?.student;
 
-  const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
+  // Filter subjects enrolled in student's section
+  const enrolledSubjects = React.useMemo(() => {
+    if (!student?.section_id) return subjects;
+    const sectionSubjectIds = new Set(
+      assignments.filter(a => a.section_id === student.section_id).map(a => a.subject_id)
+    );
+    return subjects.filter(s => sectionSubjectIds.has(s.id));
+  }, [subjects, assignments, student]);
+
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedFacultyId, setSelectedFacultyId] = useState('');
 
   // Auto-sync assigned faculty when subject changes
@@ -32,23 +41,37 @@ export const FeedbackPage: React.FC = () => {
 
       if (match) {
         setSelectedFacultyId(match.faculty_id);
-      } else if (faculty.length > 0) {
-        setSelectedFacultyId(faculty[0].id);
+      } else {
+        setSelectedFacultyId('');
       }
+    } else {
+      setSelectedFacultyId('');
     }
-  }, [selectedSubjectId, assignments, student, faculty]);
+  }, [selectedSubjectId, assignments, student]);
   
-  // Rating categories (1 to 5 stars)
-  const [ratingKnowledge, setRatingKnowledge] = useState(5);
-  const [ratingClarity, setRatingClarity] = useState(5);
-  const [ratingPunctuality, setRatingPunctuality] = useState(5);
-  const [ratingDoubtSolving, setRatingDoubtSolving] = useState(5);
+  // Rating categories (start unrated at 0)
+  const [ratingKnowledge, setRatingKnowledge] = useState(0);
+  const [ratingClarity, setRatingClarity] = useState(0);
+  const [ratingPunctuality, setRatingPunctuality] = useState(0);
+  const [ratingDoubtSolving, setRatingDoubtSolving] = useState(0);
   const [suggestions, setSuggestions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    if (!selectedSubjectId) {
+      setFormError('Please select an enrolled subject to evaluate.');
+      return;
+    }
+    if (ratingKnowledge === 0 || ratingClarity === 0 || ratingPunctuality === 0 || ratingDoubtSolving === 0) {
+      setFormError('Please provide star ratings for all 4 evaluation criteria.');
+      return;
+    }
+
     setIsSubmitting(true);
     erpStorage.addAuditLog(
       'FEEDBACK_SUBMITTED',
@@ -71,6 +94,12 @@ export const FeedbackPage: React.FC = () => {
       setIsSubmitting(false);
       setIsSubmitted(true);
       setSuggestions('');
+      setSelectedSubjectId('');
+      setSelectedFacultyId('');
+      setRatingKnowledge(0);
+      setRatingClarity(0);
+      setRatingPunctuality(0);
+      setRatingDoubtSolving(0);
       setTimeout(() => setIsSubmitted(false), 3000);
     }, 800);
   };
@@ -92,7 +121,9 @@ export const FeedbackPage: React.FC = () => {
             />
           </button>
         ))}
-        <span className="text-xs font-bold text-[#00ff88] ml-2">{rating} / 5</span>
+        <span className="text-xs font-bold text-[#00ff88] ml-2">
+          {rating > 0 ? `${rating} / 5` : <span className="text-slate-500 font-normal">Unrated</span>}
+        </span>
       </div>
     );
   };
@@ -126,7 +157,7 @@ export const FeedbackPage: React.FC = () => {
 
       {/* Feedback Form */}
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-emerald-500/20 max-w-3xl">
-        {subjects.length === 0 ? (
+        {enrolledSubjects.length === 0 ? (
           <div className="py-8 text-center text-slate-400">
             <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
             <p className="font-semibold text-slate-300">No subjects registered for evaluation</p>
@@ -134,6 +165,12 @@ export const FeedbackPage: React.FC = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
+            {formError && (
+              <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                {formError}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Select Subject</label>
@@ -142,7 +179,8 @@ export const FeedbackPage: React.FC = () => {
                   onChange={(e) => setSelectedSubjectId(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
                 >
-                  {subjects.map(s => (
+                  <option value="">-- Choose Enrolled Course --</option>
+                  {enrolledSubjects.map(s => (
                     <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
                   ))}
                 </select>
@@ -155,6 +193,7 @@ export const FeedbackPage: React.FC = () => {
                 onChange={(e) => setSelectedFacultyId(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
               >
+                <option value="">-- Choose Faculty --</option>
                 {faculty.map(f => (
                   <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.designation})</option>
                 ))}

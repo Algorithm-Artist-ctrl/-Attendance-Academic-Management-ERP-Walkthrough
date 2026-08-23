@@ -110,7 +110,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
               {totalFaculty}
             </h3>
-            <span className="text-[10px] text-slate-400 font-medium">11 Departments</span>
+            <span className="text-[10px] text-slate-400 font-medium">Faculty Members</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
             <Users className="w-5 h-5" />
@@ -124,7 +124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
               {totalDepts}
             </h3>
-            <span className="text-[10px] text-slate-400 font-medium">CSE, ME, EE, etc.</span>
+            <span className="text-[10px] text-slate-400 font-medium">Academic Depts</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
             <Building2 className="w-5 h-5" />
@@ -138,7 +138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
               {totalPrograms}
             </h3>
-            <span className="text-[10px] text-slate-400 font-medium">B.Tech, M.Tech, etc.</span>
+            <span className="text-[10px] text-slate-400 font-medium">Degree Programs</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
             <Layers className="w-5 h-5" />
@@ -149,8 +149,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
           <div>
             <p className="text-xs font-semibold text-slate-400">Today's Attendance</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {attendanceRate}%
+            <h3 className="text-xl sm:text-2xl font-black text-[#00ff88] mt-1">
+              {attendanceRecords.length > 0 ? `${attendanceRate}%` : 'No Class Yet'}
             </h3>
             <span className="text-[10px] text-emerald-400 font-semibold">Institute Average</span>
           </div>
