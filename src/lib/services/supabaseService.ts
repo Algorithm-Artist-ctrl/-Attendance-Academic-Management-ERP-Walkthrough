@@ -371,39 +371,178 @@ export const supabaseService = {
     return updatedCorrection as AttendanceCorrection;
   },
 
-  // 5. Admin CRUD Operations
+  // 5. Admin CRUD Operations with Supabase Profile Sync
   async addStudent(student: Omit<Student, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('students').insert(student).select().single();
     if (error) throw new Error(error.message);
-    return data as Student;
+    const createdStudent = data as Student;
+
+    // Automatically create Supabase profile for this student
+    try {
+      await supabase.from('profiles').upsert({
+        id: createdStudent.id,
+        email: createdStudent.email || `${createdStudent.roll_number}@vctm.in`,
+        full_name: createdStudent.full_name,
+        role: 'student',
+        department_id: createdStudent.department_id,
+        student_id: createdStudent.id,
+        faculty_id: null,
+        phone: createdStudent.phone
+      }, { onConflict: 'id' });
+    } catch (profErr) {
+      console.warn('Profile auto-creation warning:', profErr);
+    }
+
+    return createdStudent;
   },
 
   async updateStudent(id: string, updates: Partial<Student>) {
     const { data, error } = await supabase.from('students').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
-    return data as Student;
+    const updated = data as Student;
+
+    // Update profile if relevant
+    try {
+      await supabase.from('profiles').update({
+        full_name: updated.full_name,
+        email: updated.email || `${updated.roll_number}@vctm.in`,
+        phone: updated.phone,
+        department_id: updated.department_id,
+      }).eq('id', id);
+    } catch {}
+
+    return updated;
   },
 
   async deleteStudent(id: string) {
     const { error } = await supabase.from('students').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    try {
+      await supabase.from('profiles').delete().eq('id', id);
+    } catch {}
     return true;
   },
 
   async addFaculty(fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('faculty').insert(fac).select().single();
     if (error) throw new Error(error.message);
-    return data as Faculty;
+    const createdFaculty = data as Faculty;
+
+    // Automatically create Supabase profile for this faculty
+    const isHOD = createdFaculty.designation.toLowerCase().includes('hod') || createdFaculty.faculty_code === 'WSM';
+    try {
+      await supabase.from('profiles').upsert({
+        id: createdFaculty.id,
+        email: createdFaculty.email || `${(createdFaculty.faculty_code || 'faculty').toLowerCase()}@vctm.in`,
+        full_name: createdFaculty.full_name,
+        role: isHOD ? 'hod' : 'faculty',
+        department_id: createdFaculty.department_id,
+        student_id: null,
+        faculty_id: createdFaculty.id,
+        phone: createdFaculty.phone
+      }, { onConflict: 'id' });
+    } catch (profErr) {
+      console.warn('Profile auto-creation warning:', profErr);
+    }
+
+    return createdFaculty;
   },
 
   async updateFaculty(id: string, updates: Partial<Faculty>) {
     const { data, error } = await supabase.from('faculty').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
-    return data as Faculty;
+    const updated = data as Faculty;
+
+    try {
+      const isHOD = updated.designation.toLowerCase().includes('hod') || updated.faculty_code === 'WSM';
+      await supabase.from('profiles').update({
+        full_name: updated.full_name,
+        email: updated.email,
+        phone: updated.phone,
+        department_id: updated.department_id,
+        role: isHOD ? 'hod' : 'faculty'
+      }).eq('id', id);
+    } catch {}
+
+    return updated;
   },
 
   async deleteFaculty(id: string) {
     const { error } = await supabase.from('faculty').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    try {
+      await supabase.from('profiles').delete().eq('id', id);
+    } catch {}
+    return true;
+  },
+
+  // 6. Live Notices backed by Supabase
+  async fetchNotices() {
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('action', 'NOTICE_PUBLISHED')
+        .eq('entity_type', 'notice')
+        .order('created_at', { ascending: false });
+
+      if (error) return [];
+      return (data || []).map(row => {
+        const details = row.new_values || {};
+        return {
+          id: row.id,
+          title: details.title || 'Official Circular',
+          category: details.category || 'Academic',
+          date: details.date || row.created_at?.split('T')[0],
+          author: details.author || row.actor_name || 'Administration',
+          isPinned: !!details.isPinned,
+          content: details.content || '',
+          attachment: details.attachment,
+          targetAudience: details.targetAudience || 'ALL',
+          createdAt: row.created_at
+        };
+      });
+    } catch {
+      return [];
+    }
+  },
+
+  async publishNotice(notice: {
+    title: string;
+    category: string;
+    author: string;
+    content: string;
+    isPinned?: boolean;
+    attachment?: string;
+    targetAudience?: string;
+    actorId?: string;
+    actorName?: string;
+  }) {
+    const { data, error } = await supabase.from('audit_logs').insert({
+      actor_id: notice.actorId || null,
+      actor_name: notice.actorName || notice.author,
+      actor_role: 'admin',
+      action: 'NOTICE_PUBLISHED',
+      entity_type: 'notice',
+      entity_id: null,
+      new_values: {
+        title: notice.title,
+        category: notice.category,
+        author: notice.author,
+        content: notice.content,
+        isPinned: notice.isPinned || false,
+        attachment: notice.attachment,
+        targetAudience: notice.targetAudience || 'ALL',
+        date: getISTTodayDate()
+      }
+    }).select().single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async deleteNotice(noticeId: string) {
+    const { error } = await supabase.from('audit_logs').delete().eq('id', noticeId);
     if (error) throw new Error(error.message);
     return true;
   },

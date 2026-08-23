@@ -234,7 +234,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                     <div className="space-y-1 text-xs pt-2 border-t border-emerald-500/10">
                       <div className="text-white font-semibold">{sub?.subject_name}</div>
                       <div className="text-[11px] text-slate-400 font-mono">
-                        Date: {session?.session_date || '2026-08-22'} ({session?.start_time?.substring(0, 5)} - {session?.end_time?.substring(0, 5)})
+                        Date: {session?.session_date || item.created_at?.split('T')[0] || '—'} {session?.start_time ? `(${session.start_time.substring(0, 5)} - ${session.end_time?.substring(0, 5) || ''})` : ''}
                       </div>
                       <div className="text-slate-300 italic text-[11px] bg-slate-950/50 p-2 rounded-xl mt-1.5 border border-emerald-500/10">
                         "{item.reason}"
@@ -336,10 +336,10 @@ export const ReviewCorrectionsPage: React.FC = () => {
 
                           <td className="px-5 py-4 font-mono">
                             <div className="font-bold text-slate-200">
-                              {session?.session_date || '2026-08-22'}
+                              {session?.session_date || item.created_at?.split('T')[0] || '—'}
                             </div>
                             <div className="text-[10px] text-slate-400">
-                              {session?.start_time?.substring(0, 5) || '09:00'} – {session?.end_time?.substring(0, 5) || '09:50'}
+                              {session?.start_time ? `${session.start_time.substring(0, 5)} – ${session.end_time?.substring(0, 5) || ''}` : 'Official Lecture'}
                             </div>
                           </td>
 

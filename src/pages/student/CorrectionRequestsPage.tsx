@@ -87,9 +87,9 @@ export const CorrectionRequestsPage: React.FC = () => {
                   return (
                     <tr key={req.id} className="hover:bg-emerald-500/5 transition-colors">
                       <td className="px-5 py-4 font-mono font-bold text-white">
-                        {session?.session_date || '2026-08-24'}
+                        {session?.session_date || req.created_at?.split('T')[0] || '—'}
                         <span className="block text-[10px] text-slate-400 font-normal">
-                          {session?.start_time?.substring(0, 5) || '09:00'} – {session?.end_time?.substring(0, 5) || '09:50'}
+                          {session?.start_time ? `${session.start_time.substring(0, 5)} – ${session.end_time?.substring(0, 5) || ''}` : 'Class Session'}
                         </span>
                       </td>
                       <td className="px-5 py-4 font-bold text-emerald-400">

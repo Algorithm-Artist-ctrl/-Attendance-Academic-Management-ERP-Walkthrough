@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole } from '../types/database.types';
+import { UserProfile, UserRole, Student, Faculty, Section } from '../types/database.types';
 import { AuthState, LoginCredentials } from '../types/auth.types';
+import { supabase } from '../lib/supabase/supabaseClient';
 import { erpStorage } from '../lib/storage/erpStorage';
 
 interface AuthContextType extends AuthState {
@@ -101,16 +102,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     const trimmedId = credentials.identifier.trim().toLowerCase();
-    const profiles = erpStorage.getProfiles();
-    const students = erpStorage.getStudents();
-    const faculty = erpStorage.getFaculty();
-    const sections = erpStorage.getSections();
+
+    // 1. Fetch latest profiles, students, faculty, and sections directly from Supabase
+    let profiles = erpStorage.getProfiles();
+    let students = erpStorage.getStudents();
+    let faculty = erpStorage.getFaculty();
+    let sections = erpStorage.getSections();
+
+    try {
+      const [
+        { data: liveProfs },
+        { data: liveStuds },
+        { data: liveFac },
+        { data: liveSecs }
+      ] = await Promise.all([
+        supabase.from('profiles').select('*'),
+        supabase.from('students').select('*'),
+        supabase.from('faculty').select('*'),
+        supabase.from('sections').select('*')
+      ]);
+
+      if (liveStuds && liveStuds.length > 0) students = liveStuds as Student[];
+      if (liveFac && liveFac.length > 0) faculty = liveFac as Faculty[];
+      if (liveSecs && liveSecs.length > 0) sections = liveSecs as Section[];
+      if (liveProfs && liveProfs.length > 0) profiles = liveProfs as UserProfile[];
+    } catch (err) {
+      console.warn('Network auth query fallback to storage:', err);
+    }
 
     // Clean inputs for flexible searching
     const cleanId = trimmedId.replace(/[\s\-_]/g, '');
     const cleanNumeric = cleanId.replace(/\D/g, '');
 
-    // Step A: Exact Roll Number, Faculty Code, Employee Code, or Email match
+    // Step A: Exact Roll Number, Faculty Code, Employee Code, or Email match from live database profiles
     let matchedProfile = profiles.find(p => {
       if (p.student) {
         const studRoll = p.student.roll_number.toLowerCase().replace(/[\s\-_]/g, '');
@@ -124,11 +148,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (p.faculty.email.toLowerCase() === trimmedId) return true;
         if (p.faculty.full_name.toLowerCase().includes(trimmedId)) return true;
       }
-      if (p.email.toLowerCase() === trimmedId) return true;
+      if (p.email && p.email.toLowerCase() === trimmedId) return true;
       return false;
     });
 
-    // Also search direct students list if profile mapping wasn't found directly
+    // Also search direct students list from Supabase
     if (!matchedProfile) {
       const matchedStudent = students.find(s => {
         const studRoll = s.roll_number.toLowerCase().replace(/[\s\-_]/g, '');
@@ -142,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
                         sections.find(sec => sec.name === matchedStudent.section?.name);
         matchedProfile = {
-          id: `user-${matchedStudent.id}`,
+          id: matchedStudent.id,
           email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
           role: 'student',
           full_name: matchedStudent.full_name,
@@ -157,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Also search direct faculty list if profile mapping wasn't found directly
+    // Also search direct faculty list from Supabase
     if (!matchedProfile) {
       const matchedFaculty = faculty.find(f => {
         if (f.employee_code.toLowerCase().replace(/[\s\-_]/g, '') === cleanId) return true;
@@ -170,7 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (matchedFaculty) {
         const isHod = matchedFaculty.designation.toLowerCase().includes('hod') || matchedFaculty.faculty_code === 'WSM';
         matchedProfile = {
-          id: `user-${matchedFaculty.id}`,
+          id: matchedFaculty.id,
           email: matchedFaculty.email,
           role: isHod ? 'hod' : 'faculty',
           full_name: matchedFaculty.full_name,
@@ -182,9 +206,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Step B: Flexible Student Roll Number suffix match (e.g. 2403400100057 <-> 2503400100057 or last 5-7 digits)
+    // Step B: Flexible Student Roll Number suffix match (e.g. 2403400100057 <-> last digits)
     if (!matchedProfile && cleanNumeric.length >= 4) {
-      const targetSuffix = cleanNumeric.slice(-6); // e.g. 000057 or 100057
+      const targetSuffix = cleanNumeric.slice(-6);
       const matchedStudent = students.find(s => {
         const studNumeric = s.roll_number.replace(/\D/g, '');
         return studNumeric.endsWith(targetSuffix) || cleanNumeric.endsWith(studNumeric.slice(-6));
@@ -194,7 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
                         sections.find(sec => sec.name === matchedStudent.section?.name);
         matchedProfile = {
-          id: `user-${matchedStudent.id}`,
+          id: matchedStudent.id,
           email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
           role: 'student',
           full_name: matchedStudent.full_name,
@@ -209,36 +233,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Step C: Flexible Name search (e.g., student enters their first name "Tarun")
-    if (!matchedProfile && trimmedId.length >= 3) {
-      const matchedStudent = students.find(s => {
-        const names = s.full_name.toLowerCase().split(' ');
-        return names.some(n => n === trimmedId) || s.full_name.toLowerCase().includes(trimmedId);
-      });
-
-      if (matchedStudent) {
-        const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
-                        sections.find(sec => sec.name === matchedStudent.section?.name);
-        matchedProfile = {
-          id: `user-${matchedStudent.id}`,
-          email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
-          role: 'student',
-          full_name: matchedStudent.full_name,
-          department_id: matchedStudent.department_id,
-          student_id: matchedStudent.id,
-          student: {
-            ...matchedStudent,
-            section: studSec,
-            section_id: studSec?.id || matchedStudent.section_id,
-          },
-        };
-      }
-    }
-
-    // Step D: Super Admin check
+    // Step C: Super Admin login
     if (!matchedProfile) {
       if (trimmedId === 'admin' || trimmedId === 'admin@vctm.in' || trimmedId === 'superadmin' || trimmedId === 'principal') {
-        matchedProfile = profiles.find(p => p.role === 'super_admin');
+        const adminProfile = profiles.find(p => p.role === 'super_admin');
+        matchedProfile = adminProfile || {
+          id: '99999999-9999-4999-9999-999999999999',
+          email: 'admin@vctm.in',
+          role: 'super_admin',
+          full_name: 'Dr. S. K. Gupta',
+          department_id: 'dpt-001',
+        };
       }
     }
 

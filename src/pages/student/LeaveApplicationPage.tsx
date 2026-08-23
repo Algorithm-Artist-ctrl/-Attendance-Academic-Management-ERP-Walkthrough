@@ -45,8 +45,8 @@ export const LeaveApplicationPage: React.FC = () => {
 
   // Form state
   const [leaveType, setLeaveType] = useState<LeaveRequest['leaveType']>('Medical Leave');
-  const [fromDate, setFromDate] = useState('2026-08-25');
-  const [toDate, setToDate] = useState('2026-08-26');
+  const [fromDate, setFromDate] = useState(() => getISTTodayDate());
+  const [toDate, setToDate] = useState(() => getISTTodayDate());
   const [reason, setReason] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

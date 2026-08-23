@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
   Search, 
   Calendar, 
   Download, 
   Pin, 
-  AlertTriangle, 
+  Plus,
+  Trash2,
+  AlertCircle, 
   Info, 
   Award, 
   Tag,
@@ -13,6 +15,10 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { Modal } from '../../components/common/Modal';
+import { useAuth } from '../../context/AuthContext';
+import { supabaseService } from '../../lib/services/supabaseService';
+import { getISTTodayDate } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface NoticeItem {
@@ -24,62 +30,81 @@ interface NoticeItem {
   isPinned: boolean;
   content: string;
   attachment?: string;
+  targetAudience?: string;
 }
 
 export const NoticesPage: React.FC = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [notices, setNotices] = useState<NoticeItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const notices: NoticeItem[] = [
-    {
-      id: 'not-01',
-      title: 'Mandatory 75% Attendance Requirement for Odd Semester Examinations (AKTU)',
-      category: 'Urgent',
-      date: '20 Aug 2026',
-      author: 'Office of the Dean Academics',
-      isPinned: true,
-      content: 'All students are strictly informed that as per AKTU ordinances, minimum 75% aggregate attendance is mandatory across all registered subjects to be eligible for the upcoming End Semester Theory and Practical Examinations.',
-      attachment: 'AKTU_Attendance_Mandate_Circular.pdf'
-    },
-    {
-      id: 'not-02',
-      title: 'AKTU Odd Semester Examination Schedule & Admit Card Distribution',
-      category: 'Examination',
-      date: '18 Aug 2026',
-      author: 'Controller of Examinations',
-      isPinned: true,
-      content: 'The tentative datesheet for B.Tech 2nd Year (Semester III) examinations has been released on the official portal. Eligible students can collect exam verification slips after clearance.',
-      attachment: 'Datesheet_Odd_Sem_2026.pdf'
-    },
-    {
-      id: 'not-03',
-      title: 'Annual Technical Symposium & Hackathon "TECH-FEST VCTM 2026"',
-      category: 'Events',
-      date: '15 Aug 2026',
-      author: 'Computer Science Department',
-      isPinned: false,
-      content: 'The Department of Computer Science & Engineering invites students to register for the 24-hour National Level Hackathon. Exciting cash prizes and internship opportunities await top performers.',
-      attachment: 'Hackathon_Rulebook.pdf'
-    },
-    {
-      id: 'not-04',
-      title: 'Holiday Notice: College Closed on Account of Raksha Bandhan / Janmashtami',
-      category: 'Holidays',
-      date: '10 Aug 2026',
-      author: 'Registrar Office',
-      isPinned: false,
-      content: 'The college campus and academic departments will remain closed on upcoming gazetted festival holidays. Normal lecture schedules resume the following working day.',
-    },
-    {
-      id: 'not-05',
-      title: 'Guest Lecture on Cloud Infrastructure & Distributed Systems',
-      category: 'Academic',
-      date: '05 Aug 2026',
-      author: 'Training & Placement Cell',
-      isPinned: false,
-      content: 'An industry session by senior cloud architect on Kubernetes, Microservices, and Cloud Native development is scheduled in the Central Auditorium for 2nd and 3rd year CSE students.',
-    },
-  ];
+  // New Notice Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState<NoticeItem['category']>('Academic');
+  const [newAuthor, setNewAuthor] = useState(user?.full_name || 'Academic Administration');
+  const [newContent, setNewContent] = useState('');
+  const [newIsPinned, setNewIsPinned] = useState(false);
+  const [newTarget, setNewTarget] = useState('ALL');
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const canPublish = user?.role === 'super_admin' || user?.role === 'hod';
+
+  const loadNotices = async () => {
+    setIsLoading(true);
+    try {
+      const data = await supabaseService.fetchNotices();
+      setNotices((data || []) as any);
+    } catch (err) {
+      console.error('Error fetching notices:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotices();
+  }, []);
+
+  const handlePublish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newContent.trim()) return;
+
+    setIsPublishing(true);
+    try {
+      await supabaseService.publishNotice({
+        title: newTitle.trim(),
+        category: newCategory,
+        author: newAuthor.trim() || user?.full_name || 'Administration',
+        content: newContent.trim(),
+        isPinned: newIsPinned,
+        targetAudience: newTarget,
+        actorId: user?.id,
+        actorName: user?.full_name
+      });
+      setIsModalOpen(false);
+      setNewTitle('');
+      setNewContent('');
+      setNewIsPinned(false);
+      await loadNotices();
+    } catch (err) {
+      console.error('Failed to publish notice:', err);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this official circular?')) return;
+    try {
+      await supabaseService.deleteNotice(id);
+      setNotices(prev => prev.filter(n => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete notice:', err);
+    }
+  };
 
   const filteredNotices = notices.filter(n => {
     const matchesSearch = 
@@ -116,27 +141,22 @@ export const NoticesPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-bold bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20">
-          {['ALL', 'Urgent', 'Examination', 'Academic', 'Events', 'Holidays'].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={clsx(
-                'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
-                selectedCategory === cat
-                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                  : 'text-slate-400 hover:text-white'
-              )}
+        <div className="flex items-center gap-3">
+          {canPublish && (
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={() => setIsModalOpen(true)}
+              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
             >
-              {cat}
-            </button>
-          ))}
+              Publish Notice
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
+      {/* Category Filter Pills & Search */}
+      <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -148,9 +168,23 @@ export const NoticesPage: React.FC = () => {
           />
         </div>
 
-        <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
-          {filteredNotices.length} Published Circulars
-        </span>
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20">
+          {['ALL', 'Urgent', 'Examination', 'Academic', 'Events', 'Holidays'].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={clsx(
+                'px-3 py-1 rounded-xl transition-all cursor-pointer text-[11px]',
+                selectedCategory === cat
+                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
+                  : 'text-slate-400 hover:text-white'
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Notices List */}
@@ -187,9 +221,20 @@ export const NoticesPage: React.FC = () => {
                   </span>
                 </div>
 
-                <span className="text-[11px] font-semibold text-slate-400">
-                  Issued by: <strong className="text-white">{n.author}</strong>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    Issued by: <strong className="text-white">{n.author}</strong>
+                  </span>
+                  {canPublish && (
+                    <button
+                      onClick={() => handleDelete(n.id)}
+                      className="p-1 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      title="Delete Notice"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <h3 className="text-base font-bold text-white tracking-tight leading-snug">
@@ -220,6 +265,108 @@ export const NoticesPage: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Publish Notice Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Publish Official Notice"
+        description="Publish a verified academic circular to the institutional bulletin board"
+      >
+        <form onSubmit={handlePublish} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Circular Title <span className="text-rose-400">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="e.g. Mandatory 75% Attendance Requirement for AKTU Exams"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Category
+              </label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value as any)}
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              >
+                <option value="Academic">Academic</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Examination">Examination</option>
+                <option value="Events">Events</option>
+                <option value="Holidays">Holidays</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Author / Office
+              </label>
+              <input
+                type="text"
+                value={newAuthor}
+                onChange={(e) => setNewAuthor(e.target.value)}
+                placeholder="Office of Dean Academics"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Notice Content <span className="text-rose-400">*</span>
+            </label>
+            <textarea
+              required
+              rows={4}
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              placeholder="Enter full announcement details, directives, guidelines..."
+              className="w-full p-3 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="isPinnedCheck"
+              checked={newIsPinned}
+              onChange={(e) => setNewIsPinned(e.target.checked)}
+              className="rounded bg-slate-950 border-emerald-500/30 text-[#00ff88] focus:ring-0"
+            />
+            <label htmlFor="isPinnedCheck" className="text-xs text-slate-300 font-semibold cursor-pointer">
+              Pin to Top of Bulletin Board
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-emerald-500/15">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="neon"
+              size="sm"
+              type="submit"
+              isLoading={isPublishing}
+            >
+              Publish Circular
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
