@@ -59,7 +59,7 @@ export const INITIAL_INSTITUTION: Institution = {
   code: '340',
   address: 'Mathura Bypass Road, Near Khair Road Crossing, Aligarh, Uttar Pradesh 202001',
   website: 'https://vctm.in/',
-  logo_url: '/vctm-icon.svg',
+  logo_url: '/vctm-logo.png',
   active: true,
   created_at: '2026-08-01T00:00:00Z',
 };

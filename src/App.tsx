@@ -46,8 +46,8 @@ export const AppContent: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-3">
-        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-emerald-500/30 p-2 animate-bounce shadow-xl flex items-center justify-center">
-          <img src="/vctm-icon.svg" alt="VCTM" className="w-full h-full" />
+        <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-emerald-500/30 p-2 animate-bounce shadow-xl flex items-center justify-center">
+          <img src="/vctm-logo.png" alt="VCTM" className="w-full h-full object-contain" />
         </div>
         <p className="text-xs font-bold tracking-wider text-[#00ff88]">
           Connecting to VCTM ERP Cloud...
