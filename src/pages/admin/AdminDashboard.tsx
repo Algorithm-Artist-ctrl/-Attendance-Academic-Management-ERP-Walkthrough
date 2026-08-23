@@ -88,7 +88,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       {/* ======================================================== */}
       {/* 2. STATS KPI CARDS GRID (Matching Screen 9) */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Total Students */}
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>

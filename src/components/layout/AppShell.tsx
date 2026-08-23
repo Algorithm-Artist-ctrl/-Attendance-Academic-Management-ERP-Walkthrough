@@ -126,10 +126,63 @@ export const AppShell: React.FC<AppShellProps> = ({
     }
   };
 
+  // Bottom nav items for quick mobile access
+  const getBottomNavItems = () => {
+    switch (role) {
+      case 'student':
+        return [
+          { id: 'dashboard', label: 'Home', icon: BarChart3 },
+          { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
+          { id: 'timetable', label: 'Timetable', icon: Calendar },
+          { 
+            id: 'corrections', 
+            label: 'Requests', 
+            icon: RotateCcw,
+            badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined
+          },
+          { id: 'profile', label: 'Profile', icon: GraduationCap },
+        ];
+
+      case 'faculty':
+        return [
+          { id: 'dashboard', label: 'Home', icon: BarChart3 },
+          { id: 'take_attendance', label: 'Classes', icon: CheckSquare },
+          { id: 'timetable', label: 'Timetable', icon: Calendar },
+          { 
+            id: 'corrections', 
+            label: 'Reviews', 
+            icon: RotateCcw, 
+            badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
+          },
+          { id: 'profile', label: 'Profile', icon: UserCheck },
+        ];
+
+      case 'hod':
+        return [
+          { id: 'dashboard', label: 'Home', icon: BarChart3 },
+          { id: 'students', label: 'Students', icon: GraduationCap },
+          { id: 'faculty', label: 'Faculty', icon: Users },
+          { id: 'timetable', label: 'Schedule', icon: Calendar },
+          { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
+        ];
+
+      case 'super_admin':
+      default:
+        return [
+          { id: 'dashboard', label: 'Home', icon: BarChart3 },
+          { id: 'students', label: 'Students', icon: GraduationCap },
+          { id: 'faculty', label: 'Faculty', icon: Users },
+          { id: 'timetable', label: 'Timetable', icon: Calendar },
+          { id: 'reports', label: 'Reports', icon: BarChart3 },
+        ];
+    }
+  };
+
   const navItems = getNavItems();
+  const bottomNavItems = getBottomNavItems();
 
   return (
-    <div className="min-h-screen bg-[#050b14] text-slate-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#050b14] text-slate-100 flex flex-col md:flex-row max-w-full overflow-x-hidden">
       {/* ======================================================== */}
       {/* DESKTOP LEFT CYBER SIDEBAR */}
       {/* ======================================================== */}
@@ -189,7 +242,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div className="p-3 border-t border-emerald-500/15">
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/25 transition-all"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/25 transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
@@ -200,50 +253,58 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* ======================================================== */}
       {/* MAIN VIEWPORT AREA */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 max-w-full">
         {/* Top Navbar */}
-        <header className="sticky top-0 z-20 bg-[#07111e]/90 border-b border-emerald-500/15 backdrop-blur-xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-20 bg-[#07111e]/90 border-b border-emerald-500/15 backdrop-blur-xl px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 max-w-full">
           {/* Mobile Menu Toggle & Title */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] active:scale-95 transition-all touch-target flex items-center justify-center cursor-pointer"
+              aria-label="Open Navigation Menu"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-5 h-5" />
             </button>
             
-            <div className="md:hidden flex items-center gap-2">
-              <img src={vctmOfficialLogo} alt="VCTM" className="w-7 h-7 object-contain" />
-              <span className="font-extrabold text-sm text-white">VCTM <span className="text-[#00ff88]">ERP</span></span>
+            <div className="flex items-center gap-2">
+              <img src={vctmOfficialLogo} alt="VCTM" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+              <div>
+                <span className="font-black text-sm sm:text-base text-white tracking-wide">
+                  VCTM <span className="text-[#00ff88]">ERP</span>
+                </span>
+                <span className="hidden sm:inline-block ml-2 text-[10px] text-slate-400 font-mono">
+                  Code: 340
+                </span>
+              </div>
             </div>
           </div>
 
           {/* User Profile Header Chip */}
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
             {/* Notification Bell */}
             <button 
               onClick={() => onTabChange('notices')}
               title="View Notices & Circulars"
-              className="relative p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors cursor-pointer"
+              className="relative p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors cursor-pointer touch-target flex items-center justify-center"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
             </button>
 
             {/* Profile Avatar & Info */}
             <button 
               onClick={() => onTabChange('profile')}
               title="View Profile"
-              className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 hover:border-[#00ff88] transition-colors shadow-xs cursor-pointer text-left"
+              className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 hover:border-[#00ff88] transition-colors shadow-xs cursor-pointer text-left touch-target"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-xs shadow-[0_0_12px_rgba(0,255,136,0.3)]">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-xs shadow-[0_0_12px_rgba(0,255,136,0.3)] shrink-0">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
-              <div className="text-left hidden sm:block">
-                <div className="text-xs font-bold text-white leading-tight">
+              <div className="text-left hidden sm:block max-w-[120px] lg:max-w-[180px] truncate">
+                <div className="text-xs font-bold text-white leading-tight truncate">
                   {user?.full_name}
                 </div>
-                <div className="text-[10px] text-slate-400 font-medium">
+                <div className="text-[10px] text-slate-400 font-medium truncate">
                   {user?.student?.roll_number ? `Roll: ${user.student.roll_number}` : user?.role?.replace('_', ' ').toUpperCase()}
                 </div>
               </div>
@@ -251,55 +312,137 @@ export const AppShell: React.FC<AppShellProps> = ({
           </div>
         </header>
 
-        {/* Mobile Nav Drawer */}
+        {/* Full Slide-Out Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#091322] border-b border-emerald-500/20 px-4 py-3 space-y-1 animate-in slide-in-from-top duration-200">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onTabChange(item.id);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={clsx(
-                    'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all',
-                    isActive
-                      ? 'bg-[#00ff88] text-slate-950 font-black shadow-md'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={clsx('w-4 h-4', isActive ? 'text-slate-950' : 'text-slate-400')} />
-                    <span>{item.label}</span>
+          <div className="fixed inset-0 z-50 md:hidden flex animate-in fade-in duration-200">
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+
+            {/* Slide Drawer Content */}
+            <div className="relative w-4/5 max-w-xs bg-[#081220] border-r border-emerald-500/25 h-full flex flex-col z-10 shadow-2xl p-4 overflow-y-auto animate-in slide-in-from-left duration-250">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-emerald-500/20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-slate-950 border border-emerald-500/30 p-1 flex items-center justify-center">
+                    <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
                   </div>
-                  {item.badge && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500 text-white">
-                      {item.badge}
-                    </span>
-                  )}
+                  <div>
+                    <h3 className="font-black text-sm text-white">VCTM ERP</h3>
+                    <p className="text-[10px] text-slate-400">Institutional Portal</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white border border-emerald-500/20"
+                >
+                  <X className="w-5 h-5" />
                 </button>
-              );
-            })}
-            <button
-              onClick={logout}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 pt-2 border-t border-emerald-500/10"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
-            </button>
+              </div>
+
+              {/* User Profile Mini Card */}
+              <div className="my-3 p-3 rounded-2xl bg-slate-950/70 border border-emerald-500/20 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-sm">
+                  {user?.full_name?.charAt(0) || 'U'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-white truncate">{user?.full_name}</p>
+                  <p className="text-[10px] text-emerald-400 font-mono truncate">
+                    {user?.student?.roll_number ? `Roll: ${user.student.roll_number}` : user?.role?.replace('_', ' ').toUpperCase()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Navigation Items */}
+              <div className="flex-1 space-y-1 py-2 overflow-y-auto">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        onTabChange(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={clsx(
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all touch-target',
+                        isActive
+                          ? 'bg-[#00ff88] text-slate-950 font-black shadow-md'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={clsx('w-4 h-4', isActive ? 'text-slate-950' : 'text-slate-400')} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500 text-white font-extrabold">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Logout Button */}
+              <div className="pt-3 border-t border-emerald-500/20 pb-safe">
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all touch-target"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+        {/* Main Content Area (With bottom padding for Mobile Bottom Navigation) */}
+        <main className="flex-1 p-3 sm:p-5 lg:p-8 max-w-7xl w-full mx-auto space-y-6 pb-24 md:pb-8">
           {children}
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-emerald-500/10 bg-[#060c18] py-4 px-6 text-center text-xs text-slate-500">
+        {/* Mobile Bottom Navigation Bar (Thumb Friendly) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#07111e]/95 border-t border-emerald-500/20 backdrop-blur-2xl px-2 py-1.5 pb-safe flex items-center justify-around shadow-[0_-4px_25px_rgba(0,0,0,0.5)]">
+          {bottomNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className={clsx(
+                  'flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative touch-target',
+                  isActive ? 'text-[#00ff88]' : 'text-slate-400 hover:text-slate-200'
+                )}
+              >
+                <div className={clsx(
+                  'p-1 rounded-lg transition-all',
+                  isActive && 'bg-emerald-500/20 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                )}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className={clsx('text-[10px] font-bold mt-0.5 tracking-tight', isActive && 'text-white')}>
+                  {item.label}
+                </span>
+                {item.badge && (
+                  <span className="absolute top-1 right-3 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Desktop/Tablet Footer */}
+        <footer className="hidden md:block border-t border-emerald-500/10 bg-[#060c18] py-4 px-6 text-center text-xs text-slate-500">
           © 2026 <strong className="text-slate-300">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
         </footer>
       </div>

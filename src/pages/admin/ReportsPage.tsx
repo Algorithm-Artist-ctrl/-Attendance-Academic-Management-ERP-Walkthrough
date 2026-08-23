@@ -167,67 +167,115 @@ export const ReportsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Reports Data Table */}
-      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+      {/* Reports Data Container (Dual-View: Cards on mobile, Table on desktop) */}
+      <div>
         {filteredStats.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
+          <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
             <FileSpreadsheet className="w-12 h-12 text-slate-600 mx-auto mb-3" />
             <p className="font-semibold text-slate-300">No attendance records found</p>
             <p className="text-xs text-slate-500 mt-1">Audit statistics will populate once faculty mark lecture attendance</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-                <tr>
-                  <th className="px-5 py-3.5">Roll Number</th>
-                  <th className="px-5 py-3.5">Student Name</th>
-                  <th className="px-5 py-3.5 text-center">Section</th>
-                  <th className="px-5 py-3.5 text-center">Lectures Held</th>
-                  <th className="px-5 py-3.5 text-center">Attended</th>
-                  <th className="px-5 py-3.5 text-center">Percentage</th>
-                  <th className="px-5 py-3.5 text-right">Audit Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-500/10">
-                {filteredStats.map((s) => {
-                  const isDefaulter = s.percentage < 75;
-                  return (
-                    <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
-                        {s.rollNumber}
-                      </td>
-                      <td className="px-5 py-3.5 font-bold text-white">
-                        {s.fullName}
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-bold text-slate-300">
-                        Section {s.sectionName}
-                      </td>
-                      <td className="px-5 py-3.5 text-center text-slate-300">
-                        {s.totalLectures}
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
-                        {s.presentLectures}
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-mono font-black text-sm text-[#00ff88]">
-                        {s.percentage}%
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <span className={clsx(
-                          'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
-                          isDefaulter
-                            ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                            : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                        )}>
-                          {isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
-                        </span>
-                      </td>
+          <>
+            {/* MOBILE VIEW: Student Attendance Report Cards */}
+            <div className="space-y-3 md:hidden">
+              {filteredStats.map((s) => {
+                const isDefaulter = s.percentage < 75;
+                return (
+                  <div
+                    key={s.studentId}
+                    className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono text-xs font-black text-emerald-400">{s.rollNumber}</span>
+                        <h4 className="text-sm font-bold text-white mt-0.5">{s.fullName}</h4>
+                      </div>
+                      <span className={clsx(
+                        'px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0',
+                        isDefaulter
+                          ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                          : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                      )}>
+                        {isDefaulter ? '<75% Defaulter' : 'Eligible'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-500/10 text-center text-xs">
+                      <div className="p-2 rounded-xl bg-slate-950/60">
+                        <span className="text-[10px] text-slate-400 block">Section</span>
+                        <span className="font-bold text-white">Sec {s.sectionName}</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-slate-950/60">
+                        <span className="text-[10px] text-slate-400 block">Attended</span>
+                        <span className="font-bold text-emerald-400">{s.presentLectures}/{s.totalLectures}</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-slate-950/60">
+                        <span className="text-[10px] text-slate-400 block">Percentage</span>
+                        <span className="font-black font-mono text-[#00ff88]">{s.percentage}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP VIEW: Data Table */}
+            <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                    <tr>
+                      <th className="px-5 py-3.5">Roll Number</th>
+                      <th className="px-5 py-3.5">Student Name</th>
+                      <th className="px-5 py-3.5 text-center">Section</th>
+                      <th className="px-5 py-3.5 text-center">Lectures Held</th>
+                      <th className="px-5 py-3.5 text-center">Attended</th>
+                      <th className="px-5 py-3.5 text-center">Percentage</th>
+                      <th className="px-5 py-3.5 text-right">Audit Status</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-500/10">
+                    {filteredStats.map((s) => {
+                      const isDefaulter = s.percentage < 75;
+                      return (
+                        <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
+                          <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
+                            {s.rollNumber}
+                          </td>
+                          <td className="px-5 py-3.5 font-bold text-white">
+                            {s.fullName}
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-bold text-slate-300">
+                            Section {s.sectionName}
+                          </td>
+                          <td className="px-5 py-3.5 text-center text-slate-300">
+                            {s.totalLectures}
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
+                            {s.presentLectures}
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-mono font-black text-sm text-[#00ff88]">
+                            {s.percentage}%
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <span className={clsx(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
+                              isDefaulter
+                                ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                                : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                            )}>
+                              {isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

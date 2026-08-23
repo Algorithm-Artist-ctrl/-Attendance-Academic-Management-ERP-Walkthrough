@@ -111,3 +111,31 @@ body {
     display: block !important;
   }
 }
+
+/* iOS Safe Area & Mobile Touch Utilities */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 16px);
+}
+
+.mb-safe {
+  margin-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+/* Touch targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Hide scrollbar for clean horizontal swipes on mobile tab strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

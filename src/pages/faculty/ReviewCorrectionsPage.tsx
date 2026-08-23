@@ -186,10 +186,10 @@ export const ReviewCorrectionsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Claims List Table */}
-      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+      {/* Claims List Container (Dual-View: Cards on mobile, Table on desktop) */}
+      <div>
         {currentList.length === 0 ? (
-          <div className="p-12 text-center space-y-3">
+          <div className="glass-panel rounded-3xl p-12 text-center space-y-3 border border-emerald-500/20">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#00ff88] mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
@@ -201,121 +201,214 @@ export const ReviewCorrectionsPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-                <tr>
-                  <th className="px-5 py-3.5">Student Details</th>
-                  <th className="px-5 py-3.5">Subject & Lecture</th>
-                  <th className="px-5 py-3.5">Date & Time</th>
-                  <th className="px-5 py-3.5">Status Change</th>
-                  <th className="px-5 py-3.5">Student Reason</th>
-                  <th className="px-5 py-3.5 text-center">Action / Review Decision</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-500/10">
-                {currentList.map((item) => {
-                  const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
-                  const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
-                  const sub = subjects.find(s => s.id === session?.subject_id);
-                  const sec = sections.find(s => s.id === session?.section_id);
-                  const stud = item.student || students.find(s => s.id === item.student_id);
+          <>
+            {/* MOBILE VIEW: Touch-Friendly Claim Cards */}
+            <div className="space-y-3 md:hidden">
+              {currentList.map((item) => {
+                const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
+                const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                const sub = subjects.find(s => s.id === session?.subject_id);
+                const sec = sections.find(s => s.id === session?.section_id);
+                const stud = item.student || students.find(s => s.id === item.student_id);
+                const isProcessing = processingId === item.id;
 
-                  const isProcessing = processingId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono text-xs font-black text-emerald-400">{stud?.roll_number}</span>
+                        <h4 className="text-sm font-bold text-white mt-0.5">{stud?.full_name || 'Student'}</h4>
+                        <span className="text-[10px] text-slate-400">Section {sec?.name || 'A'}</span>
+                      </div>
 
-                  return (
-                    <tr key={item.id} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-white">
-                          {stud?.full_name || 'Student'}
-                        </div>
-                        <div className="text-[11px] text-emerald-400 font-mono font-semibold">
-                          Roll: {stud?.roll_number} • Sec {sec?.name || stud?.section?.name || 'A'}
-                        </div>
-                      </td>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 shrink-0">
+                        <span className="text-rose-400">Absent</span>
+                        <span className="text-slate-500">→</span>
+                        <span className="text-[#00ff88]">Present</span>
+                      </div>
+                    </div>
 
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-white">
-                          {sub?.subject_name || 'Subject'}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
-                          {sub?.subject_code} • Room {sec?.room_number || 'A-007'}
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 font-mono">
-                        <div className="font-bold text-slate-200">
-                          {session?.session_date || '2026-08-22'}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {session?.start_time?.substring(0, 5) || '09:00'} – {session?.end_time?.substring(0, 5) || '09:50'}
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                          <span className="text-rose-400">Absent</span>
-                          <span className="text-slate-500">→</span>
-                          <span className="text-[#00ff88]">Present</span>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate" title={item.reason}>
+                    <div className="space-y-1 text-xs pt-2 border-t border-emerald-500/10">
+                      <div className="text-white font-semibold">{sub?.subject_name}</div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        Date: {session?.session_date || '2026-08-22'} ({session?.start_time?.substring(0, 5)} - {session?.end_time?.substring(0, 5)})
+                      </div>
+                      <div className="text-slate-300 italic text-[11px] bg-slate-950/50 p-2 rounded-xl mt-1.5 border border-emerald-500/10">
                         "{item.reason}"
-                      </td>
+                      </div>
+                    </div>
 
-                      <td className="px-5 py-4 text-center">
-                        {item.status === 'pending' ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              variant="neon"
-                              size="sm"
-                              disabled={isProcessing}
-                              onClick={() => handleApprove(item)}
-                              leftIcon={<Check className="w-3.5 h-3.5 text-slate-950" />}
-                              className="text-xs font-bold py-1 px-3"
-                            >
-                              {isProcessing ? 'Saving...' : 'Approve'}
-                            </Button>
+                    {item.status === 'pending' ? (
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-500/10">
+                        <Button
+                          variant="neon"
+                          size="sm"
+                          disabled={isProcessing}
+                          onClick={() => handleApprove(item)}
+                          leftIcon={<Check className="w-3.5 h-3.5 text-slate-950" />}
+                          className="touch-target font-black"
+                        >
+                          {isProcessing ? 'Saving...' : 'Approve'}
+                        </Button>
 
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={isProcessing}
-                              onClick={() => {
-                                setRejectModalItem(item);
-                                setRejectRemarks('Attendance record verified; absence confirmed.');
-                              }}
-                              leftIcon={<X className="w-3.5 h-3.5 text-rose-400" />}
-                              className="text-xs text-rose-400 border-rose-500/30 hover:bg-rose-500/10 py-1 px-3"
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="text-left max-w-xs">
-                            <span className={clsx(
-                              'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-block mb-1',
-                              item.status === 'approved' 
-                                ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                                : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                            )}>
-                              {item.status.toUpperCase()}
-                            </span>
-                            {item.review_remarks && (
-                              <p className="text-[11px] text-slate-400 truncate" title={item.review_remarks}>
-                                {item.review_remarks}
-                              </p>
-                            )}
-                          </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isProcessing}
+                          onClick={() => {
+                            setRejectModalItem(item);
+                            setRejectRemarks('Attendance record verified; absence confirmed.');
+                          }}
+                          leftIcon={<X className="w-3.5 h-3.5 text-rose-400" />}
+                          className="touch-target text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-xs">
+                        <span className={clsx(
+                          'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border',
+                          item.status === 'approved' 
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                            : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                        )}>
+                          {item.status.toUpperCase()}
+                        </span>
+                        {item.review_remarks && (
+                          <span className="text-[11px] text-slate-400 truncate max-w-[60%]">
+                            {item.review_remarks}
+                          </span>
                         )}
-                      </td>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP VIEW: Claims List Table */}
+            <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                    <tr>
+                      <th className="px-5 py-3.5">Student Details</th>
+                      <th className="px-5 py-3.5">Subject & Lecture</th>
+                      <th className="px-5 py-3.5">Date & Time</th>
+                      <th className="px-5 py-3.5">Status Change</th>
+                      <th className="px-5 py-3.5">Student Reason</th>
+                      <th className="px-5 py-3.5 text-center">Action / Review Decision</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-500/10">
+                    {currentList.map((item) => {
+                      const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
+                      const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                      const sub = subjects.find(s => s.id === session?.subject_id);
+                      const sec = sections.find(s => s.id === session?.section_id);
+                      const stud = item.student || students.find(s => s.id === item.student_id);
+
+                      const isProcessing = processingId === item.id;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-emerald-500/5 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="font-bold text-white">
+                              {stud?.full_name || 'Student'}
+                            </div>
+                            <div className="text-[11px] text-emerald-400 font-mono font-semibold">
+                              Roll: {stud?.roll_number} • Sec {sec?.name || stud?.section?.name || 'A'}
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="font-bold text-white">
+                              {sub?.subject_name || 'Subject'}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              {sub?.subject_code} • Room {sec?.room_number || 'A-007'}
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4 font-mono">
+                            <div className="font-bold text-slate-200">
+                              {session?.session_date || '2026-08-22'}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {session?.start_time?.substring(0, 5) || '09:00'} – {session?.end_time?.substring(0, 5) || '09:50'}
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold">
+                              <span className="text-rose-400">Absent</span>
+                              <span className="text-slate-500">→</span>
+                              <span className="text-[#00ff88]">Present</span>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate" title={item.reason}>
+                            "{item.reason}"
+                          </td>
+
+                          <td className="px-5 py-4 text-center">
+                            {item.status === 'pending' ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <Button
+                                  variant="neon"
+                                  size="sm"
+                                  disabled={isProcessing}
+                                  onClick={() => handleApprove(item)}
+                                  leftIcon={<Check className="w-3.5 h-3.5 text-slate-950" />}
+                                  className="text-xs font-bold py-1 px-3 touch-target"
+                                >
+                                  {isProcessing ? 'Saving...' : 'Approve'}
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isProcessing}
+                                  onClick={() => {
+                                    setRejectModalItem(item);
+                                    setRejectRemarks('Attendance record verified; absence confirmed.');
+                                  }}
+                                  leftIcon={<X className="w-3.5 h-3.5 text-rose-400" />}
+                                  className="text-xs text-rose-400 border-rose-500/30 hover:bg-rose-500/10 py-1 px-3 touch-target"
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="text-left max-w-xs">
+                                <span className={clsx(
+                                  'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-block mb-1',
+                                  item.status === 'approved' 
+                                    ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                                    : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                                )}>
+                                  {item.status.toUpperCase()}
+                                </span>
+                                {item.review_remarks && (
+                                  <p className="text-[11px] text-slate-400 truncate" title={item.review_remarks}>
+                                    {item.review_remarks}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

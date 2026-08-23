@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { getISTDayOfWeek } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface FacultyTimetablePageProps {
@@ -79,10 +80,14 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
     { period: 8, label: 'Period VIII', time: '02:50 – 03:40' },
   ];
 
+  const todayDay = getISTDayOfWeek();
+  const defaultDay = (days.includes(todayDay as any) ? todayDay : 'MON') as typeof days[number];
+  const [selectedMobileDay, setSelectedMobileDay] = useState<typeof days[number]>(defaultDay);
+
   return (
     <div className="space-y-6">
       {/* Top Header with Dynamic Multi-Section Faculty Teaching Context */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
             <Calendar className="w-6 h-6 text-[#00ff88]" />
@@ -102,7 +107,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
           <div className="text-xs font-semibold bg-slate-950/80 px-4 py-2 rounded-xl border border-emerald-500/20 text-[#00ff88] flex items-center gap-2">
             <Clock className="w-4 h-4" />
             <span>Odd Semester 2026–2027</span>
@@ -136,8 +141,112 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
         </div>
       </div>
 
-      {/* Grid Timetable Table */}
-      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+      {/* MOBILE VIEW: Day Selector Tab Bar & Vertical Period Cards */}
+      <div className="block lg:hidden space-y-4">
+        {/* Day Selector Tabs */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
+          {days.map(d => (
+            <button
+              key={d}
+              onClick={() => setSelectedMobileDay(d)}
+              className={clsx(
+                'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center justify-center cursor-pointer touch-target',
+                selectedMobileDay === d
+                  ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              )}
+            >
+              {d} • {dayLabels[d]}
+            </button>
+          ))}
+        </div>
+
+        {/* Schedule Cards for Selected Day */}
+        <div className="space-y-3">
+          {timeSlots.map(slot => {
+            if (slot.isLunch) {
+              return (
+                <div 
+                  key={slot.period}
+                  className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/10 text-center flex items-center justify-between text-xs"
+                >
+                  <span className="font-mono text-slate-500 font-bold">{slot.time}</span>
+                  <span className="px-3 py-1 rounded-full bg-slate-900 text-[#00ff88] text-[11px] font-black tracking-wider">
+                    LUNCH BREAK
+                  </span>
+                </div>
+              );
+            }
+
+            const entry = facultyEntries.find(
+              e => e.day_of_week === selectedMobileDay && e.period_number === slot.period
+            );
+
+            if (!entry) {
+              return (
+                <div 
+                  key={slot.period}
+                  className="p-3.5 rounded-2xl bg-slate-950/40 border border-emerald-500/10 flex items-center justify-between text-xs text-slate-500"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-slate-400">{slot.label}</span>
+                    <span>({slot.time})</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-600">No Lecture Assigned</span>
+                </div>
+              );
+            }
+
+            const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
+            const sec = sections.find(s => s.id === entry.section_id) || entry.section;
+
+            return (
+              <div 
+                key={slot.period}
+                className="glass-card rounded-2xl p-4 border border-emerald-500/25 space-y-3 hover:border-emerald-500/40 transition-all"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-lg text-[11px] font-mono font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                      {slot.label}
+                    </span>
+                    <span className="text-xs font-mono text-slate-300 font-bold">{slot.time}</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                    Section {sec?.name}
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-white tracking-tight">{sub?.subject_name}</h4>
+                  <p className="text-xs text-emerald-400 font-mono mt-0.5">{sub?.subject_code} • {entry.lecture_type || 'Theory'}</p>
+                </div>
+
+                <div className="pt-2.5 border-t border-emerald-500/10 flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="font-bold text-[#00ff88]">{entry.room_number || sec?.room_number || 'Room TBD'}</span>
+                  </div>
+
+                  {onTakeAttendance && (
+                    <button
+                      onClick={() => onTakeAttendance(entry.id)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40 text-xs font-bold hover:bg-emerald-500/30 flex items-center gap-1 cursor-pointer touch-target"
+                      title="Take Attendance for this lecture"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      <span>Take Attendance</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* DESKTOP/TABLET VIEW: Grid Timetable Table */}
+      <div className="hidden lg:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-center border-collapse">
             <thead>
@@ -211,7 +320,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                             {onTakeAttendance && (
                               <button
                                 onClick={() => onTakeAttendance(entry.id)}
-                                className="text-[10px] font-bold text-[#00ff88] hover:underline flex items-center gap-0.5"
+                                className="text-[10px] font-bold text-[#00ff88] hover:underline flex items-center gap-0.5 cursor-pointer"
                                 title="Mark Attendance for this lecture"
                               >
                                 <span>Mark</span>

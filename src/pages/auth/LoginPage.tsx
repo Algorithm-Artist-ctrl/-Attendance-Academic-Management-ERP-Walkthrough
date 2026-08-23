@@ -98,15 +98,15 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Role Selection Tabs (Student / Faculty / Admin) */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-950/80 p-1 rounded-xl mb-6 border border-emerald-500/20 text-xs font-bold">
+            <div className="grid grid-cols-3 gap-1 bg-slate-950/80 p-1.5 rounded-2xl mb-6 border border-emerald-500/20 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('student')}
                 className={clsx(
-                  'py-2 rounded-lg transition-all duration-200 cursor-pointer select-none',
+                  'py-2.5 rounded-xl transition-all duration-200 cursor-pointer select-none touch-target flex items-center justify-center',
                   activeRoleTab === 'student'
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)] font-black'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
                 )}
               >
                 Student
@@ -115,10 +115,10 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('faculty')}
                 className={clsx(
-                  'py-2 rounded-lg transition-all duration-200 cursor-pointer select-none',
+                  'py-2.5 rounded-xl transition-all duration-200 cursor-pointer select-none touch-target flex items-center justify-center',
                   activeRoleTab === 'faculty'
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)] font-black'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
                 )}
               >
                 Faculty / HOD
@@ -127,10 +127,10 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('admin')}
                 className={clsx(
-                  'py-2 rounded-lg transition-all duration-200 cursor-pointer select-none',
+                  'py-2.5 rounded-xl transition-all duration-200 cursor-pointer select-none touch-target flex items-center justify-center',
                   activeRoleTab === 'admin'
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)] font-black'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
                 )}
               >
                 Admin
