@@ -125,7 +125,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (liveStuds && liveStuds.length > 0) students = liveStuds as Student[];
       if (liveFac && liveFac.length > 0) faculty = liveFac as Faculty[];
       if (liveSecs && liveSecs.length > 0) sections = liveSecs as Section[];
-      if (liveProfs && liveProfs.length > 0) profiles = liveProfs as UserProfile[];
+      if (liveProfs && liveProfs.length > 0) {
+        profiles = (liveProfs as UserProfile[]).map(p => ({
+          ...p,
+          student: students.find(s => s.id === p.student_id),
+          faculty: faculty.find(f => f.id === p.faculty_id)
+        }));
+      }
     } catch (err) {
       console.warn('Network auth query fallback to storage:', err);
     }

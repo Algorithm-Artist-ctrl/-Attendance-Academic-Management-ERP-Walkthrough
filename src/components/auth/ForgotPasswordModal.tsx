@@ -34,8 +34,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
       });
 
       if (error) {
-        // If demo/offline or un-configured email provider, show clean guidance
-        setStatusMessage(`Password recovery instructions have been initiated for ${emailToSend}. Please check your official inbox.`);
+        // If unconfigured SMTP provider or rate limit, display official guidance
+        setStatusMessage(`Password recovery request recorded for ${emailToSend}. Please check your official institutional inbox.`);
       } else {
         setStatusMessage(`Password reset link has been dispatched to ${emailToSend}.`);
       }

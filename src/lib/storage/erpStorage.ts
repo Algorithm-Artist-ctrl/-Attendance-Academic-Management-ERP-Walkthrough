@@ -27,7 +27,16 @@ import {
   TimetableConflict
 } from '../../types/academic.types';
 
-import { INITIAL_INSTITUTION } from './initialSeedData';
+const DEFAULT_INSTITUTION: Institution = {
+  id: '22398afa-8679-4d2c-87fc-312152a276e2',
+  name: 'Vivekananda College of Technology & Management, Aligarh',
+  code: '340',
+  address: 'Mathura Bypass Road, Near Khair Road Crossing, Aligarh, Uttar Pradesh 202001',
+  website: 'https://vctm.in/',
+  logo_url: '/vctm-logo.png',
+  active: true,
+  created_at: '2026-08-01T00:00:00Z',
+};
 
 const STORAGE_KEYS = {
   INSTITUTION: 'vctm_erp_institution',
@@ -88,7 +97,7 @@ class ERPStorageService {
   public init(forceReset = false) {
     const existing = loadFromStorage(STORAGE_KEYS.INSTITUTION, null);
     if (forceReset || !existing) {
-      saveToStorage(STORAGE_KEYS.INSTITUTION, INITIAL_INSTITUTION);
+      saveToStorage(STORAGE_KEYS.INSTITUTION, DEFAULT_INSTITUTION);
       saveToStorage(STORAGE_KEYS.DEPARTMENTS, []);
       saveToStorage(STORAGE_KEYS.PROGRAMS, []);
       saveToStorage(STORAGE_KEYS.SESSIONS, []);
@@ -126,7 +135,7 @@ class ERPStorageService {
     corrections: AttendanceCorrection[];
     auditLogs: AuditLog[];
   }) {
-    saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0] || INITIAL_INSTITUTION);
+    saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0] || DEFAULT_INSTITUTION);
     saveToStorage(STORAGE_KEYS.DEPARTMENTS, data.departments || []);
     saveToStorage(STORAGE_KEYS.PROGRAMS, data.programs || []);
     saveToStorage(STORAGE_KEYS.SESSIONS, data.sessions || []);
@@ -146,7 +155,7 @@ class ERPStorageService {
 
   // Master Data Getters
   public getInstitution(): Institution {
-    return loadFromStorage(STORAGE_KEYS.INSTITUTION, INITIAL_INSTITUTION);
+    return loadFromStorage(STORAGE_KEYS.INSTITUTION, DEFAULT_INSTITUTION);
   }
 
   public getDepartments(): Department[] {

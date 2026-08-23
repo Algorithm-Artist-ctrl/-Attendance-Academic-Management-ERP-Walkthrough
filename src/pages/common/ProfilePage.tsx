@@ -42,12 +42,11 @@ export const ProfilePage: React.FC = () => {
   const sec = sections.find(s => s.id === currentStudent?.section_id) || 
               sections.find(s => s.name === currentStudent?.section?.name);
   const isSectionB = sec?.name === 'B';
-  const branchName = isSectionB ? 'Computer Science & Engineering + Information Technology (CSE + IT)' : 'Computer Science & Engineering (CSE)';
-
   const dept = departments.find(d => d.id === (student?.department_id || currentFaculty?.department_id)) || departments[0];
   const prog = programs.find(p => p.id === student?.program_id) || programs[0];
-  const year = years.find(y => y.id === student?.academic_year_id) || years[1];
-  const sem = semesters.find(s => s.id === student?.semester_id) || semesters[0];
+  const branchName = prog?.name || (isSectionB ? 'Computer Science & Engineering + IT' : 'Computer Science & Engineering');
+  const year = years.find(y => y.id === student?.academic_year_id);
+  const sem = semesters.find(s => s.id === student?.semester_id);
   const mentor = faculty.find(f => f.id === student?.mentor_faculty_id);
 
   // Edit state
@@ -205,7 +204,7 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value={`${prog?.name || 'B.Tech CSE'} • ${year?.name || '2nd Year'} • Odd Semester 2026–2027`}
+                      value={`${prog?.name || 'Academic Program'}${year?.name ? ` • ${year.name}` : ''}${sem?.name ? ` • ${sem.name}` : ''}`}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
                     />
                   </div>
@@ -215,7 +214,7 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value={`Section ${sec?.name} (${sec?.room_number || 'Room No. A 007'})`}
+                      value={sec?.name ? `Section ${sec.name}${sec.room_number ? ` (${sec.room_number})` : ''}` : 'Section Not Assigned'}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
                     />
                   </div>
