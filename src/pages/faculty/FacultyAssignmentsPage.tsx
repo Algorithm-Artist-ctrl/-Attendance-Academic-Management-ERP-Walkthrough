@@ -16,7 +16,8 @@ import {
   Edit3, 
   Eye,
   FileCheck,
-  Sparkles
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -81,6 +82,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('ALL');
 
   // Create Assignment Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -109,9 +111,10 @@ export const FacultyAssignmentsPage: React.FC = () => {
                             (a.subject?.subject_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (a.subject?.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSubject = selectedSubjectFilter === 'ALL' || a.subject_id === selectedSubjectFilter;
-      return matchesSearch && matchesSubject;
+      const matchesSection = selectedSectionFilter === 'ALL' || a.section_id === selectedSectionFilter;
+      return matchesSearch && matchesSubject && matchesSection;
     });
-  }, [myAssignments, searchTerm, selectedSubjectFilter]);
+  }, [myAssignments, searchTerm, selectedSubjectFilter, selectedSectionFilter]);
 
   const handleOpenCreateModal = () => {
     setErrorMsg('');
@@ -266,12 +269,12 @@ export const FacultyAssignmentsPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-800/80">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Search assignments by title or code..."
+              placeholder="Search assignments by title..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
@@ -287,6 +290,19 @@ export const FacultyAssignmentsPage: React.FC = () => {
               <option value="ALL">All Assigned Subjects</option>
               {subjects.map(s => (
                 <option key={s.id} value={s.id}>{s.subject_code} - {s.subject_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-slate-400 shrink-0" />
+            <select
+              value={selectedSectionFilter}
+              onChange={(e) => setSelectedSectionFilter(e.target.value)}
+              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="ALL">All Sections (A, B...)</option>
+              {sections.map(sec => (
+                <option key={sec.id} value={sec.id}>Section {sec.name}</option>
               ))}
             </select>
           </div>

@@ -840,7 +840,13 @@ export const supabaseService = {
       throw new Error('Please enter a valid Google Forms URL (starting with https://)');
     }
 
-    const { data, error } = await supabase.from('quizzes').insert(quiz).select().single();
+    const payload = {
+      ...quiz,
+      start_time: quiz.start_time || new Date().toISOString(),
+      end_time: quiz.end_time || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    const { data, error } = await supabase.from('quizzes').insert(payload).select().single();
     if (error) throw new Error(error.message);
 
     // Audit Log

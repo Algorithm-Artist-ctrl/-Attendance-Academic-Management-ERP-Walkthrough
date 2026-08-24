@@ -29,6 +29,7 @@ import { AttendanceHistoryPage } from './pages/faculty/AttendanceHistoryPage';
 import { FacultyAssignmentsPage as CourseAssignmentsPage } from './pages/faculty/FacultyAssignmentsPage';
 import { FacultyQuizzesPage } from './pages/faculty/FacultyQuizzesPage';
 import { FacultySessionalMarksPage } from './pages/faculty/FacultySessionalMarksPage';
+import { FacultySectionWorkspacePage } from './pages/faculty/FacultySectionWorkspacePage';
 
 // HOD Pages
 import { HODDashboard } from './pages/hod/HODDashboard';
@@ -127,6 +128,16 @@ export const AppContent: React.FC = () => {
           return <FacultyQuizzesPage />;
         case 'faculty_assignments':
           return <CourseAssignmentsPage />;
+        case 'section_workspace':
+          return (
+            <FacultySectionWorkspacePage
+              initialSubjectId={navigationParams?.subjectId}
+              initialSectionId={navigationParams?.sectionId}
+              initialSubTab={navigationParams?.initialSubTab || 'overview'}
+              onBack={() => setActiveTab('dashboard')}
+              onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+            />
+          );
         case 'sessional_marks':
           return <FacultySessionalMarksPage />;
         case 'history':

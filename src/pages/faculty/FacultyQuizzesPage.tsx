@@ -13,7 +13,8 @@ import {
   Trash2, 
   Edit3, 
   CheckCircle2,
-  FileCheck
+  FileCheck,
+  Layers
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -77,6 +78,7 @@ export const FacultyQuizzesPage: React.FC = () => {
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('ALL');
 
   // Create Quiz Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -103,9 +105,10 @@ export const FacultyQuizzesPage: React.FC = () => {
                             (q.subject?.subject_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (q.subject?.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSubject = selectedSubjectFilter === 'ALL' || q.subject_id === selectedSubjectFilter;
-      return matchesSearch && matchesSubject;
+      const matchesSection = selectedSectionFilter === 'ALL' || q.section_id === selectedSectionFilter;
+      return matchesSearch && matchesSubject && matchesSection;
     });
-  }, [myQuizzes, searchTerm, selectedSubjectFilter]);
+  }, [myQuizzes, searchTerm, selectedSubjectFilter, selectedSectionFilter]);
 
   const handleOpenCreateModal = () => {
     setErrorMsg('');
@@ -271,7 +274,7 @@ export const FacultyQuizzesPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-800/80">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
@@ -292,6 +295,19 @@ export const FacultyQuizzesPage: React.FC = () => {
               <option value="ALL">All Assigned Subjects</option>
               {subjects.map(s => (
                 <option key={s.id} value={s.id}>{s.subject_code} - {s.subject_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-slate-400 shrink-0" />
+            <select
+              value={selectedSectionFilter}
+              onChange={(e) => setSelectedSectionFilter(e.target.value)}
+              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+            >
+              <option value="ALL">All Sections (A, B...)</option>
+              {sections.map(sec => (
+                <option key={sec.id} value={sec.id}>Section {sec.name}</option>
               ))}
             </select>
           </div>

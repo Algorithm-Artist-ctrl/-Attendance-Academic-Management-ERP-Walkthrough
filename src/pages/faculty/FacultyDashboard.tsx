@@ -30,6 +30,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     sections, 
     corrections, 
     departments,
+    students,
+    courseAssignments,
+    quizzes,
+    sessionalAssessments,
     faculty: facultyList,
     getFacultyCorrectionRequests
   } = useAcademic();
@@ -144,6 +148,99 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
             <RotateCcw className="w-6 h-6" />
           </div>
+        </div>
+      </div>
+
+      {/* 2.5 MY TEACHING PORTFOLIO & SECTION WORKSPACES */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#00ff88]" />
+              My Teaching Portfolio & Section Workspaces
+            </h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Select a dedicated Section Workspace to manage assignments, quizzes, sessionals, attendance & student rosters
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {mySubjects.map((sub) => {
+            const assignedSectionsForSub = sections.filter(sec => 
+              myAssignments.some(fa => fa.subject_id === sub.id && fa.section_id === sec.id)
+            );
+
+            return (
+              <div
+                key={sub.id}
+                className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 hover:border-emerald-500/40 transition-all space-y-4"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono">
+                      {sub.subject_code}
+                    </span>
+                    <h4 className="text-sm sm:text-base font-bold text-white mt-1">
+                      {sub.subject_name}
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      {sub.credits || 4} Credits • {sub.lecture_type || 'Theory'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Assigned Sections:
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {assignedSectionsForSub.map((sec) => {
+                      const studCount = students.filter(s => s.section_id === sec.id && s.active).length;
+                      const asgnCount = courseAssignments.filter(a => a.subject_id === sub.id && a.section_id === sec.id).length;
+                      const quizCount = quizzes.filter(q => q.subject_id === sub.id && q.section_id === sec.id).length;
+                      const sessCount = sessionalAssessments.filter(sa => sa.subject_id === sub.id && sa.section_id === sec.id).length;
+
+                      return (
+                        <div
+                          key={sec.id}
+                          className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/20 hover:border-[#00ff88] transition-all group flex flex-col justify-between space-y-2"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="px-2 py-0.5 rounded-md text-xs font-black bg-emerald-500/20 text-[#00ff88]">
+                                Section {sec.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {sec.room_number || 'Room TBD'}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-1 mt-2 text-[10px] text-slate-300">
+                              <div>Students: <strong className="text-white">{studCount}</strong></div>
+                              <div>Assgn: <strong className="text-blue-400">{asgnCount}</strong></div>
+                              <div>Quizzes: <strong className="text-purple-400">{quizCount}</strong></div>
+                              <div>Sess: <strong className="text-amber-400">{sessCount}</strong></div>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="neon"
+                            size="sm"
+                            onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
+                            className="w-full text-xs py-1.5 justify-center font-bold"
+                          >
+                            Open Workspace →
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
