@@ -171,7 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (matchedStudent) {
         const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
                         sections.find(sec => sec.name === matchedStudent.section?.name);
-        matchedProfile = {
+        const existingProf = profiles.find(p => p.student_id === matchedStudent.id || p.email === matchedStudent.email);
+        matchedProfile = existingProf || {
           id: matchedStudent.id,
           email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
           role: 'student',
@@ -198,8 +199,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (matchedFaculty) {
-        const isHod = matchedFaculty.designation.toLowerCase().includes('hod') || matchedFaculty.faculty_code === 'WSM';
-        matchedProfile = {
+        const isHod = matchedFaculty.designation.toLowerCase().includes('hod');
+        const existingProf = profiles.find(p => p.faculty_id === matchedFaculty.id || p.email === matchedFaculty.email);
+        matchedProfile = existingProf || {
           id: matchedFaculty.id,
           email: matchedFaculty.email,
           role: isHod ? 'hod' : 'faculty',
@@ -223,7 +225,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (matchedStudent) {
         const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
                         sections.find(sec => sec.name === matchedStudent.section?.name);
-        matchedProfile = {
+        const existingProf = profiles.find(p => p.student_id === matchedStudent.id || p.email === matchedStudent.email);
+        matchedProfile = existingProf || {
           id: matchedStudent.id,
           email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
           role: 'student',
@@ -239,17 +242,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Step C: Super Admin login
+    // Step C: Super Admin login from database profile
     if (!matchedProfile) {
-      if (trimmedId === 'admin' || trimmedId === 'admin@vctm.in' || trimmedId === 'superadmin' || trimmedId === 'principal') {
-        const adminProfile = profiles.find(p => p.role === 'super_admin');
-        matchedProfile = adminProfile || {
-          id: '99999999-9999-4999-9999-999999999999',
-          email: 'admin@vctm.in',
-          role: 'super_admin',
-          full_name: 'Dr. S. K. Gupta',
-          department_id: 'dpt-001',
-        };
+      const adminProfile = profiles.find(p => p.role === 'super_admin');
+      if (adminProfile && (trimmedId === 'admin' || trimmedId === adminProfile.email?.toLowerCase())) {
+        matchedProfile = adminProfile;
       }
     }
 

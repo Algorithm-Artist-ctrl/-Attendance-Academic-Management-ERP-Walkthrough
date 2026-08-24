@@ -462,7 +462,7 @@ export const supabaseService = {
     const createdFaculty = data as Faculty;
 
     // Automatically create Supabase profile for this faculty
-    const isHOD = createdFaculty.designation.toLowerCase().includes('hod') || createdFaculty.faculty_code === 'WSM';
+    const isHOD = createdFaculty.designation.toLowerCase().includes('hod');
     try {
       await supabase.from('profiles').upsert({
         id: createdFaculty.id,
@@ -487,7 +487,7 @@ export const supabaseService = {
     const updated = data as Faculty;
 
     try {
-      const isHOD = updated.designation.toLowerCase().includes('hod') || updated.faculty_code === 'WSM';
+      const isHOD = updated.designation.toLowerCase().includes('hod');
       await supabase.from('profiles').update({
         full_name: updated.full_name,
         email: updated.email,

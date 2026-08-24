@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GraduationCap, Search, Plus, Filter, UserCheck, Mail, Phone, BookOpen, Layers, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -8,6 +9,7 @@ import { AdmissionType, Student } from '../../types/database.types';
 import { clsx } from 'clsx';
 
 export const StudentDirectoryPage: React.FC = () => {
+  const { user, role } = useAuth();
   const { 
     institution, 
     departments, 
@@ -17,10 +19,29 @@ export const StudentDirectoryPage: React.FC = () => {
     semesters, 
     sections, 
     faculty, 
-    students, 
+    students,
+    assignments,
     addStudent,
     deleteStudent
   } = useAcademic();
+
+  const isSuperAdmin = role === 'super_admin';
+  const isHOD = role === 'hod';
+  const isFaculty = role === 'faculty';
+
+  // Role-based student filtering
+  const accessibleStudents = React.useMemo(() => {
+    if (isSuperAdmin) return students;
+    if (isHOD) return students.filter(s => s.department_id === user?.department_id);
+    if (isFaculty) {
+      const currentFacultyId = user?.faculty_id || user?.id || '';
+      const mySectionIds = assignments
+        .filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active)
+        .map(fsa => fsa.section_id);
+      return students.filter(s => mySectionIds.includes(s.section_id));
+    }
+    return students;
+  }, [students, isSuperAdmin, isHOD, isFaculty, user, assignments]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
@@ -37,7 +58,7 @@ export const StudentDirectoryPage: React.FC = () => {
   const [newPhone, setNewPhone] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const filteredStudents = students.filter(s => {
+  const filteredStudents = accessibleStudents.filter(s => {
     const matchesSearch = 
       s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
@@ -107,14 +128,16 @@ export const StudentDirectoryPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="neon"
-          size="sm"
-          onClick={() => setIsAddModalOpen(true)}
-          leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
-        >
-          Add New Student
-        </Button>
+        {(isSuperAdmin || isHOD) && (
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+          >
+            Add New Student
+          </Button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -187,13 +210,15 @@ export const StudentDirectoryPage: React.FC = () => {
                       <h3 className="text-sm font-bold text-white mt-0.5">{stud.full_name}</h3>
                     </div>
 
-                    <button
-                      onClick={() => handleDelete(stud.id, stud.full_name)}
-                      className="p-2 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer touch-target flex items-center justify-center"
-                      title="Delete Student"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {(isSuperAdmin || isHOD) && (
+                      <button
+                        onClick={() => handleDelete(stud.id, stud.full_name)}
+                        className="p-2 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer touch-target flex items-center justify-center"
+                        title="Delete Student"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-500/10 text-xs">

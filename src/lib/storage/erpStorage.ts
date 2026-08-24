@@ -594,7 +594,7 @@ class ERPStorageService {
     faculty.forEach(f => {
       const existingKey = `user-${f.id}`;
       if (!profileMap.has(existingKey)) {
-        const isHod = f.designation.toLowerCase().includes('hod') || f.faculty_code === 'WSM';
+        const isHod = f.designation.toLowerCase().includes('hod');
         profileMap.set(existingKey, {
           id: existingKey,
           email: f.email,

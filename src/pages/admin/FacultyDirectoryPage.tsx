@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { Users, Plus, Search, Mail, Phone, Building2, UserCheck, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Faculty } from '../../types/database.types';
 
 export const FacultyDirectoryPage: React.FC = () => {
+  const { user, role } = useAuth();
   const { faculty, departments, addFaculty, deleteFaculty } = useAcademic();
   const [searchTerm, setSearchTerm] = useState('');
+
+  const isSuperAdmin = role === 'super_admin';
+  const isHOD = role === 'hod';
 
   // Add Faculty modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,14 +82,16 @@ export const FacultyDirectoryPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="neon"
-          size="sm"
-          onClick={() => setIsModalOpen(true)}
-          leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
-        >
-          Add Faculty Member
-        </Button>
+        {(isSuperAdmin || isHOD) && (
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={() => setIsModalOpen(true)}
+            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+          >
+            Add Faculty Member
+          </Button>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -118,7 +125,7 @@ export const FacultyDirectoryPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredFaculty.map((f) => {
             const dept = departments.find(d => d.id === f.department_id);
-            const isHOD = f.designation.toLowerCase().includes('hod') || f.faculty_code === 'WSM';
+            const isFacultyHOD = f.designation.toLowerCase().includes('hod');
 
             return (
               <div
@@ -126,18 +133,20 @@ export const FacultyDirectoryPage: React.FC = () => {
                 className="glass-panel rounded-3xl p-5 border border-emerald-500/15 hover:border-emerald-500/35 transition-all space-y-3 relative overflow-hidden"
               >
                 <div className="flex items-center justify-between">
-                  {isHOD ? (
+                  {isFacultyHOD ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
                       HOD
                     </span>
                   ) : <span />}
-                  <button
-                    onClick={() => handleDelete(f.id, f.full_name)}
-                    className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    title="Delete Faculty"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {(isSuperAdmin || isHOD) && (
+                    <button
+                      onClick={() => handleDelete(f.id, f.full_name)}
+                      className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      title="Delete Faculty"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
