@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2 } from 'lucide-react';
+import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { Section } from '../../types/database.types';
 import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
@@ -18,6 +19,7 @@ export const AcademicSetupPage: React.FC = () => {
     addProgram,
     deleteProgram, 
     addSection,
+    updateSection,
     deleteSection,
     claimWindowDays,
     setClaimWindowDays
@@ -45,6 +47,12 @@ export const AcademicSetupPage: React.FC = () => {
   const [newSecName, setNewSecName] = useState('');
   const [newSecRoom, setNewSecRoom] = useState('');
   const [newSecCoordinatorId, setNewSecCoordinatorId] = useState('');
+
+  // Edit Section Modal state
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [editSecName, setEditSecName] = useState('');
+  const [editSecRoom, setEditSecRoom] = useState('');
+  const [editSecCoordinatorId, setEditSecCoordinatorId] = useState('');
 
   const handleDeleteDept = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to delete department "${name}"?`)) {
@@ -133,9 +141,26 @@ export const AcademicSetupPage: React.FC = () => {
 
       setNewSecName('');
       setNewSecRoom('');
+      setNewSecCoordinatorId('');
       setIsSecModalOpen(false);
     } catch (err) {
       console.error('Failed to add section:', err);
+    }
+  };
+
+  const handleUpdateSec = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSection || !editSecName.trim()) return;
+
+    try {
+      await updateSection(editingSection.id, {
+        name: editSecName.trim().toUpperCase(),
+        room_number: editSecRoom.trim() || undefined,
+        class_coordinator_id: editSecCoordinatorId || undefined,
+      });
+      setEditingSection(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update section');
     }
   };
 
@@ -399,13 +424,27 @@ export const AcademicSetupPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteSec(sec.id, sec.name)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            title="Delete Section"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingSection(sec);
+                                setEditSecName(sec.name);
+                                setEditSecRoom(sec.room_number || '');
+                                setEditSecCoordinatorId(sec.class_coordinator_id || '');
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                              title="Edit Section & Class Coordinator"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSec(sec.id, sec.name)}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Delete Section"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -589,9 +628,73 @@ export const AcademicSetupPage: React.FC = () => {
               className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
             />
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Class Coordinator</label>
+            <select
+              value={newSecCoordinatorId}
+              onChange={(e) => setNewSecCoordinatorId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            >
+              <option value="">None (Unassigned)</option>
+              {faculty.map(f => (
+                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.employee_code})</option>
+              ))}
+            </select>
+          </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsSecModalOpen(false)}>Cancel</Button>
             <Button type="submit" variant="neon" size="sm">Save Section</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Section & Class Coordinator Modal */}
+      <Modal
+        isOpen={!!editingSection}
+        onClose={() => setEditingSection(null)}
+        title="Edit Section & Class Coordinator"
+        description="Update classroom allocation and assign the official Class Coordinator"
+        maxWidth="md"
+      >
+        <form onSubmit={handleUpdateSec} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Section Identifier</label>
+            <input
+              type="text"
+              required
+              maxLength={2}
+              value={editSecName}
+              onChange={(e) => setEditSecName(e.target.value)}
+              placeholder="e.g. A"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Assigned Classroom</label>
+            <input
+              type="text"
+              value={editSecRoom}
+              onChange={(e) => setEditSecRoom(e.target.value)}
+              placeholder="e.g. Room A007"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Class Coordinator</label>
+            <select
+              value={editSecCoordinatorId}
+              onChange={(e) => setEditSecCoordinatorId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            >
+              <option value="">None (Unassigned)</option>
+              {faculty.map(f => (
+                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.employee_code})</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditingSection(null)}>Cancel</Button>
+            <Button type="submit" variant="neon" size="sm">Update Section</Button>
           </div>
         </form>
       </Modal>

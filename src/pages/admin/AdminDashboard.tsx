@@ -47,6 +47,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     ? Math.round((totalPresent / attendanceRecords.length) * 100)
     : 0;
 
+  // Real-time date-wise attendance stats from Supabase
+  const dateWiseStats = React.useMemo(() => {
+    const map = new Map<string, { total: number; present: number }>();
+    for (const sess of attendanceSessions) {
+      const date = sess.session_date;
+      const recs = attendanceRecords.filter(r => r.attendance_session_id === sess.id);
+      const pres = recs.filter(r => r.status === 'Present').length;
+      if (!map.has(date)) {
+        map.set(date, { total: recs.length, present: pres });
+      } else {
+        const curr = map.get(date)!;
+        curr.total += recs.length;
+        curr.present += pres;
+      }
+    }
+    const sortedDates = Array.from(map.keys()).sort();
+    return sortedDates.map(d => {
+      const entry = map.get(d)!;
+      const pct = entry.total > 0 ? Math.round((entry.present / entry.total) * 100) : 0;
+      return { date: d, percentage: pct, total: entry.total, present: entry.present };
+    });
+  }, [attendanceSessions, attendanceRecords]);
+
   // Dynamic live system activities mapped directly from Supabase auditLogs
   const recentActivities = auditLogs.length > 0
     ? auditLogs.slice(0, 5).map(log => ({
@@ -55,7 +78,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
         type: log.entity_type
       }))
     : [
-        { title: 'System initialized and connected to Supabase', time: 'Active', type: 'system' }
+        { title: 'System initialized and connected to Supabase Cloud', time: 'Active', type: 'system' }
       ];
 
   return (
@@ -66,7 +89,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 z-10">
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Welcome back, {user?.full_name || 'Admin'}
+            Welcome back, {user?.full_name || 'Super Administrator'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
             Super Administrator • Vivekananda College of Technology & Management • System Online
@@ -148,9 +171,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
         {/* Today's Attendance */}
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
           <div>
-            <p className="text-xs font-semibold text-slate-400">Today's Attendance</p>
+            <p className="text-xs font-semibold text-slate-400">Average Attendance</p>
             <h3 className="text-xl sm:text-2xl font-black text-[#00ff88] mt-1">
-              {attendanceRecords.length > 0 ? `${attendanceRate}%` : 'No Class Yet'}
+              {attendanceRecords.length > 0 ? `${attendanceRate}%` : '0%'}
             </h3>
             <span className="text-[10px] text-emerald-400 font-semibold">Institute Average</span>
           </div>
@@ -165,78 +188,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       {/* ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Card: Attendance Trend Curve Graph Matching Screen 9 */}
+        {/* Left Card: Attendance Trend Curve Graph */}
         <div className="lg:col-span-7 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-white tracking-wide">
-                Attendance Trend (This Month)
+                Institutional Attendance Trajectory
               </h3>
-              <p className="text-xs text-slate-400">Daily Institutional Attendance Trajectory</p>
+              <p className="text-xs text-slate-400">Database recorded lecture attendance trends</p>
             </div>
-            <span className="text-xs font-bold text-[#00ff88]">+4.2% vs Last Month</span>
+            <span className="text-xs font-bold text-[#00ff88]">
+              {attendanceSessions.length} Total Sessions
+            </span>
           </div>
 
-          {/* SVG Glowing Cyber Curve Graph */}
-          <div className="relative py-4">
-            <svg viewBox="0 0 500 200" className="w-full h-48 overflow-visible">
-              <defs>
-                <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#00ff88" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#00ff88" stopOpacity="0.0" />
-                </linearGradient>
-                <filter id="neonGlowLine" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
+          {/* Dynamic SVG / Data Summary */}
+          {dateWiseStats.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center">
+              <TrendingUp className="w-8 h-8 text-slate-600 mb-2 opacity-50" />
+              <p className="font-semibold text-slate-300">No attendance sessions recorded yet</p>
+              <p className="text-slate-500 mt-1">Conducted lecture sessions will automatically generate live trend graphs.</p>
+            </div>
+          ) : (
+            <div className="relative py-4">
+              <svg viewBox="0 0 500 200" className="w-full h-48 overflow-visible">
+                <defs>
+                  <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#00ff88" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#00ff88" stopOpacity="0.0" />
+                  </linearGradient>
+                  <filter id="neonGlowLine" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                </defs>
 
-              {/* Horizontal Grid lines */}
-              <line x1="40" y1="20" x2="480" y2="20" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="40" y1="65" x2="480" y2="65" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="40" y1="110" x2="480" y2="110" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="40" y1="155" x2="480" y2="155" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+                {/* Horizontal Grid lines */}
+                <line x1="40" y1="20" x2="480" y2="20" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1="40" y1="65" x2="480" y2="65" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1="40" y1="110" x2="480" y2="110" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1="40" y1="155" x2="480" y2="155" stroke="#0d1b32" strokeWidth="1" strokeDasharray="4 4" />
 
-              {/* Y Axis Labels */}
-              <text x="30" y="24" fill="#64748b" fontSize="10" textAnchor="end">100%</text>
-              <text x="30" y="69" fill="#64748b" fontSize="10" textAnchor="end">75%</text>
-              <text x="30" y="114" fill="#64748b" fontSize="10" textAnchor="end">50%</text>
-              <text x="30" y="159" fill="#64748b" fontSize="10" textAnchor="end">25%</text>
+                {/* Y Axis Labels */}
+                <text x="30" y="24" fill="#64748b" fontSize="10" textAnchor="end">100%</text>
+                <text x="30" y="69" fill="#64748b" fontSize="10" textAnchor="end">75%</text>
+                <text x="30" y="114" fill="#64748b" fontSize="10" textAnchor="end">50%</text>
+                <text x="30" y="159" fill="#64748b" fontSize="10" textAnchor="end">25%</text>
 
-              {/* Filled Curve Area */}
-              <path
-                d="M 60 160 L 140 120 L 220 135 L 300 70 L 380 90 L 460 35 L 460 180 L 60 180 Z"
-                fill="url(#curveGradient)"
-              />
+                {/* Plot dynamic points */}
+                {(() => {
+                  const points = dateWiseStats.slice(-6).map((stat, idx, arr) => {
+                    const x = 60 + (idx * (400 / Math.max(1, arr.length - 1)));
+                    const y = 175 - (stat.percentage * 1.5);
+                    return { x, y, stat };
+                  });
 
-              {/* Glowing Neon Line */}
-              <path
-                d="M 60 160 L 140 120 L 220 135 L 300 70 L 380 90 L 460 35"
-                fill="none"
-                stroke="#00ff88"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                filter="url(#neonGlowLine)"
-              />
+                  if (points.length === 1) {
+                    const p = points[0];
+                    return (
+                      <g>
+                        <circle cx={p.x} cy={p.y} r="6" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+                        <text x={p.x} y="195" fill="#00ff88" fontSize="10" textAnchor="middle">{p.stat.date}</text>
+                      </g>
+                    );
+                  }
 
-              {/* Data Point Circles */}
-              <circle cx="60" cy="160" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
-              <circle cx="140" cy="120" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
-              <circle cx="220" cy="135" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
-              <circle cx="300" cy="70" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
-              <circle cx="380" cy="90" r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
-              <circle cx="460" cy="35" r="6" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+                  const pathD = points.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`, '');
+                  const fillD = `${pathD} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
 
-              {/* X Axis Labels */}
-              <text x="60" y="195" fill="#64748b" fontSize="10" textAnchor="middle">1 May</text>
-              <text x="140" y="195" fill="#64748b" fontSize="10" textAnchor="middle">8 May</text>
-              <text x="220" y="195" fill="#64748b" fontSize="10" textAnchor="middle">15 May</text>
-              <text x="300" y="195" fill="#64748b" fontSize="10" textAnchor="middle">22 May</text>
-              <text x="380" y="195" fill="#64748b" fontSize="10" textAnchor="middle">26 May</text>
-              <text x="460" y="195" fill="#00ff88" fontWeight="bold" fontSize="10" textAnchor="middle">31 May</text>
-            </svg>
-          </div>
+                  return (
+                    <g>
+                      <path d={fillD} fill="url(#curveGradient)" />
+                      <path d={pathD} fill="none" stroke="#00ff88" strokeWidth="3" filter="url(#neonGlowLine)" />
+                      {points.map((p, i) => (
+                        <g key={i}>
+                          <circle cx={p.x} cy={p.y} r="5" fill="#00ff88" stroke="#050b14" strokeWidth="2" />
+                          <text x={p.x} y="195" fill="#64748b" fontSize="10" textAnchor="middle">
+                            {p.stat.date.substring(5)}
+                          </text>
+                        </g>
+                      ))}
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+          )}
 
           <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between text-xs text-slate-400">
             <span>Overall Session: 2026-2027</span>

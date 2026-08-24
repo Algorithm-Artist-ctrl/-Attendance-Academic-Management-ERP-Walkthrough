@@ -331,14 +331,48 @@ export const ProfilePage: React.FC = () => {
                 </>
               )}
 
-              {currentFaculty && (
+              {role === 'super_admin' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Administrative Role</label>
+                    <input
+                      type="text"
+                      disabled
+                      value="System Owner • Full Institutional Control"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Institution</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={institution?.name || 'Vivekananda College of Technology & Management, Aligarh (Code: 340)'}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Database Authority</label>
+                    <input
+                      type="text"
+                      disabled
+                      value="Super Administrator • Authoritative DB Access"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                    />
+                  </div>
+                </>
+              )}
+
+              {currentFaculty && role !== 'super_admin' && (
                 <>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Employee Code & Timetable Code</label>
                     <input
                       type="text"
                       disabled
-                      value={`${currentFaculty.employee_code} • Timetable Code: ${currentFaculty.faculty_code || 'HEM'}`}
+                      value={`${currentFaculty.employee_code || '—'} • Timetable Code: ${currentFaculty.faculty_code || '—'}`}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-mono font-bold cursor-not-allowed"
                     />
                   </div>
@@ -348,7 +382,7 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Computer Science & Engineering'}`}
+                      value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Academic Department'}`}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
                     />
                   </div>
@@ -358,7 +392,7 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value={facultyAssignedSubjectNames || 'BCS301 (Data Structure), BCS351 (Data Structure Lab)'}
+                      value={facultyAssignedSubjectNames || 'No subjects currently assigned'}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
                     />
                   </div>
@@ -368,7 +402,7 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value={facultyAssignedSectionNames || 'Section A, Section B'}
+                      value={facultyAssignedSectionNames || 'No sections currently assigned'}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
                     />
                   </div>

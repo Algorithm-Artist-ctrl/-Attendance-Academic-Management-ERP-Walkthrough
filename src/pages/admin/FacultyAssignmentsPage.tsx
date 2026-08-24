@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Plus, Search, User, BookOpen } from 'lucide-react';
+import { Layers, Plus, Search, User, BookOpen, Trash2 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -12,7 +12,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
     subjects, 
     sections, 
     sessions, 
-    addAssignment 
+    addAssignment,
+    deleteAssignment
   } = useAcademic();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +36,16 @@ export const FacultyAssignmentsPage: React.FC = () => {
       (sec?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
+
+  const handleDeleteAllocation = async (id: string, facultyName: string, subjectCode: string) => {
+    if (window.confirm(`Are you sure you want to remove teaching allocation for "${facultyName}" on "${subjectCode}"?`)) {
+      try {
+        await deleteAssignment(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to remove allocation');
+      }
+    }
+  };
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +116,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 <th className="px-5 py-3.5">Faculty Full Name</th>
                 <th className="px-5 py-3.5">Subject</th>
                 <th className="px-5 py-3.5 text-center">Section</th>
-                <th className="px-5 py-3.5 text-right">Status</th>
+                <th className="px-5 py-3.5 text-center">Status</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-500/10">
@@ -130,10 +142,19 @@ export const FacultyAssignmentsPage: React.FC = () => {
                         Section {sec?.name}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4 text-center">
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
                         Assigned
                       </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        onClick={() => handleDeleteAllocation(fa.id, fac?.full_name || 'Faculty', sub?.subject_code || 'Subject')}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Remove Allocation"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 );

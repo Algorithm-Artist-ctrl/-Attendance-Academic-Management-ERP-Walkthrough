@@ -9,7 +9,17 @@ import { Faculty } from '../../types/database.types';
 
 export const FacultyDirectoryPage: React.FC = () => {
   const { user, role } = useAuth();
-  const { faculty, departments, addFaculty, updateFaculty, deleteFaculty } = useAcademic();
+  const { 
+    faculty, 
+    departments, 
+    subjects, 
+    sections, 
+    assignments, 
+    timetable, 
+    addFaculty, 
+    updateFaculty, 
+    deleteFaculty 
+  } = useAcademic();
   const [searchTerm, setSearchTerm] = useState('');
 
   const isSuperAdmin = role === 'super_admin';
@@ -187,24 +197,55 @@ export const FacultyDirectoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Employee Code:</span>
-                    <span className="font-mono font-bold text-white">{f.employee_code}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Timetable Code:</span>
-                    <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Department:</span>
-                    <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Official Email:</span>
-                    <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]">{f.email}</span>
-                  </div>
-                </div>
+                {/* Academic Assignments & Coordinator status */}
+                {(() => {
+                  const myFsa = (assignments || []).filter(a => a.faculty_id === f.id && a.active);
+                  const myTt = (timetable || []).filter(t => t.faculty_id === f.id && t.active);
+                  const subIds = new Set([...myFsa.map(a => a.subject_id), ...myTt.map(t => t.subject_id)]);
+                  const secIds = new Set([...myFsa.map(a => a.section_id), ...myTt.map(t => t.section_id)]);
+                  const assignedSubs = subjects.filter(s => subIds.has(s.id));
+                  const assignedSecs = sections.filter(s => secIds.has(s.id));
+                  const coordinatedSec = sections.find(s => s.class_coordinator_id === f.id);
+
+                  return (
+                    <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Employee Code:</span>
+                        <span className="font-mono font-bold text-white">{f.employee_code}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Timetable Code:</span>
+                        <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Department:</span>
+                        <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Official Email:</span>
+                        <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]">{f.email}</span>
+                      </div>
+                      <div className="flex justify-between items-start gap-1">
+                        <span className="text-slate-500 shrink-0">Assigned Subjects:</span>
+                        <span className="text-emerald-400 font-mono text-[11px] text-right truncate max-w-[170px]">
+                          {assignedSubs.length > 0 ? assignedSubs.map(s => s.subject_code).join(', ') : 'None'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start gap-1">
+                        <span className="text-slate-500 shrink-0">Assigned Sections:</span>
+                        <span className="text-slate-300 font-medium text-[11px] text-right">
+                          {assignedSecs.length > 0 ? assignedSecs.map(s => `Sec ${s.name}`).join(', ') : 'None'}
+                        </span>
+                      </div>
+                      {coordinatedSec && (
+                        <div className="mt-2 p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-[11px]">
+                          <span className="text-[#00ff88] font-bold">Class Coordinator</span>
+                          <span className="text-white font-bold font-mono">Section {coordinatedSec.name} ({coordinatedSec.room_number || 'A007'})</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
