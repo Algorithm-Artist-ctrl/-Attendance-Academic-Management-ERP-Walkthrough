@@ -198,8 +198,8 @@ export const AppShell: React.FC<AppShellProps> = ({
       <aside className="hidden md:flex flex-col w-64 bg-[#081220]/90 border-r border-emerald-500/15 backdrop-blur-xl shrink-0 z-30 min-h-screen">
         {/* VCTM Brand Logo */}
         <div className="p-5 border-b border-emerald-500/15 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-slate-950/80 border border-emerald-500/30 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
-            <img src={vctmOfficialLogo} alt="VCTM Official Logo" className="w-full h-full object-contain" />
+          <div className="w-12 h-12 rounded-2xl bg-slate-950/90 border border-emerald-500/30 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.2)] shrink-0 overflow-hidden">
+            <img src={vctmOfficialLogo} alt="VCTM Official Logo" className="w-full h-full object-cover rounded-xl" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
@@ -276,7 +276,9 @@ export const AppShell: React.FC<AppShellProps> = ({
             </button>
             
             <div className="flex items-center gap-2">
-              <img src={vctmOfficialLogo} alt="VCTM" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+              <div className="w-8 h-8 rounded-xl bg-slate-950 border border-emerald-500/30 p-0.5 overflow-hidden flex items-center justify-center shrink-0">
+                <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-cover rounded-lg" />
+              </div>
               <div>
                 <span className="font-black text-sm sm:text-base text-white tracking-wide">
                   VCTM <span className="text-[#00ff88]">ERP</span>
@@ -335,8 +337,8 @@ export const AppShell: React.FC<AppShellProps> = ({
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-4 border-b border-emerald-500/20">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-slate-950 border border-emerald-500/30 p-1 flex items-center justify-center">
-                    <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
+                  <div className="w-10 h-10 rounded-xl bg-slate-950 border border-emerald-500/30 p-0.5 flex items-center justify-center overflow-hidden shrink-0">
+                    <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-cover rounded-lg" />
                   </div>
                   <div>
                     <h3 className="font-black text-sm text-white">VCTM ERP</h3>

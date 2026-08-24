@@ -83,8 +83,8 @@ export const LoginPage: React.FC = () => {
             
             {/* VCTM Emblem & Title */}
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-[0_0_25px_rgba(0,255,136,0.25)] p-1.5 mb-3">
-                <img src={vctmOfficialLogo} alt="VCTM Official Emblem" className="w-full h-full object-contain" />
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-slate-950/90 border border-emerald-500/40 shadow-[0_0_30px_rgba(0,255,136,0.3)] p-1 mb-3 overflow-hidden">
+                <img src={vctmOfficialLogo} alt="VCTM Official Emblem" className="w-full h-full object-cover rounded-2xl" />
               </div>
               <h2 className="text-2xl font-black text-white tracking-wider">
                 VCTM <span className="text-[#00ff88]">ERP</span>
