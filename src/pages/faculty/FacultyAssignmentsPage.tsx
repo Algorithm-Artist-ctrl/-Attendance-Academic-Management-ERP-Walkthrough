@@ -30,20 +30,31 @@ import { clsx } from 'clsx';
 export const FacultyAssignmentsPage: React.FC = () => {
   const { user } = useAuth();
   const { 
+    institution,
     courseAssignments, 
     assignmentSubmissions, 
     subjects, 
     sections, 
     faculty, 
     students,
+    timetable,
     assignments: facultySubjectAssignments,
     createAssignment,
     deleteCourseAssignment,
     gradeAssignmentSubmission
   } = useAcademic();
 
-  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'hod';
-  const currentFacultyId = user?.faculty_id || user?.id || '';
+  const currentFaculty = faculty.find(
+    f => f.id === user?.faculty_id || 
+         f.id === user?.faculty?.id || 
+         f.id === user?.id ||
+         (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+         (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+         (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+  ) || user?.faculty;
+
+  const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+  const isSuperAdmin = (user?.role === 'super_admin' || user?.role === 'hod') && !currentFacultyId;
 
   // Filter assignments created by this faculty (or all for HOD/Admin)
   const myAssignments = useMemo(() => {
@@ -51,7 +62,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
     return courseAssignments.filter(a => a.faculty_id === currentFacultyId);
   }, [courseAssignments, isSuperAdmin, currentFacultyId]);
 
-  // Allowed subjects & sections for creating new assignment
+  // Allowed subjects & sections strictly assigned to this faculty
   const myAssignedSubjects = useMemo(() => {
     if (isSuperAdmin) {
       return subjects.map(s => ({
@@ -60,6 +71,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
       }));
     }
     const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
+    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
     const subMap = new Map<string, { subject: typeof subjects[0]; sections: typeof sections }>();
     
     for (const fsa of myFsa) {
@@ -76,8 +88,35 @@ export const FacultyAssignmentsPage: React.FC = () => {
         }
       }
     }
+
+    for (const t of myTt) {
+      const sub = subjects.find(s => s.id === t.subject_id);
+      const sec = sections.find(s => s.id === t.section_id);
+      if (sub && sec) {
+        if (!subMap.has(sub.id)) {
+          subMap.set(sub.id, { subject: sub, sections: [sec] });
+        } else {
+          const existing = subMap.get(sub.id)!;
+          if (!existing.sections.some(s => s.id === sec.id)) {
+            existing.sections.push(sec);
+          }
+        }
+      }
+    }
+
     return Array.from(subMap.values());
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, currentFacultyId]);
+  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId]);
+
+  const myAssignedSections = useMemo(() => {
+    if (isSuperAdmin) return sections;
+    const secSet = new Set<string>();
+    for (const item of myAssignedSubjects) {
+      for (const sec of item.sections) {
+        secSet.add(sec.id);
+      }
+    }
+    return sections.filter(sec => secSet.has(sec.id));
+  }, [isSuperAdmin, myAssignedSubjects, sections]);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -287,9 +326,9 @@ export const FacultyAssignmentsPage: React.FC = () => {
               onChange={(e) => setSelectedSubjectFilter(e.target.value)}
               className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="ALL">All Assigned Subjects</option>
-              {subjects.map(s => (
-                <option key={s.id} value={s.id}>{s.subject_code} - {s.subject_name}</option>
+              <option value="ALL">All Assigned Subjects ({myAssignedSubjects.length})</option>
+              {myAssignedSubjects.map(s => (
+                <option key={s.subject.id} value={s.subject.id}>{s.subject.subject_code} - {s.subject.subject_name}</option>
               ))}
             </select>
           </div>
@@ -300,8 +339,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
               onChange={(e) => setSelectedSectionFilter(e.target.value)}
               className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="ALL">All Sections (A, B...)</option>
-              {sections.map(sec => (
+              <option value="ALL">All Assigned Sections ({myAssignedSections.length})</option>
+              {myAssignedSections.map(sec => (
                 <option key={sec.id} value={sec.id}>Section {sec.name}</option>
               ))}
             </select>

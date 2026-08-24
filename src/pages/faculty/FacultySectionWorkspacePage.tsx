@@ -49,6 +49,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
   const { 
     subjects, 
     sections, 
+    faculty,
     students, 
     timetable, 
     courseAssignments, 
@@ -73,10 +74,19 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     getStudentAttendance
   } = useAcademic();
 
-  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'hod';
-  const currentFacultyId = user?.faculty_id || user?.id || '';
+  const currentFaculty = faculty.find(
+    f => f.id === user?.faculty_id || 
+         f.id === user?.faculty?.id || 
+         f.id === user?.id ||
+         (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+         (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+         (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+  ) || user?.faculty;
 
-  // 1. Determine all assigned Subject + Section pairs for this faculty
+  const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+  const isSuperAdmin = (user?.role === 'super_admin' || user?.role === 'hod') && !currentFacultyId;
+
+  // 1. Determine all assigned Subject + Section pairs strictly for this faculty
   const myAssignedClasses = useMemo(() => {
     if (isSuperAdmin) {
       const list: Array<{ subject: typeof subjects[0]; section: typeof sections[0] }> = [];
@@ -89,6 +99,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     }
 
     const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
+    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
     const list: Array<{ subject: typeof subjects[0]; section: typeof sections[0] }> = [];
 
     for (const fsa of myFsa) {
@@ -100,8 +111,19 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
         }
       }
     }
+
+    for (const t of myTt) {
+      const sub = subjects.find(s => s.id === t.subject_id);
+      const sec = sections.find(s => s.id === t.section_id);
+      if (sub && sec) {
+        if (!list.some(item => item.subject.id === sub.id && item.section.id === sec.id)) {
+          list.push({ subject: sub, section: sec });
+        }
+      }
+    }
+
     return list;
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, currentFacultyId]);
+  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId]);
 
   // Selected Subject & Section State
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(

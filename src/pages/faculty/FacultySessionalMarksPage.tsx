@@ -29,12 +29,15 @@ import { clsx } from 'clsx';
 export const FacultySessionalMarksPage: React.FC = () => {
   const { user } = useAuth();
   const { 
+    institution,
     sessionalAssessments,
     sessionalMarks, 
     marksHistory, 
     subjects, 
     sections, 
+    faculty,
     students,
+    timetable,
     assignments: facultySubjectAssignments,
     createSessionalAssessment,
     updateSessionalAssessment,
@@ -42,10 +45,19 @@ export const FacultySessionalMarksPage: React.FC = () => {
     saveSessionalMarks 
   } = useAcademic();
 
-  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'hod';
-  const currentFacultyId = user?.faculty_id || user?.id || '';
+  const currentFaculty = faculty.find(
+    f => f.id === user?.faculty_id || 
+         f.id === user?.faculty?.id || 
+         f.id === user?.id ||
+         (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+         (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+         (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+  ) || user?.faculty;
 
-  // Assigned subjects & sections for current faculty
+  const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+  const isSuperAdmin = (user?.role === 'super_admin' || user?.role === 'hod') && !currentFacultyId;
+
+  // Assigned subjects & sections strictly assigned to current faculty
   const myAssignedSubjects = useMemo(() => {
     if (isSuperAdmin) {
       return subjects.map(s => ({
@@ -54,6 +66,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
       }));
     }
     const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
+    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
     const subMap = new Map<string, { subject: typeof subjects[0]; sections: typeof sections }>();
     
     for (const fsa of myFsa) {
@@ -70,8 +83,24 @@ export const FacultySessionalMarksPage: React.FC = () => {
         }
       }
     }
+
+    for (const t of myTt) {
+      const sub = subjects.find(s => s.id === t.subject_id);
+      const sec = sections.find(s => s.id === t.section_id);
+      if (sub && sec) {
+        if (!subMap.has(sub.id)) {
+          subMap.set(sub.id, { subject: sub, sections: [sec] });
+        } else {
+          const existing = subMap.get(sub.id)!;
+          if (!existing.sections.some(s => s.id === sec.id)) {
+            existing.sections.push(sec);
+          }
+        }
+      }
+    }
+
     return Array.from(subMap.values());
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, currentFacultyId]);
+  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId]);
 
   // Selections
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
@@ -89,15 +118,23 @@ export const FacultySessionalMarksPage: React.FC = () => {
     }
   }, [myAssignedSubjects, selectedSubjectId]);
 
-  // Filtered Assessments for the selected Subject & Section
+  // Filtered Assessments for the selected Subject & Section (strictly deduplicated and scoped)
   const filteredAssessments = useMemo(() => {
-    return sessionalAssessments.filter(sa => {
+    const uniqueMap = new Map<string, SessionalAssessment>();
+    for (const sa of sessionalAssessments) {
+      if (!uniqueMap.has(sa.id)) {
+        uniqueMap.set(sa.id, sa);
+      }
+    }
+
+    return Array.from(uniqueMap.values()).filter(sa => {
+      const matchFaculty = isSuperAdmin || sa.faculty_id === currentFacultyId;
       const matchSubject = !selectedSubjectId || sa.subject_id === selectedSubjectId;
       const matchSection = !selectedSectionId || sa.section_id === selectedSectionId;
       const matchSearch = !searchTerm || sa.title.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchSubject && matchSection && matchSearch;
+      return matchFaculty && matchSubject && matchSection && matchSearch;
     });
-  }, [sessionalAssessments, selectedSubjectId, selectedSectionId, searchTerm]);
+  }, [sessionalAssessments, isSuperAdmin, currentFacultyId, selectedSubjectId, selectedSectionId, searchTerm]);
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

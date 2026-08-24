@@ -59,10 +59,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         .filter(t => t.faculty_id === facultyId && t.day_of_week === todayDay)
         .sort((a, b) => a.period_number - b.period_number);
 
-  // Assigned subjects and sections strictly from faculty_subject_assignments
-  const myAssignments = assignments.filter(fa => fa.faculty_id === facultyId);
-  const mySubjects = subjects.filter(s => myAssignments.some(fa => fa.subject_id === s.id));
-  const mySections = sections.filter(sec => myAssignments.some(fa => fa.section_id === sec.id));
+  // Assigned subjects and sections strictly from faculty_subject_assignments + timetable
+  const myAssignments = assignments.filter(fa => fa.faculty_id === facultyId && fa.active);
+  const myTt = timetable.filter(t => t.faculty_id === facultyId && t.active);
+  const mySubjectIds = new Set([...myAssignments.map(fa => fa.subject_id), ...myTt.map(t => t.subject_id)]);
+  const mySectionIds = new Set([...myAssignments.map(fa => fa.section_id), ...myTt.map(t => t.section_id)]);
+  const mySubjects = subjects.filter(s => mySubjectIds.has(s.id));
+  const mySections = sections.filter(sec => mySectionIds.has(sec.id));
 
   // Pending correction requests assigned strictly to this faculty
   const myPendingCorrections = getFacultyCorrectionRequests(facultyId).filter(c => c.status === 'pending');
@@ -165,18 +168,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             </p>
           </div>
           <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] self-start sm:self-auto">
-            {sections.filter(sec => myAssignments.some(fa => fa.section_id === sec.id)).length} Assigned Sections
+            {mySections.length} Assigned Sections
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {sections
-            .filter(sec => myAssignments.some(fa => fa.section_id === sec.id))
-            .map(sec => {
-              const subjectsInSec = mySubjects.filter(sub =>
-                myAssignments.some(fa => fa.subject_id === sub.id && fa.section_id === sec.id)
-              );
-              const secStudents = students.filter(s => s.section_id === sec.id && s.active);
+          {mySections.map(sec => {
+            const subjectsInSec = mySubjects.filter(sub =>
+              myAssignments.some(fa => fa.subject_id === sub.id && fa.section_id === sec.id) ||
+              myTt.some(t => t.subject_id === sub.id && t.section_id === sec.id)
+            );
+            const secStudents = students.filter(s => s.section_id === sec.id && s.active);
 
               return (
                 <div
