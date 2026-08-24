@@ -260,8 +260,27 @@ export interface TimetableImport {
 }
 
 export type SubmissionType = 'google_form' | 'file_upload' | 'both';
-export type SubmissionStatus = 'not_submitted' | 'submitted' | 'late_submission' | 'graded' | 'returned';
-export type SessionalType = 'Sessional 1' | 'Sessional 2' | 'Pre-University Test' | 'Final Sessional' | 'Assignment Marks' | 'Internal Assessment';
+export type SubmissionStatus = 'not_started' | 'submitted' | 'late_submission' | 'reviewed' | 'graded' | 'returned';
+export type SessionalType = 'Sessional 1' | 'Sessional 2' | 'Sessional 3' | 'Sessional 4' | 'Pre-University Test' | 'Final Sessional' | 'Assignment Marks' | 'Internal Assessment' | string;
+
+export interface SessionalAssessment {
+  id: string;
+  faculty_id?: string;
+  subject_id: string;
+  section_id: string;
+  academic_session_id?: string;
+  semester_id?: string;
+  title: string; // e.g. "Sessional 1", "Sessional 2", "Sessional 3", "Sessional 4", "PUT", etc.
+  max_marks: number;
+  exam_date: string;
+  description?: string;
+  status: 'draft' | 'published' | 'completed' | 'archived';
+  created_at: string;
+  updated_at: string;
+  subject?: Subject;
+  faculty?: Faculty;
+  section?: Section;
+}
 
 export interface Assignment {
   id: string;
@@ -273,10 +292,12 @@ export interface Assignment {
   description?: string;
   submission_type: SubmissionType;
   google_form_url?: string;
+  attachment_url?: string;
   max_marks: number;
   assigned_date: string;
   due_date: string;
   allow_late_submission: boolean;
+  status?: 'draft' | 'published' | 'completed' | 'archived';
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -322,6 +343,7 @@ export interface Quiz {
   start_time: string;
   end_time: string;
   instructions?: string;
+  status?: 'draft' | 'published' | 'completed' | 'archived';
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -347,21 +369,24 @@ export interface QuizResult {
 
 export interface SessionalMark {
   id: string;
-  faculty_id: string;
+  sessional_assessment_id?: string;
+  faculty_id?: string;
   subject_id: string;
   section_id: string;
   student_id: string;
   academic_session_id?: string;
-  sessional_type: SessionalType;
-  max_marks: number;
+  sessional_type?: SessionalType;
+  max_marks?: number;
   marks_obtained: number;
   remarks?: string;
+  updated_by?: string;
   created_at: string;
   updated_at: string;
   student?: Student;
   subject?: Subject;
   faculty?: Faculty;
   section?: Section;
+  sessional_assessment?: SessionalAssessment;
 }
 
 export interface MarksHistory {

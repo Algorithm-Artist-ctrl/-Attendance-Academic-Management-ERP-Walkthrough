@@ -24,7 +24,8 @@ import {
   QuizResult,
   SessionalMark,
   MarksHistory,
-  SessionalType
+  SessionalType,
+  SessionalAssessment
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -56,6 +57,7 @@ export const supabaseService = {
         { data: quizResultsList },
         { data: sessionalMarksList },
         { data: marksHistoryList },
+        { data: sessionalAssessmentsList },
       ] = await Promise.all([
         supabase.from('institutions').select('*'),
         supabase.from('departments').select('*'),
@@ -80,6 +82,7 @@ export const supabaseService = {
         supabase.from('quiz_results').select('*').order('created_at', { ascending: false }),
         supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
         supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
+        supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }),
       ]);
 
       return {
@@ -106,6 +109,7 @@ export const supabaseService = {
         quizResults: (quizResultsList as QuizResult[]) || [],
         sessionalMarks: (sessionalMarksList as SessionalMark[]) || [],
         marksHistory: (marksHistoryList as MarksHistory[]) || [],
+        sessionalAssessments: (sessionalAssessmentsList as SessionalAssessment[]) || [],
       };
     } catch (err) {
       console.error('Error fetching data from Supabase:', err);
@@ -911,13 +915,68 @@ export const supabaseService = {
   },
 
   // ==========================================
-  // SESSIONAL MARKS MODULE
+  // SESSIONAL ASSESSMENTS & DYNAMIC MARKS MODULE
   // ==========================================
+  async createSessionalAssessment(assessment: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) {
+    if (assessment.max_marks <= 0) {
+      throw new Error('Maximum marks must be greater than 0.');
+    }
+    if (!assessment.title?.trim()) {
+      throw new Error('Sessional title is required.');
+    }
+
+    const { data, error } = await supabase
+      .from('sessional_assessments')
+      .insert({
+        ...assessment,
+        status: assessment.status || 'published',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    await supabase.from('audit_logs').insert({
+      action: 'SESSIONAL_ASSESSMENT_CREATED',
+      actor_id: assessment.faculty_id || null,
+      target_type: 'sessional_assessments',
+      target_id: data.id,
+      details: { title: assessment.title, maxMarks: assessment.max_marks, subjectId: assessment.subject_id },
+      reason: 'Dynamic Sessional Assessment Published'
+    });
+
+    return data as SessionalAssessment;
+  },
+
+  async updateSessionalAssessment(id: string, updates: Partial<SessionalAssessment>) {
+    const { data, error } = await supabase
+      .from('sessional_assessments')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as SessionalAssessment;
+  },
+
+  async deleteSessionalAssessment(id: string) {
+    const { error } = await supabase.from('sessional_assessments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
   async saveSessionalMarks(params: {
+    sessionalAssessmentId?: string;
     facultyId: string;
     subjectId: string;
     sectionId: string;
-    sessionalType: SessionalType;
+    sessionalType?: string;
     maxMarks: number;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
   }) {
@@ -930,42 +989,53 @@ export const supabaseService = {
         throw new Error(`Marks ${sm.marksObtained} exceeds valid range (0 - ${params.maxMarks}).`);
       }
       return {
+        sessional_assessment_id: params.sessionalAssessmentId || null,
         faculty_id: params.facultyId,
         subject_id: params.subjectId,
         section_id: params.sectionId,
         student_id: sm.studentId,
-        sessional_type: params.sessionalType,
+        sessional_type: params.sessionalType || 'Sessional',
         max_marks: params.maxMarks,
         marks_obtained: sm.marksObtained,
         remarks: sm.remarks,
+        updated_by: params.facultyId,
         updated_at: new Date().toISOString(),
       };
     });
 
-    const { data, error } = await supabase
-      .from('sessional_marks')
-      .upsert(rows, { onConflict: 'subject_id,section_id,student_id,sessional_type' })
-      .select();
+    // Upsert using assessment ID conflict if available, else subject/section/student/type
+    let upsertResult;
+    if (params.sessionalAssessmentId) {
+      upsertResult = await supabase
+        .from('sessional_marks')
+        .upsert(rows, { onConflict: 'sessional_assessment_id,student_id' })
+        .select();
+    } else {
+      upsertResult = await supabase
+        .from('sessional_marks')
+        .upsert(rows, { onConflict: 'subject_id,section_id,student_id,sessional_type' })
+        .select();
+    }
 
-    if (error) throw new Error(error.message);
+    if (upsertResult.error) throw new Error(upsertResult.error.message);
 
     // Record in marks_history audit table
     for (const sm of params.studentMarks) {
       if (sm.oldMarks !== sm.marksObtained) {
         await supabase.from('marks_history').insert({
           entity_type: 'sessional',
-          entity_id: params.subjectId,
+          entity_id: params.sessionalAssessmentId || params.subjectId,
           student_id: sm.studentId,
           subject_id: params.subjectId,
           old_marks: sm.oldMarks,
           new_marks: sm.marksObtained,
           updated_by: params.facultyId,
-          reason: `${params.sessionalType} Marks Updated`
+          reason: `${params.sessionalType || 'Sessional'} Marks Updated`
         });
       }
     }
 
-    return data as SessionalMark[];
+    return upsertResult.data as SessionalMark[];
   }
 };
 

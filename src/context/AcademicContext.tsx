@@ -24,7 +24,8 @@ import {
   QuizResult,
   SessionalMark,
   MarksHistory,
-  SessionalType
+  SessionalType,
+  SessionalAssessment
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -95,6 +96,7 @@ interface AcademicContextType {
   assignmentSubmissions: AssignmentSubmission[];
   quizzes: Quiz[];
   quizResults: QuizResult[];
+  sessionalAssessments: SessionalAssessment[];
   sessionalMarks: SessionalMark[];
   marksHistory: MarksHistory[];
   isLoading: boolean;
@@ -130,11 +132,15 @@ interface AcademicContextType {
     facultyId: string;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
   }) => Promise<QuizResult[]>;
+  createSessionalAssessment: (data: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) => Promise<SessionalAssessment>;
+  updateSessionalAssessment: (id: string, updates: Partial<SessionalAssessment>) => Promise<SessionalAssessment>;
+  deleteSessionalAssessment: (id: string) => Promise<boolean>;
   saveSessionalMarks: (params: {
+    sessionalAssessmentId?: string;
     facultyId: string;
     subjectId: string;
     sectionId: string;
-    sessionalType: SessionalType;
+    sessionalType?: string;
     maxMarks: number;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
   }) => Promise<SessionalMark[]>;
@@ -242,6 +248,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [assignmentSubmissions, setAssignmentSubmissions] = useState<AssignmentSubmission[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
+  const [sessionalAssessments, setSessionalAssessments] = useState<SessionalAssessment[]>([]);
   const [sessionalMarks, setSessionalMarks] = useState<SessionalMark[]>([]);
   const [marksHistory, setMarksHistory] = useState<MarksHistory[]>([]);
 
@@ -331,12 +338,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Enriched Corrections
         const enrichedCorrections: AttendanceCorrection[] = data.corrections.map(c => {
           const rec = enrichedRecords.find(r => r.id === c.attendance_record_id);
-          const sess = rec?.session || enrichedSessions.find(s => s.id === rec?.attendance_session_id);
+          const matchedSession = rec?.session || enrichedSessions.find(s => s.id === rec?.attendance_session_id);
+          const matchedStudent = enrichedStudents.find(s => s.id === c.student_id);
+          const matchedReviewer = loadedFaculty.find(f => f.id === c.reviewed_by);
           return {
             ...c,
-            student: enrichedStudents.find(s => s.id === c.student_id),
             record: rec,
-            reviewer: loadedFaculty.find(f => f.id === c.reviewed_by),
+            session: matchedSession,
+            student: matchedStudent,
+            reviewer: matchedReviewer,
           };
         });
 
@@ -376,6 +386,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           grader: loadedFaculty.find(f => f.id === qr.graded_by),
         }));
 
+        // Enriched Sessional Assessments
+        const rawAssessments = data.sessionalAssessments || [];
+        const enrichedAssessments: SessionalAssessment[] = rawAssessments.map(sa => ({
+          ...sa,
+          subject: loadedSubjects.find(s => s.id === sa.subject_id),
+          faculty: loadedFaculty.find(f => f.id === sa.faculty_id),
+          section: loadedSections.find(sec => sec.id === sa.section_id),
+        }));
+
         // Enriched Sessional Marks
         const rawSessional = data.sessionalMarks || [];
         const enrichedSessionalMarks: SessionalMark[] = rawSessional.map(sm => ({
@@ -384,6 +403,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           subject: loadedSubjects.find(s => s.id === sm.subject_id),
           faculty: loadedFaculty.find(f => f.id === sm.faculty_id),
           section: loadedSections.find(sec => sec.id === sm.section_id),
+          sessional_assessment: enrichedAssessments.find(a => a.id === sm.sessional_assessment_id),
         }));
 
         // Enriched Marks History
@@ -414,6 +434,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAssignmentSubmissions(enrichedSubmissions);
         setQuizzes(enrichedQuizzes);
         setQuizResults(enrichedQuizResults);
+        setSessionalAssessments(enrichedAssessments);
         setSessionalMarks(enrichedSessionalMarks);
         setMarksHistory(enrichedMarksHistory);
       }
@@ -1123,11 +1144,30 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const createSessionalAssessment = async (data: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) => {
+    const res = await supabaseService.createSessionalAssessment(data);
+    await refreshData();
+    return res;
+  };
+
+  const updateSessionalAssessment = async (id: string, updates: Partial<SessionalAssessment>) => {
+    const res = await supabaseService.updateSessionalAssessment(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteSessionalAssessment = async (id: string) => {
+    const res = await supabaseService.deleteSessionalAssessment(id);
+    await refreshData();
+    return res;
+  };
+
   const saveSessionalMarks = async (params: {
+    sessionalAssessmentId?: string;
     facultyId: string;
     subjectId: string;
     sectionId: string;
-    sessionalType: SessionalType;
+    sessionalType?: string;
     maxMarks: number;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
   }) => {
@@ -1144,6 +1184,23 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const result: StudentSubjectAcademicReport[] = [];
 
     for (const stat of studentAtt.subjectStats) {
+      // Dynamic Sessional Assessments for student's section & subject
+      const subAssessments = sessionalAssessments.filter(
+        sa => sa.subject_id === stat.subjectId && (!sa.section_id || sa.section_id === student.section_id)
+      );
+
+      const dynamicSessionals = subAssessments.map(sa => {
+        const sm = sessionalMarks.find(m => m.sessional_assessment_id === sa.id && m.student_id === studentId);
+        return {
+          assessmentId: sa.id,
+          title: sa.title,
+          maxMarks: sa.max_marks,
+          obtainedMarks: sm ? sm.marks_obtained : undefined,
+          examDate: sa.exam_date,
+        };
+      });
+
+      // Legacy sessional entries (if any were entered directly by type)
       const subSessional = sessionalMarks.filter(sm => sm.student_id === studentId && sm.subject_id === stat.subjectId);
       const s1 = subSessional.find(s => s.sessional_type === 'Sessional 1');
       const s2 = subSessional.find(s => s.sessional_type === 'Sessional 2');
@@ -1170,7 +1227,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           title: a.title,
           maxMarks: a.max_marks,
           obtainedMarks: sub?.marks_obtained,
-          status: sub ? sub.status : 'not_submitted',
+          status: sub ? sub.status : 'not_started',
           dueDate: a.due_date,
         };
       });
@@ -1178,9 +1235,21 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let totalScore = 0;
       let maxScore = 0;
 
-      if (s1) { totalScore += s1.marks_obtained; maxScore += s1.max_marks; }
-      if (s2) { totalScore += s2.marks_obtained; maxScore += s2.max_marks; }
-      if (put) { totalScore += put.marks_obtained; maxScore += put.max_marks; }
+      // Add scores from dynamic sessionals
+      for (const ds of dynamicSessionals) {
+        if (ds.obtainedMarks !== undefined) {
+          totalScore += ds.obtainedMarks;
+          maxScore += ds.maxMarks;
+        }
+      }
+
+      // Add legacy sessional scores if dynamic list is empty
+      if (dynamicSessionals.length === 0) {
+        if (s1) { totalScore += s1.marks_obtained; maxScore += s1.max_marks || 30; }
+        if (s2) { totalScore += s2.marks_obtained; maxScore += s2.max_marks || 30; }
+        if (put) { totalScore += put.marks_obtained; maxScore += put.max_marks || 100; }
+      }
+
       for (const q of quizMarksList) {
         if (q.obtainedMarks !== undefined) {
           totalScore += q.obtainedMarks;
@@ -1201,10 +1270,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         facultyName: stat.facultyName,
         attendancePercentage: stat.percentage,
         sessionalMarks: {
-          sessional1: s1 ? { obtained: s1.marks_obtained, max: s1.max_marks } : undefined,
-          sessional2: s2 ? { obtained: s2.marks_obtained, max: s2.max_marks } : undefined,
-          put: put ? { obtained: put.marks_obtained, max: put.max_marks } : undefined,
-          final: fin ? { obtained: fin.marks_obtained, max: fin.max_marks } : undefined,
+          sessional1: s1 ? { obtained: s1.marks_obtained, max: s1.max_marks || 30 } : undefined,
+          sessional2: s2 ? { obtained: s2.marks_obtained, max: s2.max_marks || 30 } : undefined,
+          put: put ? { obtained: put.marks_obtained, max: put.max_marks || 100 } : undefined,
+          final: fin ? { obtained: fin.marks_obtained, max: fin.max_marks || 30 } : undefined,
+          sessionals: dynamicSessionals,
         },
         quizMarks: quizMarksList,
         assignmentMarks: assignmentMarksList,
@@ -1244,6 +1314,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         assignmentSubmissions,
         quizzes,
         quizResults,
+        sessionalAssessments,
         sessionalMarks,
         marksHistory,
         isLoading,
@@ -1259,6 +1330,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateQuiz,
         deleteQuiz,
         saveQuizMarks,
+        createSessionalAssessment,
+        updateSessionalAssessment,
+        deleteSessionalAssessment,
         saveSessionalMarks,
         getStudentAcademicScorecard,
         addDepartment,

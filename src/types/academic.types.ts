@@ -35,6 +35,13 @@ export interface StudentSubjectAcademicReport {
     sessional2?: { obtained: number; max: number };
     put?: { obtained: number; max: number };
     final?: { obtained: number; max: number };
+    sessionals: Array<{
+      assessmentId: string;
+      title: string;
+      maxMarks: number;
+      obtainedMarks?: number;
+      examDate: string;
+    }>;
   };
   quizMarks: Array<{
     quizId: string;

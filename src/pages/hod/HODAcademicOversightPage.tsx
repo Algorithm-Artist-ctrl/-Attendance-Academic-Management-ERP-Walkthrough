@@ -24,6 +24,7 @@ export const HODAcademicOversightPage: React.FC = () => {
     assignmentSubmissions, 
     quizzes, 
     quizResults, 
+    sessionalAssessments,
     sessionalMarks, 
     subjects, 
     sections, 
@@ -257,44 +258,50 @@ export const HODAcademicOversightPage: React.FC = () => {
 
       {/* Tab 3: Sessional Ledger Summary */}
       {activeTab === 'sessional' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Award className="w-4 h-4 text-emerald-400" />
-            <span>Sessional Examination Records Count by Subject</span>
-          </h3>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+                  <th className="py-3 px-4">Subject</th>
+                  <th className="py-3 px-4">Section</th>
+                  <th className="py-3 px-4">Sessional Assessment</th>
+                  <th className="py-3 px-4">Faculty Incharge</th>
+                  <th className="py-3 px-4">Max Marks</th>
+                  <th className="py-3 px-4">Exam Date</th>
+                  <th className="py-3 px-4 text-center">Evaluation Progress</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {sessionalAssessments
+                  .filter(sa => {
+                    const matchSec = selectedSectionFilter === 'ALL' || sa.section_id === selectedSectionFilter;
+                    const matchSub = selectedSubjectFilter === 'ALL' || sa.subject_id === selectedSubjectFilter;
+                    return matchSec && matchSub;
+                  })
+                  .map(sa => {
+                    const marksList = sessionalMarks.filter(sm => sm.sessional_assessment_id === sa.id);
+                    const secStudents = students.filter(s => s.section_id === sa.section_id).length;
+                    const pct = secStudents > 0 ? Math.round((marksList.length / secStudents) * 100) : 0;
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {subjects.map(sub => {
-              const subEntries = sessionalMarks.filter(sm => sm.subject_id === sub.id);
-              const s1Count = subEntries.filter(s => s.sessional_type === 'Sessional 1').length;
-              const s2Count = subEntries.filter(s => s.sessional_type === 'Sessional 2').length;
-              const putCount = subEntries.filter(s => s.sessional_type === 'Pre-University Test').length;
-
-              return (
-                <div key={sub.id} className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-blue-400">{sub.subject_code}</span>
-                    <span className="text-[11px] text-slate-500 font-mono">{subEntries.length} entries</span>
-                  </div>
-                  <h4 className="text-sm font-semibold text-white truncate">{sub.subject_name}</h4>
-
-                  <div className="pt-2 border-t border-slate-800/80 text-xs space-y-1 text-slate-400">
-                    <div className="flex justify-between">
-                      <span>Sessional 1 Recorded:</span>
-                      <span className="font-mono text-white">{s1Count}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Sessional 2 Recorded:</span>
-                      <span className="font-mono text-white">{s2Count}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>PUT Recorded:</span>
-                      <span className="font-mono text-white">{putCount}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                    return (
+                      <tr key={sa.id} className="hover:bg-slate-800/40">
+                        <td className="py-3 px-4 font-semibold text-emerald-400">{sa.subject?.subject_code}</td>
+                        <td className="py-3 px-4 font-medium text-white">Section {sa.section?.name}</td>
+                        <td className="py-3 px-4 font-bold text-white">{sa.title}</td>
+                        <td className="py-3 px-4 text-slate-300">{sa.faculty?.full_name}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-400">{sa.max_marks}</td>
+                        <td className="py-3 px-4 text-slate-400 font-mono">
+                          {new Date(sa.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-white">
+                          {marksList.length} / {secStudents} ({pct}%)
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

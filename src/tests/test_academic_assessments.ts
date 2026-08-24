@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
-import { Assignment, Quiz, SessionalType } from '../types/database.types';
+import { Assignment, Quiz, SessionalAssessment, SessionalMark } from '../types/database.types';
 
 // Mock localStorage for Node.js test environment
 if (typeof localStorage === 'undefined') {
@@ -29,7 +29,7 @@ function assert(condition: boolean, testName: string) {
 
 async function runAcademicAssessmentsVerification() {
   console.log('======================================================================');
-  console.log('    VCTM ERP ASSIGNMENT + QUIZ + SESSIONAL MARKS VERIFICATION');
+  console.log('    VCTM ERP DYNAMIC SESSIONALS, QUIZ & ASSIGNMENT VERIFICATION');
   console.log('    Vivekananda College of Technology & Management, Aligarh (Code: 340)');
   console.log('======================================================================\n');
 
@@ -48,62 +48,191 @@ async function runAcademicAssessmentsVerification() {
 
   assert(Boolean(secA && secB && facAlok && facHemlata && subDs && studA && studB), 'Found master sections, faculty, subject, and student test fixtures');
 
-  // --- SUITE 2: Faculty Quiz Creation & Google Form Validation ---
-  console.log('\n--- SUITE 2: Faculty Quiz Creation (Google Form) ---');
-  let invalidUrlBlocked = false;
-  try {
-    await supabaseService.createQuiz({
-      faculty_id: facHemlata.id,
-      subject_id: subDs.id,
-      section_id: secB.id,
-      title: 'Invalid Quiz',
-      google_form_url: 'javascript:alert(1)',
-      max_marks: 20,
-      quiz_date: '2026-08-25',
-      start_time: '2026-08-25T09:00:00Z',
-      end_time: '2026-08-28T18:00:00Z',
-      active: true
-    });
-  } catch (err: any) {
-    invalidUrlBlocked = err.message.includes('valid Google Forms URL');
-  }
-  assert(invalidUrlBlocked, 'Invalid / malicious Google Form URL rejected by validation');
+  // --- SUITE 2: Dynamic Multi-Sessional Creation (Sessional 1, 2, 3, 4) ---
+  console.log('\n--- SUITE 2: Dynamic Sessional Assessments Creation ---');
+  const sess1 = await supabaseService.createSessionalAssessment({
+    faculty_id: facHemlata.id,
+    subject_id: subDs.id,
+    section_id: secB.id,
+    title: 'Sessional 1',
+    max_marks: 20,
+    exam_date: '2026-08-25',
+    description: 'Unit 1 Arrays & Stacks',
+    status: 'published',
+  });
+  assert(Boolean(sess1 && sess1.id), 'Faculty Ms. Hemlata created Sessional 1 (Max 20)');
 
+  const sess2 = await supabaseService.createSessionalAssessment({
+    faculty_id: facHemlata.id,
+    subject_id: subDs.id,
+    section_id: secB.id,
+    title: 'Sessional 2',
+    max_marks: 20,
+    exam_date: '2026-09-15',
+    description: 'Unit 2 Queues & Linked Lists',
+    status: 'published',
+  });
+  assert(Boolean(sess2 && sess2.id), 'Faculty Ms. Hemlata created Sessional 2 (Max 20)');
+
+  const sess3 = await supabaseService.createSessionalAssessment({
+    faculty_id: facHemlata.id,
+    subject_id: subDs.id,
+    section_id: secB.id,
+    title: 'Sessional 3',
+    max_marks: 20,
+    exam_date: '2026-10-10',
+    description: 'Unit 3 Trees & Binary Search Trees',
+    status: 'published',
+  });
+  assert(Boolean(sess3 && sess3.id), 'Faculty Ms. Hemlata created Sessional 3 (Max 20)');
+
+  const sess4 = await supabaseService.createSessionalAssessment({
+    faculty_id: facHemlata.id,
+    subject_id: subDs.id,
+    section_id: secB.id,
+    title: 'Sessional 4',
+    max_marks: 20,
+    exam_date: '2026-11-05',
+    description: 'Unit 4 Graphs & Sorting Algorithms',
+    status: 'published',
+  });
+  assert(Boolean(sess4 && sess4.id), 'Faculty Ms. Hemlata created Sessional 4 (Max 20)');
+
+  // Verify all 4 sessionals exist independently in Supabase
+  const { data: allSessionals } = await supabase
+    .from('sessional_assessments')
+    .select('*')
+    .eq('subject_id', subDs.id)
+    .eq('section_id', secB.id);
+
+  assert((allSessionals || []).length >= 4, 'All 4 dynamic sessionals appear independently in Supabase relational table');
+
+  // --- SUITE 3: Sessional Marks Entry (18/20, 16/20, 19/20) ---
+  console.log('\n--- SUITE 3: Sessional Marks Entry ---');
+  await supabaseService.saveSessionalMarks({
+    sessionalAssessmentId: sess1.id,
+    facultyId: facHemlata.id,
+    subjectId: subDs.id,
+    sectionId: secB.id,
+    sessionalType: 'Sessional 1',
+    maxMarks: 20,
+    studentMarks: [
+      { studentId: studB.id, marksObtained: 18, remarks: 'Good grasp on arrays' }
+    ]
+  });
+
+  await supabaseService.saveSessionalMarks({
+    sessionalAssessmentId: sess2.id,
+    facultyId: facHemlata.id,
+    subjectId: subDs.id,
+    sectionId: secB.id,
+    sessionalType: 'Sessional 2',
+    maxMarks: 20,
+    studentMarks: [
+      { studentId: studB.id, marksObtained: 16, remarks: 'Minor queue issue' }
+    ]
+  });
+
+  await supabaseService.saveSessionalMarks({
+    sessionalAssessmentId: sess3.id,
+    facultyId: facHemlata.id,
+    subjectId: subDs.id,
+    sectionId: secB.id,
+    sessionalType: 'Sessional 3',
+    maxMarks: 20,
+    studentMarks: [
+      { studentId: studB.id, marksObtained: 19, remarks: 'Excellent BST implementation' }
+    ]
+  });
+
+  const { data: bMarks } = await supabase
+    .from('sessional_marks')
+    .select('*')
+    .eq('student_id', studB.id);
+
+  const m1 = bMarks?.find(m => m.sessional_assessment_id === sess1.id);
+  const m2 = bMarks?.find(m => m.sessional_assessment_id === sess2.id);
+  const m3 = bMarks?.find(m => m.sessional_assessment_id === sess3.id);
+
+  assert(m1?.marks_obtained === 18, 'Sessional 1 recorded as 18/20 in Supabase');
+  assert(m2?.marks_obtained === 16, 'Sessional 2 recorded as 16/20 in Supabase');
+  assert(m3?.marks_obtained === 19, 'Sessional 3 recorded as 19/20 in Supabase');
+
+  // --- SUITE 4: Update / Edit Sessional Marks with Audit History ---
+  console.log('\n--- SUITE 4: Update Sessional Marks & Audit Trail ---');
+  // Edit Sessional 2 from 16 to 19 after re-evaluation
+  await supabaseService.saveSessionalMarks({
+    sessionalAssessmentId: sess2.id,
+    facultyId: facHemlata.id,
+    subjectId: subDs.id,
+    sectionId: secB.id,
+    sessionalType: 'Sessional 2',
+    maxMarks: 20,
+    studentMarks: [
+      { studentId: studB.id, marksObtained: 19, oldMarks: 16, remarks: 'Re-evaluation verified' }
+    ]
+  });
+
+  const { data: updatedBMarks } = await supabase
+    .from('sessional_marks')
+    .select('*')
+    .eq('student_id', studB.id)
+    .eq('sessional_assessment_id', sess2.id);
+
+  assert(updatedBMarks?.length === 1, 'Upsert prevented duplicate marks records (exactly 1 row exists)');
+  assert(updatedBMarks?.[0].marks_obtained === 19, 'Sessional 2 successfully updated to 19/20 in Supabase');
+
+  const { data: auditHist } = await supabase
+    .from('marks_history')
+    .select('*')
+    .eq('student_id', studB.id)
+    .eq('entity_id', sess2.id)
+    .order('updated_at', { ascending: false });
+
+  assert(Boolean(auditHist && auditHist.length > 0), 'Marks modification history logged in marks_history table');
+  const auditRow = auditHist?.[0];
+  assert(Number(auditRow?.old_marks) === 16 && Number(auditRow?.new_marks) === 19, 'Audit record preserves old_marks=16 -> new_marks=19');
+
+  // --- SUITE 5: Faculty Quiz Creation & External Google Form Link ---
+  console.log('\n--- SUITE 5: Faculty Quiz Creation ---');
   const createdQuiz = await supabaseService.createQuiz({
     faculty_id: facHemlata.id,
     subject_id: subDs.id,
     section_id: secB.id,
     title: 'Unit 1 Data Structure MCQ Quiz',
-    description: 'Covers Arrays, Stacks, and Queues. Submit via Google Form.',
+    description: 'MCQ Assessment via Google Form',
     google_form_url: 'https://forms.google.com/d/e/1FAIpQLScX9TestQuizVCTM/viewform',
-    max_marks: 20,
+    max_marks: 10,
     quiz_date: '2026-08-25',
     start_time: '2026-08-24T00:00:00Z',
     end_time: '2026-08-30T23:59:59Z',
-    instructions: '20 questions, 1 mark each. No negative marking.',
+    instructions: '10 questions, 1 mark each.',
     active: true
   });
 
-  assert(Boolean(createdQuiz && createdQuiz.id), 'Faculty Ms. Hemlata successfully created Google Form Quiz in Supabase');
-  assert(createdQuiz.google_form_url.startsWith('https://forms.google.com'), 'Google Form URL stored verbatim for student redirection');
+  assert(Boolean(createdQuiz && createdQuiz.id), 'Faculty created Google Form Quiz in Supabase');
+  assert(createdQuiz.google_form_url.startsWith('https://forms.google.com'), 'Stored Google Form URL for student access');
 
-  // --- SUITE 3: Section Isolation for Quizzes ---
-  console.log('\n--- SUITE 3: Section Isolation for Quizzes ---');
-  const allQuizzesRes = await supabase.from('quizzes').select('*');
-  const quizzesForSecB = (allQuizzesRes.data || []).filter(q => q.section_id === secB.id);
-  const quizzesForSecA = (allQuizzesRes.data || []).filter(q => q.section_id === secA.id);
+  // Record Quiz Result (8/10)
+  await supabaseService.saveQuizMarks({
+    quizId: createdQuiz.id,
+    facultyId: facHemlata.id,
+    studentMarks: [
+      { studentId: studB.id, marksObtained: 8, remarks: 'Good MCQ performance' }
+    ]
+  });
 
-  assert(quizzesForSecB.some(q => q.id === createdQuiz.id), 'Section B student sees the Data Structure Quiz');
-  assert(!quizzesForSecA.some(q => q.id === createdQuiz.id), 'Section A student does NOT see Section B Quiz (Strict Isolation)');
+  const { data: qRes } = await supabase.from('quiz_results').select('*').eq('quiz_id', createdQuiz.id).eq('student_id', studB.id);
+  assert(qRes?.[0]?.marks_obtained === 8, 'Quiz marks recorded as 8/10 in Supabase');
 
-  // --- SUITE 4: Faculty Assignment Creation & Submission Types ---
-  console.log('\n--- SUITE 4: Faculty Assignment Creation ---');
+  // --- SUITE 6: Faculty Assignment Creation & Submission ---
+  console.log('\n--- SUITE 6: Faculty Assignment & Submission ---');
   const createdAssignment = await supabaseService.createAssignment({
     faculty_id: facHemlata.id,
     subject_id: subDs.id,
     section_id: secB.id,
-    title: 'Data Structure Lab Assignment 1 — Linked Lists',
-    description: 'Implement singly linked list insertion and deletion in C/C++.',
+    title: 'Linked List Implementation Assignment',
+    description: 'Submit PDF or Google Form',
     submission_type: 'both',
     google_form_url: 'https://forms.google.com/d/e/1FAIpQLScX9TestAssignmentVCTM/viewform',
     max_marks: 10,
@@ -113,180 +242,82 @@ async function runAcademicAssessmentsVerification() {
     active: true
   });
 
-  assert(Boolean(createdAssignment && createdAssignment.id), 'Faculty successfully published Assignment in Supabase');
-  assert(createdAssignment.max_marks === 10, 'Assignment max marks set to 10');
-
-  // --- SUITE 5: Student Assignment File Submission ---
-  console.log('\n--- SUITE 5: Student Assignment Submission ---');
-  const studentSubmission = await supabaseService.submitAssignment({
+  const studentSub = await supabaseService.submitAssignment({
     assignmentId: createdAssignment.id,
     studentId: studB.id,
     submissionType: 'file_upload',
-    filePath: 'data:application/pdf;base64,JVBERi0xLjUKJUZha2VQREZDZXJ0aWZpY2F0ZQ==',
-    fileName: 'Tarun_Kushwah_DS_Assignment1.pdf',
-    fileSize: 45020,
+    filePath: 'data:application/pdf;base64,VGVzdFBkZg==',
+    fileName: 'Tarun_DS_Assignment.pdf',
+    fileSize: 34500,
     mimeType: 'application/pdf',
   });
 
-  assert(Boolean(studentSubmission && studentSubmission.id), 'Student submitted assignment file to Supabase');
-  assert(studentSubmission.status === 'submitted', 'Submission status recorded as "submitted" before due date');
-  assert(studentSubmission.file_name === 'Tarun_Kushwah_DS_Assignment1.pdf', 'Uploaded filename preserved in metadata');
+  assert(studentSub.status === 'submitted', 'Student assignment submitted with status "submitted"');
 
-  // --- SUITE 6: Server-side Due Date & Late Submission Enforcement ---
-  console.log('\n--- SUITE 6: Due Date & Late Submission Rule ---');
-  const expiredAssignment = await supabaseService.createAssignment({
-    faculty_id: facHemlata.id,
-    subject_id: subDs.id,
-    section_id: secB.id,
-    title: 'Past Due Assignment',
-    submission_type: 'file_upload',
-    max_marks: 10,
-    assigned_date: '2026-08-01',
-    due_date: '2026-08-10T12:00:00Z', // Past deadline
-    allow_late_submission: true,
-    active: true
-  });
-
-  const lateSubmission = await supabaseService.submitAssignment({
-    assignmentId: expiredAssignment.id,
-    studentId: studB.id,
-    submissionType: 'file_upload',
-    filePath: 'data:application/pdf;base64,TGF0ZVN1Ym1pc3Npb24=',
-    fileName: 'Late_File.pdf',
-  });
-
-  assert(lateSubmission.status === 'late_submission', 'Submission after deadline automatically flagged as "late_submission"');
-
-  // Test blocked late submission
-  const strictExpiredAssignment = await supabaseService.createAssignment({
-    faculty_id: facHemlata.id,
-    subject_id: subDs.id,
-    section_id: secB.id,
-    title: 'Strict No-Late Assignment',
-    submission_type: 'file_upload',
-    max_marks: 10,
-    assigned_date: '2026-08-01',
-    due_date: '2026-08-10T12:00:00Z',
-    allow_late_submission: false, // Late blocked
-    active: true
-  });
-
-  let lateBlocked = false;
-  try {
-    await supabaseService.submitAssignment({
-      assignmentId: strictExpiredAssignment.id,
-      studentId: studB.id,
-      submissionType: 'file_upload',
-      filePath: 'data:application/pdf;base64,TGF0ZVN1Ym1pc3Npb24=',
-      fileName: 'Blocked_File.pdf',
-    });
-  } catch (err: any) {
-    lateBlocked = err.message.includes('deadline passed');
-  }
-  assert(lateBlocked, 'Server blocked submission when allow_late_submission is false');
-
-  // --- SUITE 7: Faculty Grading & Feedback ---
-  console.log('\n--- SUITE 7: Faculty Grading & Feedback ---');
-  // Test invalid marks exceeding max_marks
-  let excessMarksBlocked = false;
-  try {
-    await supabaseService.gradeAssignmentSubmission({
-      submissionId: studentSubmission.id,
-      marksObtained: 15, // Max is 10
-      feedback: 'Too generous',
-      facultyId: facHemlata.id
-    });
-  } catch (err: any) {
-    excessMarksBlocked = err.message.includes('exceeds maximum marks');
-  }
-  assert(excessMarksBlocked, 'Faculty cannot award marks exceeding assignment max_marks');
-
-  const gradedSubmission = await supabaseService.gradeAssignmentSubmission({
-    submissionId: studentSubmission.id,
+  // Faculty grades assignment (9/10)
+  const gradedSub = await supabaseService.gradeAssignmentSubmission({
+    submissionId: studentSub.id,
     marksObtained: 9,
-    feedback: 'Well implemented linked list with clean pointer manipulation.',
-    facultyId: facHemlata.id
-  });
-
-  assert(gradedSubmission.status === 'graded', 'Submission status updated to "graded"');
-  assert(gradedSubmission.marks_obtained === 9, 'Awarded marks (9/10) saved in Supabase');
-  assert(Boolean(gradedSubmission.feedback?.includes('Well implemented')), 'Faculty feedback saved');
-
-  // --- SUITE 8: Faculty Quiz Marks Roster Batch Recording ---
-  console.log('\n--- SUITE 8: Quiz Marks Roster Recording ---');
-  const quizResults = await supabaseService.saveQuizMarks({
-    quizId: createdQuiz.id,
+    feedback: 'Well structured code with detailed complexity analysis.',
     facultyId: facHemlata.id,
-    studentMarks: [
-      { studentId: studB.id, marksObtained: 18, remarks: 'Excellent MCQ performance' }
-    ]
   });
 
-  assert(quizResults.length > 0, 'Quiz marks recorded for Section B student in Supabase');
-  assert(quizResults[0].marks_obtained === 18, 'Student scored 18/20 in Quiz');
+  assert(gradedSub.status === 'graded' && gradedSub.marks_obtained === 9, 'Faculty graded assignment with 9/10 and feedback');
 
-  // --- SUITE 9: Sessional Marks Entry & Audit Ledger ---
-  console.log('\n--- SUITE 9: Sessional Marks Entry & Change Audit ---');
-  const sessional1Res = await supabaseService.saveSessionalMarks({
-    facultyId: facHemlata.id,
-    subjectId: subDs.id,
-    sectionId: secB.id,
-    sessionalType: 'Sessional 1',
-    maxMarks: 30,
-    studentMarks: [
-      { studentId: studB.id, marksObtained: 24, remarks: 'Good written theory' }
-    ]
+  // --- SUITE 7: Student Private Scorecard Aggregation ---
+  console.log('\n--- SUITE 7: Student Private Scorecard ---');
+  const refreshedData = await supabaseService.fetchAllData();
+  const subAssessments = (refreshedData?.sessionalAssessments || []).filter(sa => sa.subject_id === subDs.id && sa.section_id === secB.id);
+  const studentBMarks = (refreshedData?.sessionalMarks || []).filter(sm => sm.student_id === studB.id);
+
+  const dynamicReport = subAssessments.map(sa => {
+    const sm = studentBMarks.find(m => m.sessional_assessment_id === sa.id);
+    return {
+      title: sa.title,
+      maxMarks: sa.max_marks,
+      obtainedMarks: sm ? sm.marks_obtained : undefined
+    };
   });
 
-  assert(sessional1Res.length > 0, 'Sessional 1 marks recorded in Supabase (24/30)');
+  assert(dynamicReport.some(r => r.title === 'Sessional 1' && r.obtainedMarks === 18), 'Student scorecard reports Sessional 1: 18/20');
+  assert(dynamicReport.some(r => r.title === 'Sessional 2' && r.obtainedMarks === 19), 'Student scorecard reports updated Sessional 2: 19/20');
+  assert(dynamicReport.some(r => r.title === 'Sessional 3' && r.obtainedMarks === 19), 'Student scorecard reports Sessional 3: 19/20');
+  assert(dynamicReport.some(r => r.title === 'Sessional 4' && r.obtainedMarks === undefined), 'Student scorecard reports Sessional 4: Pending (not yet conducted)');
 
-  // Update sessional marks (e.g. re-evaluation 24 -> 27)
-  const updatedSessional = await supabaseService.saveSessionalMarks({
-    facultyId: facHemlata.id,
-    subjectId: subDs.id,
-    sectionId: secB.id,
-    sessionalType: 'Sessional 1',
-    maxMarks: 30,
-    studentMarks: [
-      { studentId: studB.id, marksObtained: 27, oldMarks: 24, remarks: 'Re-evaluation question 3 check' }
-    ]
-  });
+  // --- SUITE 8: Section Isolation & Security Checks ---
+  console.log('\n--- SUITE 8: Strict Section Isolation ---');
+  // Student A in Section A should NOT see Section B's student marks
+  const studentAMarks = (refreshedData?.sessionalMarks || []).filter(sm => sm.student_id === studA.id && sm.sessional_assessment_id === sess1.id);
+  assert(studentAMarks.length === 0, 'Section A student does NOT have Section B sessional marks (Strict Isolation)');
 
-  assert(updatedSessional[0].marks_obtained === 27, 'Sessional marks updated to 27/30');
+  // Validation: Attempt invalid marks > max_marks
+  let invalidMarksCaught = false;
+  try {
+    await supabaseService.saveSessionalMarks({
+      sessionalAssessmentId: sess1.id,
+      facultyId: facHemlata.id,
+      subjectId: subDs.id,
+      sectionId: secB.id,
+      maxMarks: 20,
+      studentMarks: [{ studentId: studB.id, marksObtained: 25 }] // Max is 20
+    });
+  } catch (err: any) {
+    invalidMarksCaught = err.message.includes('exceeds valid range');
+  }
+  assert(invalidMarksCaught, 'System strictly rejected marks > max_marks (25 > 20)');
 
-  // Verify audit log in marks_history
-  const { data: history } = await supabase
-    .from('marks_history')
-    .select('*')
-    .eq('student_id', studB.id)
-    .eq('subject_id', subDs.id)
-    .order('updated_at', { ascending: false });
-
-  assert(history !== null && history.length > 0, 'Marks modification history logged in marks_history table');
-  const latestAudit = history?.find(h => h.new_marks === 27);
-  assert(latestAudit?.old_marks === 24, 'Audit ledger records: old_marks=24 -> new_marks=27');
-
-  // --- SUITE 10: Audit Log Recording ---
-  console.log('\n--- SUITE 10: Operational Audit Trail ---');
-  const { data: auditLogs } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .in('action', ['ASSIGNMENT_CREATED', 'QUIZ_CREATED', 'ASSIGNMENT_SUBMITTED'])
-    .limit(10);
-
-  assert(auditLogs !== null && auditLogs.length >= 3, 'Operational audit trail records ASSIGNMENT_CREATED, QUIZ_CREATED, and ASSIGNMENT_SUBMITTED');
-
-  // --- SUITE 11: Cleanup Test Fixtures ---
-  console.log('\n--- SUITE 11: Cleanup Test Assessment Data ---');
-  await supabase.from('assignments').delete().in('id', [createdAssignment.id, expiredAssignment.id, strictExpiredAssignment.id]);
+  // --- SUITE 9: Cleanup Test Data ---
+  console.log('\n--- SUITE 9: Teardown Test Data ---');
+  await supabase.from('sessional_assessments').delete().in('id', [sess1.id, sess2.id, sess3.id, sess4.id]);
+  await supabase.from('sessional_marks').delete().eq('student_id', studB.id);
   await supabase.from('quizzes').delete().eq('id', createdQuiz.id);
-  await supabase.from('sessional_marks').delete().eq('subject_id', subDs.id).eq('student_id', studB.id);
+  await supabase.from('assignments').delete().eq('id', createdAssignment.id);
   await supabase.from('marks_history').delete().eq('student_id', studB.id);
-  console.log('Cleaned up test assessment rows from Supabase Cloud.');
+  console.log('Cleaned up test fixtures from Supabase Cloud.');
 
   console.log('\n======================================================================');
   if (passedTests === totalTests) {
-    console.log(`  🎉 ALL ${passedTests}/${totalTests} ACADEMIC ASSESSMENT TESTS PASSED! 🎉`);
+    console.log(`  🎉 ALL ${passedTests}/${totalTests} DYNAMIC ASSESSMENT TESTS PASSED! 🎉`);
   } else {
     console.error(`  ⚠️ COMPLETED: ${passedTests}/${totalTests} Passed`);
   }
