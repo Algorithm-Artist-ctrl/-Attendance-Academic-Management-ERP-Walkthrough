@@ -119,17 +119,60 @@ export class TimetableResolver {
       f.full_name.toLowerCase().includes(inchargeStr.replace(/mr\.|ms\.|dr\.|prof\./g, '').trim())
     );
 
-    // 7. Resolve Subjects
-    const subjectMatches = doc.subject_mappings.map(sm => {
-      const cleanCode = (sm.subject_code || '').toUpperCase().replace(/[\s\-_]/g, '');
-      const cleanName = (sm.subject_name || '').toLowerCase().trim();
+    const findMatchingSubject = (codeOrName: string): Subject | undefined => {
+      if (!codeOrName) return undefined;
+      const clean = codeOrName.toUpperCase().replace(/[\s\-_]/g, '');
+      const cleanLower = codeOrName.toLowerCase().trim();
 
-      const matchedSubject = subjects.find(s => {
+      return subjects.find(s => {
         const sCode = s.subject_code.toUpperCase().replace(/[\s\-_]/g, '');
-        if (sCode === cleanCode) return true;
-        if (s.subject_name.toLowerCase().includes(cleanName) || cleanName.includes(s.subject_name.toLowerCase())) return true;
+        if (sCode === clean) return true;
+        if (clean === 'DS' && sCode === 'BCS301') return true;
+        if (clean === 'COA' && sCode === 'BCS302') return true;
+        if (clean === 'DSTL' && sCode === 'BCS303') return true;
+        if ((clean === 'M4' || clean === 'MATHS4' || clean === 'MATHSIV') && sCode === 'BAS303') return true;
+        if (clean === 'UHV' && sCode === 'BVE301') return true;
+        if (clean === 'DSLAB' && sCode === 'BCS351') return true;
+        if (clean === 'COALAB' && sCode === 'BCS352') return true;
+        if (clean === 'DSTLLAB' && sCode === 'BCS353') return true;
+        if ((clean === 'CS' || clean === 'CYBER' || clean === 'CYBERSECURITY') && sCode === 'BCC301') return true;
+        if ((clean === 'CSLAB' || clean === 'CYBERLAB') && sCode === 'BCC351') return true;
+        
+        const sNameLower = s.subject_name.toLowerCase();
+        if (sNameLower.includes(cleanLower) || cleanLower.includes(sNameLower)) return true;
         return false;
       });
+    };
+
+    const findMatchingFaculty = (codeOrName: string): Faculty | undefined => {
+      if (!codeOrName) return undefined;
+      const cleanCode = codeOrName.toUpperCase().trim();
+      const cleanName = codeOrName.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
+
+      return faculty.find(f => {
+        if (f.faculty_code && f.faculty_code.toUpperCase().trim() === cleanCode) return true;
+        if (f.employee_code && f.employee_code.toUpperCase().trim() === cleanCode) return true;
+        if (cleanCode === 'HEM' && f.full_name.toLowerCase().includes('hemlata')) return true;
+        if (cleanCode === 'KK' && f.full_name.toLowerCase().includes('kuldeep')) return true;
+        if (cleanCode === 'NAK' && f.full_name.toLowerCase().includes('naseem')) return true;
+        if (cleanCode === 'IRK' && f.full_name.toLowerCase().includes('imran')) return true;
+        if ((cleanCode === 'SHS' || cleanCode === 'SS') && f.full_name.toLowerCase().includes('shivani')) return true;
+        if (cleanCode === 'PRS' && f.full_name.toLowerCase().includes('praveen')) return true;
+        if ((cleanCode === 'ALG' || cleanCode === 'AG') && f.full_name.toLowerCase().includes('alok')) return true;
+        if (cleanCode === 'ABG' && f.full_name.toLowerCase().includes('abhishek')) return true;
+        if (cleanCode === 'GDS' && f.full_name.toLowerCase().includes('gagandep')) return true;
+
+        const fClean = f.full_name.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
+        if (fClean.includes(cleanName) || cleanName.includes(fClean)) return true;
+        const initials = fClean.split(/\s+/).map(w => w[0]).join('').toUpperCase();
+        if (initials === cleanCode) return true;
+        return false;
+      });
+    };
+
+    // 7. Resolve Subjects
+    const subjectMatches = doc.subject_mappings.map(sm => {
+      const matchedSubject = findMatchingSubject(sm.subject_code) || findMatchingSubject(sm.subject_name);
 
       return {
         extracted: sm,
@@ -140,19 +183,7 @@ export class TimetableResolver {
 
     // 8. Resolve Faculty
     const facultyMatches = doc.faculty_mappings.map(fm => {
-      const cleanCode = (fm.faculty_code || '').toUpperCase().trim();
-      const cleanName = (fm.faculty_name || '').toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
-
-      const matchedFaculty = faculty.find(f => {
-        if (f.faculty_code && f.faculty_code.toUpperCase().trim() === cleanCode) return true;
-        if (f.employee_code && f.employee_code.toUpperCase().trim() === cleanCode) return true;
-        const fClean = f.full_name.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
-        if (fClean.includes(cleanName) || cleanName.includes(fClean)) return true;
-        // Check initials e.g. "Hemlata Chaudhary" -> "HC" or "HEM"
-        const initials = fClean.split(/\s+/).map(w => w[0]).join('').toUpperCase();
-        if (initials === cleanCode) return true;
-        return false;
-      });
+      const matchedFaculty = findMatchingFaculty(fm.faculty_code) || findMatchingFaculty(fm.faculty_name);
 
       return {
         extracted: fm,
@@ -190,28 +221,16 @@ export class TimetableResolver {
 
         if (!oldSlot && !newSlot) continue;
 
-        // Resolve subject & faculty for new slot
+        // Resolve subject & faculty for new slot accurately
         let resolvedSub: Subject | undefined;
         let resolvedFac: Faculty | undefined;
 
         if (newSlot) {
-          const subMatch = subjectMatches.find(sm => 
-            sm.extracted.subject_code.toUpperCase() === newSlot.subject_code.toUpperCase() ||
-            (newSlot.subject_name && sm.extracted.subject_name.toLowerCase() === newSlot.subject_name.toLowerCase())
-          );
-          resolvedSub = subMatch?.matchedSubject || subjects.find(s => 
-            s.subject_code.toUpperCase() === newSlot.subject_code.toUpperCase() ||
-            s.subject_name.toLowerCase().includes(newSlot.subject_code.toLowerCase())
-          );
+          resolvedSub = findMatchingSubject(newSlot.subject_code) || 
+                        (newSlot.subject_name ? findMatchingSubject(newSlot.subject_name) : undefined);
 
-          const facMatch = facultyMatches.find(fm => 
-            fm.extracted.faculty_code.toUpperCase() === (newSlot.faculty_code || '').toUpperCase() ||
-            (newSlot.faculty_name && fm.extracted.faculty_name.toLowerCase().includes(newSlot.faculty_name.toLowerCase()))
-          );
-          resolvedFac = facMatch?.matchedFaculty || faculty.find(f => 
-            (f.faculty_code && f.faculty_code.toUpperCase() === (newSlot.faculty_code || '').toUpperCase()) ||
-            (newSlot.faculty_name && f.full_name.toLowerCase().includes(newSlot.faculty_name.toLowerCase()))
-          );
+          resolvedFac = findMatchingFaculty(newSlot.faculty_code || '') || 
+                        (newSlot.faculty_name ? findMatchingFaculty(newSlot.faculty_name) : undefined);
         }
 
         // Check Conflicts for new slot against other sections
@@ -228,7 +247,7 @@ export class TimetableResolver {
           if (facultyOverlap) {
             slotConflict = {
               type: 'faculty',
-              message: `Faculty overlap: ${resolvedFac.full_name} is already scheduled in another section on ${day} Period ${pNum}.`,
+              message: `Faculty overlap: ${resolvedFac.full_name} is already scheduled in Section ${facultyOverlap.section?.name || 'another section'} on ${day} Period ${pNum}.`,
               conflictingEntry: facultyOverlap
             };
             conflicts.push(slotConflict);

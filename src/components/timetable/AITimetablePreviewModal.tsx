@@ -177,13 +177,29 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
     setPublishError(null);
 
     try {
-      await timetableIngestionService.approveAndPublishTimetable({
-        doc: currentDoc,
-        report,
-        approvedBy: user?.full_name || 'HOD / Super Administrator',
-        importId: currentDoc.id,
-        customEffectiveDate: currentDoc.effective_from,
-      });
+      // If multiple pages were extracted, publish each verified page into Supabase
+      const docsToPublish = docs.length > 1 ? docs : [currentDoc];
+
+      for (const docToPublish of docsToPublish) {
+        const docReport = TimetableResolver.resolveDocument(docToPublish, {
+          departments,
+          programs,
+          years,
+          semesters,
+          sections,
+          subjects,
+          faculty,
+          existingTimetable,
+        });
+
+        await timetableIngestionService.approveAndPublishTimetable({
+          doc: docToPublish,
+          report: docReport,
+          approvedBy: user?.full_name || 'HOD / Super Administrator',
+          importId: docToPublish.id,
+          customEffectiveDate: docToPublish.effective_from,
+        });
+      }
 
       setPublishSuccess(true);
       await refreshData();

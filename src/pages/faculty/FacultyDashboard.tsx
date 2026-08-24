@@ -97,7 +97,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       </div>
 
       {/* 2. STATS KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Today's Classes */}
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>
@@ -107,8 +107,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             </h3>
             <span className="text-[10px] text-emerald-400 font-medium">{todayDay} Timetable</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <Calendar className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <Calendar className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Weekly Teaching Load */}
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Weekly Teaching Load</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              {myTt.length}
+            </h3>
+            <span className="text-[10px] text-[#00ff88] font-medium">Lectures / Week</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-[#00ff88]">
+            <Clock className="w-5 h-5" />
           </div>
         </div>
 
@@ -121,8 +135,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">Theory & Labs</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <BookOpen className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <BookOpen className="w-5 h-5" />
           </div>
         </div>
 
@@ -135,13 +149,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">Active Sections</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <Layers className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <Layers className="w-5 h-5" />
           </div>
         </div>
 
         {/* Pending Requests */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
           <div>
             <p className="text-xs font-semibold text-slate-400">Pending Requests</p>
             <h3 className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
@@ -149,8 +163,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             </h3>
             <span className="text-[10px] text-amber-400/80 font-medium">Requires Review</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <RotateCcw className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <RotateCcw className="w-5 h-5" />
           </div>
         </div>
       </div>

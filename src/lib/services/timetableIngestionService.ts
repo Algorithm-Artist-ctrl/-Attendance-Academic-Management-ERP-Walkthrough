@@ -212,24 +212,81 @@ export class TimetableIngestionService {
       .delete()
       .eq('section_id', targetSectionId);
 
-    // 7. Insert New Active Timetable Entries
+    // 7. Insert New Active Timetable Entries from reviewed doc.schedule & report.diffs
     const newTimetableRows: any[] = [];
+    const addedKeys = new Set<string>();
 
+    // Helper resolvers
+    const resolveSubId = (codeOrName: string): string | undefined => {
+      if (!codeOrName) return undefined;
+      const clean = codeOrName.toUpperCase().replace(/[\s\-_]/g, '');
+      if (subjectIdMap.has(clean)) return subjectIdMap.get(clean);
+      const match = report.subjectMatches.find(sm => {
+        const smCode = (sm.extracted.subject_code || '').toUpperCase().replace(/[\s\-_]/g, '');
+        return smCode === clean;
+      });
+      return match?.matchedSubject?.id;
+    };
+
+    const resolveFacId = (codeOrName: string): string | undefined => {
+      if (!codeOrName) return undefined;
+      const clean = codeOrName.toUpperCase().trim();
+      if (facultyIdMap.has(clean)) return facultyIdMap.get(clean);
+      const match = report.facultyMatches.find(fm => {
+        const fmCode = (fm.extracted.faculty_code || '').toUpperCase().trim();
+        return fmCode === clean;
+      });
+      return match?.matchedFaculty?.id;
+    };
+
+    // Process all days in doc.schedule
+    for (const daySchedule of (doc.schedule || [])) {
+      for (const slot of (daySchedule.periods || [])) {
+        if (slot.is_break || slot.lecture_type === 'Break') continue;
+
+        const subId = (slot as any).resolvedSubject?.id ||
+                      resolveSubId(slot.subject_code) ||
+                      (slot.subject_name ? resolveSubId(slot.subject_name) : undefined);
+
+        const facId = (slot as any).resolvedFaculty?.id ||
+                      resolveFacId(slot.faculty_code || '') ||
+                      (slot.faculty_name ? resolveFacId(slot.faculty_name) : undefined);
+
+        if (!subId || !facId) continue;
+
+        const key = `${daySchedule.day}-${slot.period_number}`;
+        if (addedKeys.has(key)) continue;
+        addedKeys.add(key);
+
+        newTimetableRows.push({
+          section_id: targetSectionId,
+          subject_id: subId,
+          faculty_id: facId,
+          day_of_week: daySchedule.day,
+          period_number: slot.period_number,
+          start_time: slot.start_time || '09:00',
+          end_time: slot.end_time || '09:50',
+          room_number: slot.room_number || doc.room_number || 'A007',
+          lecture_type: slot.lecture_type || 'Theory',
+          active: true,
+        });
+      }
+    }
+
+    // Also verify from report.diffs if any slots were marked NEW/CHANGED
     for (const diff of report.diffs) {
       if (diff.status === 'REMOVED' || !diff.new_entry) continue;
-
       const newSlot = diff.new_entry;
       if (newSlot.is_break || newSlot.lecture_type === 'Break') continue;
 
-      const subId = newSlot.resolvedSubject?.id ||
-                    subjectIdMap.get((newSlot.subject_code || '').toUpperCase()) ||
-                    (report.subjectMatches[0]?.matchedSubject?.id);
+      const key = `${diff.day_of_week}-${diff.period_number}`;
+      if (addedKeys.has(key)) continue;
 
-      const facId = newSlot.resolvedFaculty?.id ||
-                    facultyIdMap.get((newSlot.faculty_code || '').toUpperCase()) ||
-                    (report.facultyMatches[0]?.matchedFaculty?.id);
+      const subId = newSlot.resolvedSubject?.id || resolveSubId(newSlot.subject_code);
+      const facId = newSlot.resolvedFaculty?.id || resolveFacId(newSlot.faculty_code || '');
 
       if (!subId || !facId) continue;
+      addedKeys.add(key);
 
       newTimetableRows.push({
         section_id: targetSectionId,
@@ -258,7 +315,41 @@ export class TimetableIngestionService {
       insertedEntries = (inserted || []) as TimetableEntry[];
     }
 
-    // 8. Update Timetable Import record status
+    // 8. Synchronize faculty_subject_assignments in Supabase
+    const distinctPairs = new Map<string, { facultyId: string; subjectId: string }>();
+    for (const row of newTimetableRows) {
+      const pairKey = `${row.faculty_id}-${row.subject_id}`;
+      if (!distinctPairs.has(pairKey)) {
+        distinctPairs.set(pairKey, { facultyId: row.faculty_id, subjectId: row.subject_id });
+      }
+    }
+
+    for (const pair of distinctPairs.values()) {
+      const { data: existingAssignment } = await supabase
+        .from('faculty_subject_assignments')
+        .select('id, active')
+        .eq('faculty_id', pair.facultyId)
+        .eq('subject_id', pair.subjectId)
+        .eq('section_id', targetSectionId)
+        .maybeSingle();
+
+      if (!existingAssignment) {
+        await supabase.from('faculty_subject_assignments').insert([{
+          faculty_id: pair.facultyId,
+          subject_id: pair.subjectId,
+          section_id: targetSectionId,
+          academic_session_id: '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d', // 2026-2027
+          active: true,
+        }]);
+      } else if (!existingAssignment.active) {
+        await supabase
+          .from('faculty_subject_assignments')
+          .update({ active: true, updated_at: new Date().toISOString() })
+          .eq('id', existingAssignment.id);
+      }
+    }
+
+    // 9. Update Timetable Import record status
     if (importId) {
       await supabase
         .from('timetable_imports')
@@ -270,7 +361,7 @@ export class TimetableIngestionService {
         .eq('id', importId);
     }
 
-    // 9. Record Audit Log in Supabase
+    // 10. Record Audit Log in Supabase
     await supabase.from('audit_logs').insert([{
       action: 'TIMETABLE_AI_INGESTION_PUBLISHED',
       actor_name: approvedBy,
@@ -287,7 +378,7 @@ export class TimetableIngestionService {
       }
     }]);
 
-    // 10. Create Official Circular / Notice for affected students & faculty
+    // 11. Create Official Circular / Notice for affected students & faculty
     await supabaseService.publishNotice({
       title: `Official Timetable Updated — Section ${doc.section_name || 'A'} (W.E.F. ${effectiveFrom})`,
       category: 'Academic',
