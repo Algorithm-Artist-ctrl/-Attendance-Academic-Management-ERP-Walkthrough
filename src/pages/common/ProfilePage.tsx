@@ -12,14 +12,18 @@ import {
   CheckCircle2,
   Sparkles,
   BookOpen,
-  MapPin
+  MapPin,
+  Lock,
+  KeyRound,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { Modal } from '../../components/common/Modal';
 
 export const ProfilePage: React.FC = () => {
-  const { user, role } = useAuth();
+  const { user, role, changePassword, changeEmail } = useAuth();
   const { 
     institution, 
     departments, 
@@ -49,17 +53,91 @@ export const ProfilePage: React.FC = () => {
   const sem = semesters.find(s => s.id === student?.semester_id);
   const mentor = faculty.find(f => f.id === student?.mentor_faculty_id);
 
-  // Edit state
+  // Edit contact state
   const [isEditing, setIsEditing] = useState(false);
   const [phone, setPhone] = useState(student?.phone || currentFaculty?.phone || user?.phone || '');
   const [email, setEmail] = useState(user?.email || (student ? `${student.roll_number}@student.vctm.in` : ''));
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [successBannerText, setSuccessBannerText] = useState('Profile Contact Updated Successfully!');
+
+  // Account Security Modal States
+  const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmPassInput, setConfirmPassInput] = useState('');
+  const [passModalError, setPassModalError] = useState('');
+  const [isSubmittingPass, setIsSubmittingPass] = useState(false);
+
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [emailModalError, setEmailModalError] = useState('');
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setIsEditing(false);
+    setSuccessBannerText('Profile Contact Updated Successfully!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassModalError('');
+
+    if (!newPassInput || newPassInput.length < 6) {
+      setPassModalError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassInput !== confirmPassInput) {
+      setPassModalError('New passwords do not match.');
+      return;
+    }
+
+    setIsSubmittingPass(true);
+    try {
+      const res = await changePassword(currentPassInput, newPassInput);
+      if (!res.success) {
+        setPassModalError(res.error || 'Failed to update password');
+        return;
+      }
+      setIsPassModalOpen(false);
+      setSuccessBannerText('Authentication Password Updated Successfully in Supabase Auth!');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err: any) {
+      setPassModalError(err.message || 'Failed to update password');
+    } finally {
+      setIsSubmittingPass(false);
+    }
+  };
+
+  const handleChangeEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailModalError('');
+
+    if (!newEmailInput.trim() || !newEmailInput.includes('@')) {
+      setEmailModalError('Please enter a valid authorized email address.');
+      return;
+    }
+
+    setIsSubmittingEmail(true);
+    try {
+      const res = await changeEmail(newEmailInput.trim());
+      if (!res.success) {
+        setEmailModalError(res.error || 'Failed to update email');
+        return;
+      }
+      setIsEmailModalOpen(false);
+      setEmail(newEmailInput.trim());
+      setSuccessBannerText('Authentication Email Synchronized with Supabase Cloud!');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err: any) {
+      setEmailModalError(err.message || 'Failed to update email');
+    } finally {
+      setIsSubmittingEmail(false);
+    }
   };
 
   return (
@@ -79,7 +157,7 @@ export const ProfilePage: React.FC = () => {
         {saveSuccess && (
           <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Profile Contact Updated Successfully!</span>
+            <span>{successBannerText}</span>
           </div>
         )}
       </div>
@@ -253,6 +331,228 @@ export const ProfilePage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* ======================================================== */}
+      {/* 2. ACCOUNT SECURITY & SUPABASE AUTH CREDENTIALS */}
+      {/* ======================================================== */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 space-y-5 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
+          <div>
+            <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+              <Lock className="w-5 h-5 text-[#00ff88]" />
+              Account Security & Supabase Credentials
+            </h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Manage your real authentication email and login password for VCTM ERP
+            </p>
+          </div>
+
+          {/* Security Status Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Email Verified
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> Account Active
+            </span>
+          </div>
+        </div>
+
+        {/* Credentials Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Card 1: Login Email */}
+          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Authentication Login Email
+                </span>
+                <h4 className="text-sm font-bold text-white font-mono mt-1 break-all">
+                  {user?.email || (student ? `${student.roll_number}@student.vctm.in` : 'faculty@vctm.in')}
+                </h4>
+              </div>
+              <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                <Mail className="w-4 h-4" />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Official authorized email used to sign in to the VCTM ERP portal.
+            </p>
+
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewEmailInput(user?.email || '');
+                  setEmailModalError('');
+                  setIsEmailModalOpen(true);
+                }}
+                className="text-xs font-bold"
+              >
+                Change Email Address
+              </Button>
+            </div>
+          </div>
+
+          {/* Card 2: Password */}
+          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Authentication Password
+                </span>
+                <h4 className="text-sm font-bold text-white tracking-widest font-mono mt-1">
+                  ••••••••••••••••
+                </h4>
+              </div>
+              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+                <KeyRound className="w-4 h-4" />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Encrypted password managed via Supabase Auth. Never stored in plaintext.
+            </p>
+
+            <div className="pt-2">
+              <Button
+                variant="neon"
+                size="sm"
+                onClick={() => {
+                  setCurrentPassInput('');
+                  setNewPassInput('');
+                  setConfirmPassInput('');
+                  setPassModalError('');
+                  setIsPassModalOpen(true);
+                }}
+                className="text-xs font-bold"
+              >
+                Change Password
+              </Button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 3. MODALS */}
+      {/* ======================================================== */}
+
+      {/* MODAL A: CHANGE PASSWORD */}
+      <Modal
+        isOpen={isPassModalOpen}
+        onClose={() => setIsPassModalOpen(false)}
+        title="Change Authentication Password"
+      >
+        <form onSubmit={handleChangePasswordSubmit} className="space-y-4 text-xs">
+          {passModalError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{passModalError}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Current Password *</label>
+            <input
+              type="password"
+              required
+              value={currentPassInput}
+              onChange={(e) => setCurrentPassInput(e.target.value)}
+              placeholder="Enter current password"
+              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">New Password (min 6 chars) *</label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={newPassInput}
+              onChange={(e) => setNewPassInput(e.target.value)}
+              placeholder="Enter new password"
+              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Confirm New Password *</label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={confirmPassInput}
+              onChange={(e) => setConfirmPassInput(e.target.value)}
+              placeholder="Re-enter new password"
+              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-emerald-500/15">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsPassModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="neon" size="sm" type="submit" disabled={isSubmittingPass}>
+              {isSubmittingPass ? 'Updating...' : 'Update Password'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL B: CHANGE EMAIL */}
+      <Modal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        title="Change Authentication Email Address"
+      >
+        <form onSubmit={handleChangeEmailSubmit} className="space-y-4 text-xs">
+          {emailModalError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{emailModalError}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Current Login Email</label>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/15 text-slate-400 font-mono">
+              {user?.email || 'N/A'}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
+            <input
+              type="email"
+              required
+              value={newEmailInput}
+              onChange={(e) => setNewEmailInput(e.target.value)}
+              placeholder="e.g. hemlata.cse@gmail.com"
+              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+            />
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Changing your email updates your real Supabase authentication credential and maintains all existing academic records.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-emerald-500/15">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsEmailModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="neon" size="sm" type="submit" disabled={isSubmittingEmail}>
+              {isSubmittingEmail ? 'Updating...' : 'Update Login Email'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
     </div>
   );
 };

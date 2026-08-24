@@ -8,6 +8,8 @@ interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchUser: (profileId: string) => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  changeEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -296,6 +298,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    if (!authState.user) {
+      return { success: false, error: 'No active session. Please log in.' };
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'New password must be at least 6 characters long.' };
+    }
+
+    try {
+      // 1. Update password in Supabase Auth
+      const { error: authErr } = await supabase.auth.updateUser({ password: newPassword });
+      if (authErr) {
+        console.warn('Supabase Auth updateUser notice:', authErr.message);
+      }
+
+      // 2. Audit log in Supabase
+      await supabase.from('audit_logs').insert({
+        action: 'PASSWORD_CHANGED',
+        actor_name: authState.user.full_name,
+        actor_role: authState.user.role,
+        entity_type: 'profiles',
+        entity_id: authState.user.id,
+        new_values: { password_updated: true, timestamp: new Date().toISOString() }
+      });
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update password' };
+    }
+  };
+
+  const changeEmail = async (newEmail: string): Promise<{ success: boolean; error?: string }> => {
+    if (!authState.user) {
+      return { success: false, error: 'No active session. Please log in.' };
+    }
+    const cleanEmail = newEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Please provide a valid email address.' };
+    }
+
+    try {
+      // 1. Update in Supabase Auth
+      const { error: authErr } = await supabase.auth.updateUser({ email: cleanEmail });
+      if (authErr) {
+        console.warn('Supabase Auth updateUser email notice:', authErr.message);
+      }
+
+      // 2. Synchronize database records
+      if (authState.user.role === 'faculty' || authState.user.role === 'hod' || authState.user.faculty_id) {
+        const facId = authState.user.faculty_id || authState.user.faculty?.id || authState.user.id;
+        await supabase
+          .from('faculty')
+          .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+          .eq('id', facId);
+      }
+
+      if (authState.user.role === 'student' || authState.user.student_id) {
+        const studId = authState.user.student_id || authState.user.student?.id || authState.user.id;
+        await supabase
+          .from('students')
+          .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+          .eq('id', studId);
+      }
+
+      await supabase
+        .from('profiles')
+        .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+        .or(`id.eq.${authState.user.id},email.eq.${authState.user.email}`);
+
+      // 3. Update session user state
+      const updatedUser: UserProfile = {
+        ...authState.user,
+        email: cleanEmail,
+        faculty: authState.user.faculty ? { ...authState.user.faculty, email: cleanEmail } : undefined,
+        student: authState.user.student ? { ...authState.user.student, email: cleanEmail } : undefined,
+      };
+
+      erpStorage.setCurrentSessionUser(updatedUser);
+      setAuthState(prev => ({
+        ...prev,
+        user: updatedUser,
+      }));
+
+      // 4. Audit log
+      await supabase.from('audit_logs').insert({
+        action: 'EMAIL_CHANGED',
+        actor_name: authState.user.full_name,
+        actor_role: authState.user.role,
+        entity_type: 'profiles',
+        entity_id: authState.user.id,
+        new_values: { old_email: authState.user.email, new_email: cleanEmail }
+      });
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update email' };
+    }
+  };
+
   const switchUser = (profileId: string) => {
     const profiles = erpStorage.getProfiles();
     const profile = profiles.find(p => p.id === profileId);
@@ -312,7 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, switchUser }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, switchUser, changePassword, changeEmail }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Plus, Search, Mail, Phone, Building2, UserCheck, Trash2 } from 'lucide-react';
+import { Users, Plus, Search, Mail, Phone, Building2, UserCheck, Trash2, Edit3 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
@@ -9,7 +9,7 @@ import { Faculty } from '../../types/database.types';
 
 export const FacultyDirectoryPage: React.FC = () => {
   const { user, role } = useAuth();
-  const { faculty, departments, addFaculty, deleteFaculty } = useAcademic();
+  const { faculty, departments, addFaculty, updateFaculty, deleteFaculty } = useAcademic();
   const [searchTerm, setSearchTerm] = useState('');
 
   const isSuperAdmin = role === 'super_admin';
@@ -24,6 +24,14 @@ export const FacultyDirectoryPage: React.FC = () => {
   const [deptId, setDeptId] = useState(departments[0]?.id || 'dept-cse-01');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Edit Faculty modal state
+  const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editFullName, setEditFullName] = useState('');
+  const [editFacCode, setEditFacCode] = useState('');
+  const [editDesignation, setEditDesignation] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   const filteredFaculty = faculty.filter(f =>
     f.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -139,13 +147,29 @@ export const FacultyDirectoryPage: React.FC = () => {
                     </span>
                   ) : <span />}
                   {(isSuperAdmin || isHOD) && (
-                    <button
-                      onClick={() => handleDelete(f.id, f.full_name)}
-                      className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                      title="Delete Faculty"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingFaculty(f);
+                          setEditEmail(f.email || '');
+                          setEditFullName(f.full_name);
+                          setEditFacCode(f.faculty_code || '');
+                          setEditDesignation(f.designation);
+                          setEditPhone(f.phone || '');
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                        title="Edit Faculty & Official Email"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(f.id, f.full_name)}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Delete Faculty"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -288,6 +312,110 @@ export const FacultyDirectoryPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Edit Faculty Credentials Modal */}
+      {editingFaculty && (
+        <Modal
+          isOpen={Boolean(editingFaculty)}
+          onClose={() => setEditingFaculty(null)}
+          title={`Edit Faculty — ${editingFaculty.full_name}`}
+          description="Update faculty profile and official login credentials synchronized with Supabase"
+          maxWidth="md"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editFullName.trim() || !editEmail.trim()) return;
+
+              try {
+                await updateFaculty(editingFaculty.id, {
+                  full_name: editFullName.trim(),
+                  faculty_code: editFacCode.trim().toUpperCase() || undefined,
+                  designation: editDesignation.trim(),
+                  email: editEmail.trim().toLowerCase(),
+                  phone: editPhone.trim() || undefined,
+                });
+                setEditingFaculty(null);
+              } catch (err: any) {
+                alert(err.message || 'Failed to update faculty credentials');
+              }
+            }}
+            className="space-y-4 text-xs"
+          >
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Full Legal Name *</label>
+              <input
+                type="text"
+                required
+                value={editFullName}
+                onChange={(e) => setEditFullName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Timetable Code</label>
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={editFacCode}
+                  onChange={(e) => setEditFacCode(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white uppercase focus:outline-none focus:border-[#00ff88]"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Designation</label>
+                <input
+                  type="text"
+                  required
+                  value={editDesignation}
+                  onChange={(e) => setEditDesignation(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">
+                Official / Login Email (Gmail or Institutional) *
+              </label>
+              <input
+                type="email"
+                required
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="e.g. hemlata.cse@gmail.com"
+                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Contact Phone</label>
+              <input
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Updating the official email address synchronizes the faculty's login identifier across Supabase Auth and all ERP modules.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-emerald-500/15">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingFaculty(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="neon" size="sm">
+                Save & Synchronize Credentials
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
     </div>
   );
 };

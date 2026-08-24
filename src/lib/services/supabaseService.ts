@@ -25,7 +25,8 @@ import {
   SessionalMark,
   MarksHistory,
   SessionalType,
-  SessionalAssessment
+  SessionalAssessment,
+  UserProfile
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -58,6 +59,7 @@ export const supabaseService = {
         { data: sessionalMarksList },
         { data: marksHistoryList },
         { data: sessionalAssessmentsList },
+        { data: profilesList },
       ] = await Promise.all([
         supabase.from('institutions').select('*'),
         supabase.from('departments').select('*'),
@@ -83,6 +85,7 @@ export const supabaseService = {
         supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
         supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
         supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('*'),
       ]);
 
       return {
@@ -110,6 +113,7 @@ export const supabaseService = {
         sessionalMarks: (sessionalMarksList as SessionalMark[]) || [],
         marksHistory: (marksHistoryList as MarksHistory[]) || [],
         sessionalAssessments: (sessionalAssessmentsList as SessionalAssessment[]) || [],
+        profiles: (profilesList as UserProfile[]) || [],
       };
     } catch (err) {
       console.error('Error fetching data from Supabase:', err);
@@ -494,17 +498,48 @@ export const supabaseService = {
         phone: updated.phone,
         department_id: updated.department_id,
         role: isHOD ? 'hod' : 'faculty'
-      }).eq('id', id);
+      }).or(`id.eq.${id},faculty_id.eq.${id}`);
     } catch {}
 
     return updated;
+  },
+
+  async updateFacultyCredentials(facultyId: string, email: string) {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // 1. Update faculty table
+    const { data: facData, error: facErr } = await supabase
+      .from('faculty')
+      .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+      .eq('id', facultyId)
+      .select()
+      .single();
+    if (facErr) throw new Error(facErr.message);
+
+    // 2. Update profiles table
+    await supabase
+      .from('profiles')
+      .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+      .or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
+
+    // 3. Audit log
+    await supabase.from('audit_logs').insert({
+      action: 'FACULTY_CREDENTIALS_UPDATED',
+      actor_name: facData.full_name,
+      actor_role: 'faculty',
+      entity_type: 'faculty',
+      entity_id: facultyId,
+      new_values: { email: cleanEmail }
+    });
+
+    return facData as Faculty;
   },
 
   async deleteFaculty(id: string) {
     const { error } = await supabase.from('faculty').delete().eq('id', id);
     if (error) throw new Error(error.message);
     try {
-      await supabase.from('profiles').delete().eq('id', id);
+      await supabase.from('profiles').delete().or(`id.eq.${id},faculty_id.eq.${id}`);
     } catch {}
     return true;
   },
