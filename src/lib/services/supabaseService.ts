@@ -1014,19 +1014,29 @@ export const supabaseService = {
 
   async saveSessionalMarks(params: {
     sessionalAssessmentId?: string;
-    facultyId: string;
-    subjectId: string;
-    sectionId: string;
+    subjectId?: string;
+    sectionId?: string;
     sessionalType?: string;
-    maxMarks: number;
+    maxMarks?: number;
+    facultyId: string;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
-  }) {
-    if (params.maxMarks <= 0) {
-      throw new Error('Maximum marks must be greater than 0.');
+  }): Promise<SessionalMark[]> {
+    if (params.sessionalAssessmentId && (!params.subjectId || !params.sectionId || params.maxMarks === undefined)) {
+      const { data: sa } = await supabase.from('sessional_assessments').select('*').eq('id', params.sessionalAssessmentId).single();
+      if (sa) {
+        params.subjectId = params.subjectId || sa.subject_id;
+        params.sectionId = params.sectionId || sa.section_id;
+        params.maxMarks = params.maxMarks ?? sa.max_marks;
+        params.sessionalType = params.sessionalType || sa.title;
+      }
+    }
+
+    if (params.maxMarks === undefined || params.maxMarks <= 0) {
+      throw new Error('Maximum marks must be defined and greater than 0.');
     }
 
     const rows = params.studentMarks.map(sm => {
-      if (sm.marksObtained < 0 || sm.marksObtained > params.maxMarks) {
+      if (sm.marksObtained < 0 || sm.marksObtained > params.maxMarks!) {
         throw new Error(`Marks ${sm.marksObtained} exceeds valid range (0 - ${params.maxMarks}).`);
       }
       return {

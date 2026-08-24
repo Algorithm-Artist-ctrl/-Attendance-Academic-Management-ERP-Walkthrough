@@ -152,96 +152,106 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* 2.5 MY TEACHING PORTFOLIO & SECTION WORKSPACES */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4">
-        <div className="flex items-center justify-between">
+      {/* 2.5 MY ASSIGNED CLASSES (SECTION-WISE SEPARATION) */}
+      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-4">
           <div>
             <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[#00ff88]" />
-              My Teaching Portfolio & Section Workspaces
+              MY ASSIGNED CLASSES
             </h3>
             <p className="text-xs text-slate-300 mt-0.5">
-              Select a dedicated Section Workspace to manage assignments, quizzes, sessionals, attendance & student rosters
+              Classes and subjects assigned to your teaching portfolio across sections
             </p>
           </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] self-start sm:self-auto">
+            {sections.filter(sec => myAssignments.some(fa => fa.section_id === sec.id)).length} Assigned Sections
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mySubjects.map((sub) => {
-            const assignedSectionsForSub = sections.filter(sec => 
-              myAssignments.some(fa => fa.subject_id === sub.id && fa.section_id === sec.id)
-            );
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {sections
+            .filter(sec => myAssignments.some(fa => fa.section_id === sec.id))
+            .map(sec => {
+              const subjectsInSec = mySubjects.filter(sub =>
+                myAssignments.some(fa => fa.subject_id === sub.id && fa.section_id === sec.id)
+              );
+              const secStudents = students.filter(s => s.section_id === sec.id && s.active);
 
-            return (
-              <div
-                key={sub.id}
-                className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 hover:border-emerald-500/40 transition-all space-y-4"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono">
-                      {sub.subject_code}
+              return (
+                <div
+                  key={sec.id}
+                  className="p-5 rounded-2xl bg-slate-950/80 border border-emerald-500/25 space-y-4 shadow-xl relative overflow-hidden"
+                >
+                  {/* Section Banner Header */}
+                  <div className="flex items-center justify-between border-b border-emerald-500/15 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-base shadow-[0_0_12px_rgba(0,255,136,0.3)]">
+                        {sec.name}
+                      </div>
+                      <div>
+                        <h4 className="text-base font-black text-white tracking-tight">
+                          SECTION {sec.name}
+                        </h4>
+                        <p className="text-xs text-emerald-400 font-mono">
+                          {sec.room_number || 'Room TBD'} • {secStudents.length} Students
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-900 border border-emerald-500/20 text-[#00ff88]">
+                      {subjectsInSec.length} Subjects
                     </span>
-                    <h4 className="text-sm sm:text-base font-bold text-white mt-1">
-                      {sub.subject_name}
-                    </h4>
-                    <p className="text-xs text-slate-400">
-                      {sub.credits || 4} Credits • {sub.lecture_type || 'Theory'}
-                    </p>
                   </div>
-                </div>
 
-                <div className="space-y-2.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Assigned Sections:
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {assignedSectionsForSub.map((sec) => {
-                      const studCount = students.filter(s => s.section_id === sec.id && s.active).length;
+                  {/* Assigned Subjects in This Section */}
+                  <div className="space-y-3">
+                    {subjectsInSec.map(sub => {
                       const asgnCount = courseAssignments.filter(a => a.subject_id === sub.id && a.section_id === sec.id).length;
                       const quizCount = quizzes.filter(q => q.subject_id === sub.id && q.section_id === sec.id).length;
                       const sessCount = sessionalAssessments.filter(sa => sa.subject_id === sub.id && sa.section_id === sec.id).length;
 
                       return (
                         <div
-                          key={sec.id}
-                          className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/20 hover:border-[#00ff88] transition-all group flex flex-col justify-between space-y-2"
+                          key={sub.id}
+                          className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/15 hover:border-emerald-500/40 transition-all space-y-2.5"
                         >
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <span className="px-2 py-0.5 rounded-md text-xs font-black bg-emerald-500/20 text-[#00ff88]">
-                                Section {sec.name}
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black bg-emerald-500/15 text-[#00ff88] border border-emerald-500/25">
+                                {sub.subject_code}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {sec.room_number || 'Room TBD'}
+                              <h5 className="text-xs sm:text-sm font-bold text-white mt-1">
+                                {sub.subject_name}
+                              </h5>
+                              <span className="text-[11px] text-slate-400">
+                                {sub.lecture_type || 'Theory'} • {sub.credits || 4} Credits
                               </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-1 mt-2 text-[10px] text-slate-300">
-                              <div>Students: <strong className="text-white">{studCount}</strong></div>
-                              <div>Assgn: <strong className="text-blue-400">{asgnCount}</strong></div>
-                              <div>Quizzes: <strong className="text-purple-400">{quizCount}</strong></div>
-                              <div>Sess: <strong className="text-amber-400">{sessCount}</strong></div>
                             </div>
                           </div>
 
-                          <Button
-                            variant="neon"
-                            size="sm"
-                            onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
-                            className="w-full text-xs py-1.5 justify-center font-bold"
-                          >
-                            Open Workspace →
-                          </Button>
+                          <div className="flex items-center justify-between pt-2 border-t border-emerald-500/10 text-[11px] text-slate-400">
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <span>Assgn: <strong className="text-blue-400">{asgnCount}</strong></span>
+                              <span>Quizzes: <strong className="text-purple-400">{quizCount}</strong></span>
+                              <span>Sess: <strong className="text-amber-400">{sessCount}</strong></span>
+                            </div>
+
+                            <Button
+                              variant="neon"
+                              size="sm"
+                              onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
+                              className="text-[10px] py-1 px-3 font-bold"
+                            >
+                              Workspace →
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
 

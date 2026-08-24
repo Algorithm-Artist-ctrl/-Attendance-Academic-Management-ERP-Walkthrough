@@ -31,14 +31,17 @@ export const ProfilePage: React.FC = () => {
     years, 
     semesters, 
     sections, 
+    subjects,
     faculty, 
+    assignments,
+    timetable,
     students,
     getStudentAttendance
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
   const student = currentStudent;
-  const currentFaculty = user?.faculty;
+  const currentFaculty = user?.faculty || faculty.find(f => f.id === user?.faculty_id || f.id === user?.id || f.email === user?.email);
   
   const studentId = currentStudent?.id || '';
   const stats = role === 'student' && studentId ? getStudentAttendance(studentId) : null;
@@ -52,6 +55,15 @@ export const ProfilePage: React.FC = () => {
   const year = years.find(y => y.id === student?.academic_year_id);
   const sem = semesters.find(s => s.id === student?.semester_id);
   const mentor = faculty.find(f => f.id === student?.mentor_faculty_id);
+
+  // Faculty specific calculations
+  const facId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+  const coordinatedSections = sections.filter(s => s.class_coordinator_id === facId);
+  const myFsa = (assignments || []).filter(fsa => fsa.faculty_id === facId && fsa.active);
+  const myTaughtSubjectIds = Array.from(new Set(myFsa.map(a => a.subject_id)));
+  const myTaughtSectionIds = Array.from(new Set(myFsa.map(a => a.section_id)));
+  const facultyAssignedSubjectNames = subjects.filter(s => myTaughtSubjectIds.includes(s.id)).map(s => `${s.subject_code} (${s.subject_name})`).join(', ');
+  const facultyAssignedSectionNames = sections.filter(s => myTaughtSectionIds.includes(s.id)).map(s => `Section ${s.name}`).join(', ');
 
   // Edit contact state
   const [isEditing, setIsEditing] = useState(false);
@@ -318,6 +330,50 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </>
               )}
+
+              {currentFaculty && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Employee Code & Timetable Code</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={`${currentFaculty.employee_code} • Timetable Code: ${currentFaculty.faculty_code || 'HEM'}`}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-mono font-bold cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Designation & Department</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Computer Science & Engineering'}`}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Assigned Teaching Subjects</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={facultyAssignedSubjectNames || 'BCS301 (Data Structure), BCS351 (Data Structure Lab)'}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Assigned Teaching Sections</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={facultyAssignedSectionNames || 'Section A, Section B'}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {isEditing && (
@@ -331,6 +387,62 @@ export const ProfilePage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* ======================================================== */}
+      {/* 1.5 CLASS COORDINATOR ASSIGNMENTS (IF APPLICABLE) */}
+      {/* ======================================================== */}
+      {coordinatedSections.length > 0 && (
+        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                  OFFICIAL ACADEMIC ROLE
+                </span>
+              </div>
+              <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2 mt-1">
+                <GraduationCap className="w-5 h-5 text-[#00ff88]" />
+                Class Coordinator Assignments
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Official coordinator responsibility for complete section oversight and master timetable monitoring
+              </p>
+            </div>
+
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Coordinator Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {coordinatedSections.map(cSec => {
+              const cStudents = students.filter(s => s.section_id === cSec.id && s.active);
+              const cLectures = timetable.filter(t => t.section_id === cSec.id && t.active);
+
+              return (
+                <div key={cSec.id} className="p-5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Coordinator</span>
+                      <h4 className="text-sm font-bold text-white mt-0.5">
+                        B.Tech CSE — Second Year — Section {cSec.name}
+                      </h4>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-900 border border-emerald-500/30 text-[#00ff88]">
+                      {cSec.room_number || 'Room A007'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-300 pt-2 border-t border-emerald-500/10">
+                    <div>Enrolled Students: <strong className="text-white font-mono">{cStudents.length}</strong></div>
+                    <div>Master Classes: <strong className="text-[#00ff88] font-mono">{cLectures.length} / Week</strong></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* 2. ACCOUNT SECURITY & SUPABASE AUTH CREDENTIALS */}
