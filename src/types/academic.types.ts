@@ -48,3 +48,76 @@ export interface TimetableConflict {
   message: string;
   conflictingEntry?: any;
 }
+
+export interface ExtractedTimetablePeriod {
+  period_number: number;
+  start_time: string;
+  end_time: string;
+  subject_code: string;
+  subject_name?: string;
+  faculty_code?: string;
+  faculty_name?: string;
+  room_number?: string;
+  lecture_type?: LectureType | 'Break' | 'Library' | 'Sports' | 'Robotics' | 'Workshop' | 'Project' | 'Other';
+  is_break?: boolean;
+  confidence?: number;
+  notes?: string;
+}
+
+export interface ExtractedTimetableDay {
+  day: DayOfWeek | string;
+  periods: ExtractedTimetablePeriod[];
+}
+
+export interface ExtractedSubjectMapping {
+  subject_code: string;
+  subject_name: string;
+  faculty_name?: string;
+  faculty_code?: string;
+  lecture_type?: string;
+}
+
+export interface ExtractedFacultyMapping {
+  faculty_code: string;
+  faculty_name: string;
+  subject_code?: string;
+}
+
+export interface ExtractedTimetableDocument {
+  id?: string;
+  source_file_name?: string;
+  source_file_url?: string;
+  institution_name?: string;
+  program_name: string;
+  branch_name: string;
+  academic_year: string;
+  semester: string;
+  section_name: string;
+  effective_from: string;
+  room_number: string;
+  class_incharges: string[];
+  subject_mappings: ExtractedSubjectMapping[];
+  faculty_mappings: ExtractedFacultyMapping[];
+  schedule: ExtractedTimetableDay[];
+  overall_confidence: number;
+  confidence_breakdown?: {
+    metadata: number;
+    grid: number;
+    legend: number;
+  };
+  warnings?: string[];
+  raw_text?: string;
+}
+
+export interface TimetableSlotDiff {
+  day_of_week: DayOfWeek;
+  period_number: number;
+  start_time: string;
+  end_time: string;
+  status: 'NEW' | 'CHANGED' | 'REMOVED' | 'UNCHANGED';
+  old_entry?: any;
+  new_entry: any;
+  changes?: string[];
+  conflict?: TimetableConflict;
+}
+

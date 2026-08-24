@@ -17,7 +17,8 @@ import {
   AuditLog, 
   UserProfile,
   AttendanceStatus,
-  DayOfWeek
+  DayOfWeek,
+  TimetableVersion
 } from '../../types/database.types';
 
 import {
@@ -134,6 +135,7 @@ class ERPStorageService {
     attendanceRecords: AttendanceRecord[];
     corrections: AttendanceCorrection[];
     auditLogs: AuditLog[];
+    timetableVersions?: TimetableVersion[];
   }) {
     saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0] || DEFAULT_INSTITUTION);
     saveToStorage(STORAGE_KEYS.DEPARTMENTS, data.departments || []);

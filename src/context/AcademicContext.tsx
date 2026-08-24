@@ -246,6 +246,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           attendanceRecords: data.attendanceRecords,
           corrections: data.corrections,
           auditLogs: data.auditLogs,
+          timetableVersions: data.timetableVersions,
         });
 
         // Enriched Assignments

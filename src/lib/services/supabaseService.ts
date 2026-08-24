@@ -16,7 +16,8 @@ import {
   AttendanceRecord, 
   AttendanceCorrection, 
   AuditLog, 
-  AttendanceStatus 
+  AttendanceStatus,
+  TimetableVersion 
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -41,6 +42,7 @@ export const supabaseService = {
         { data: attendanceRecords },
         { data: corrections },
         { data: auditLogs },
+        { data: timetableVersions },
       ] = await Promise.all([
         supabase.from('institutions').select('*'),
         supabase.from('departments').select('*'),
@@ -58,6 +60,7 @@ export const supabaseService = {
         supabase.from('attendance_records').select('*'),
         supabase.from('attendance_corrections').select('*').order('created_at', { ascending: false }),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }),
+        supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }),
       ]);
 
       return {
@@ -77,6 +80,7 @@ export const supabaseService = {
         attendanceRecords: (attendanceRecords as AttendanceRecord[]) || [],
         corrections: (corrections as AttendanceCorrection[]) || [],
         auditLogs: (auditLogs as AuditLog[]) || [],
+        timetableVersions: (timetableVersions as TimetableVersion[]) || [],
       };
     } catch (err) {
       console.error('Error fetching data from Supabase:', err);

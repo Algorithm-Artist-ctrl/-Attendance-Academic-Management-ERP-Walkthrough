@@ -226,3 +226,36 @@ export interface UserProfile {
   student?: Student;
   faculty?: Faculty;
 }
+
+export interface TimetableVersion {
+  id: string;
+  department_id: string;
+  section_id: string;
+  version_number: number;
+  effective_from: string;
+  status: 'draft' | 'active' | 'archived';
+  uploaded_by?: string;
+  approved_by?: string;
+  approved_at?: string;
+  source_file_url?: string;
+  changes_summary?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  section?: Section;
+  department?: Department;
+}
+
+export interface TimetableImport {
+  id: string;
+  file_name: string;
+  file_url?: string;
+  department_id?: string;
+  section_id?: string;
+  status: 'uploaded' | 'processing' | 'parsed' | 'needs_review' | 'approved' | 'rejected' | 'failed';
+  extracted_data?: Record<string, any>;
+  validation_report?: Record<string, any>;
+  uploaded_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+

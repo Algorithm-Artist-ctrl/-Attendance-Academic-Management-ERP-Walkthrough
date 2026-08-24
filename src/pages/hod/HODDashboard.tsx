@@ -9,14 +9,17 @@ import {
   Download, 
   Calendar,
   Layers,
-  BookOpen
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { getISTTodayDate, formatDateDisplay } from '../../lib/utils/dateUtils';
-import { StudentOverallAttendance } from '../../types/academic.types';
+import { StudentOverallAttendance, ExtractedTimetableDocument } from '../../types/academic.types';
+import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
+import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { clsx } from 'clsx';
 
 export const HODDashboard: React.FC = () => {
@@ -45,6 +48,9 @@ export const HODDashboard: React.FC = () => {
   ) || user?.faculty;
 
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
+  const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
+  const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
+  const [extractedDocs, setExtractedDocs] = useState<ExtractedTimetableDocument[]>([]);
 
   // Compute stats for all students
   const studentStats: StudentOverallAttendance[] = useMemo(() => {
@@ -122,7 +128,16 @@ export const HODDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="neon"
+            size="sm"
+            leftIcon={<Sparkles className="w-4 h-4 text-slate-950" />}
+            onClick={() => setIsAIUploadOpen(true)}
+            className="shadow-[0_0_15px_rgba(0,255,136,0.3)] font-black"
+          >
+            AI Ingest Timetable
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -132,12 +147,12 @@ export const HODDashboard: React.FC = () => {
             Export CSV
           </Button>
           <Button
-            variant="neon"
+            variant="outline"
             size="sm"
-            leftIcon={<FileSpreadsheet className="w-4 h-4 text-slate-950" />}
+            leftIcon={<FileSpreadsheet className="w-4 h-4 text-[#00ff88]" />}
             onClick={handleExportDefaultersPDF}
           >
-            PDF Defaulter Audit
+            PDF Audit
           </Button>
         </div>
       </div>
@@ -281,6 +296,26 @@ export const HODDashboard: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* AI Timetable Upload Modal */}
+      <AITimetableUploadModal
+        isOpen={isAIUploadOpen}
+        onClose={() => setIsAIUploadOpen(false)}
+        onExtractionComplete={(extracted) => {
+          setExtractedDocs(extracted);
+          setIsAIPreviewOpen(true);
+        }}
+      />
+
+      {/* AI Timetable Preview & Diff Review Modal */}
+      {isAIPreviewOpen && (
+        <AITimetablePreviewModal
+          isOpen={isAIPreviewOpen}
+          onClose={() => setIsAIPreviewOpen(false)}
+          extractedDocs={extractedDocs}
+        />
+      )}
     </div>
   );
 };
+

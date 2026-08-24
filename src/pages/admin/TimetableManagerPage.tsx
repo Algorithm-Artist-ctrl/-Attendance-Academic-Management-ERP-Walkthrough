@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Plus, AlertTriangle, CheckCircle2, User, MapPin, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Plus, AlertTriangle, CheckCircle2, User, MapPin, Trash2, Sparkles, History } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { DayOfWeek, LectureType } from '../../types/database.types';
 import { formatTime12H, getISTDayOfWeek } from '../../lib/utils/dateUtils';
-import { TimetableConflict } from '../../types/academic.types';
+import { TimetableConflict, ExtractedTimetableDocument } from '../../types/academic.types';
+import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
+import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
+import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
 import { clsx } from 'clsx';
 
 export const TimetableManagerPage: React.FC = () => {
@@ -17,11 +20,16 @@ export const TimetableManagerPage: React.FC = () => {
     timetable, 
     addTimetableEntry,
     deleteTimetableEntry,
-    checkTimetableConflict 
+    checkTimetableConflict,
+    refreshData
   } = useAcademic();
 
   const [selectedSectionId, setSelectedSectionId] = useState<string>(sections[0]?.id || 'sec-btech-cse-2-a');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
+  const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [extractedDocs, setExtractedDocs] = useState<ExtractedTimetableDocument[]>([]);
 
   // New Lecture Form state
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('MON');
@@ -126,11 +134,11 @@ export const TimetableManagerPage: React.FC = () => {
         </div>
 
         {/* Section Selector & Add Action */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <select
             value={selectedSectionId}
             onChange={(e) => setSelectedSectionId(e.target.value)}
-            className="px-3.5 py-2 bg-slate-950/80 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] touch-target"
+            className="px-3 py-2 bg-slate-950/80 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] touch-target"
           >
             {sections.map(s => (
               <option key={s.id} value={s.id}>Section {s.name} ({s.room_number || 'Room A-007'})</option>
@@ -140,11 +148,31 @@ export const TimetableManagerPage: React.FC = () => {
           <Button
             variant="neon"
             size="sm"
-            onClick={() => setIsAddModalOpen(true)}
-            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
-            className="touch-target font-black"
+            onClick={() => setIsAIUploadOpen(true)}
+            leftIcon={<Sparkles className="w-4 h-4 text-slate-950" />}
+            className="touch-target font-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
           >
-            Add Period Slot
+            AI Timetable Ingestion
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsVersionHistoryOpen(true)}
+            leftIcon={<History className="w-4 h-4 text-[#00ff88]" />}
+            className="touch-target font-semibold"
+          >
+            Versions
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            leftIcon={<Plus className="w-4 h-4 text-emerald-400" />}
+            className="touch-target font-semibold"
+          >
+            Add Slot
           </Button>
         </div>
       </div>
@@ -414,6 +442,37 @@ export const TimetableManagerPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* AI Timetable Upload Modal */}
+      <AITimetableUploadModal
+        isOpen={isAIUploadOpen}
+        onClose={() => setIsAIUploadOpen(false)}
+        onExtractionComplete={(extracted) => {
+          setExtractedDocs(extracted);
+          setIsAIPreviewOpen(true);
+        }}
+      />
+
+      {/* AI Timetable Preview & Diff Review Modal */}
+      {isAIPreviewOpen && (
+        <AITimetablePreviewModal
+          isOpen={isAIPreviewOpen}
+          onClose={() => setIsAIPreviewOpen(false)}
+          extractedDocs={extractedDocs}
+          onPublishedSuccessfully={() => {
+            refreshData();
+          }}
+        />
+      )}
+
+      {/* Timetable Version History Modal */}
+      <TimetableVersionHistoryModal
+        isOpen={isVersionHistoryOpen}
+        onClose={() => setIsVersionHistoryOpen(false)}
+        sectionId={selectedSectionId}
+        sectionName={currentSection?.name}
+      />
     </div>
   );
 };
+

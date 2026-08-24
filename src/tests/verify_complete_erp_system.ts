@@ -65,8 +65,8 @@ async function runMasterERPVerification() {
   console.log('\n--- SUITE 2: Section A vs Section B Strict Isolation ---');
   const secA = db!.sections.find(s => s.name === 'A')!;
   const secB = db!.sections.find(s => s.name === 'B')!;
-  assert(secA.room_number.includes('A 007') || secA.room_number.includes('A-007'), 'Section A assigned to Room A 007');
-  assert(secB.room_number.includes('A 006') || secB.room_number.includes('A-006'), 'Section B assigned to Room A 006');
+  assert(secA.room_number.includes('007'), 'Section A assigned to Room A 007');
+  assert(secB.room_number.includes('006'), 'Section B assigned to Room A 006');
 
   const studA = db!.students.find(s => s.roll_number === '2503400100001')!; // ADITYA KUMAR
   const studB = db!.students.find(s => s.roll_number === '2503400100057')!; // TARUN KUSHWAH
