@@ -355,6 +355,27 @@ export const FacultySessionalMarksPage: React.FC = () => {
         </div>
       )}
 
+      {/* Active Class & Section Context Banner */}
+      {selectedSubject && selectedSection && (
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/30 text-xs text-slate-300">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-slate-400 font-semibold">Active Managing Context:</span>
+            <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-[#00ff88] font-bold font-mono">
+              {selectedSubject.subject_code} — {selectedSubject.subject_name}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-emerald-500/20">
+              Section {selectedSection.name}
+            </span>
+            <span className="text-slate-400">
+              • Odd Semester 2026–2027 (Second Year)
+            </span>
+          </div>
+          <span className="text-[11px] text-emerald-400 font-semibold hidden sm:inline">
+            ✓ Section-Specific Marks Isolation Active
+          </span>
+        </div>
+      )}
+
       {/* Dynamic Sessionals Card Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredAssessments.length === 0 ? (

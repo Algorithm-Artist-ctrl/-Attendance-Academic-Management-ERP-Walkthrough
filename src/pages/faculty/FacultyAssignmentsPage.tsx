@@ -309,6 +309,25 @@ export const FacultyAssignmentsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Active Class & Section Context Banner */}
+      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-blue-500/30 text-xs text-slate-300">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-slate-400 font-semibold">Active Managing Context:</span>
+          <span className="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-bold font-mono">
+            {selectedSubjectFilter === 'ALL' ? 'All Assigned Subjects' : subjects.find(s => s.id === selectedSubjectFilter)?.subject_code + ' — ' + subjects.find(s => s.id === selectedSubjectFilter)?.subject_name}
+          </span>
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-blue-500/20">
+            {selectedSectionFilter === 'ALL' ? 'All Assigned Sections' : 'Section ' + sections.find(s => s.id === selectedSectionFilter)?.name}
+          </span>
+          <span className="text-slate-400">
+            • Odd Semester 2026–2027 (Second Year)
+          </span>
+        </div>
+        <span className="text-[11px] text-blue-400 font-semibold hidden sm:inline">
+          ✓ Section-Specific Isolation Active
+        </span>
+      </div>
+
       {/* Assignment List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredAssignments.length === 0 ? (
@@ -333,7 +352,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || 'A'}
+                      {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || 'A'} • Odd Semester 2026–27
                     </span>
                     <div className="flex items-center gap-1">
                       <button 

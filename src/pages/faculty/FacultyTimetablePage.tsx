@@ -45,8 +45,19 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
   
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
-  // 2. Query all published timetable records where faculty_id = authenticated faculty
+  // Class Coordinator resolution
+  const coordinatedSection = sections.find(s => s.class_coordinator_id === facultyId);
+  const [activeScheduleTab, setActiveScheduleTab] = useState<'my_teaching' | 'coordinator'>('my_teaching');
+
+  // 2. Query all published timetable records
   const facultyEntries = timetable.filter(t => t.faculty_id === facultyId && t.active);
+  const coordinatorEntries = coordinatedSection 
+    ? timetable.filter(t => t.section_id === coordinatedSection.id && t.active)
+    : [];
+
+  const currentActiveEntries = (activeScheduleTab === 'coordinator' && coordinatedSection)
+    ? coordinatorEntries
+    : facultyEntries;
 
   // 3. Dynamic context resolution (all sections, subjects, and programs this faculty teaches)
   const uniqueSectionIds = Array.from(new Set(facultyEntries.map(e => e.section_id).filter(Boolean)));
@@ -86,24 +97,64 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
 
   return (
     <div className="space-y-6">
+      {/* View Switcher Tabs (If Faculty is also a Class Coordinator) */}
+      {coordinatedSection && (
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-emerald-500/25 max-w-fit">
+          <button
+            onClick={() => setActiveScheduleTab('my_teaching')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeScheduleTab === 'my_teaching'
+                ? 'bg-gradient-to-r from-emerald-500 to-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>My Teaching Schedule ({facultyEntries.length} Lectures)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveScheduleTab('coordinator')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeScheduleTab === 'coordinator'
+                ? 'bg-gradient-to-r from-emerald-500 to-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>Section {coordinatedSection.name} Master Schedule (Class Coordinator)</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Header with Dynamic Multi-Section Faculty Teaching Context */}
       <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-900 border border-emerald-500/30 text-emerald-400">
+              {activeScheduleTab === 'coordinator' ? `CLASS COORDINATOR VIEW — SECTION ${coordinatedSection?.name}` : 'TEACHING PORTFOLIO VIEW'}
+            </span>
+          </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
             <Calendar className="w-6 h-6 text-[#00ff88]" />
-            Official Faculty Teaching Schedule
+            {activeScheduleTab === 'coordinator' 
+              ? `Complete Timetable — Section ${coordinatedSection?.name} (${coordinatedSection?.room_number || 'A007'})`
+              : 'Official Faculty Teaching Schedule'
+            }
           </h1>
           <p className="text-xs text-slate-300 mt-1 font-medium">
-            Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • {dept?.name || 'Academic Department'}
+            {activeScheduleTab === 'coordinator'
+              ? `Displaying all 42 weekly scheduled periods across all department faculty for Section ${coordinatedSection?.name}`
+              : <>Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • {dept?.name || 'Academic Department'}</>
+            }
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
             <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-emerald-500/25 text-[#00ff88] font-bold">
-              {sectionNames}
+              {activeScheduleTab === 'coordinator' ? `Section ${coordinatedSection?.name} (${coordinatedSection?.room_number})` : sectionNames}
             </span>
             <span>•</span>
             <span>B.Tech 2nd Year (CSE / CSE+IT)</span>
             <span>•</span>
-            <span>Subjects: <strong className="text-slate-200">{subjectCodes || 'All Assigned'}</strong></span>
+            <span>Subjects: <strong className="text-slate-200">{activeScheduleTab === 'coordinator' ? 'All Section Courses' : (subjectCodes || 'All Assigned')}</strong></span>
           </div>
         </div>
 
@@ -118,18 +169,28 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
       {/* Stats KPI Chips */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/15">
-          <span className="text-[10px] text-slate-400 block font-semibold">Weekly Teaching Load</span>
-          <span className="text-xl font-black text-[#00ff88] block mt-0.5">{facultyEntries.length} Lectures</span>
+          <span className="text-[10px] text-slate-400 block font-semibold">
+            {activeScheduleTab === 'coordinator' ? 'Section Weekly Classes' : 'Weekly Teaching Load'}
+          </span>
+          <span className="text-xl font-black text-[#00ff88] block mt-0.5">{currentActiveEntries.length} Periods</span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/15">
-          <span className="text-[10px] text-slate-400 block font-semibold">Assigned Subjects</span>
-          <span className="text-xl font-black text-white block mt-0.5">{taughtSubjects.length} Courses</span>
+          <span className="text-[10px] text-slate-400 block font-semibold">
+            {activeScheduleTab === 'coordinator' ? 'Classroom Venue' : 'Assigned Subjects'}
+          </span>
+          <span className="text-xl font-black text-white block mt-0.5">
+            {activeScheduleTab === 'coordinator' ? (coordinatedSection?.room_number || 'A007') : `${taughtSubjects.length} Courses`}
+          </span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/15">
-          <span className="text-[10px] text-slate-400 block font-semibold">Sections Covered</span>
-          <span className="text-xl font-black text-white block mt-0.5">{taughtSections.length} Sections</span>
+          <span className="text-[10px] text-slate-400 block font-semibold">
+            {activeScheduleTab === 'coordinator' ? 'Academic Program' : 'Sections Covered'}
+          </span>
+          <span className="text-xl font-black text-white block mt-0.5 truncate">
+            {activeScheduleTab === 'coordinator' ? 'B.Tech CSE' : `${taughtSections.length} Sections`}
+          </span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/15">
@@ -178,7 +239,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
               );
             }
 
-            const entry = facultyEntries.find(
+            const entry = currentActiveEntries.find(
               e => e.day_of_week === selectedMobileDay && e.period_number === slot.period
             );
 
@@ -199,6 +260,8 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
 
             const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
             const sec = sections.find(s => s.id === entry.section_id) || entry.section;
+            const teacher = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
+            const isMyLecture = entry.faculty_id === facultyId;
 
             return (
               <div 
@@ -220,6 +283,12 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                 <div>
                   <h4 className="text-sm font-bold text-white tracking-tight">{sub?.subject_name}</h4>
                   <p className="text-xs text-emerald-400 font-mono mt-0.5">{sub?.subject_code} • {entry.lecture_type || 'Theory'}</p>
+                  {activeScheduleTab === 'coordinator' && teacher && (
+                    <p className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-1">
+                      <User className="w-3 h-3 text-[#00ff88]" />
+                      <span>Faculty: <strong className="text-white">{teacher.full_name}</strong> ({teacher.faculty_code || 'FAC'})</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-2.5 border-t border-emerald-500/10 flex items-center justify-between text-[11px]">
@@ -228,7 +297,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                     <span className="font-bold text-[#00ff88]">{entry.room_number || sec?.room_number || 'Room TBD'}</span>
                   </div>
 
-                  {onTakeAttendance && (
+                  {onTakeAttendance && isMyLecture && (
                     <button
                       onClick={() => onTakeAttendance(entry.id)}
                       className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40 text-xs font-bold hover:bg-emerald-500/30 flex items-center gap-1 cursor-pointer touch-target"
@@ -277,8 +346,8 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                       );
                     }
 
-                    // Find timetable entry for this faculty, day, and period
-                    const entry = facultyEntries.find(
+                    // Find timetable entry for this day, and period
+                    const entry = currentActiveEntries.find(
                       e => e.day_of_week === day && e.period_number === slot.period
                     );
 
@@ -292,6 +361,8 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
 
                     const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
                     const sec = sections.find(s => s.id === entry.section_id) || entry.section;
+                    const teacher = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
+                    const isMyLecture = entry.faculty_id === facultyId;
 
                     return (
                       <td key={slot.period} className="p-2.5 border-r border-emerald-500/10 last:border-r-0 text-left">
@@ -309,6 +380,12 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                             <p className="font-bold text-white text-xs leading-snug tracking-tight line-clamp-2" title={sub?.subject_name}>
                               {sub?.subject_name}
                             </p>
+
+                            {activeScheduleTab === 'coordinator' && teacher && (
+                              <p className="text-[10px] text-slate-300 font-medium mt-1 truncate">
+                                Teacher: <span className="text-[#00ff88] font-bold">{teacher.faculty_code || teacher.full_name.substring(0, 12)}</span>
+                              </p>
+                            )}
                           </div>
 
                           <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-[10px] text-slate-400">
@@ -317,7 +394,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                               {entry.room_number || sec?.room_number || 'Room TBD'}
                             </span>
 
-                            {onTakeAttendance && (
+                            {onTakeAttendance && isMyLecture && (
                               <button
                                 onClick={() => onTakeAttendance(entry.id)}
                                 className="text-[10px] font-bold text-[#00ff88] hover:underline flex items-center gap-0.5 cursor-pointer"

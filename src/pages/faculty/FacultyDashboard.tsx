@@ -9,7 +9,8 @@ import {
   TrendingUp, 
   Clock, 
   Layers, 
-  Sparkles 
+  Sparkles,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -243,6 +244,81 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           })}
         </div>
       </div>
+
+      {/* 2.6 CLASS COORDINATOR PORTAL (IF DESIGNATED) */}
+      {(() => {
+        const coordinatedSection = sections.find(sec => sec.class_coordinator_id === facultyId);
+        if (!coordinatedSection) return null;
+
+        const secStudents = students.filter(s => s.section_id === coordinatedSection.id && s.active);
+        const secTotalLectures = timetable.filter(t => t.section_id === coordinatedSection.id && t.active);
+
+        return (
+          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                      OFFICIAL CLASS COORDINATOR
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">
+                      Room {coordinatedSection.room_number || 'A007'}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-white mt-1">
+                    Class Coordinator Portal — Section {coordinatedSection.name} (B.Tech CSE 2nd Year)
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Coordinating {secStudents.length} enrolled students and complete weekly timetable oversight
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="neon"
+                  size="sm"
+                  onClick={() => onNavigate('timetable')}
+                  leftIcon={<Calendar className="w-3.5 h-3.5 text-slate-950" />}
+                >
+                  View Complete Section Timetable
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onNavigate('students')}
+                  leftIcon={<Users className="w-3.5 h-3.5" />}
+                >
+                  Section Students
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-emerald-500/15 text-xs">
+              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                <span className="text-slate-400 text-[10px] block font-semibold">Enrolled Section Students</span>
+                <span className="text-lg font-black text-white block mt-0.5">{secStudents.length}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                <span className="text-slate-400 text-[10px] block font-semibold">Weekly Lecture Periods</span>
+                <span className="text-lg font-black text-[#00ff88] block mt-0.5">{secTotalLectures.length}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                <span className="text-slate-400 text-[10px] block font-semibold">Department & Year</span>
+                <span className="text-sm font-bold text-white block mt-0.5 truncate">{dept?.name || 'CSE'} (2nd Yr)</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                <span className="text-slate-400 text-[10px] block font-semibold">Coordinator Role</span>
+                <span className="text-sm font-bold text-emerald-400 block mt-0.5">Section {coordinatedSection.name} Lead</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 3. TODAY'S SCHEDULE & RECENT REQUESTS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
