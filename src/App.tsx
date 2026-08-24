@@ -16,6 +16,9 @@ import { StudentTimetablePage } from './pages/student/StudentTimetablePage';
 import { CorrectionRequestsPage } from './pages/student/CorrectionRequestsPage';
 import { FeedbackPage } from './pages/student/FeedbackPage';
 import { LeaveApplicationPage } from './pages/student/LeaveApplicationPage';
+import { StudentQuizzesPage } from './pages/student/StudentQuizzesPage';
+import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
+import { StudentMarksPage } from './pages/student/StudentMarksPage';
 
 // Faculty Pages
 import { FacultyDashboard } from './pages/faculty/FacultyDashboard';
@@ -23,9 +26,13 @@ import { TakeAttendancePage } from './pages/faculty/TakeAttendancePage';
 import { FacultyTimetablePage } from './pages/faculty/FacultyTimetablePage';
 import { ReviewCorrectionsPage } from './pages/faculty/ReviewCorrectionsPage';
 import { AttendanceHistoryPage } from './pages/faculty/AttendanceHistoryPage';
+import { FacultyAssignmentsPage as CourseAssignmentsPage } from './pages/faculty/FacultyAssignmentsPage';
+import { FacultyQuizzesPage } from './pages/faculty/FacultyQuizzesPage';
+import { FacultySessionalMarksPage } from './pages/faculty/FacultySessionalMarksPage';
 
 // HOD Pages
 import { HODDashboard } from './pages/hod/HODDashboard';
+import { HODAcademicOversightPage } from './pages/hod/HODAcademicOversightPage';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -46,7 +53,7 @@ export const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-3">
+      <div className="min-h-screen bg-[#070b14] flex flex-col items-center justify-center gap-4 text-white">
         <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-emerald-500/30 p-2 animate-bounce shadow-xl flex items-center justify-center">
           <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
         </div>
@@ -74,6 +81,12 @@ export const AppContent: React.FC = () => {
           return <ProfilePage />;
         case 'attendance':
           return <StudentAttendancePage />;
+        case 'quizzes':
+          return <StudentQuizzesPage />;
+        case 'student_assignments':
+          return <StudentAssignmentsPage />;
+        case 'marks':
+          return <StudentMarksPage />;
         case 'timetable':
           return <StudentTimetablePage />;
         case 'notices':
@@ -110,6 +123,12 @@ export const AppContent: React.FC = () => {
               onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
             />
           );
+        case 'quizzes':
+          return <FacultyQuizzesPage />;
+        case 'faculty_assignments':
+          return <CourseAssignmentsPage />;
+        case 'sessional_marks':
+          return <FacultySessionalMarksPage />;
         case 'history':
           return (
             <AttendanceHistoryPage
@@ -137,6 +156,14 @@ export const AppContent: React.FC = () => {
       switch (activeTab) {
         case 'profile':
           return <ProfilePage />;
+        case 'academic_oversight':
+          return <HODAcademicOversightPage />;
+        case 'quizzes':
+          return <FacultyQuizzesPage />;
+        case 'faculty_assignments':
+          return <CourseAssignmentsPage />;
+        case 'sessional_marks':
+          return <FacultySessionalMarksPage />;
         case 'students':
           return <StudentDirectoryPage />;
         case 'faculty':
@@ -161,6 +188,14 @@ export const AppContent: React.FC = () => {
     switch (activeTab) {
       case 'profile':
         return <ProfilePage />;
+      case 'academic_oversight':
+        return <HODAcademicOversightPage />;
+      case 'quizzes':
+        return <FacultyQuizzesPage />;
+      case 'faculty_assignments':
+        return <CourseAssignmentsPage />;
+      case 'sessional_marks':
+        return <FacultySessionalMarksPage />;
       case 'departments':
       case 'academic_setup':
         return <AcademicSetupPage />;

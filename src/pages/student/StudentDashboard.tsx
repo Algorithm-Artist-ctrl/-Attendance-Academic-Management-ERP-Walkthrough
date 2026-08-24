@@ -12,7 +12,9 @@ import {
   Sparkles,
   HelpCircle,
   ShieldCheck,
-  FileQuestion
+  FileQuestion,
+  Award,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicContext';
@@ -37,12 +39,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     sessions,
     programs,
     corrections,
-    students
+    students,
+    courseAssignments,
+    quizzes
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
   const student = currentStudent;
   const studentId = currentStudent?.id || '';
+  const mySectionQuizzes = quizzes.filter(q => q.section_id === currentStudent?.section_id && q.active);
+  const mySectionAssignments = courseAssignments.filter(a => a.section_id === currentStudent?.section_id && a.active);
   const stats = getStudentAttendance(studentId);
 
   const section = sections.find(s => s.id === currentStudent?.section_id) || 
@@ -343,7 +349,73 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* 5. ATTENDANCE OVERVIEW & SUBJECT PERFORMANCE */}
+      {/* 5. CONTINUOUS ASSESSMENT & ACADEMIC WORK */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Quizzes */}
+        <div 
+          onClick={() => onNavigate('quizzes')}
+          className="glass-panel rounded-2xl p-5 border border-purple-500/25 hover:border-purple-500/50 cursor-pointer transition-all flex flex-col justify-between group"
+        >
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">Active Quizzes</span>
+              <Sparkles className="w-4 h-4 text-purple-400" />
+            </div>
+            <h3 className="text-2xl font-black text-white mt-2">
+              {mySectionQuizzes.length}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Google Form assessments for Section {section?.name}</p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-purple-500/15 flex items-center justify-between text-xs font-bold text-purple-400 group-hover:underline">
+            <span>Open Quizzes</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Assignments */}
+        <div 
+          onClick={() => onNavigate('student_assignments')}
+          className="glass-panel rounded-2xl p-5 border border-blue-500/25 hover:border-blue-500/50 cursor-pointer transition-all flex flex-col justify-between group"
+        >
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Assignments</span>
+              <FileText className="w-4 h-4 text-blue-400" />
+            </div>
+            <h3 className="text-2xl font-black text-white mt-2">
+              {mySectionAssignments.length}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Tasks, file uploads & form submissions</p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-blue-500/15 flex items-center justify-between text-xs font-bold text-blue-400 group-hover:underline">
+            <span>Submit Assignments</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Sessional Scorecard */}
+        <div 
+          onClick={() => onNavigate('marks')}
+          className="glass-panel rounded-2xl p-5 border border-emerald-500/25 hover:border-emerald-500/50 cursor-pointer transition-all flex flex-col justify-between group"
+        >
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Marks Scorecard</span>
+              <Award className="w-4 h-4 text-emerald-400" />
+            </div>
+            <h3 className="text-2xl font-black text-white mt-2">
+              View Marks
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Sessional 1, 2, PUT & internal scores</p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-emerald-500/15 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:underline">
+            <span>Open Scorecard</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      </div>
+
+      {/* 6. ATTENDANCE OVERVIEW & SUBJECT PERFORMANCE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left: CyberGauge3D Overview */}

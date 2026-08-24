@@ -24,6 +24,37 @@ export interface StudentOverallAttendance {
   subjectStats: SubjectAttendanceStat[];
 }
 
+export interface StudentSubjectAcademicReport {
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  facultyName: string;
+  attendancePercentage: number;
+  sessionalMarks: {
+    sessional1?: { obtained: number; max: number };
+    sessional2?: { obtained: number; max: number };
+    put?: { obtained: number; max: number };
+    final?: { obtained: number; max: number };
+  };
+  quizMarks: Array<{
+    quizId: string;
+    title: string;
+    maxMarks: number;
+    obtainedMarks?: number;
+    quizDate: string;
+  }>;
+  assignmentMarks: Array<{
+    assignmentId: string;
+    title: string;
+    maxMarks: number;
+    obtainedMarks?: number;
+    status: string;
+    dueDate: string;
+  }>;
+  totalInternalScore: number;
+  maxInternalScore: number;
+}
+
 export interface TodayLectureItem {
   timetableEntryId: string;
   dayOfWeek: DayOfWeek;

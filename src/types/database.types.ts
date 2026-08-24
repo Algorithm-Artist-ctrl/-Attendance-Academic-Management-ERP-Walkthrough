@@ -259,3 +259,124 @@ export interface TimetableImport {
   updated_at: string;
 }
 
+export type SubmissionType = 'google_form' | 'file_upload' | 'both';
+export type SubmissionStatus = 'not_submitted' | 'submitted' | 'late_submission' | 'graded' | 'returned';
+export type SessionalType = 'Sessional 1' | 'Sessional 2' | 'Pre-University Test' | 'Final Sessional' | 'Assignment Marks' | 'Internal Assessment';
+
+export interface Assignment {
+  id: string;
+  faculty_id: string;
+  subject_id: string;
+  section_id: string;
+  academic_session_id?: string;
+  title: string;
+  description?: string;
+  submission_type: SubmissionType;
+  google_form_url?: string;
+  max_marks: number;
+  assigned_date: string;
+  due_date: string;
+  allow_late_submission: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  subject?: Subject;
+  faculty?: Faculty;
+  section?: Section;
+}
+
+export interface AssignmentSubmission {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  submission_type: string;
+  file_path?: string;
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
+  google_form_submitted?: boolean;
+  submitted_at: string;
+  status: SubmissionStatus;
+  marks_obtained?: number;
+  feedback?: string;
+  graded_by?: string;
+  graded_at?: string;
+  created_at: string;
+  updated_at: string;
+  student?: Student;
+  assignment?: Assignment;
+  grader?: Faculty;
+}
+
+export interface Quiz {
+  id: string;
+  faculty_id: string;
+  subject_id: string;
+  section_id: string;
+  academic_session_id?: string;
+  title: string;
+  description?: string;
+  google_form_url: string;
+  max_marks: number;
+  quiz_date: string;
+  start_time: string;
+  end_time: string;
+  instructions?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  subject?: Subject;
+  faculty?: Faculty;
+  section?: Section;
+}
+
+export interface QuizResult {
+  id: string;
+  quiz_id: string;
+  student_id: string;
+  marks_obtained: number;
+  graded_by?: string;
+  graded_at?: string;
+  remarks?: string;
+  created_at: string;
+  updated_at: string;
+  student?: Student;
+  quiz?: Quiz;
+  grader?: Faculty;
+}
+
+export interface SessionalMark {
+  id: string;
+  faculty_id: string;
+  subject_id: string;
+  section_id: string;
+  student_id: string;
+  academic_session_id?: string;
+  sessional_type: SessionalType;
+  max_marks: number;
+  marks_obtained: number;
+  remarks?: string;
+  created_at: string;
+  updated_at: string;
+  student?: Student;
+  subject?: Subject;
+  faculty?: Faculty;
+  section?: Section;
+}
+
+export interface MarksHistory {
+  id: string;
+  entity_type: 'sessional' | 'quiz' | 'assignment';
+  entity_id: string;
+  student_id: string;
+  subject_id: string;
+  old_marks?: number;
+  new_marks: number;
+  updated_by: string;
+  updated_at: string;
+  reason?: string;
+  student?: Student;
+  subject?: Subject;
+}
+
+

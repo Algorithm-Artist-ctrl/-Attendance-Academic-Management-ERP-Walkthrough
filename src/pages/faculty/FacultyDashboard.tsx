@@ -218,37 +218,70 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           </div>
         </div>
 
-        {/* Right Card: Recent Student Correction Requests */}
-        <div className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between">
+        {/* Right Card: Recent Student Correction Requests & Assessment Actions */}
+        <div className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-white tracking-wide">
-                Recent Correction Requests
+                Academic & Marks Shortcuts
               </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
+              <button
+                onClick={() => onNavigate('faculty_assignments')}
+                className="p-3 rounded-2xl bg-slate-950/80 border border-blue-500/20 hover:border-blue-500/50 text-left transition-all group"
+              >
+                <div className="text-xs font-bold text-white group-hover:text-blue-400">Assignments</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Create & Grade</div>
+              </button>
+
+              <button
+                onClick={() => onNavigate('quizzes')}
+                className="p-3 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/50 text-left transition-all group"
+              >
+                <div className="text-xs font-bold text-white group-hover:text-purple-400">Quizzes</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Google Form Quizzes</div>
+              </button>
+
+              <button
+                onClick={() => onNavigate('sessional_marks')}
+                className="col-span-2 p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/20 hover:border-emerald-500/50 text-left transition-all group flex items-center justify-between"
+              >
+                <div>
+                  <div className="text-xs font-bold text-white group-hover:text-emerald-400">Sessional Marks Ledger</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Enter Sessional 1, 2, PUT & Internal Scores</div>
+                </div>
+                <span className="text-xs font-bold text-emerald-400">Enter Marks →</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-bold text-slate-400">Pending Correction Requests</h4>
               <button
                 onClick={() => onNavigate('corrections')}
-                className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-[#00ff88] hover:underline cursor-pointer"
               >
                 View All →
               </button>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {myPendingCorrections.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500">
+                <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-xl">
                   No pending correction requests from students.
                 </div>
               ) : (
-                myPendingCorrections.slice(0, 4).map((c) => (
+                myPendingCorrections.slice(0, 2).map((c) => (
                   <div
                     key={c.id}
-                    className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs"
+                    className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs"
                   >
                     <div>
                       <h4 className="font-bold text-white">
                         {c.student?.full_name || 'Student'}
                       </h4>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[10px] text-slate-400">
                         Roll: {c.student?.roll_number} • {c.reason}
                       </p>
                     </div>
@@ -256,7 +289,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                       variant="outline"
                       size="sm"
                       onClick={() => onNavigate('corrections')}
-                      className="text-[10px] py-1 px-2.5 shrink-0"
+                      className="text-[10px] py-1 px-2 shrink-0"
                     >
                       Review
                     </Button>
@@ -264,17 +297,6 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                 ))
               )}
             </div>
-          </div>
-
-          <div className="pt-4 border-t border-emerald-500/10 text-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onNavigate('corrections')}
-              className="w-full text-xs"
-            >
-              Review All Requests
-            </Button>
           </div>
         </div>
 

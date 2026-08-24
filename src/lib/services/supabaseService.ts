@@ -17,7 +17,14 @@ import {
   AttendanceCorrection, 
   AuditLog, 
   AttendanceStatus,
-  TimetableVersion 
+  TimetableVersion,
+  Assignment,
+  AssignmentSubmission,
+  Quiz,
+  QuizResult,
+  SessionalMark,
+  MarksHistory,
+  SessionalType
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -43,6 +50,12 @@ export const supabaseService = {
         { data: corrections },
         { data: auditLogs },
         { data: timetableVersions },
+        { data: assignmentsList },
+        { data: submissionsList },
+        { data: quizzesList },
+        { data: quizResultsList },
+        { data: sessionalMarksList },
+        { data: marksHistoryList },
       ] = await Promise.all([
         supabase.from('institutions').select('*'),
         supabase.from('departments').select('*'),
@@ -61,6 +74,12 @@ export const supabaseService = {
         supabase.from('attendance_corrections').select('*').order('created_at', { ascending: false }),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }),
         supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }),
+        supabase.from('assignments').select('*').order('created_at', { ascending: false }),
+        supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
+        supabase.from('quizzes').select('*').order('created_at', { ascending: false }),
+        supabase.from('quiz_results').select('*').order('created_at', { ascending: false }),
+        supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
+        supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
       ]);
 
       return {
@@ -81,6 +100,12 @@ export const supabaseService = {
         corrections: (corrections as AttendanceCorrection[]) || [],
         auditLogs: (auditLogs as AuditLog[]) || [],
         timetableVersions: (timetableVersions as TimetableVersion[]) || [],
+        courseAssignments: (assignmentsList as Assignment[]) || [],
+        assignmentSubmissions: (submissionsList as AssignmentSubmission[]) || [],
+        quizzes: (quizzesList as Quiz[]) || [],
+        quizResults: (quizResultsList as QuizResult[]) || [],
+        sessionalMarks: (sessionalMarksList as SessionalMark[]) || [],
+        marksHistory: (marksHistoryList as MarksHistory[]) || [],
       };
     } catch (err) {
       console.error('Error fetching data from Supabase:', err);
@@ -652,4 +677,295 @@ export const supabaseService = {
     if (error) throw new Error(error.message);
     return true;
   },
+
+  // ==========================================
+  // ASSIGNMENTS MODULE
+  // ==========================================
+  async createAssignment(assignment: Omit<Assignment, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase.from('assignments').insert(assignment).select().single();
+    if (error) throw new Error(error.message);
+
+    // Audit Log
+    await supabase.from('audit_logs').insert({
+      action: 'ASSIGNMENT_CREATED',
+      actor_name: 'Faculty',
+      actor_role: 'faculty',
+      entity_type: 'assignment',
+      entity_id: data.id,
+      new_values: { title: assignment.title, max_marks: assignment.max_marks, due_date: assignment.due_date }
+    });
+
+    return data as Assignment;
+  },
+
+  async updateAssignment(id: string, updates: Partial<Assignment>) {
+    const { data, error } = await supabase.from('assignments').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Assignment;
+  },
+
+  async deleteCourseAssignment(id: string) {
+    const { error } = await supabase.from('assignments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
+  async submitAssignment(submission: {
+    assignmentId: string;
+    studentId: string;
+    submissionType: string;
+    filePath?: string;
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+    googleFormSubmitted?: boolean;
+  }) {
+    // 1. Fetch assignment to check due date
+    const { data: assignment, error: assignErr } = await supabase
+      .from('assignments')
+      .select('*')
+      .eq('id', submission.assignmentId)
+      .single();
+
+    if (assignErr || !assignment) throw new Error('Assignment not found');
+
+    const now = new Date();
+    const dueDate = new Date(assignment.due_date);
+    const isLate = now > dueDate;
+
+    if (isLate && !assignment.allow_late_submission) {
+      throw new Error(`Submission deadline passed (${dueDate.toLocaleString()}). Late submissions are not accepted.`);
+    }
+
+    const status = isLate ? 'late_submission' : 'submitted';
+
+    const { data, error } = await supabase
+      .from('assignment_submissions')
+      .upsert({
+        assignment_id: submission.assignmentId,
+        student_id: submission.studentId,
+        submission_type: submission.submissionType,
+        file_path: submission.filePath,
+        file_name: submission.fileName,
+        file_size: submission.fileSize,
+        mime_type: submission.mimeType,
+        google_form_submitted: submission.googleFormSubmitted || false,
+        submitted_at: new Date().toISOString(),
+        status,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'assignment_id,student_id' })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    // Audit Log
+    await supabase.from('audit_logs').insert({
+      action: 'ASSIGNMENT_SUBMITTED',
+      actor_name: 'Student',
+      actor_role: 'student',
+      entity_type: 'assignment_submission',
+      entity_id: data.id,
+      new_values: { assignment_id: submission.assignmentId, isLate, fileName: submission.fileName }
+    });
+
+    return data as AssignmentSubmission;
+  },
+
+  async gradeAssignmentSubmission(params: {
+    submissionId: string;
+    marksObtained: number;
+    feedback?: string;
+    facultyId: string;
+  }) {
+    if (params.marksObtained < 0) {
+      throw new Error('Marks obtained cannot be negative.');
+    }
+
+    const { data: currentSub } = await supabase
+      .from('assignment_submissions')
+      .select('*, assignment:assignments(*)')
+      .eq('id', params.submissionId)
+      .single();
+
+    if (!currentSub) throw new Error('Submission record not found.');
+    const maxMarks = currentSub.assignment?.max_marks || 100;
+
+    if (params.marksObtained > maxMarks) {
+      throw new Error(`Marks obtained (${params.marksObtained}) exceeds maximum marks (${maxMarks}).`);
+    }
+
+    const oldMarks = currentSub.marks_obtained;
+
+    const { data, error } = await supabase
+      .from('assignment_submissions')
+      .update({
+        marks_obtained: params.marksObtained,
+        feedback: params.feedback,
+        status: 'graded',
+        graded_by: params.facultyId,
+        graded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.submissionId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    // Record in marks_history
+    await supabase.from('marks_history').insert({
+      entity_type: 'assignment',
+      entity_id: currentSub.assignment_id,
+      student_id: currentSub.student_id,
+      subject_id: currentSub.assignment?.subject_id,
+      old_marks: oldMarks,
+      new_marks: params.marksObtained,
+      updated_by: params.facultyId,
+      reason: params.feedback || 'Assignment Graded'
+    });
+
+    return data as AssignmentSubmission;
+  },
+
+  // ==========================================
+  // QUIZZES MODULE
+  // ==========================================
+  async createQuiz(quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) {
+    if (!quiz.google_form_url.startsWith('http')) {
+      throw new Error('Please enter a valid Google Forms URL (starting with https://)');
+    }
+
+    const { data, error } = await supabase.from('quizzes').insert(quiz).select().single();
+    if (error) throw new Error(error.message);
+
+    // Audit Log
+    await supabase.from('audit_logs').insert({
+      action: 'QUIZ_CREATED',
+      actor_name: 'Faculty',
+      actor_role: 'faculty',
+      entity_type: 'quiz',
+      entity_id: data.id,
+      new_values: { title: quiz.title, max_marks: quiz.max_marks, url: quiz.google_form_url }
+    });
+
+    return data as Quiz;
+  },
+
+  async updateQuiz(id: string, updates: Partial<Quiz>) {
+    const { data, error } = await supabase.from('quizzes').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return data as Quiz;
+  },
+
+  async deleteQuiz(id: string) {
+    const { error } = await supabase.from('quizzes').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
+  async saveQuizMarks(params: {
+    quizId: string;
+    facultyId: string;
+    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
+  }) {
+    const { data: quiz } = await supabase.from('quizzes').select('*').eq('id', params.quizId).single();
+    if (!quiz) throw new Error('Quiz not found.');
+
+    const rows = params.studentMarks.map(sm => {
+      if (sm.marksObtained < 0 || sm.marksObtained > quiz.max_marks) {
+        throw new Error(`Invalid marks for student: ${sm.marksObtained}. Must be between 0 and ${quiz.max_marks}.`);
+      }
+      return {
+        quiz_id: params.quizId,
+        student_id: sm.studentId,
+        marks_obtained: sm.marksObtained,
+        graded_by: params.facultyId,
+        graded_at: new Date().toISOString(),
+        remarks: sm.remarks,
+        updated_at: new Date().toISOString(),
+      };
+    });
+
+    const { data, error } = await supabase
+      .from('quiz_results')
+      .upsert(rows, { onConflict: 'quiz_id,student_id' })
+      .select();
+
+    if (error) throw new Error(error.message);
+
+    // Record audit logs
+    for (const sm of params.studentMarks) {
+      await supabase.from('marks_history').insert({
+        entity_type: 'quiz',
+        entity_id: params.quizId,
+        student_id: sm.studentId,
+        subject_id: quiz.subject_id,
+        new_marks: sm.marksObtained,
+        updated_by: params.facultyId,
+        reason: 'Quiz Marks Recorded'
+      });
+    }
+
+    return data as QuizResult[];
+  },
+
+  // ==========================================
+  // SESSIONAL MARKS MODULE
+  // ==========================================
+  async saveSessionalMarks(params: {
+    facultyId: string;
+    subjectId: string;
+    sectionId: string;
+    sessionalType: SessionalType;
+    maxMarks: number;
+    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+  }) {
+    if (params.maxMarks <= 0) {
+      throw new Error('Maximum marks must be greater than 0.');
+    }
+
+    const rows = params.studentMarks.map(sm => {
+      if (sm.marksObtained < 0 || sm.marksObtained > params.maxMarks) {
+        throw new Error(`Marks ${sm.marksObtained} exceeds valid range (0 - ${params.maxMarks}).`);
+      }
+      return {
+        faculty_id: params.facultyId,
+        subject_id: params.subjectId,
+        section_id: params.sectionId,
+        student_id: sm.studentId,
+        sessional_type: params.sessionalType,
+        max_marks: params.maxMarks,
+        marks_obtained: sm.marksObtained,
+        remarks: sm.remarks,
+        updated_at: new Date().toISOString(),
+      };
+    });
+
+    const { data, error } = await supabase
+      .from('sessional_marks')
+      .upsert(rows, { onConflict: 'subject_id,section_id,student_id,sessional_type' })
+      .select();
+
+    if (error) throw new Error(error.message);
+
+    // Record in marks_history audit table
+    for (const sm of params.studentMarks) {
+      if (sm.oldMarks !== sm.marksObtained) {
+        await supabase.from('marks_history').insert({
+          entity_type: 'sessional',
+          entity_id: params.subjectId,
+          student_id: sm.studentId,
+          subject_id: params.subjectId,
+          old_marks: sm.oldMarks,
+          new_marks: sm.marksObtained,
+          updated_by: params.facultyId,
+          reason: `${params.sessionalType} Marks Updated`
+        });
+      }
+    }
+
+    return data as SessionalMark[];
+  }
 };
+

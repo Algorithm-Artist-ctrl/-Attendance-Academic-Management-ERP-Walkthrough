@@ -21,7 +21,8 @@ import {
   FileText,
   MessageSquare,
   Sparkles,
-  UserCheck
+  UserCheck,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -53,6 +54,9 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
           { id: 'profile', label: 'My Profile', icon: GraduationCap },
           { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
+          { id: 'quizzes', label: 'Quizzes', icon: Sparkles },
+          { id: 'student_assignments', label: 'Assignments', icon: FileText },
+          { id: 'marks', label: 'My Marks & Sessional', icon: Award },
           { id: 'timetable', label: 'Time Table', icon: Calendar },
           { id: 'notices', label: 'Notices', icon: Bell },
           { id: 'feedback', label: 'Feedback', icon: MessageSquare },
@@ -72,6 +76,9 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'profile', label: 'My Profile', icon: UserCheck },
           { id: 'take_attendance', label: "Today's Classes", icon: CheckSquare },
           { id: 'timetable', label: 'Time Table', icon: Calendar },
+          { id: 'quizzes', label: 'Quizzes', icon: Sparkles },
+          { id: 'faculty_assignments', label: 'Assignments & Grading', icon: FileText },
+          { id: 'sessional_marks', label: 'Sessional Marks', icon: Award },
           { id: 'history', label: 'Attendance', icon: History },
           { id: 'students', label: 'Students', icon: GraduationCap },
           { 
@@ -88,6 +95,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       case 'hod':
         return [
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+          { id: 'academic_oversight', label: 'Academic Oversight', icon: Award },
           { id: 'students', label: 'Students', icon: GraduationCap },
           { id: 'faculty', label: 'Faculty', icon: Users },
           { id: 'timetable', label: 'Department Schedule', icon: Calendar },
@@ -105,6 +113,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       default:
         return [
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+          { id: 'academic_oversight', label: 'Academic Oversight', icon: Award },
           { id: 'students', label: 'Students', icon: GraduationCap },
           { id: 'faculty', label: 'Faculty', icon: Users },
           { id: 'departments', label: 'Departments', icon: Building2 },

@@ -17,13 +17,21 @@ import {
   AttendanceCorrection,
   AuditLog,
   AttendanceStatus,
-  DayOfWeek
+  DayOfWeek,
+  Assignment,
+  AssignmentSubmission,
+  Quiz,
+  QuizResult,
+  SessionalMark,
+  MarksHistory,
+  SessionalType
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
   TodayLectureItem,
   TimetableConflict,
-  SubjectAttendanceStat
+  SubjectAttendanceStat,
+  StudentSubjectAcademicReport
 } from '../types/academic.types';
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
@@ -83,12 +91,54 @@ interface AcademicContextType {
   attendanceRecords: AttendanceRecord[];
   corrections: AttendanceCorrection[];
   auditLogs: AuditLog[];
+  courseAssignments: Assignment[];
+  assignmentSubmissions: AssignmentSubmission[];
+  quizzes: Quiz[];
+  quizResults: QuizResult[];
+  sessionalMarks: SessionalMark[];
+  marksHistory: MarksHistory[];
   isLoading: boolean;
   claimWindowDays: number;
   setClaimWindowDays: (days: number) => void;
   refreshData: () => Promise<void>;
 
   // Real Database Actions
+  createAssignment: (data: Omit<Assignment, 'id' | 'created_at' | 'updated_at'>) => Promise<Assignment>;
+  updateAssignment: (id: string, updates: Partial<Assignment>) => Promise<Assignment>;
+  deleteCourseAssignment: (id: string) => Promise<boolean>;
+  submitAssignment: (submission: {
+    assignmentId: string;
+    studentId: string;
+    submissionType: string;
+    filePath?: string;
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+    googleFormSubmitted?: boolean;
+  }) => Promise<AssignmentSubmission>;
+  gradeAssignmentSubmission: (params: {
+    submissionId: string;
+    marksObtained: number;
+    feedback?: string;
+    facultyId: string;
+  }) => Promise<AssignmentSubmission>;
+  createQuiz: (quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) => Promise<Quiz>;
+  updateQuiz: (id: string, updates: Partial<Quiz>) => Promise<Quiz>;
+  deleteQuiz: (id: string) => Promise<boolean>;
+  saveQuizMarks: (params: {
+    quizId: string;
+    facultyId: string;
+    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
+  }) => Promise<QuizResult[]>;
+  saveSessionalMarks: (params: {
+    facultyId: string;
+    subjectId: string;
+    sectionId: string;
+    sessionalType: SessionalType;
+    maxMarks: number;
+    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+  }) => Promise<SessionalMark[]>;
+  getStudentAcademicScorecard: (studentId: string) => StudentSubjectAcademicReport[];
   addDepartment: (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => Promise<Department>;
   updateDepartment: (id: string, updates: Partial<Department>) => Promise<Department>;
   deleteDepartment: (id: string) => Promise<boolean>;
@@ -188,6 +238,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => erpStorage.getAttendanceRecords());
   const [corrections, setCorrections] = useState<AttendanceCorrection[]>(() => erpStorage.getCorrections());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => erpStorage.getAuditLogs());
+  const [courseAssignments, setCourseAssignments] = useState<Assignment[]>([]);
+  const [assignmentSubmissions, setAssignmentSubmissions] = useState<AssignmentSubmission[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
+  const [sessionalMarks, setSessionalMarks] = useState<SessionalMark[]>([]);
+  const [marksHistory, setMarksHistory] = useState<MarksHistory[]>([]);
 
   // Function to load and enrich latest records from Supabase
   const loadDataFromSupabase = useCallback(async () => {
@@ -284,6 +340,60 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           };
         });
 
+        // Enriched Course Assignments
+        const rawCourseAssignments = data.courseAssignments || [];
+        const enrichedCourseAssignments: Assignment[] = rawCourseAssignments.map(a => ({
+          ...a,
+          subject: loadedSubjects.find(s => s.id === a.subject_id),
+          faculty: loadedFaculty.find(f => f.id === a.faculty_id),
+          section: loadedSections.find(sec => sec.id === a.section_id),
+        }));
+
+        // Enriched Submissions
+        const rawSubmissions = data.assignmentSubmissions || [];
+        const enrichedSubmissions: AssignmentSubmission[] = rawSubmissions.map(sub => ({
+          ...sub,
+          student: enrichedStudents.find(s => s.id === sub.student_id),
+          assignment: enrichedCourseAssignments.find(a => a.id === sub.assignment_id),
+          grader: loadedFaculty.find(f => f.id === sub.graded_by),
+        }));
+
+        // Enriched Quizzes
+        const rawQuizzes = data.quizzes || [];
+        const enrichedQuizzes: Quiz[] = rawQuizzes.map(q => ({
+          ...q,
+          subject: loadedSubjects.find(s => s.id === q.subject_id),
+          faculty: loadedFaculty.find(f => f.id === q.faculty_id),
+          section: loadedSections.find(sec => sec.id === q.section_id),
+        }));
+
+        // Enriched Quiz Results
+        const rawQuizResults = data.quizResults || [];
+        const enrichedQuizResults: QuizResult[] = rawQuizResults.map(qr => ({
+          ...qr,
+          student: enrichedStudents.find(s => s.id === qr.student_id),
+          quiz: enrichedQuizzes.find(q => q.id === qr.quiz_id),
+          grader: loadedFaculty.find(f => f.id === qr.graded_by),
+        }));
+
+        // Enriched Sessional Marks
+        const rawSessional = data.sessionalMarks || [];
+        const enrichedSessionalMarks: SessionalMark[] = rawSessional.map(sm => ({
+          ...sm,
+          student: enrichedStudents.find(s => s.id === sm.student_id),
+          subject: loadedSubjects.find(s => s.id === sm.subject_id),
+          faculty: loadedFaculty.find(f => f.id === sm.faculty_id),
+          section: loadedSections.find(sec => sec.id === sm.section_id),
+        }));
+
+        // Enriched Marks History
+        const rawMarksHistory = data.marksHistory || [];
+        const enrichedMarksHistory: MarksHistory[] = rawMarksHistory.map(mh => ({
+          ...mh,
+          student: enrichedStudents.find(s => s.id === mh.student_id),
+          subject: loadedSubjects.find(s => s.id === mh.subject_id),
+        }));
+
         setInstitution(loadedInst);
         setDepartments(loadedDepts);
         setPrograms(loadedProgs);
@@ -300,6 +410,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAttendanceRecords(enrichedRecords);
         setCorrections(enrichedCorrections);
         setAuditLogs(data.auditLogs);
+        setCourseAssignments(enrichedCourseAssignments);
+        setAssignmentSubmissions(enrichedSubmissions);
+        setQuizzes(enrichedQuizzes);
+        setQuizResults(enrichedQuizResults);
+        setSessionalMarks(enrichedSessionalMarks);
+        setMarksHistory(enrichedMarksHistory);
       }
     } catch (err) {
       console.error('Failed to sync from Supabase, using local cache:', err);
@@ -932,6 +1048,174 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
+  // ========================================================
+  // ASSESSMENT MODULE ACTION HANDLERS
+  // ========================================================
+  const createAssignment = async (data: Omit<Assignment, 'id' | 'created_at' | 'updated_at'>) => {
+    const res = await supabaseService.createAssignment(data);
+    await refreshData();
+    return res;
+  };
+
+  const updateAssignment = async (id: string, updates: Partial<Assignment>) => {
+    const res = await supabaseService.updateAssignment(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteCourseAssignment = async (id: string) => {
+    const res = await supabaseService.deleteCourseAssignment(id);
+    await refreshData();
+    return res;
+  };
+
+  const submitAssignment = async (submission: {
+    assignmentId: string;
+    studentId: string;
+    submissionType: string;
+    filePath?: string;
+    fileName?: string;
+    fileSize?: number;
+    mimeType?: string;
+    googleFormSubmitted?: boolean;
+  }) => {
+    const res = await supabaseService.submitAssignment(submission);
+    await refreshData();
+    return res;
+  };
+
+  const gradeAssignmentSubmission = async (params: {
+    submissionId: string;
+    marksObtained: number;
+    feedback?: string;
+    facultyId: string;
+  }) => {
+    const res = await supabaseService.gradeAssignmentSubmission(params);
+    await refreshData();
+    return res;
+  };
+
+  const createQuiz = async (quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) => {
+    const res = await supabaseService.createQuiz(quiz);
+    await refreshData();
+    return res;
+  };
+
+  const updateQuiz = async (id: string, updates: Partial<Quiz>) => {
+    const res = await supabaseService.updateQuiz(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteQuiz = async (id: string) => {
+    const res = await supabaseService.deleteQuiz(id);
+    await refreshData();
+    return res;
+  };
+
+  const saveQuizMarks = async (params: {
+    quizId: string;
+    facultyId: string;
+    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
+  }) => {
+    const res = await supabaseService.saveQuizMarks(params);
+    await refreshData();
+    return res;
+  };
+
+  const saveSessionalMarks = async (params: {
+    facultyId: string;
+    subjectId: string;
+    sectionId: string;
+    sessionalType: SessionalType;
+    maxMarks: number;
+    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+  }) => {
+    const res = await supabaseService.saveSessionalMarks(params);
+    await refreshData();
+    return res;
+  };
+
+  const getStudentAcademicScorecard = (studentId: string): StudentSubjectAcademicReport[] => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return [];
+
+    const studentAtt = getStudentAttendance(studentId);
+    const result: StudentSubjectAcademicReport[] = [];
+
+    for (const stat of studentAtt.subjectStats) {
+      const subSessional = sessionalMarks.filter(sm => sm.student_id === studentId && sm.subject_id === stat.subjectId);
+      const s1 = subSessional.find(s => s.sessional_type === 'Sessional 1');
+      const s2 = subSessional.find(s => s.sessional_type === 'Sessional 2');
+      const put = subSessional.find(s => s.sessional_type === 'Pre-University Test');
+      const fin = subSessional.find(s => s.sessional_type === 'Final Sessional');
+
+      const subQuizzes = quizzes.filter(q => q.subject_id === stat.subjectId && q.section_id === student.section_id);
+      const quizMarksList = subQuizzes.map(q => {
+        const qr = quizResults.find(r => r.quiz_id === q.id && r.student_id === studentId);
+        return {
+          quizId: q.id,
+          title: q.title,
+          maxMarks: q.max_marks,
+          obtainedMarks: qr?.marks_obtained,
+          quizDate: q.quiz_date,
+        };
+      });
+
+      const subAssignments = courseAssignments.filter(a => a.subject_id === stat.subjectId && a.section_id === student.section_id);
+      const assignmentMarksList = subAssignments.map(a => {
+        const sub = assignmentSubmissions.find(s => s.assignment_id === a.id && s.student_id === studentId);
+        return {
+          assignmentId: a.id,
+          title: a.title,
+          maxMarks: a.max_marks,
+          obtainedMarks: sub?.marks_obtained,
+          status: sub ? sub.status : 'not_submitted',
+          dueDate: a.due_date,
+        };
+      });
+
+      let totalScore = 0;
+      let maxScore = 0;
+
+      if (s1) { totalScore += s1.marks_obtained; maxScore += s1.max_marks; }
+      if (s2) { totalScore += s2.marks_obtained; maxScore += s2.max_marks; }
+      if (put) { totalScore += put.marks_obtained; maxScore += put.max_marks; }
+      for (const q of quizMarksList) {
+        if (q.obtainedMarks !== undefined) {
+          totalScore += q.obtainedMarks;
+          maxScore += q.maxMarks;
+        }
+      }
+      for (const a of assignmentMarksList) {
+        if (a.obtainedMarks !== undefined) {
+          totalScore += a.obtainedMarks;
+          maxScore += a.maxMarks;
+        }
+      }
+
+      result.push({
+        subjectId: stat.subjectId,
+        subjectCode: stat.subjectCode,
+        subjectName: stat.subjectName,
+        facultyName: stat.facultyName,
+        attendancePercentage: stat.percentage,
+        sessionalMarks: {
+          sessional1: s1 ? { obtained: s1.marks_obtained, max: s1.max_marks } : undefined,
+          sessional2: s2 ? { obtained: s2.marks_obtained, max: s2.max_marks } : undefined,
+          put: put ? { obtained: put.marks_obtained, max: put.max_marks } : undefined,
+          final: fin ? { obtained: fin.marks_obtained, max: fin.max_marks } : undefined,
+        },
+        quizMarks: quizMarksList,
+        assignmentMarks: assignmentMarksList,
+        totalInternalScore: totalScore,
+        maxInternalScore: maxScore,
+      });
+    }
+
+    return result;
+  };
+
   const resetToInitialSeed = () => {
     erpStorage.init(true);
     refreshData();
@@ -956,10 +1240,27 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         attendanceRecords,
         corrections,
         auditLogs,
+        courseAssignments,
+        assignmentSubmissions,
+        quizzes,
+        quizResults,
+        sessionalMarks,
+        marksHistory,
         isLoading,
         claimWindowDays,
         setClaimWindowDays,
         refreshData,
+        createAssignment,
+        updateAssignment,
+        deleteCourseAssignment,
+        submitAssignment,
+        gradeAssignmentSubmission,
+        createQuiz,
+        updateQuiz,
+        deleteQuiz,
+        saveQuizMarks,
+        saveSessionalMarks,
+        getStudentAcademicScorecard,
         addDepartment,
         updateDepartment,
         deleteDepartment,
