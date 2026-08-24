@@ -1189,7 +1189,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sa => sa.subject_id === stat.subjectId && (!sa.section_id || sa.section_id === student.section_id)
       );
 
-      const dynamicSessionals = subAssessments.map(sa => {
+      // Deduplicate assessments by title to prevent duplicate rows
+      const seenTitles = new Set<string>();
+      const uniqueAssessments = subAssessments.filter(sa => {
+        const key = sa.title.toLowerCase().trim();
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
+      });
+
+      const dynamicSessionals = uniqueAssessments.map(sa => {
         const sm = sessionalMarks.find(m => m.sessional_assessment_id === sa.id && m.student_id === studentId);
         return {
           assessmentId: sa.id,
@@ -1206,6 +1215,32 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const s2 = subSessional.find(s => s.sessional_type === 'Sessional 2');
       const put = subSessional.find(s => s.sessional_type === 'Pre-University Test');
       const fin = subSessional.find(s => s.sessional_type === 'Final Sessional');
+
+      // Match dynamic sessionals for standard 3 components
+      const s1Dyn = dynamicSessionals.find(s => s.title.toLowerCase() === 'sessional 1');
+      const s2Dyn = dynamicSessionals.find(s => s.title.toLowerCase() === 'sessional 2');
+      const putDyn = dynamicSessionals.find(s => 
+        s.title.toLowerCase() === 'pre-university test' || 
+        s.title.toLowerCase() === 'put' || 
+        s.title.toLowerCase().includes('pre-university') ||
+        s.title.toLowerCase().includes('pre university')
+      );
+
+      const sessional1Val = s1Dyn 
+        ? { obtained: s1Dyn.obtainedMarks, max: s1Dyn.maxMarks }
+        : (s1 ? { obtained: s1.marks_obtained, max: s1.max_marks || 30 } : undefined);
+
+      const sessional2Val = s2Dyn 
+        ? { obtained: s2Dyn.obtainedMarks, max: s2Dyn.maxMarks }
+        : (s2 ? { obtained: s2.marks_obtained, max: s2.max_marks || 30 } : undefined);
+
+      const putVal = putDyn 
+        ? { obtained: putDyn.obtainedMarks, max: putDyn.maxMarks }
+        : (put ? { obtained: put.marks_obtained, max: put.max_marks || 100 } : undefined);
+
+      const otherSessionals = dynamicSessionals.filter(s => 
+        s !== s1Dyn && s !== s2Dyn && s !== putDyn
+      );
 
       const subQuizzes = quizzes.filter(q => q.subject_id === stat.subjectId && q.section_id === student.section_id);
       const quizMarksList = subQuizzes.map(q => {
@@ -1270,10 +1305,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         facultyName: stat.facultyName,
         attendancePercentage: stat.percentage,
         sessionalMarks: {
-          sessional1: s1 ? { obtained: s1.marks_obtained, max: s1.max_marks || 30 } : undefined,
-          sessional2: s2 ? { obtained: s2.marks_obtained, max: s2.max_marks || 30 } : undefined,
-          put: put ? { obtained: put.marks_obtained, max: put.max_marks || 100 } : undefined,
+          sessional1: sessional1Val,
+          sessional2: sessional2Val,
+          put: putVal,
           final: fin ? { obtained: fin.marks_obtained, max: fin.max_marks || 30 } : undefined,
+          otherSessionals,
           sessionals: dynamicSessionals,
         },
         quizMarks: quizMarksList,

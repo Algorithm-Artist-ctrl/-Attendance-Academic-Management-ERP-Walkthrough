@@ -48,6 +48,15 @@ async function runAcademicAssessmentsVerification() {
 
   assert(Boolean(secA && secB && facAlok && facHemlata && subDs && studA && studB), 'Found master sections, faculty, subject, and student test fixtures');
 
+  // Pre-cleanup any lingering test fixtures
+  await supabase.from('marks_history').delete().eq('student_id', studB.id);
+  await supabase.from('sessional_marks').delete().eq('student_id', studB.id);
+  await supabase.from('sessional_assessments').delete().eq('subject_id', subDs.id).eq('section_id', secB.id);
+  await supabase.from('quiz_results').delete().eq('student_id', studB.id);
+  await supabase.from('quizzes').delete().eq('subject_id', subDs.id).eq('section_id', secB.id);
+  await supabase.from('assignment_submissions').delete().eq('student_id', studB.id);
+  await supabase.from('assignments').delete().eq('subject_id', subDs.id).eq('section_id', secB.id);
+
   // --- SUITE 2: Dynamic Multi-Sessional Creation (Sessional 1, 2, 3, 4) ---
   console.log('\n--- SUITE 2: Dynamic Sessional Assessments Creation ---');
   const sess1 = await supabaseService.createSessionalAssessment({
@@ -308,11 +317,13 @@ async function runAcademicAssessmentsVerification() {
 
   // --- SUITE 9: Cleanup Test Data ---
   console.log('\n--- SUITE 9: Teardown Test Data ---');
-  await supabase.from('sessional_assessments').delete().in('id', [sess1.id, sess2.id, sess3.id, sess4.id]);
-  await supabase.from('sessional_marks').delete().eq('student_id', studB.id);
-  await supabase.from('quizzes').delete().eq('id', createdQuiz.id);
-  await supabase.from('assignments').delete().eq('id', createdAssignment.id);
   await supabase.from('marks_history').delete().eq('student_id', studB.id);
+  await supabase.from('sessional_marks').delete().eq('student_id', studB.id);
+  await supabase.from('sessional_assessments').delete().in('id', [sess1.id, sess2.id, sess3.id, sess4.id]);
+  await supabase.from('quiz_results').delete().eq('student_id', studB.id);
+  await supabase.from('quizzes').delete().eq('id', createdQuiz.id);
+  await supabase.from('assignment_submissions').delete().eq('student_id', studB.id);
+  await supabase.from('assignments').delete().eq('id', createdAssignment.id);
   console.log('Cleaned up test fixtures from Supabase Cloud.');
 
   console.log('\n======================================================================');

@@ -111,43 +111,45 @@ export const StudentMarksPage: React.FC = () => {
                     <Award className="w-3.5 h-3.5 text-emerald-400" /> Sessional Examinations
                   </h4>
                   <div className="space-y-2 text-xs">
-                    {item.sessionalMarks.sessionals && item.sessionalMarks.sessionals.length > 0 ? (
-                      item.sessionalMarks.sessionals.map(s => (
-                        <div key={s.assessmentId} className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                          <span className="text-slate-400 truncate max-w-[140px]">{s.title}:</span>
-                          <span className="font-mono font-bold text-white">
-                            {s.obtainedMarks !== undefined ? `${s.obtainedMarks} / ${s.maxMarks}` : '—'}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                          <span className="text-slate-400">Sessional 1:</span>
-                          <span className="font-mono font-bold text-white">
-                            {item.sessionalMarks.sessional1 
-                              ? `${item.sessionalMarks.sessional1.obtained} / ${item.sessionalMarks.sessional1.max}` 
-                              : '—'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                          <span className="text-slate-400">Sessional 2:</span>
-                          <span className="font-mono font-bold text-white">
-                            {item.sessionalMarks.sessional2 
-                              ? `${item.sessionalMarks.sessional2.obtained} / ${item.sessionalMarks.sessional2.max}` 
-                              : '—'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                          <span className="text-slate-400">Pre-University Test:</span>
-                          <span className="font-mono font-bold text-white">
-                            {item.sessionalMarks.put 
-                              ? `${item.sessionalMarks.put.obtained} / ${item.sessionalMarks.put.max}` 
-                              : '—'}
-                          </span>
-                        </div>
-                      </>
-                    )}
+                    {/* Sessional 1 */}
+                    <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
+                      <span className="text-slate-400">Sessional 1:</span>
+                      <span className="font-mono font-bold text-white">
+                        {item.sessionalMarks.sessional1?.obtained !== undefined 
+                          ? `${item.sessionalMarks.sessional1.obtained} / ${item.sessionalMarks.sessional1.max}` 
+                          : '—'}
+                      </span>
+                    </div>
+
+                    {/* Sessional 2 */}
+                    <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
+                      <span className="text-slate-400">Sessional 2:</span>
+                      <span className="font-mono font-bold text-white">
+                        {item.sessionalMarks.sessional2?.obtained !== undefined 
+                          ? `${item.sessionalMarks.sessional2.obtained} / ${item.sessionalMarks.sessional2.max}` 
+                          : '—'}
+                      </span>
+                    </div>
+
+                    {/* Pre-University Test */}
+                    <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
+                      <span className="text-slate-400">Pre-University Test:</span>
+                      <span className="font-mono font-bold text-white">
+                        {item.sessionalMarks.put?.obtained !== undefined 
+                          ? `${item.sessionalMarks.put.obtained} / ${item.sessionalMarks.put.max}` 
+                          : '—'}
+                      </span>
+                    </div>
+
+                    {/* Additional Custom Sessionals (if any created by teacher) */}
+                    {item.sessionalMarks.otherSessionals && item.sessionalMarks.otherSessionals.map(s => (
+                      <div key={s.assessmentId} className="flex justify-between items-center py-1 border-b border-slate-800/40">
+                        <span className="text-slate-400 truncate max-w-[140px]">{s.title}:</span>
+                        <span className="font-mono font-bold text-white">
+                          {s.obtainedMarks !== undefined ? `${s.obtainedMarks} / ${s.maxMarks}` : '—'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

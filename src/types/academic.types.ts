@@ -31,10 +31,17 @@ export interface StudentSubjectAcademicReport {
   facultyName: string;
   attendancePercentage: number;
   sessionalMarks: {
-    sessional1?: { obtained: number; max: number };
-    sessional2?: { obtained: number; max: number };
-    put?: { obtained: number; max: number };
-    final?: { obtained: number; max: number };
+    sessional1?: { obtained?: number; max: number };
+    sessional2?: { obtained?: number; max: number };
+    put?: { obtained?: number; max: number };
+    final?: { obtained?: number; max: number };
+    otherSessionals?: Array<{
+      assessmentId: string;
+      title: string;
+      maxMarks: number;
+      obtainedMarks?: number;
+      examDate: string;
+    }>;
     sessionals: Array<{
       assessmentId: string;
       title: string;
