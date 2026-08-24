@@ -42,7 +42,9 @@ export const StudentTimetablePage: React.FC = () => {
     { period: 8, label: 'Period VIII', time: '02:50 – 03:40' },
   ];
 
-  const sectionEntries = currentSection ? timetable.filter(t => t.section_id === currentSection.id) : [];
+  const sectionEntries = currentSection 
+    ? timetable.filter(t => (t.section_id === currentSection.id || t.section?.id === currentSection.id) && t.active) 
+    : [];
 
   const isSectionB = currentSection?.name === 'B';
   const branchName = currentSection ? (isSectionB ? 'CSE + IT' : 'CSE') : 'Curriculum';

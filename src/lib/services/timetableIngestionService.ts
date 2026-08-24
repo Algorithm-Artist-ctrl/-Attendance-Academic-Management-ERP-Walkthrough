@@ -129,7 +129,12 @@ export class TimetableIngestionService {
         .eq('id', targetSectionId);
     }
 
-    // 2. Resolve or Insert any New Subjects
+    // 2. Fetch authoritative database subjects and faculty
+    const { data: dbSubjects } = await supabase.from('subjects').select('*').eq('active', true);
+    const { data: dbFaculty } = await supabase.from('faculty').select('*').eq('active', true);
+    const allSubjects = (dbSubjects || []) as Subject[];
+    const allFaculty = (dbFaculty || []) as Faculty[];
+
     const subjectIdMap = new Map<string, string>(); // Extracted Code -> DB Subject ID
 
     for (const sm of report.subjectMatches) {
@@ -220,23 +225,60 @@ export class TimetableIngestionService {
     const resolveSubId = (codeOrName: string): string | undefined => {
       if (!codeOrName) return undefined;
       const clean = codeOrName.toUpperCase().replace(/[\s\-_]/g, '');
+      const cleanLower = codeOrName.toLowerCase().trim();
+
       if (subjectIdMap.has(clean)) return subjectIdMap.get(clean);
-      const match = report.subjectMatches.find(sm => {
-        const smCode = (sm.extracted.subject_code || '').toUpperCase().replace(/[\s\-_]/g, '');
-        return smCode === clean;
+
+      const matched = allSubjects.find(s => {
+        const sCode = s.subject_code.toUpperCase().replace(/[\s\-_]/g, '');
+        if (sCode === clean) return true;
+        if (clean === 'DS' && sCode === 'BCS301') return true;
+        if (clean === 'COA' && sCode === 'BCS302') return true;
+        if (clean === 'DSTL' && sCode === 'BCS303') return true;
+        if ((clean === 'M4' || clean === 'MATHS4' || clean === 'MATHSIV') && sCode === 'BAS303') return true;
+        if (clean === 'UHV' && sCode === 'BVE301') return true;
+        if (clean === 'DSLAB' && sCode === 'BCS351') return true;
+        if (clean === 'COALAB' && sCode === 'BCS352') return true;
+        if (clean === 'DSTLLAB' && sCode === 'BCS353') return true;
+        if ((clean === 'CS' || clean === 'CYBER' || clean === 'CYBERSECURITY') && sCode === 'BCC301') return true;
+        if ((clean === 'CSLAB' || clean === 'CYBERLAB') && sCode === 'BCC351') return true;
+
+        const sNameLower = s.subject_name.toLowerCase();
+        if (sNameLower.includes(cleanLower) || cleanLower.includes(sNameLower)) return true;
+        return false;
       });
-      return match?.matchedSubject?.id;
+
+      return matched?.id;
     };
 
     const resolveFacId = (codeOrName: string): string | undefined => {
       if (!codeOrName) return undefined;
-      const clean = codeOrName.toUpperCase().trim();
-      if (facultyIdMap.has(clean)) return facultyIdMap.get(clean);
-      const match = report.facultyMatches.find(fm => {
-        const fmCode = (fm.extracted.faculty_code || '').toUpperCase().trim();
-        return fmCode === clean;
+      const cleanCode = codeOrName.toUpperCase().trim();
+      const cleanName = codeOrName.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
+
+      if (facultyIdMap.has(cleanCode)) return facultyIdMap.get(cleanCode);
+
+      const matched = allFaculty.find(f => {
+        if (f.faculty_code && f.faculty_code.toUpperCase().trim() === cleanCode) return true;
+        if (f.employee_code && f.employee_code.toUpperCase().trim() === cleanCode) return true;
+        if (cleanCode === 'HEM' && f.full_name.toLowerCase().includes('hemlata')) return true;
+        if (cleanCode === 'KK' && f.full_name.toLowerCase().includes('kuldeep')) return true;
+        if (cleanCode === 'NAK' && f.full_name.toLowerCase().includes('naseem')) return true;
+        if (cleanCode === 'IRK' && f.full_name.toLowerCase().includes('imran')) return true;
+        if ((cleanCode === 'SHS' || cleanCode === 'SS') && f.full_name.toLowerCase().includes('shivani')) return true;
+        if (cleanCode === 'PRS' && f.full_name.toLowerCase().includes('praveen')) return true;
+        if ((cleanCode === 'ALG' || cleanCode === 'AG') && f.full_name.toLowerCase().includes('alok')) return true;
+        if (cleanCode === 'ABG' && f.full_name.toLowerCase().includes('abhishek')) return true;
+        if (cleanCode === 'GDS' && f.full_name.toLowerCase().includes('gagandep')) return true;
+
+        const fClean = f.full_name.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
+        if (fClean.includes(cleanName) || cleanName.includes(fClean)) return true;
+        const initials = fClean.split(/\s+/).map(w => w[0]).join('').toUpperCase();
+        if (initials === cleanCode) return true;
+        return false;
       });
-      return match?.matchedFaculty?.id;
+
+      return matched?.id;
     };
 
     // Process all days in doc.schedule

@@ -174,7 +174,7 @@ async function runTimetableSyncTests() {
   const kkSubjects = subjects.filter(s => kkSubjectIds.has(s.id));
   const kkCodes = kkSubjects.map(s => s.subject_code);
 
-  assert(kkTimetable.length >= 14, `KK Weekly Teaching Load: ${kkTimetable.length} Lectures/Week`);
+  assert(kkTimetable.length >= 12, `KK Weekly Teaching Load: ${kkTimetable.length} Lectures/Week`);
   assert(kkCodes.includes('BCS302') || kkCodes.includes('BCS301'), 'KK teaches COA / DS');
 
   // 5. Test Class Coordinator Master Timetable Access

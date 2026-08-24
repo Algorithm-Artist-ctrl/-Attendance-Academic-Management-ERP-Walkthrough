@@ -888,8 +888,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 8. Get Today's Live Attendance Lectures for Student
   const getTodayLecturesForStudent = (studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
-    const student = students.find(s => s.id === studentId);
+    const student = students.find(s => s.id === studentId || s.roll_number === studentId);
     if (!student) return [];
+
+    const sectionId = student.section_id || student.section?.id;
+    if (!sectionId) return [];
 
     const defaultDateStr = getISTTodayDate();
     const targetDateStr = customDateStr || defaultDateStr;
@@ -898,7 +901,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const sectionEntries = dayOfWeek === 'SUN' 
       ? [] 
       : timetable
-          .filter(t => t.section_id === student.section_id && t.day_of_week === dayOfWeek && t.active)
+          .filter(t => (t.section_id === sectionId || t.section?.id === sectionId) && t.day_of_week === dayOfWeek && t.active)
           .sort((a, b) => a.period_number - b.period_number);
 
     return sectionEntries.map(entry => {
