@@ -94,9 +94,11 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
                       'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
                       ver.status === 'active'
                         ? 'bg-emerald-500/20 text-[#00ff88]'
+                        : ver.status === 'superseded'
+                        ? 'bg-amber-500/20 text-amber-300'
                         : 'bg-slate-800 text-slate-400'
                     )}>
-                      {ver.status === 'active' ? 'Active Schedule' : 'Archived'}
+                      {ver.status === 'active' ? 'Active Schedule' : ver.status === 'superseded' ? 'Superseded' : 'Archived'}
                     </span>
                   </div>
 

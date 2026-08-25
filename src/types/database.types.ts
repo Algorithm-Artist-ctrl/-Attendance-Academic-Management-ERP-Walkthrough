@@ -233,7 +233,7 @@ export interface TimetableVersion {
   section_id: string;
   version_number: number;
   effective_from: string;
-  status: 'draft' | 'active' | 'archived';
+  status: 'draft' | 'under_review' | 'published' | 'active' | 'superseded' | 'archived' | 'rejected';
   uploaded_by?: string;
   approved_by?: string;
   approved_at?: string;

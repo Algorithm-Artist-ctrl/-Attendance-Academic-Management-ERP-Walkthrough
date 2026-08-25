@@ -172,10 +172,10 @@ export class TimetableIngestionService {
       }
     }
 
-    // 4. Archive Old Timetable Version for this section
+    // 4. Supersede Old Timetable Version for this section
     await supabase
       .from('timetable_versions')
-      .update({ status: 'archived', updated_at: new Date().toISOString() })
+      .update({ status: 'superseded', updated_at: new Date().toISOString() })
       .eq('section_id', targetSectionId)
       .eq('status', 'active');
 
