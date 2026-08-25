@@ -276,8 +276,35 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
             <span className="font-bold text-emerald-400 text-sm">{currentDoc.academic_year} • {currentDoc.semester}</span>
           </div>
           <div>
-            <span className="text-slate-500 font-semibold block text-[10px] uppercase tracking-wider">Section & Room</span>
-            <span className="font-bold text-white text-sm">Section {currentDoc.section_name} ({currentDoc.room_number})</span>
+            <span className="text-slate-500 font-semibold block text-[10px] uppercase tracking-wider">Target Section & Room</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <select
+                value={currentDoc.target_section_id || sections.find(s => s.name === currentDoc.section_name)?.id || ''}
+                onChange={(e) => {
+                  const newSecId = e.target.value;
+                  const newSec = sections.find(s => s.id === newSecId);
+                  if (newSec) {
+                    setDocs(prevDocs => {
+                      const updated = [...prevDocs];
+                      updated[activeDocIndex] = {
+                        ...updated[activeDocIndex],
+                        section_name: newSec.name,
+                        target_section_id: newSec.id,
+                        room_number: newSec.room_number || (newSec.name === 'B' ? 'A006' : 'A007')
+                      };
+                      return updated;
+                    });
+                  }
+                }}
+                className="bg-slate-900 border-2 border-emerald-500/60 rounded-lg px-2 py-0.5 text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88]"
+              >
+                {sections.map(s => (
+                  <option key={s.id} value={s.id}>
+                    Section {s.name} ({s.room_number || (s.name === 'B' ? 'A006' : 'A007')})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <span className="text-slate-500 font-semibold block text-[10px] uppercase tracking-wider">Effective From (W.E.F.)</span>
@@ -285,11 +312,26 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
           </div>
         </div>
 
+        {/* Validation Notes & Warnings Banner */}
+        {currentDoc.warnings && currentDoc.warnings.length > 0 && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Document Extraction & Section Alignment:</span>
+            </div>
+            <ul className="list-disc list-inside text-[11px] text-amber-200/90 pl-1 space-y-0.5">
+              {currentDoc.warnings.map((w, idx) => (
+                <li key={idx}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Conflict Alert Banner if any conflicts exist */}
         {report.conflicts.length > 0 && (
           <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs space-y-1.5 animate-pulse">
             <div className="flex items-center gap-2 font-black text-rose-300">
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{report.conflicts.length} Timetable Scheduling Conflict(s) Detected</span>
             </div>
             <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-200 pl-1">

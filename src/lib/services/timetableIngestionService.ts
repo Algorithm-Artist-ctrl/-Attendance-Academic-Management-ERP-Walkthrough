@@ -96,7 +96,7 @@ export class TimetableIngestionService {
     const { doc, report, approvedBy, importId, customEffectiveDate } = params;
 
     // 1. Ensure Section exists or create Section
-    let targetSectionId = report.section?.id;
+    let targetSectionId = doc.target_section_id || report.section?.id;
     const effectiveFrom = customEffectiveDate || doc.effective_from || new Date().toISOString().split('T')[0];
 
     if (!targetSectionId) {
@@ -104,9 +104,9 @@ export class TimetableIngestionService {
       const { data: newSec, error: secErr } = await supabase
         .from('sections')
         .insert([{
-          name: doc.section_name || 'A',
+          name: doc.section_name || 'B',
           semester_id: report.semester?.id,
-          room_number: doc.room_number || 'Room TBD',
+          room_number: doc.room_number || (doc.section_name === 'B' ? 'A006' : 'A007'),
           class_coordinator_id: report.classCoordinator?.id,
           active: true,
         }])

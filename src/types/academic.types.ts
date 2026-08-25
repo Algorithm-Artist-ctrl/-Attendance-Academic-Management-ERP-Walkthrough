@@ -128,16 +128,39 @@ export interface ExtractedFacultyMapping {
   subject_code?: string;
 }
 
+export interface UploadTargetContext {
+  academicSessionId?: string;
+  academicSessionName?: string;
+  programId?: string;
+  programName?: string;
+  branchId?: string;
+  branchName?: string;
+  academicYearId?: string;
+  academicYearName?: string;
+  semesterId?: string;
+  semesterName?: string;
+  sectionId?: string;
+  sectionName?: string;
+  roomNumber?: string;
+  effectiveFrom?: string;
+}
+
 export interface ExtractedTimetableDocument {
   id?: string;
   source_file_name?: string;
   source_file_url?: string;
   institution_name?: string;
   program_name: string;
+  program_id?: string;
   branch_name: string;
+  branch_id?: string;
   academic_year: string;
+  academic_year_id?: string;
   semester: string;
+  semester_id?: string;
   section_name: string;
+  target_section_id?: string;
+  academic_session_id?: string;
   effective_from: string;
   room_number: string;
   class_incharges: string[];

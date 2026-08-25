@@ -447,6 +447,7 @@ export const TimetableManagerPage: React.FC = () => {
       <AITimetableUploadModal
         isOpen={isAIUploadOpen}
         onClose={() => setIsAIUploadOpen(false)}
+        initialSectionId={selectedSectionId}
         onExtractionComplete={(extracted) => {
           setExtractedDocs(extracted);
           setIsAIPreviewOpen(true);

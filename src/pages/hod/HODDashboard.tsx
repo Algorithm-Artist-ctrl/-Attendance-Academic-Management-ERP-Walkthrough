@@ -31,7 +31,8 @@ export const HODDashboard: React.FC = () => {
     students, 
     subjects, 
     assignments, 
-    getStudentAttendance 
+    getStudentAttendance,
+    refreshData 
   } = useAcademic();
 
   const dept = departments.find(
@@ -301,6 +302,7 @@ export const HODDashboard: React.FC = () => {
       <AITimetableUploadModal
         isOpen={isAIUploadOpen}
         onClose={() => setIsAIUploadOpen(false)}
+        initialSectionId={selectedSectionFilter !== 'ALL' ? selectedSectionFilter : undefined}
         onExtractionComplete={(extracted) => {
           setExtractedDocs(extracted);
           setIsAIPreviewOpen(true);
@@ -313,6 +315,9 @@ export const HODDashboard: React.FC = () => {
           isOpen={isAIPreviewOpen}
           onClose={() => setIsAIPreviewOpen(false)}
           extractedDocs={extractedDocs}
+          onPublishedSuccessfully={() => {
+            refreshData();
+          }}
         />
       )}
     </div>

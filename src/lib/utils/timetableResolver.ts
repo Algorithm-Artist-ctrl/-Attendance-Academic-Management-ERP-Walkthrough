@@ -105,11 +105,17 @@ export class TimetableResolver {
     ) || semesters[0];
 
     // 5. Resolve Section
-    const secClean = (doc.section_name || 'A').toUpperCase().replace(/SECTION/g, '').trim();
-    let section = sections.find(s => 
-      s.name.toUpperCase().trim() === secClean ||
-      (s.semester_id === semester?.id && s.name.toUpperCase().trim() === secClean)
-    );
+    let section: Section | undefined;
+    if (doc.target_section_id) {
+      section = sections.find(s => s.id === doc.target_section_id);
+    }
+    if (!section && doc.section_name) {
+      const secClean = doc.section_name.toUpperCase().replace(/SECTION/g, '').trim();
+      section = sections.find(s => 
+        s.name.toUpperCase().trim() === secClean ||
+        (s.semester_id === semester?.id && s.name.toUpperCase().trim() === secClean)
+      );
+    }
     const isNewSection = !section;
 
     // 6. Resolve Class Coordinator
@@ -152,11 +158,14 @@ export class TimetableResolver {
       return faculty.find(f => {
         if (f.faculty_code && f.faculty_code.toUpperCase().trim() === cleanCode) return true;
         if (f.employee_code && f.employee_code.toUpperCase().trim() === cleanCode) return true;
+        
+        // Match standard initials
         if (cleanCode === 'HEM' && f.full_name.toLowerCase().includes('hemlata')) return true;
-        if (cleanCode === 'KK' && f.full_name.toLowerCase().includes('kuldeep')) return true;
         if (cleanCode === 'NAK' && f.full_name.toLowerCase().includes('naseem')) return true;
+        if (cleanCode === 'KK' && f.full_name.toLowerCase().includes('kuldeep')) return true;
+        if (cleanCode === 'SS' && f.full_name.toLowerCase().includes('shivani')) return true;
         if (cleanCode === 'IRK' && f.full_name.toLowerCase().includes('imran')) return true;
-        if ((cleanCode === 'SHS' || cleanCode === 'SS') && f.full_name.toLowerCase().includes('shivani')) return true;
+        if (cleanCode === 'FA' && f.full_name.toLowerCase().includes('faizan')) return true;
         if (cleanCode === 'PRS' && f.full_name.toLowerCase().includes('praveen')) return true;
         if ((cleanCode === 'ALG' || cleanCode === 'AG') && f.full_name.toLowerCase().includes('alok')) return true;
         if (cleanCode === 'ABG' && f.full_name.toLowerCase().includes('abhishek')) return true;
@@ -170,10 +179,9 @@ export class TimetableResolver {
       });
     };
 
-    // 7. Resolve Subjects
-    const subjectMatches = doc.subject_mappings.map(sm => {
+    // 7. Match Subject mappings
+    const subjectMatches = (doc.subject_mappings || []).map(sm => {
       const matchedSubject = findMatchingSubject(sm.subject_code) || findMatchingSubject(sm.subject_name);
-
       return {
         extracted: sm,
         matchedSubject,
@@ -181,10 +189,9 @@ export class TimetableResolver {
       };
     });
 
-    // 8. Resolve Faculty
-    const facultyMatches = doc.faculty_mappings.map(fm => {
+    // 8. Match Faculty mappings
+    const facultyMatches = (doc.faculty_mappings || []).map(fm => {
       const matchedFaculty = findMatchingFaculty(fm.faculty_code) || findMatchingFaculty(fm.faculty_name);
-
       return {
         extracted: fm,
         matchedFaculty,
@@ -193,8 +200,9 @@ export class TimetableResolver {
     });
 
     // 9. Compute Diffs and Detect Conflicts
-    const sectionTimetable = section 
-      ? existingTimetable.filter(t => t.section_id === section?.id && t.active)
+    const targetSectionId = section?.id || doc.target_section_id;
+    const sectionTimetable = targetSectionId 
+      ? existingTimetable.filter(t => t.section_id === targetSectionId && t.active)
       : [];
 
     const diffs: TimetableSlotDiff[] = [];
@@ -240,14 +248,15 @@ export class TimetableResolver {
             t.faculty_id === resolvedFac?.id &&
             t.day_of_week === day &&
             t.period_number === pNum &&
-            t.section_id !== section?.id &&
+            t.section_id !== targetSectionId &&
             t.active
           );
 
           if (facultyOverlap) {
+            const conflictSecName = sections.find(s => s.id === facultyOverlap.section_id)?.name || facultyOverlap.section?.name || 'another section';
             slotConflict = {
               type: 'faculty',
-              message: `Faculty overlap: ${resolvedFac.full_name} is already scheduled in Section ${facultyOverlap.section?.name || 'another section'} on ${day} Period ${pNum}.`,
+              message: `FACULTY CONFLICT: ${resolvedFac.full_name} (${resolvedFac.faculty_code || 'FAC'}) is already assigned in Section ${conflictSecName} on ${day} Period ${pNum} (${newSlot.start_time}–${newSlot.end_time}) in Room ${facultyOverlap.room_number || 'Room'}.`,
               conflictingEntry: facultyOverlap
             };
             conflicts.push(slotConflict);
@@ -257,15 +266,16 @@ export class TimetableResolver {
         if (newSlot && (newSlot.room_number || doc.room_number)) {
           const roomToTest = (newSlot.room_number || doc.room_number).toUpperCase().replace(/ROOM/g, '').trim();
           const roomOverlap = existingTimetable.find(t => {
-            if (t.section_id === section?.id || !t.active) return false;
+            if (t.section_id === targetSectionId || !t.active) return false;
             const tRoom = (t.room_number || '').toUpperCase().replace(/ROOM/g, '').trim();
             return tRoom === roomToTest && t.day_of_week === day && t.period_number === pNum;
           });
 
           if (roomOverlap && !slotConflict) {
+            const conflictSecName = sections.find(s => s.id === roomOverlap.section_id)?.name || roomOverlap.section?.name || 'another section';
             slotConflict = {
               type: 'room',
-              message: `Room double-booking: Room ${roomToTest} is already occupied on ${day} Period ${pNum}.`,
+              message: `ROOM CONFLICT: Room ${roomToTest} is already occupied by Section ${conflictSecName} on ${day} Period ${pNum} (${newSlot.start_time}–${newSlot.end_time}).`,
               conflictingEntry: roomOverlap
             };
             conflicts.push(slotConflict);

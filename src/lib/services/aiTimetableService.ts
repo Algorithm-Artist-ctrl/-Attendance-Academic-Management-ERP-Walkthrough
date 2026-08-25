@@ -4,7 +4,8 @@ import {
   ExtractedTimetableDay, 
   ExtractedTimetablePeriod,
   ExtractedSubjectMapping,
-  ExtractedFacultyMapping
+  ExtractedFacultyMapping,
+  UploadTargetContext
 } from '../../types/academic.types';
 import { DayOfWeek, LectureType } from '../../types/database.types';
 
@@ -164,10 +165,14 @@ export class AITimetableService {
   /**
    * Extract a single timetable page/image using Google Gemini Vision API
    */
+  /**
+   * Extract a single timetable page/image using Google Gemini Vision API
+   */
   public async extractTimetableImage(
     file: File | Blob, 
     fileName: string,
-    onProgress?: (msg: string) => void
+    onProgress?: (msg: string) => void,
+    uploadContext?: UploadTargetContext
   ): Promise<ExtractedTimetableDocument> {
     onProgress?.('Reading document and preparing vision payload...');
     const base64Data = await fileToBase64(file);
@@ -217,7 +222,7 @@ export class AITimetableService {
         parsed.source_file_name = fileName;
         parsed.raw_text = rawText;
 
-        return this.normalizeAndValidateExtractedDocument(parsed);
+        return this.normalizeAndValidateExtractedDocument(parsed, uploadContext);
       } catch (err: any) {
         console.warn('Gemini API Vision extraction error, falling back to intelligent rule-based parser:', err);
         onProgress?.('AI Cloud connection failed. Executing local intelligent vision table extractor...');
@@ -226,7 +231,7 @@ export class AITimetableService {
 
     // Fallback: Intelligent Local Vision Table Extractor
     onProgress?.('Running local timetable document analyzer...');
-    return this.fallbackIntelligentExtractor(fileName, base64Data);
+    return this.fallbackIntelligentExtractor(fileName, base64Data, uploadContext);
   }
 
   /**
@@ -234,7 +239,8 @@ export class AITimetableService {
    */
   public async extractMultipleTimetables(
     files: File[],
-    onProgress?: (overallPercent: number, currentFileName: string, stepMsg: string) => void
+    onProgress?: (overallPercent: number, currentFileName: string, stepMsg: string) => void,
+    uploadContext?: UploadTargetContext
   ): Promise<ExtractedTimetableDocument[]> {
     const results: ExtractedTimetableDocument[] = [];
     const total = files.length;
@@ -245,7 +251,7 @@ export class AITimetableService {
       
       const doc = await this.extractTimetableImage(file, file.name, (stepMsg) => {
         onProgress?.(basePercent + Math.round((1 / total) * 50), file.name, stepMsg);
-      });
+      }, uploadContext);
 
       results.push(doc);
       onProgress?.(Math.round(((i + 1) / total) * 100), file.name, 'Extracted successfully.');
@@ -257,9 +263,28 @@ export class AITimetableService {
   /**
    * Post-processes and normalizes timetable structure
    */
-  private normalizeAndValidateExtractedDocument(doc: Partial<ExtractedTimetableDocument>): ExtractedTimetableDocument {
+  private normalizeAndValidateExtractedDocument(
+    doc: Partial<ExtractedTimetableDocument>,
+    uploadContext?: UploadTargetContext
+  ): ExtractedTimetableDocument {
     const normalizedDays: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     
+    // Authoritative Section & Room from uploadContext
+    const selectedSectionName = uploadContext?.sectionName || doc.section_name || 'B';
+    const selectedRoomNumber = uploadContext?.roomNumber || doc.room_number || (selectedSectionName === 'B' ? 'A006' : 'A007');
+    const selectedEffectiveFrom = uploadContext?.effectiveFrom || doc.effective_from || new Date().toISOString().split('T')[0];
+
+    const warnings: string[] = [...(doc.warnings || [])];
+
+    // Check if AI detected a different section in image text compared to user's selected section
+    if (doc.section_name && uploadContext?.sectionName) {
+      const docClean = doc.section_name.toUpperCase().replace(/SECTION/g, '').trim();
+      const ctxClean = uploadContext.sectionName.toUpperCase().replace(/SECTION/g, '').trim();
+      if (docClean !== ctxClean) {
+        warnings.push(`Uploaded timetable document header indicates Section ${docClean}, but the selected upload section is Section ${ctxClean}. Preserving selected Section ${ctxClean}.`);
+      }
+    }
+
     // Normalize Schedule
     const validSchedule: ExtractedTimetableDay[] = normalizedDays.map(d => {
       const existingDay = doc.schedule?.find(s => {
@@ -281,7 +306,7 @@ export class AITimetableService {
             subject_name: p.subject_name || p.subject_code,
             faculty_code: p.faculty_code || 'FAC',
             faculty_name: p.faculty_name,
-            room_number: p.room_number || doc.room_number || 'A007',
+            room_number: p.room_number || selectedRoomNumber,
             lecture_type: p.is_break ? 'Break' : (p.lecture_type || 'Theory') as any,
             is_break: Boolean(p.is_break || p.subject_code?.toLowerCase().includes('lunch')),
             confidence: p.confidence || 90,
@@ -300,20 +325,26 @@ export class AITimetableService {
       source_file_name: doc.source_file_name || 'Timetable_Document.png',
       source_file_url: doc.source_file_url,
       institution_name: doc.institution_name || 'Vivekananda College of Technology & Management, Aligarh',
-      program_name: doc.program_name || 'B.Tech',
-      branch_name: doc.branch_name || 'CSE',
-      academic_year: doc.academic_year || '2nd Year',
-      semester: doc.semester || '3rd Semester',
-      section_name: doc.section_name || 'A',
-      effective_from: doc.effective_from || new Date().toISOString().split('T')[0],
-      room_number: doc.room_number || 'A007',
-      class_incharges: doc.class_incharges || ['Academic Incharge'],
+      program_name: uploadContext?.programName || doc.program_name || 'B.Tech',
+      program_id: uploadContext?.programId,
+      branch_name: uploadContext?.branchName || doc.branch_name || (selectedSectionName === 'B' ? 'CSE + IT' : 'CSE'),
+      branch_id: uploadContext?.branchId,
+      academic_year: uploadContext?.academicYearName || doc.academic_year || 'Second Year (2026-27)',
+      academic_year_id: uploadContext?.academicYearId,
+      semester: uploadContext?.semesterName || doc.semester || '3rd Semester',
+      semester_id: uploadContext?.semesterId,
+      section_name: selectedSectionName,
+      target_section_id: uploadContext?.sectionId,
+      academic_session_id: uploadContext?.academicSessionId || '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d',
+      effective_from: selectedEffectiveFrom,
+      room_number: selectedRoomNumber,
+      class_incharges: doc.class_incharges || [(selectedSectionName === 'B' ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary')],
       subject_mappings: doc.subject_mappings || [],
       faculty_mappings: doc.faculty_mappings || [],
       schedule: validSchedule,
       overall_confidence: doc.overall_confidence || 88,
       confidence_breakdown: doc.confidence_breakdown || { metadata: 90, grid: 88, legend: 85 },
-      warnings: doc.warnings || [],
+      warnings,
       raw_text: doc.raw_text,
     };
   }
@@ -321,12 +352,20 @@ export class AITimetableService {
   /**
    * Fallback rule-based structured generator when offline or no API key
    */
-  private fallbackIntelligentExtractor(fileName: string, _base64Data: string): ExtractedTimetableDocument {
-    const isSectionB = /\b(section[-_ ]?b|sec[-_ ]?b|\bsec_b\b)\b/i.test(fileName) || 
-                       (fileName.toLowerCase().includes('sec b') || fileName.toLowerCase().includes('section b'));
+  private fallbackIntelligentExtractor(
+    fileName: string, 
+    _base64Data: string,
+    uploadContext?: UploadTargetContext
+  ): ExtractedTimetableDocument {
+    const isSectionB = uploadContext?.sectionName 
+      ? uploadContext.sectionName.toUpperCase().trim() === 'B'
+      : (/\b(section[-_ ]?b|sec[-_ ]?b|\bsec_b\b)\b/i.test(fileName) || 
+         fileName.toLowerCase().includes('sec b') || fileName.toLowerCase().includes('section b'));
+    
     const sectionName = isSectionB ? 'B' : 'A';
-    const roomNumber = isSectionB ? 'A006' : 'A007';
+    const roomNumber = uploadContext?.roomNumber || (isSectionB ? 'A006' : 'A007');
     const incharge = isSectionB ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary';
+    const effectiveFrom = uploadContext?.effectiveFrom || '2026-08-20';
 
     const defaultSubjects: ExtractedSubjectMapping[] = [
       { subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_name: 'Dr. Naseem Ahamad Khan', faculty_code: 'NAK', lecture_type: 'Theory' },
@@ -411,12 +450,18 @@ export class AITimetableService {
       id: `tt-doc-${Date.now()}`,
       source_file_name: fileName,
       institution_name: 'Vivekananda College of Technology & Management, Aligarh',
-      program_name: 'B.Tech',
-      branch_name: isSectionB ? 'CSE + IT' : 'CSE',
-      academic_year: 'Second Year (2026-27)',
-      semester: '3rd Semester',
+      program_name: uploadContext?.programName || 'B.Tech',
+      program_id: uploadContext?.programId,
+      branch_name: uploadContext?.branchName || (isSectionB ? 'CSE + IT' : 'CSE'),
+      branch_id: uploadContext?.branchId,
+      academic_year: uploadContext?.academicYearName || 'Second Year (2026-27)',
+      academic_year_id: uploadContext?.academicYearId,
+      semester: uploadContext?.semesterName || '3rd Semester',
+      semester_id: uploadContext?.semesterId,
       section_name: sectionName,
-      effective_from: '2026-08-20',
+      target_section_id: uploadContext?.sectionId,
+      academic_session_id: uploadContext?.academicSessionId || '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d',
+      effective_from: effectiveFrom,
       room_number: roomNumber,
       class_incharges: [incharge],
       subject_mappings: defaultSubjects,
@@ -424,7 +469,7 @@ export class AITimetableService {
       schedule,
       overall_confidence: 86,
       confidence_breakdown: { metadata: 88, grid: 85, legend: 85 },
-      warnings: ['Processed using offline intelligent vision table parser. Review cells before publishing.']
+      warnings: uploadContext?.sectionName ? [] : ['Processed using offline intelligent vision table parser. Review cells before publishing.']
     };
   }
 }
