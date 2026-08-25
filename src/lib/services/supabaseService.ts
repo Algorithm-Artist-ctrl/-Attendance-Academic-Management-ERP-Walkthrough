@@ -567,6 +567,12 @@ export const supabaseService = {
           content: details.content || '',
           attachment: details.attachment,
           targetAudience: details.targetAudience || 'ALL',
+          targetSectionId: details.targetSectionId || null,
+          targetDepartmentId: details.targetDepartmentId || null,
+          targetProgramId: details.targetProgramId || null,
+          targetYearId: details.targetYearId || null,
+          targetSemesterId: details.targetSemesterId || null,
+          targetRole: details.targetRole || null,
           createdAt: row.created_at
         };
       });
@@ -583,6 +589,12 @@ export const supabaseService = {
     isPinned?: boolean;
     attachment?: string;
     targetAudience?: string;
+    targetSectionId?: string | null;
+    targetDepartmentId?: string | null;
+    targetProgramId?: string | null;
+    targetYearId?: string | null;
+    targetSemesterId?: string | null;
+    targetRole?: string | null;
     actorId?: string;
     actorName?: string;
   }) {
@@ -601,6 +613,12 @@ export const supabaseService = {
         isPinned: notice.isPinned || false,
         attachment: notice.attachment,
         targetAudience: notice.targetAudience || 'ALL',
+        targetSectionId: notice.targetSectionId || null,
+        targetDepartmentId: notice.targetDepartmentId || null,
+        targetProgramId: notice.targetProgramId || null,
+        targetYearId: notice.targetYearId || null,
+        targetSemesterId: notice.targetSemesterId || null,
+        targetRole: notice.targetRole || null,
         date: getISTTodayDate()
       }
     }).select().single();

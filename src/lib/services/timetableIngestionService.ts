@@ -427,7 +427,11 @@ export class TimetableIngestionService {
       author: approvedBy,
       content: `The official academic timetable for ${report.program?.name || 'B.Tech'} ${report.department?.name || 'CSE'} Section ${doc.section_name || 'A'} has been published (Version ${nextVersionNumber}, Effective ${effectiveFrom}). Room: ${doc.room_number || 'Assigned'}. All students and assigned faculty members are requested to check their daily schedule.`,
       isPinned: true,
-      targetAudience: `Section ${doc.section_name || 'A'}`
+      targetAudience: `Section ${doc.section_name || 'A'}`,
+      targetSectionId: targetSectionId,
+      targetDepartmentId: report.department?.id || null,
+      targetProgramId: report.program?.id || null,
+      targetSemesterId: report.semester?.id || null,
     });
 
     return {

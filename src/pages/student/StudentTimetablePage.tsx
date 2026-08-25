@@ -70,10 +70,20 @@ export const StudentTimetablePage: React.FC = () => {
         </div>
       </div>
 
-      {/* MOBILE VIEW: Day Selector Tab Bar & Vertical Period Cards */}
-      <div className="block lg:hidden space-y-4">
-        {/* Day Selector Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
+      {sectionEntries.length === 0 ? (
+        <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20 space-y-3">
+          <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-1" />
+          <h3 className="text-base font-bold text-white">No timetable published for your section.</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            The official academic timetable for Section {currentSection?.name || 'Assigned'} has not been published yet. Please check back later or contact your Class Coordinator.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* MOBILE VIEW: Day Selector Tab Bar & Vertical Period Cards */}
+          <div className="block lg:hidden space-y-4">
+            {/* Day Selector Pills */}
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
           {days.map(d => (
             <button
               key={d}
@@ -234,6 +244,8 @@ export const StudentTimetablePage: React.FC = () => {
           </table>
         </div>
       </div>
-    </div>
-  );
+    </>
+  )}
+</div>
+);
 };

@@ -166,3 +166,22 @@ export interface TimetableSlotDiff {
   conflict?: TimetableConflict;
 }
 
+export interface NoticeItem {
+  id: string;
+  title: string;
+  category: 'Academic' | 'Examination' | 'Events' | 'Urgent' | 'Holidays';
+  date: string;
+  author: string;
+  isPinned: boolean;
+  content: string;
+  attachment?: string;
+  targetAudience?: string;
+  targetSectionId?: string | null;
+  targetDepartmentId?: string | null;
+  targetProgramId?: string | null;
+  targetYearId?: string | null;
+  targetSemesterId?: string | null;
+  targetRole?: string | null;
+  createdAt?: string;
+}
+
