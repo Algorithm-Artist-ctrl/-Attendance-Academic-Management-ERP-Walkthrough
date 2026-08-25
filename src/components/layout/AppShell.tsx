@@ -41,10 +41,26 @@ export const AppShell: React.FC<AppShellProps> = ({
   onTabChange,
 }) => {
   const { user, role, logout } = useAuth();
-  const { institution, corrections } = useAcademic();
+  const { institution, corrections, getFacultyCorrectionRequests } = useAcademic();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const pendingCorrectionsCount = corrections.filter(c => c.status === 'pending').length;
+  const pendingCorrectionsCount = React.useMemo(() => {
+    if (role === 'student') {
+      const studId = user?.student_id || user?.student?.id || user?.id;
+      return corrections.filter(c => c.student_id === studId && c.status === 'pending').length;
+    }
+    if (role === 'faculty') {
+      const facId = user?.faculty_id || user?.faculty?.id || user?.id || '';
+      return getFacultyCorrectionRequests(facId).filter(c => c.status === 'pending').length;
+    }
+    if (role === 'hod') {
+      const deptId = user?.department_id || user?.faculty?.department_id;
+      if (!deptId) return corrections.filter(c => c.status === 'pending').length;
+      return corrections.filter(c => c.status === 'pending' && (c.session?.section?.department_id === deptId || !c.session?.section?.department_id)).length;
+    }
+    // super_admin
+    return corrections.filter(c => c.status === 'pending').length;
+  }, [corrections, role, user, getFacultyCorrectionRequests]);
 
   // Build navigation items based on role (matching Screen 2, 6, 9)
   const getNavItems = () => {
