@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Institution,
   Department,
@@ -102,7 +102,7 @@ interface AcademicContextType {
   isLoading: boolean;
   claimWindowDays: number;
   setClaimWindowDays: (days: number) => void;
-  refreshData: () => Promise<void>;
+  refreshData: (forceRefreshMaster?: boolean) => Promise<void>;
 
   // Real Database Actions
   createAssignment: (data: Omit<Assignment, 'id' | 'created_at' | 'updated_at'>) => Promise<Assignment>;
@@ -254,9 +254,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [marksHistory, setMarksHistory] = useState<MarksHistory[]>([]);
 
   // Function to load and enrich latest records from Supabase
-  const loadDataFromSupabase = useCallback(async () => {
+  const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
     try {
-      const data = await supabaseService.fetchAllData();
+      const data = await supabaseService.fetchAllData(forceRefreshMaster);
       if (data) {
         const loadedInst = data.institutions[0] || erpStorage.getInstitution();
         const loadedDepts = data.departments || [];
@@ -448,7 +448,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Initial load
   useEffect(() => {
-    loadDataFromSupabase();
+    loadDataFromSupabase(true);
+  }, [loadDataFromSupabase]);
+
+  // Debounced realtime synchronization to prevent request storms
+  const realtimeDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedSyncFromSupabase = useCallback(() => {
+    if (realtimeDebounceTimerRef.current) {
+      clearTimeout(realtimeDebounceTimerRef.current);
+    }
+    realtimeDebounceTimerRef.current = setTimeout(() => {
+      loadDataFromSupabase(false);
+    }, 150);
   }, [loadDataFromSupabase]);
 
   // Realtime Supabase Channel Subscription
@@ -459,19 +471,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         'postgres_changes',
         { event: '*', schema: 'public' },
         (payload) => {
-          console.log('⚡ Realtime database mutation received:', payload.table, payload.eventType);
-          loadDataFromSupabase();
+          // Coalesce rapid mutations to prevent render storms
+          debouncedSyncFromSupabase();
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceTimerRef.current) {
+        clearTimeout(realtimeDebounceTimerRef.current);
+      }
       supabase.removeChannel(channel);
     };
-  }, [loadDataFromSupabase]);
+  }, [debouncedSyncFromSupabase]);
 
-  const refreshData = async () => {
-    await loadDataFromSupabase();
+  const refreshData = async (forceRefreshMaster = false) => {
+    await loadDataFromSupabase(forceRefreshMaster);
   };
 
   // 1. Take / Save Attendance

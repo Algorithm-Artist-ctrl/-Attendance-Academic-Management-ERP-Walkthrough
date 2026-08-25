@@ -30,9 +30,40 @@ import {
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
+interface MasterDataCache {
+  timestamp: number;
+  data: {
+    institutions: Institution[];
+    departments: Department[];
+    programs: Program[];
+    sessions: AcademicSession[];
+    years: AcademicYear[];
+    semesters: Semester[];
+    sections: Section[];
+    subjects: Subject[];
+    faculty: Faculty[];
+    assignments: FacultySubjectAssignment[];
+    students: Student[];
+    profiles: UserProfile[];
+  };
+}
+
+let _masterCache: MasterDataCache | null = null;
+const MASTER_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static master setup
+
 export const supabaseService = {
-  // 1. Fetch All Master & Operational Data
-  async fetchAllData() {
+  // Clear in-memory master cache when structural entities change
+  invalidateMasterCache() {
+    _masterCache = null;
+  },
+
+  // 1A. Fetch Static Academic Master Entities (with TTL in-memory cache)
+  async fetchMasterData(forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && _masterCache && (now - _masterCache.timestamp) < MASTER_CACHE_TTL_MS) {
+      return _masterCache.data;
+    }
+
     try {
       const [
         { data: institutions },
@@ -46,19 +77,6 @@ export const supabaseService = {
         { data: faculty },
         { data: assignments },
         { data: students },
-        { data: timetable },
-        { data: attendanceSessions },
-        { data: attendanceRecords },
-        { data: corrections },
-        { data: auditLogs },
-        { data: timetableVersions },
-        { data: assignmentsList },
-        { data: submissionsList },
-        { data: quizzesList },
-        { data: quizResultsList },
-        { data: sessionalMarksList },
-        { data: marksHistoryList },
-        { data: sessionalAssessmentsList },
         { data: profilesList },
       ] = await Promise.all([
         supabase.from('institutions').select('*'),
@@ -72,6 +90,55 @@ export const supabaseService = {
         supabase.from('faculty').select('*'),
         supabase.from('faculty_subject_assignments').select('*'),
         supabase.from('students').select('*'),
+        supabase.from('profiles').select('*'),
+      ]);
+
+      const masterResult = {
+        institutions: (institutions as Institution[]) || [],
+        departments: (departments as Department[]) || [],
+        programs: (programs as Program[]) || [],
+        sessions: (sessions as AcademicSession[]) || [],
+        years: (years as AcademicYear[]) || [],
+        semesters: (semesters as Semester[]) || [],
+        sections: (sections as Section[]) || [],
+        subjects: (subjects as Subject[]) || [],
+        faculty: (faculty as Faculty[]) || [],
+        assignments: (assignments as FacultySubjectAssignment[]) || [],
+        students: (students as Student[]) || [],
+        profiles: (profilesList as UserProfile[]) || [],
+      };
+
+      _masterCache = {
+        timestamp: now,
+        data: masterResult,
+      };
+
+      return masterResult;
+    } catch (err) {
+      console.error('Error fetching master data from Supabase:', err);
+      if (_masterCache) return _masterCache.data;
+      return null;
+    }
+  },
+
+  // 1B. Fetch Dynamic Operational Data (Timetable, Attendance, Assessments, Audit)
+  async fetchOperationalData() {
+    try {
+      const [
+        { data: timetable },
+        { data: attendanceSessions },
+        { data: attendanceRecords },
+        { data: corrections },
+        { data: auditLogs },
+        { data: timetableVersions },
+        { data: assignmentsList },
+        { data: submissionsList },
+        { data: quizzesList },
+        { data: quizResultsList },
+        { data: sessionalMarksList },
+        { data: marksHistoryList },
+        { data: sessionalAssessmentsList },
+      ] = await Promise.all([
         supabase.from('timetable_entries').select('*'),
         supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
         supabase.from('attendance_records').select('*'),
@@ -85,21 +152,9 @@ export const supabaseService = {
         supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
         supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
         supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('*'),
       ]);
 
       return {
-        institutions: (institutions as Institution[]) || [],
-        departments: (departments as Department[]) || [],
-        programs: (programs as Program[]) || [],
-        sessions: (sessions as AcademicSession[]) || [],
-        years: (years as AcademicYear[]) || [],
-        semesters: (semesters as Semester[]) || [],
-        sections: (sections as Section[]) || [],
-        subjects: (subjects as Subject[]) || [],
-        faculty: (faculty as Faculty[]) || [],
-        assignments: (assignments as FacultySubjectAssignment[]) || [],
-        students: (students as Student[]) || [],
         timetable: (timetable as TimetableEntry[]) || [],
         attendanceSessions: (attendanceSessions as AttendanceSession[]) || [],
         attendanceRecords: (attendanceRecords as AttendanceRecord[]) || [],
@@ -113,10 +168,31 @@ export const supabaseService = {
         sessionalMarks: (sessionalMarksList as SessionalMark[]) || [],
         marksHistory: (marksHistoryList as MarksHistory[]) || [],
         sessionalAssessments: (sessionalAssessmentsList as SessionalAssessment[]) || [],
-        profiles: (profilesList as UserProfile[]) || [],
       };
     } catch (err) {
-      console.error('Error fetching data from Supabase:', err);
+      console.error('Error fetching operational data from Supabase:', err);
+      return null;
+    }
+  },
+
+  // 1C. Fetch All Master & Operational Data (Composed efficiently)
+  async fetchAllData(forceRefreshMaster = false) {
+    try {
+      const [masterData, operationalData] = await Promise.all([
+        this.fetchMasterData(forceRefreshMaster),
+        this.fetchOperationalData(),
+      ]);
+
+      if (!masterData || !operationalData) {
+        return null;
+      }
+
+      return {
+        ...masterData,
+        ...operationalData,
+      };
+    } catch (err) {
+      console.error('Error fetching combined data from Supabase:', err);
       return null;
     }
   },
@@ -430,6 +506,7 @@ export const supabaseService = {
       console.warn('Profile auto-creation warning:', profErr);
     }
 
+    this.invalidateMasterCache();
     return createdStudent;
   },
 
@@ -448,6 +525,7 @@ export const supabaseService = {
       }).eq('id', id);
     } catch {}
 
+    this.invalidateMasterCache();
     return updated;
   },
 
@@ -457,6 +535,7 @@ export const supabaseService = {
     try {
       await supabase.from('profiles').delete().eq('id', id);
     } catch {}
+    this.invalidateMasterCache();
     return true;
   },
 
@@ -482,6 +561,7 @@ export const supabaseService = {
       console.warn('Profile auto-creation warning:', profErr);
     }
 
+    this.invalidateMasterCache();
     return createdFaculty;
   },
 
@@ -501,6 +581,7 @@ export const supabaseService = {
       }).or(`id.eq.${id},faculty_id.eq.${id}`);
     } catch {}
 
+    this.invalidateMasterCache();
     return updated;
   },
 
@@ -532,6 +613,7 @@ export const supabaseService = {
       new_values: { email: cleanEmail }
     });
 
+    this.invalidateMasterCache();
     return facData as Faculty;
   },
 
@@ -541,6 +623,7 @@ export const supabaseService = {
     try {
       await supabase.from('profiles').delete().or(`id.eq.${id},faculty_id.eq.${id}`);
     } catch {}
+    this.invalidateMasterCache();
     return true;
   },
 
@@ -576,7 +659,8 @@ export const supabaseService = {
           createdAt: row.created_at
         };
       });
-    } catch {
+    } catch (err) {
+      console.error('Error fetching live notices:', err);
       return [];
     }
   },
@@ -636,84 +720,98 @@ export const supabaseService = {
   async addSubject(sub: Omit<Subject, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('subjects').insert(sub).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Subject;
   },
 
   async updateSubject(id: string, updates: Partial<Subject>) {
     const { data, error } = await supabase.from('subjects').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Subject;
   },
 
   async deleteSubject(id: string) {
     const { error } = await supabase.from('subjects').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return true;
   },
 
   async addDepartment(dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('departments').insert(dept).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Department;
   },
 
   async updateDepartment(id: string, updates: Partial<Department>) {
     const { data, error } = await supabase.from('departments').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Department;
   },
 
   async deleteDepartment(id: string) {
     const { error } = await supabase.from('departments').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return true;
   },
 
   async addProgram(prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('programs').insert(prog).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Program;
   },
 
   async updateProgram(id: string, updates: Partial<Program>) {
     const { data, error } = await supabase.from('programs').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Program;
   },
 
   async deleteProgram(id: string) {
     const { error } = await supabase.from('programs').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return true;
   },
 
   async addSection(sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('sections').insert(sec).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Section;
   },
 
   async updateSection(id: string, updates: Partial<Section>) {
     const { data, error } = await supabase.from('sections').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as Section;
   },
 
   async deleteSection(id: string) {
     const { error } = await supabase.from('sections').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return true;
   },
 
   async addAssignment(assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) {
     const { data, error } = await supabase.from('faculty_subject_assignments').insert(assign).select().single();
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return data as FacultySubjectAssignment;
   },
 
   async deleteAssignment(id: string) {
     const { error } = await supabase.from('faculty_subject_assignments').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return true;
   },
 

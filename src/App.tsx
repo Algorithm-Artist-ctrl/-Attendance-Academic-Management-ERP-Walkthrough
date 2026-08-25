@@ -1,51 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import { AppShell } from './components/layout/AppShell';
-
-// Common Pages
-import { ProfilePage } from './pages/common/ProfilePage';
-import { NoticesPage } from './pages/common/NoticesPage';
-import { SettingsPage } from './pages/common/SettingsPage';
 import vctmOfficialLogo from './assets/vctm-logo.png';
 
-// Student Pages
-import { StudentDashboard } from './pages/student/StudentDashboard';
-import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
-import { StudentTimetablePage } from './pages/student/StudentTimetablePage';
-import { CorrectionRequestsPage } from './pages/student/CorrectionRequestsPage';
-import { FeedbackPage } from './pages/student/FeedbackPage';
-import { LeaveApplicationPage } from './pages/student/LeaveApplicationPage';
-import { StudentQuizzesPage } from './pages/student/StudentQuizzesPage';
-import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
-import { StudentMarksPage } from './pages/student/StudentMarksPage';
+// Lazy Loaded Common Pages
+const ProfilePage = lazy(() => import('./pages/common/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const NoticesPage = lazy(() => import('./pages/common/NoticesPage').then(m => ({ default: m.NoticesPage })));
+const SettingsPage = lazy(() => import('./pages/common/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
-// Faculty Pages
-import { FacultyDashboard } from './pages/faculty/FacultyDashboard';
-import { TakeAttendancePage } from './pages/faculty/TakeAttendancePage';
-import { FacultyTimetablePage } from './pages/faculty/FacultyTimetablePage';
-import { ReviewCorrectionsPage } from './pages/faculty/ReviewCorrectionsPage';
-import { AttendanceHistoryPage } from './pages/faculty/AttendanceHistoryPage';
-import { FacultyAssignmentsPage as CourseAssignmentsPage } from './pages/faculty/FacultyAssignmentsPage';
-import { FacultyQuizzesPage } from './pages/faculty/FacultyQuizzesPage';
-import { FacultySessionalMarksPage } from './pages/faculty/FacultySessionalMarksPage';
-import { FacultySectionWorkspacePage } from './pages/faculty/FacultySectionWorkspacePage';
+// Lazy Loaded Student Pages
+const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+const StudentAttendancePage = lazy(() => import('./pages/student/StudentAttendancePage').then(m => ({ default: m.StudentAttendancePage })));
+const StudentTimetablePage = lazy(() => import('./pages/student/StudentTimetablePage').then(m => ({ default: m.StudentTimetablePage })));
+const CorrectionRequestsPage = lazy(() => import('./pages/student/CorrectionRequestsPage').then(m => ({ default: m.CorrectionRequestsPage })));
+const FeedbackPage = lazy(() => import('./pages/student/FeedbackPage').then(m => ({ default: m.FeedbackPage })));
+const LeaveApplicationPage = lazy(() => import('./pages/student/LeaveApplicationPage').then(m => ({ default: m.LeaveApplicationPage })));
+const StudentQuizzesPage = lazy(() => import('./pages/student/StudentQuizzesPage').then(m => ({ default: m.StudentQuizzesPage })));
+const StudentAssignmentsPage = lazy(() => import('./pages/student/StudentAssignmentsPage').then(m => ({ default: m.StudentAssignmentsPage })));
+const StudentMarksPage = lazy(() => import('./pages/student/StudentMarksPage').then(m => ({ default: m.StudentMarksPage })));
 
-// HOD Pages
-import { HODDashboard } from './pages/hod/HODDashboard';
-import { HODAcademicOversightPage } from './pages/hod/HODAcademicOversightPage';
+// Lazy Loaded Faculty Pages
+const FacultyDashboard = lazy(() => import('./pages/faculty/FacultyDashboard').then(m => ({ default: m.FacultyDashboard })));
+const TakeAttendancePage = lazy(() => import('./pages/faculty/TakeAttendancePage').then(m => ({ default: m.TakeAttendancePage })));
+const FacultyTimetablePage = lazy(() => import('./pages/faculty/FacultyTimetablePage').then(m => ({ default: m.FacultyTimetablePage })));
+const ReviewCorrectionsPage = lazy(() => import('./pages/faculty/ReviewCorrectionsPage').then(m => ({ default: m.ReviewCorrectionsPage })));
+const AttendanceHistoryPage = lazy(() => import('./pages/faculty/AttendanceHistoryPage').then(m => ({ default: m.AttendanceHistoryPage })));
+const CourseAssignmentsPage = lazy(() => import('./pages/faculty/FacultyAssignmentsPage').then(m => ({ default: m.FacultyAssignmentsPage })));
+const FacultyQuizzesPage = lazy(() => import('./pages/faculty/FacultyQuizzesPage').then(m => ({ default: m.FacultyQuizzesPage })));
+const FacultySessionalMarksPage = lazy(() => import('./pages/faculty/FacultySessionalMarksPage').then(m => ({ default: m.FacultySessionalMarksPage })));
+const FacultySectionWorkspacePage = lazy(() => import('./pages/faculty/FacultySectionWorkspacePage').then(m => ({ default: m.FacultySectionWorkspacePage })));
 
-// Admin Pages
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { AcademicSetupPage } from './pages/admin/AcademicSetupPage';
-import { StudentDirectoryPage } from './pages/admin/StudentDirectoryPage';
-import { FacultyDirectoryPage } from './pages/admin/FacultyDirectoryPage';
-import { SubjectsPage } from './pages/admin/SubjectsPage';
-import { FacultyAssignmentsPage } from './pages/admin/FacultyAssignmentsPage';
-import { TimetableManagerPage } from './pages/admin/TimetableManagerPage';
-import { CSVImportPage } from './pages/admin/CSVImportPage';
-import { ReportsPage } from './pages/admin/ReportsPage';
-import { AuditLogsPage } from './pages/admin/AuditLogsPage';
+// Lazy Loaded HOD Pages
+const HODDashboard = lazy(() => import('./pages/hod/HODDashboard').then(m => ({ default: m.HODDashboard })));
+const HODAcademicOversightPage = lazy(() => import('./pages/hod/HODAcademicOversightPage').then(m => ({ default: m.HODAcademicOversightPage })));
+
+// Lazy Loaded Admin Pages
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AcademicSetupPage = lazy(() => import('./pages/admin/AcademicSetupPage').then(m => ({ default: m.AcademicSetupPage })));
+const StudentDirectoryPage = lazy(() => import('./pages/admin/StudentDirectoryPage').then(m => ({ default: m.StudentDirectoryPage })));
+const FacultyDirectoryPage = lazy(() => import('./pages/admin/FacultyDirectoryPage').then(m => ({ default: m.FacultyDirectoryPage })));
+const SubjectsPage = lazy(() => import('./pages/admin/SubjectsPage').then(m => ({ default: m.SubjectsPage })));
+const FacultyAssignmentsPage = lazy(() => import('./pages/admin/FacultyAssignmentsPage').then(m => ({ default: m.FacultyAssignmentsPage })));
+const TimetableManagerPage = lazy(() => import('./pages/admin/TimetableManagerPage').then(m => ({ default: m.TimetableManagerPage })));
+const CSVImportPage = lazy(() => import('./pages/admin/CSVImportPage').then(m => ({ default: m.CSVImportPage })));
+const ReportsPage = lazy(() => import('./pages/admin/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const AuditLogsPage = lazy(() => import('./pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+
+// Lightweight Cyber Skeleton Loader for Fast Transitions
+const PageSkeletonLoader: React.FC = () => (
+  <div className="space-y-6 animate-pulse p-2">
+    <div className="h-24 rounded-3xl bg-slate-900/60 border border-emerald-500/15" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
+      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
+      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
+      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
+    </div>
+    <div className="h-96 rounded-3xl bg-slate-900/50 border border-emerald-500/15" />
+  </div>
+);
 
 export const AppContent: React.FC = () => {
   const { isAuthenticated, role, isLoading } = useAuth();
@@ -148,17 +162,19 @@ export const AppContent: React.FC = () => {
           );
         case 'students':
           return <StudentDirectoryPage />;
-        case 'corrections':
-          return <ReviewCorrectionsPage />;
-        case 'reports':
-          return <ReportsPage />;
         case 'notices':
           return <NoticesPage />;
+        case 'corrections':
+          return <ReviewCorrectionsPage />;
         case 'settings':
           return <SettingsPage />;
         case 'dashboard':
         default:
-          return <FacultyDashboard onNavigate={handleNavigate} />;
+          return (
+            <FacultyDashboard
+              onNavigate={handleNavigate}
+            />
+          );
       }
     }
 
@@ -169,24 +185,49 @@ export const AppContent: React.FC = () => {
           return <ProfilePage />;
         case 'academic_oversight':
           return <HODAcademicOversightPage />;
+        case 'take_attendance':
+          return (
+            <TakeAttendancePage
+              initialTimetableEntryId={navigationParams?.timetableEntryId}
+              onFinished={() => setActiveTab('dashboard')}
+            />
+          );
+        case 'timetable':
+          return <TimetableManagerPage />;
+        case 'subjects':
+          return <SubjectsPage />;
+        case 'faculty_assignments':
+          return <FacultyAssignmentsPage />;
         case 'quizzes':
           return <FacultyQuizzesPage />;
-        case 'faculty_assignments':
+        case 'faculty_assignments_content':
           return <CourseAssignmentsPage />;
+        case 'section_workspace':
+          return (
+            <FacultySectionWorkspacePage
+              initialSubjectId={navigationParams?.subjectId}
+              initialSectionId={navigationParams?.sectionId}
+              initialSubTab={navigationParams?.initialSubTab || 'overview'}
+              onBack={() => setActiveTab('dashboard')}
+              onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+            />
+          );
         case 'sessional_marks':
           return <FacultySessionalMarksPage />;
+        case 'history':
+          return (
+            <AttendanceHistoryPage
+              onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+            />
+          );
         case 'students':
           return <StudentDirectoryPage />;
         case 'faculty':
           return <FacultyDirectoryPage />;
-        case 'timetable':
-          return <TimetableManagerPage />;
-        case 'reports':
-          return <ReportsPage />;
-        case 'corrections':
-          return <ReviewCorrectionsPage />;
         case 'notices':
           return <NoticesPage />;
+        case 'reports':
+          return <ReportsPage />;
         case 'settings':
           return <SettingsPage />;
         case 'dashboard':
@@ -195,58 +236,47 @@ export const AppContent: React.FC = () => {
       }
     }
 
-    // 4. Super Admin Portal Routing
-    switch (activeTab) {
-      case 'profile':
-        return <ProfilePage />;
-      case 'academic_oversight':
-        return <HODAcademicOversightPage />;
-      case 'quizzes':
-        return <FacultyQuizzesPage />;
-      case 'faculty_assignments':
-        return <CourseAssignmentsPage />;
-      case 'sessional_marks':
-        return <FacultySessionalMarksPage />;
-      case 'departments':
-      case 'academic_setup':
-        return <AcademicSetupPage />;
-      case 'timetable':
-        return <TimetableManagerPage />;
-      case 'students':
-        return <StudentDirectoryPage />;
-      case 'faculty':
-        return <FacultyDirectoryPage />;
-      case 'subjects':
-        return <SubjectsPage />;
-      case 'assignments':
-        return <FacultyAssignmentsPage />;
-      case 'csv_import':
-        return <CSVImportPage />;
-      case 'reports':
-        return <ReportsPage />;
-      case 'corrections':
-        return <ReviewCorrectionsPage />;
-      case 'audit_logs':
-        return <AuditLogsPage />;
-      case 'notices':
-        return <NoticesPage />;
-      case 'settings':
-        return <SettingsPage />;
-      case 'dashboard':
-      default:
-        return <AdminDashboard onNavigate={handleNavigate} />;
+    // 4. Admin Portal Routing
+    if (role === 'super_admin') {
+      switch (activeTab) {
+        case 'profile':
+          return <ProfilePage />;
+        case 'academic_setup':
+          return <AcademicSetupPage />;
+        case 'students':
+          return <StudentDirectoryPage />;
+        case 'faculty':
+          return <FacultyDirectoryPage />;
+        case 'subjects':
+          return <SubjectsPage />;
+        case 'faculty_assignments':
+          return <FacultyAssignmentsPage />;
+        case 'timetable':
+          return <TimetableManagerPage />;
+        case 'import':
+          return <CSVImportPage />;
+        case 'reports':
+          return <ReportsPage />;
+        case 'notices':
+          return <NoticesPage />;
+        case 'audit_logs':
+          return <AuditLogsPage />;
+        case 'settings':
+          return <SettingsPage />;
+        case 'dashboard':
+        default:
+          return <AdminDashboard onNavigate={handleNavigate} />;
+      }
     }
+
+    return <StudentDashboard onNavigate={handleNavigate} />;
   };
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      {renderContent()}
+    <AppShell activeTab={activeTab} onTabChange={handleNavigate}>
+      <Suspense fallback={<PageSkeletonLoader />}>
+        {renderContent()}
+      </Suspense>
     </AppShell>
   );
 };
-
-export function App() {
-  return <AppContent />;
-}
-
-export default App;
