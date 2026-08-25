@@ -28,15 +28,19 @@ export const StudentAssignmentsPage: React.FC = () => {
     assignmentSubmissions, 
     subjects, 
     students,
+    assignments,
+    timetable,
     submitAssignment 
   } = useAcademic();
 
   const currentStudent = useMemo(() => {
-    return students.find(s => s.id === user?.student_id || s.id === user?.id);
+    return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
   }, [students, user]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
+
+  const mySectionId = currentStudent?.section_id || currentStudent?.section?.id;
 
   // Active submission modal state
   const [uploadModalAssignment, setUploadModalAssignment] = useState<Assignment | null>(null);
@@ -46,9 +50,9 @@ export const StudentAssignmentsPage: React.FC = () => {
 
   // Filter assignments strictly applicable to student's section
   const myAssignments = useMemo(() => {
-    if (!currentStudent?.section_id) return [];
-    return courseAssignments.filter(a => a.section_id === currentStudent.section_id && a.active);
-  }, [courseAssignments, currentStudent]);
+    if (!mySectionId) return [];
+    return courseAssignments.filter(a => a.section_id === mySectionId && a.active);
+  }, [courseAssignments, mySectionId]);
 
   const filteredAssignments = useMemo(() => {
     return myAssignments.filter(a => {
@@ -59,6 +63,17 @@ export const StudentAssignmentsPage: React.FC = () => {
       return matchesSearch && matchesSubject;
     });
   }, [myAssignments, searchTerm, selectedSubjectFilter]);
+
+  // Distinct enrolled subjects for student's section
+  const enrolledSubjects = useMemo(() => {
+    if (!mySectionId) return [];
+    const secSubIds = new Set([
+      ...myAssignments.map(a => a.subject_id),
+      ...timetable.filter(t => t.section_id === mySectionId && t.active).map(t => t.subject_id),
+      ...assignments.filter(a => a.section_id === mySectionId && a.active !== false).map(a => a.subject_id)
+    ]);
+    return subjects.filter(s => secSubIds.has(s.id));
+  }, [myAssignments, timetable, assignments, subjects, mySectionId]);
 
   const mySubmissionsMap = useMemo(() => {
     if (!currentStudent) return new Map<string, AssignmentSubmission>();
@@ -170,7 +185,7 @@ export const StudentAssignmentsPage: React.FC = () => {
               className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             >
               <option value="ALL">All Enrolled Subjects</option>
-              {subjects.map(s => (
+              {enrolledSubjects.map(s => (
                 <option key={s.id} value={s.id}>{s.subject_code} - {s.subject_name}</option>
               ))}
             </select>

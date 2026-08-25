@@ -820,7 +820,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...timetable.filter(t => t.section_id === studSectionId && t.active).map(t => t.subject_id)
     ]);
 
-    const targetSubjects = subjects.filter(s => s.active && (sectionSubjectIds.size === 0 || sectionSubjectIds.has(s.id)));
+    const targetSubjects = subjects.filter(s => {
+      if (!s.active) return false;
+      if (sectionSubjectIds.size > 0) {
+        return sectionSubjectIds.has(s.id);
+      }
+      if (student?.semester_id && s.semester_id) {
+        return s.semester_id === student.semester_id;
+      }
+      if (student?.program_id && s.program_id) {
+        return s.program_id === student.program_id;
+      }
+      return false;
+    });
 
     const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
       // Find the specific assignment for THIS student's section

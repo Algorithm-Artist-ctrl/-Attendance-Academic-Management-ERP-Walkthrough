@@ -17,17 +17,20 @@ import { erpStorage } from '../../lib/storage/erpStorage';
 
 export const FeedbackPage: React.FC = () => {
   const { user } = useAuth();
-  const { subjects, faculty, assignments } = useAcademic();
-  const student = user?.student;
+  const { subjects, faculty, assignments, timetable, students } = useAcademic();
+  const student = students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
+
+  const mySectionId = student?.section_id || student?.section?.id;
 
   // Filter subjects enrolled in student's section
   const enrolledSubjects = React.useMemo(() => {
-    if (!student?.section_id) return subjects;
-    const sectionSubjectIds = new Set(
-      assignments.filter(a => a.section_id === student.section_id).map(a => a.subject_id)
-    );
+    if (!mySectionId) return [];
+    const sectionSubjectIds = new Set([
+      ...assignments.filter(a => a.section_id === mySectionId && a.active !== false).map(a => a.subject_id),
+      ...timetable.filter(t => t.section_id === mySectionId && t.active).map(t => t.subject_id)
+    ]);
     return subjects.filter(s => sectionSubjectIds.has(s.id));
-  }, [subjects, assignments, student]);
+  }, [subjects, assignments, timetable, mySectionId]);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedFacultyId, setSelectedFacultyId] = useState('');
@@ -36,8 +39,10 @@ export const FeedbackPage: React.FC = () => {
   React.useEffect(() => {
     if (selectedSubjectId) {
       const match = assignments.find(
-        a => a.subject_id === selectedSubjectId && a.section_id === student?.section_id
-      ) || assignments.find(a => a.subject_id === selectedSubjectId);
+        a => a.subject_id === selectedSubjectId && a.section_id === mySectionId
+      ) || timetable.find(
+        t => t.subject_id === selectedSubjectId && t.section_id === mySectionId && t.active
+      );
 
       if (match) {
         setSelectedFacultyId(match.faculty_id);
@@ -47,7 +52,7 @@ export const FeedbackPage: React.FC = () => {
     } else {
       setSelectedFacultyId('');
     }
-  }, [selectedSubjectId, assignments, student]);
+  }, [selectedSubjectId, assignments, timetable, mySectionId]);
   
   // Rating categories (start unrated at 0)
   const [ratingKnowledge, setRatingKnowledge] = useState(0);

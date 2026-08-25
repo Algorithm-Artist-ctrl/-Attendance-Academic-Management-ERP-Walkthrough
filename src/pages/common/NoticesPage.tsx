@@ -34,6 +34,7 @@ export const NoticesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [notices, setNotices] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
 
   // New Notice Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -230,7 +231,26 @@ export const NoticesPage: React.FC = () => {
     return true;
   });
 
-  const filteredNotices = visibleNotices.filter(n => {
+  // Deduplicate timetable version circulars if not showing archived versions
+  const activeNotices = React.useMemo(() => {
+    if (showArchived) return visibleNotices;
+    const seenSectionTimetable = new Set<string>();
+    return visibleNotices.filter(n => {
+      if (n.title.startsWith('Official Timetable Updated — Section ')) {
+        const secMatch = n.title.match(/Section ([A-Z0-9]+)/i);
+        const secKey = secMatch ? secMatch[1].toUpperCase() : 'ALL';
+        if (seenSectionTimetable.has(secKey)) {
+          return false; // Suppress older superseded version circulars
+        }
+        seenSectionTimetable.add(secKey);
+      }
+      return true;
+    });
+  }, [visibleNotices, showArchived]);
+
+  const archivedCount = visibleNotices.length - activeNotices.length;
+
+  const filteredNotices = activeNotices.filter(n => {
     const matchesSearch = 
       n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       n.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -293,22 +313,38 @@ export const NoticesPage: React.FC = () => {
           />
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20">
-          {['ALL', 'Urgent', 'Examination', 'Academic', 'Events', 'Holidays'].map((cat) => (
+        {/* Category Filter Pills & Archive Toggle */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20">
+            {['ALL', 'Urgent', 'Examination', 'Academic', 'Events', 'Holidays'].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={clsx(
+                  'px-3 py-1 rounded-xl transition-all cursor-pointer text-[11px]',
+                  selectedCategory === cat
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {archivedCount > 0 && (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => setShowArchived(!showArchived)}
               className={clsx(
-                'px-3 py-1 rounded-xl transition-all cursor-pointer text-[11px]',
-                selectedCategory === cat
-                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
-                  : 'text-slate-400 hover:text-white'
+                'px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer',
+                showArchived
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
               )}
             >
-              {cat}
+              {showArchived ? 'Hide Old Versions' : `Show Archived Versions (${archivedCount})`}
             </button>
-          ))}
+          )}
         </div>
       </div>
 

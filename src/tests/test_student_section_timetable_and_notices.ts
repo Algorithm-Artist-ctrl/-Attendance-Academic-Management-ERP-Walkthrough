@@ -68,7 +68,7 @@ async function runStudentSectionTimetableAndNoticesTest() {
   const studentATimetable = timetable.filter(t => (t.section_id === studentA.section_id) && t.active);
   assert(studentATimetable.length === timetableSecA.length, 'Student A sees exactly Section A timetable lectures');
   assert(studentATimetable.every(t => t.section_id === secA.id), '100% of Student A timetable entries belong to Section A');
-  assert(studentATimetable.none ? !studentATimetable.some(t => t.section_id === secB.id) : true, 'Student A sees ZERO Section B timetable lectures');
+  assert(!studentATimetable.some(t => t.section_id === secB.id), 'Student A sees ZERO Section B timetable lectures');
 
   // Verify Student B sees ONLY Section B timetable
   const studentBTimetable = timetable.filter(t => (t.section_id === studentB.section_id) && t.active);
@@ -95,7 +95,7 @@ async function runStudentSectionTimetableAndNoticesTest() {
     content: 'All Section A students must assemble in Lab 3.',
     targetAudience: 'Section A',
     targetSectionId: secA.id,
-    targetDepartmentId: secA.department_id || null,
+    targetDepartmentId: (secA as any).department_id || null,
     targetRole: null
   });
   assert(Boolean(publishedSecA), 'Published Section A targeted notice to Supabase');
@@ -108,7 +108,7 @@ async function runStudentSectionTimetableAndNoticesTest() {
     content: 'All Section B students must assemble in Seminar Hall.',
     targetAudience: 'Section B',
     targetSectionId: secB.id,
-    targetDepartmentId: secB.department_id || null,
+    targetDepartmentId: (secB as any).department_id || null,
     targetRole: null
   });
   assert(Boolean(publishedSecB), 'Published Section B targeted notice to Supabase');

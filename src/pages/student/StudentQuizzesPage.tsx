@@ -19,20 +19,22 @@ import { clsx } from 'clsx';
 
 export const StudentQuizzesPage: React.FC = () => {
   const { user } = useAuth();
-  const { quizzes, quizResults, subjects, students } = useAcademic();
+  const { quizzes, quizResults, subjects, students, assignments, timetable } = useAcademic();
 
   const currentStudent = useMemo(() => {
-    return students.find(s => s.id === user?.student_id || s.id === user?.id);
+    return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
   }, [students, user]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
 
+  const mySectionId = currentStudent?.section_id || currentStudent?.section?.id;
+
   // Filter quizzes strictly applicable to student's section
   const myQuizzes = useMemo(() => {
-    if (!currentStudent?.section_id) return [];
-    return quizzes.filter(q => q.section_id === currentStudent.section_id && q.active);
-  }, [quizzes, currentStudent]);
+    if (!mySectionId) return [];
+    return quizzes.filter(q => q.section_id === mySectionId && q.active);
+  }, [quizzes, mySectionId]);
 
   const filteredQuizzes = useMemo(() => {
     return myQuizzes.filter(q => {
@@ -44,16 +46,16 @@ export const StudentQuizzesPage: React.FC = () => {
     });
   }, [myQuizzes, searchTerm, selectedSubjectFilter]);
 
-  // Distinct enrolled subjects
+  // Distinct enrolled subjects for student's section
   const enrolledSubjects = useMemo(() => {
-    const map = new Map<string, typeof subjects[0]>();
-    for (const q of myQuizzes) {
-      if (q.subject && !map.has(q.subject.id)) {
-        map.set(q.subject.id, q.subject);
-      }
-    }
-    return Array.from(map.values());
-  }, [myQuizzes]);
+    if (!mySectionId) return [];
+    const secSubIds = new Set([
+      ...myQuizzes.map(q => q.subject_id),
+      ...timetable.filter(t => t.section_id === mySectionId && t.active).map(t => t.subject_id),
+      ...assignments.filter(a => a.section_id === mySectionId && a.active !== false).map(a => a.subject_id)
+    ]);
+    return subjects.filter(s => secSubIds.has(s.id));
+  }, [myQuizzes, timetable, assignments, subjects, mySectionId]);
 
   return (
     <div className="space-y-6">

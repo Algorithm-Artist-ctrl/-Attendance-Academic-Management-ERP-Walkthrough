@@ -20,7 +20,7 @@ export const StudentMarksPage: React.FC = () => {
   const { students, getStudentAcademicScorecard } = useAcademic();
 
   const currentStudent = useMemo(() => {
-    return students.find(s => s.id === user?.student_id || s.id === user?.id);
+    return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
   }, [students, user]);
 
   const scorecard = useMemo(() => {

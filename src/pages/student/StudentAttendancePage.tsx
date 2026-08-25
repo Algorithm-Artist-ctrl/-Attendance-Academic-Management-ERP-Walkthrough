@@ -633,9 +633,9 @@ export const StudentAttendancePage: React.FC = () => {
                 onChange={(e) => setSelectedSubjectFilter(e.target.value)}
                 className="px-3 py-1.5 text-xs font-semibold bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
               >
-                <option value="all">All Subjects (10)</option>
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
+                <option value="all">All Enrolled Subjects ({stats.subjectStats.length})</option>
+                {stats.subjectStats.map(s => (
+                  <option key={s.subjectId} value={s.subjectId}>{s.subjectName} ({s.subjectCode})</option>
                 ))}
               </select>
             </div>
