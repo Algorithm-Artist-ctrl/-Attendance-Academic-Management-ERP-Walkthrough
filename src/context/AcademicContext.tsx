@@ -208,6 +208,7 @@ interface AcademicContextType {
     notRecordedCount: number;
     pendingClaimsCount: number;
   };
+  getStudentTimetable: (studentId: string) => TimetableEntry[];
   getTodayLecturesForStudent: (studentId: string, customDateStr?: string) => TodayAttendanceLecture[];
   getDateLecturesForStudent: (studentId: string, dateStr: string) => DateWiseAttendanceSummary;
   getFacultyCorrectionRequests: (facultyId: string) => AttendanceCorrection[];
@@ -898,7 +899,27 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   };
 
-  // 8. Get Today's Live Attendance Lectures for Student
+  // 8. Authoritative Master Timetable Query for Student (Single Source of Truth)
+  const getStudentTimetable = (studentId: string): TimetableEntry[] => {
+    const student = students.find(s => s.id === studentId || s.roll_number === studentId);
+    if (!student) return [];
+
+    const sectionId = student.section_id || student.section?.id;
+    if (!sectionId) return [];
+
+    const daysOrder: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    return timetable
+      .filter(t => (t.section_id === sectionId || t.section?.id === sectionId) && t.active)
+      .sort((a, b) => {
+        const dA = daysOrder.indexOf(a.day_of_week);
+        const dB = daysOrder.indexOf(b.day_of_week);
+        if (dA !== dB) return dA - dB;
+        return a.period_number - b.period_number;
+      });
+  };
+
+  // 9. Get Today's Live Attendance Lectures for Student (Consumes Same Authoritative Timetable)
   const getTodayLecturesForStudent = (studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
     const student = students.find(s => s.id === studentId || s.roll_number === studentId);
     if (!student) return [];
@@ -910,11 +931,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const targetDateStr = customDateStr || defaultDateStr;
     const dayOfWeek: DayOfWeek = getISTDayOfWeek(targetDateStr);
 
-    const sectionEntries = dayOfWeek === 'SUN' 
-      ? [] 
-      : timetable
-          .filter(t => (t.section_id === sectionId || t.section?.id === sectionId) && t.day_of_week === dayOfWeek && t.active)
-          .sort((a, b) => a.period_number - b.period_number);
+    if (dayOfWeek === 'SUN') return [];
+
+    const allStudentEntries = getStudentTimetable(studentId);
+    const sectionEntries = allStudentEntries.filter(t => t.day_of_week === dayOfWeek);
 
     return sectionEntries.map(entry => {
       const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
@@ -1415,6 +1435,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         reviewCorrectionRequest,
         canSubmitClaim,
         getStudentAttendance,
+        getStudentTimetable,
         getTodayLecturesForStudent,
         getDateLecturesForStudent,
         getFacultyCorrectionRequests,
