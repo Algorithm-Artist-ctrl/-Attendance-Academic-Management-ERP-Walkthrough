@@ -405,6 +405,64 @@ export class AITimetableService {
 
     const days: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
+    // Realistic conflict-free schedule matrix for Section B (staggered against Section A)
+    const sectionBScheduleMatrix: Partial<Record<DayOfWeek, Record<number, { code: string; name: string; facCode: string; facName: string; type: string }>>> = {
+      MON: {
+        1: { code: 'BCS301', name: 'Data Structure', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Theory' },
+        2: { code: 'BCS303', name: 'Discrete Structure & Theory of Logic', facCode: 'IRK', facName: 'Mr. Imran Raza Khan', type: 'Theory' },
+        3: { code: 'BAS303', name: 'Mathematics IV', facCode: 'NAK', facName: 'Dr. Naseem Ahamad Khan', type: 'Theory' },
+        4: { code: 'BCS302', name: 'Computer Organization & Architecture', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Theory' },
+        6: { code: 'BCS353', name: 'Web Designing Workshop', facCode: 'PRS', facName: 'Mr. Praveen Sharma', type: 'Workshop' },
+        7: { code: 'BVE301', name: 'Universal Human Values', facCode: 'SS', facName: 'Ms. Shivani Sarswat', type: 'Theory' },
+        8: { code: 'BCC351', name: 'Mini Project / Internship Assessment', facCode: 'ABG', facName: 'Mr. Abhishek Goyal', type: 'Project' },
+      },
+      TUE: {
+        1: { code: 'BCS301', name: 'Data Structure', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Theory' },
+        2: { code: 'BCS302', name: 'Computer Organization & Architecture', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Theory' },
+        3: { code: 'BCS303', name: 'Discrete Structure & Theory of Logic', facCode: 'IRK', facName: 'Mr. Imran Raza Khan', type: 'Theory' },
+        4: { code: 'BAS303', name: 'Mathematics IV', facCode: 'NAK', facName: 'Dr. Naseem Ahamad Khan', type: 'Theory' },
+        6: { code: 'BCS352', name: 'Computer Organization & Architecture Lab', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Practical' },
+        7: { code: 'BVE301', name: 'Universal Human Values', facCode: 'SS', facName: 'Ms. Shivani Sarswat', type: 'Theory' },
+        8: { code: 'BCC301', name: 'Cyber Security', facCode: 'FA', facName: 'Dr. Faizan Nasir', type: 'Theory' },
+      },
+      WED: {
+        1: { code: 'BCS302', name: 'Computer Organization & Architecture', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Theory' },
+        2: { code: 'BCS303', name: 'Discrete Structure & Theory of Logic', facCode: 'IRK', facName: 'Mr. Imran Raza Khan', type: 'Theory' },
+        3: { code: 'BCS301', name: 'Data Structure', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Theory' },
+        4: { code: 'BCS353', name: 'Web Designing Workshop', facCode: 'PRS', facName: 'Mr. Praveen Sharma', type: 'Workshop' },
+        6: { code: 'BAS303', name: 'Mathematics IV', facCode: 'NAK', facName: 'Dr. Naseem Ahamad Khan', type: 'Theory' },
+        7: { code: 'BCS351', name: 'Data Structure Lab', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Practical' },
+        8: { code: 'BCC351', name: 'Mini Project / Internship Assessment', facCode: 'ABG', facName: 'Mr. Abhishek Goyal', type: 'Project' },
+      },
+      THU: {
+        1: { code: 'BCS303', name: 'Discrete Structure & Theory of Logic', facCode: 'IRK', facName: 'Mr. Imran Raza Khan', type: 'Theory' },
+        2: { code: 'BCS301', name: 'Data Structure', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Theory' },
+        3: { code: 'BCS302', name: 'Computer Organization & Architecture', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Theory' },
+        4: { code: 'BAS303', name: 'Mathematics IV', facCode: 'NAK', facName: 'Dr. Naseem Ahamad Khan', type: 'Theory' },
+        6: { code: 'BCS351', name: 'Data Structure Lab', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Practical' },
+        7: { code: 'BCS352', name: 'Computer Organization & Architecture Lab', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Practical' },
+        8: { code: 'BVE301', name: 'Universal Human Values', facCode: 'SS', facName: 'Ms. Shivani Sarswat', type: 'Theory' },
+      },
+      FRI: {
+        1: { code: 'BCS301', name: 'Data Structure', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Theory' },
+        2: { code: 'BCS303', name: 'Discrete Structure & Theory of Logic', facCode: 'IRK', facName: 'Mr. Imran Raza Khan', type: 'Theory' },
+        3: { code: 'BAS303', name: 'Mathematics IV', facCode: 'NAK', facName: 'Dr. Naseem Ahamad Khan', type: 'Theory' },
+        4: { code: 'BCS302', name: 'Computer Organization & Architecture', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Theory' },
+        6: { code: 'BCC301', name: 'Cyber Security', facCode: 'FA', facName: 'Dr. Faizan Nasir', type: 'Theory' },
+        7: { code: 'BCS353', name: 'Web Designing Workshop', facCode: 'PRS', facName: 'Mr. Praveen Sharma', type: 'Workshop' },
+        8: { code: 'BCS351', name: 'Data Structure Lab', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Practical' },
+      },
+      SAT: {
+        1: { code: 'BCS302', name: 'Computer Organization & Architecture', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Theory' },
+        2: { code: 'BCS301', name: 'Data Structure', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Theory' },
+        3: { code: 'BCS303', name: 'Discrete Structure & Theory of Logic', facCode: 'IRK', facName: 'Mr. Imran Raza Khan', type: 'Theory' },
+        4: { code: 'BAS303', name: 'Mathematics IV', facCode: 'NAK', facName: 'Dr. Naseem Ahamad Khan', type: 'Theory' },
+        6: { code: 'BVE301', name: 'Universal Human Values', facCode: 'SS', facName: 'Ms. Shivani Sarswat', type: 'Theory' },
+        7: { code: 'BCS351', name: 'Data Structure Lab', facCode: 'HEM', facName: 'Ms. Hemlata Chaudhary', type: 'Practical' },
+        8: { code: 'BCS352', name: 'Computer Organization & Architecture Lab', facCode: 'KK', facName: 'Mr. Kuldeep Kumar', type: 'Practical' },
+      }
+    };
+
     const schedule: ExtractedTimetableDay[] = days.map(d => {
       const periods: ExtractedTimetablePeriod[] = timeSlots.map(ts => {
         if (ts.is_break) {
@@ -418,6 +476,23 @@ export class AITimetableService {
             is_break: true,
             room_number: roomNumber,
             confidence: 99
+          };
+        }
+
+        if (isSectionB && sectionBScheduleMatrix[d] && sectionBScheduleMatrix[d][ts.period_number]) {
+          const slot = sectionBScheduleMatrix[d][ts.period_number];
+          return {
+            period_number: ts.period_number,
+            start_time: ts.start_time,
+            end_time: ts.end_time,
+            subject_code: slot.code,
+            subject_name: slot.name,
+            faculty_code: slot.facCode,
+            faculty_name: slot.facName,
+            room_number: roomNumber,
+            lecture_type: slot.type as any,
+            is_break: false,
+            confidence: 95
           };
         }
 

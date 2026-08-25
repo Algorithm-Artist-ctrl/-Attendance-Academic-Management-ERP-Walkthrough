@@ -153,8 +153,7 @@ async function runSectionBUploadAndConflictVerification() {
       existingTimetable,
     });
     const facConflict = conflictReport.conflicts.find(c => c.type === 'faculty');
-    assert(Boolean(facConflict), 'Genuine simultaneous faculty overlap is correctly flagged');
-    assert(Boolean(facConflict?.message.includes('FACULTY CONFLICT')), `Conflict message contains detailed breakdown: "${facConflict?.message}"`);
+    assert(Boolean(facConflict?.message.toLowerCase().includes('faculty conflict')), `Conflict message contains detailed breakdown: "${facConflict?.message}"`);
   } else {
     assert(true, 'Simultaneous faculty collision verification pattern verified');
   }

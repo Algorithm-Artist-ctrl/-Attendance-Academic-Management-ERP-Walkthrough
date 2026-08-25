@@ -241,42 +241,95 @@ export class TimetableResolver {
                         (newSlot.faculty_name ? findMatchingFaculty(newSlot.faculty_name) : undefined);
         }
 
+        // Helper: Time Interval Overlap (startA < endB && endA > startB)
+        const toMinutes = (timeStr?: string): number => {
+          if (!timeStr) return 0;
+          const parts = timeStr.trim().split(':').map(Number);
+          return (parts[0] || 0) * 60 + (parts[1] || 0);
+        };
+
+        const doTimeOverlap = (sA?: string, eA?: string, sB?: string, eB?: string): boolean => {
+          if (!sA || !eA || !sB || !eB) return false;
+          const startA = toMinutes(sA);
+          const endA = toMinutes(eA);
+          const startB = toMinutes(sB);
+          const endB = toMinutes(eB);
+          return startA < endB && endA > startB;
+        };
+
+        const slotStart = newSlot?.start_time || '09:00';
+        const slotEnd = newSlot?.end_time || '09:50';
+        const targetSecName = section?.name || doc.section_name || 'Target Section';
+
         // Check Conflicts for new slot against other sections
         let slotConflict: TimetableConflict | undefined;
+
+        // A. FACULTY CONFLICT: Same faculty + same day + overlapping time + active in another section
         if (newSlot && resolvedFac) {
-          const facultyOverlap = existingTimetable.find(t => 
-            t.faculty_id === resolvedFac?.id &&
-            t.day_of_week === day &&
-            t.period_number === pNum &&
-            t.section_id !== targetSectionId &&
-            t.active
-          );
+          const facultyOverlap = existingTimetable.find(t => {
+            if (t.faculty_id !== resolvedFac?.id || t.day_of_week !== day || !t.active) return false;
+            if (t.section_id === targetSectionId) return false; // Exclude own section being replaced
+
+            const existStart = t.start_time?.substring(0, 5) || '09:00';
+            const existEnd = t.end_time?.substring(0, 5) || '09:50';
+
+            return doTimeOverlap(slotStart, slotEnd, existStart, existEnd);
+          });
 
           if (facultyOverlap) {
             const conflictSecName = sections.find(s => s.id === facultyOverlap.section_id)?.name || facultyOverlap.section?.name || 'another section';
+            const existStart = facultyOverlap.start_time?.substring(0, 5) || '09:00';
+            const existEnd = facultyOverlap.end_time?.substring(0, 5) || '09:50';
+
             slotConflict = {
               type: 'faculty',
-              message: `FACULTY CONFLICT: ${resolvedFac.full_name} (${resolvedFac.faculty_code || 'FAC'}) is already assigned in Section ${conflictSecName} on ${day} Period ${pNum} (${newSlot.start_time}–${newSlot.end_time}) in Room ${facultyOverlap.room_number || 'Room'}.`,
+              message: `Faculty conflict: ${resolvedFac.full_name} (${resolvedFac.faculty_code || 'FAC'}) is assigned to Section ${conflictSecName} on ${day} ${existStart}–${existEnd} and Section ${targetSecName} on ${day} ${slotStart}–${slotEnd} in Room ${facultyOverlap.room_number || 'Room'}.`,
               conflictingEntry: facultyOverlap
             };
             conflicts.push(slotConflict);
           }
         }
 
+        // B. ROOM CONFLICT: Same room + same day + overlapping time + active in another section
         if (newSlot && (newSlot.room_number || doc.room_number)) {
           const roomToTest = (newSlot.room_number || doc.room_number).toUpperCase().replace(/ROOM/g, '').trim();
           const roomOverlap = existingTimetable.find(t => {
-            if (t.section_id === targetSectionId || !t.active) return false;
+            if (t.section_id === targetSectionId || !t.active || t.day_of_week !== day) return false;
             const tRoom = (t.room_number || '').toUpperCase().replace(/ROOM/g, '').trim();
-            return tRoom === roomToTest && t.day_of_week === day && t.period_number === pNum;
+            if (tRoom !== roomToTest) return false;
+
+            const existStart = t.start_time?.substring(0, 5) || '09:00';
+            const existEnd = t.end_time?.substring(0, 5) || '09:50';
+
+            return doTimeOverlap(slotStart, slotEnd, existStart, existEnd);
           });
 
           if (roomOverlap && !slotConflict) {
             const conflictSecName = sections.find(s => s.id === roomOverlap.section_id)?.name || roomOverlap.section?.name || 'another section';
+            const existStart = roomOverlap.start_time?.substring(0, 5) || '09:00';
+            const existEnd = roomOverlap.end_time?.substring(0, 5) || '09:50';
+
             slotConflict = {
               type: 'room',
-              message: `ROOM CONFLICT: Room ${roomToTest} is already occupied by Section ${conflictSecName} on ${day} Period ${pNum} (${newSlot.start_time}–${newSlot.end_time}).`,
+              message: `Room conflict: Room ${roomToTest} is already occupied by Section ${conflictSecName} on ${day} ${existStart}–${existEnd}.`,
               conflictingEntry: roomOverlap
+            };
+            conflicts.push(slotConflict);
+          }
+        }
+
+        // C. SAME-SECTION CONFLICT: Overlapping simultaneous classes in this same section
+        if (newSlot && !slotConflict) {
+          const sameSecOverlap = dayPeriods.find(other => 
+            other !== newSlot &&
+            !other.is_break &&
+            doTimeOverlap(slotStart, slotEnd, other.start_time, other.end_time)
+          );
+
+          if (sameSecOverlap) {
+            slotConflict = {
+              type: 'section',
+              message: `Section scheduling conflict: Section ${targetSecName} has multiple simultaneous classes on ${day} ${slotStart}–${slotEnd} (${newSlot.subject_code} and ${sameSecOverlap.subject_code}).`,
             };
             conflicts.push(slotConflict);
           }
