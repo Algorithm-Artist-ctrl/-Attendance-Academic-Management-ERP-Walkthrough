@@ -56,7 +56,11 @@ export const AppShell: React.FC<AppShellProps> = ({
     if (role === 'hod') {
       const deptId = user?.department_id || user?.faculty?.department_id;
       if (!deptId) return corrections.filter(c => c.status === 'pending').length;
-      return corrections.filter(c => c.status === 'pending' && (c.session?.section?.department_id === deptId || !c.session?.section?.department_id)).length;
+      return corrections.filter(c => c.status === 'pending' && (
+        c.record?.session?.subject?.department_id === deptId ||
+        c.record?.session?.faculty?.department_id === deptId ||
+        !c.record?.session?.subject?.department_id
+      )).length;
     }
     // super_admin
     return corrections.filter(c => c.status === 'pending').length;
