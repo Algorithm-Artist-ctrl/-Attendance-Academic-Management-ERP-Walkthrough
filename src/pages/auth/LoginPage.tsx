@@ -74,6 +74,16 @@ export const LoginPage: React.FC = () => {
             <p className="text-[11px] text-slate-400 max-w-sm pt-2">
               Next-Generation Academic Attendance & Institutional Governance Platform • College Code: 340
             </p>
+
+            {/* Subtle Copyright & Software Ownership Notice */}
+            <div className="pt-4 text-center space-y-0.5 select-none">
+              <p className="text-[10.5px] text-slate-400 font-medium">
+                © 2026 All Rights Reserved | <span className="text-[#00ff88] font-bold">Tarun Kushwah</span>
+              </p>
+              <p className="text-[9px] text-slate-500 leading-tight">
+                Unauthorized copying, distribution, or modification of this software is strictly prohibited.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -228,6 +238,16 @@ export const LoginPage: React.FC = () => {
             <div className="mt-6 pt-4 border-t border-emerald-500/15 text-center flex items-center justify-center gap-1.5 text-xs text-slate-400">
               <ShieldCheck className="w-4 h-4 text-[#00ff88]" />
               <span>Secure with Supabase Auth & RLS</span>
+            </div>
+
+            {/* Subtle Copyright & Ownership Notice */}
+            <div className="mt-4 pt-2 text-center space-y-0.5 select-none">
+              <p className="text-[10.5px] text-slate-400 font-medium">
+                © 2026 All Rights Reserved | <span className="text-[#00ff88] font-bold">Tarun Kushwah</span>
+              </p>
+              <p className="text-[9px] text-slate-500 leading-tight max-w-xs mx-auto">
+                Unauthorized copying, distribution, or modification of this software is strictly prohibited.
+              </p>
             </div>
 
           </div>
