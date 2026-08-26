@@ -228,6 +228,8 @@ export const AppContent: React.FC = () => {
           return <NoticesPage />;
         case 'reports':
           return <ReportsPage />;
+        case 'corrections':
+          return <ReviewCorrectionsPage />;
         case 'settings':
           return <SettingsPage />;
         case 'dashboard':
@@ -257,6 +259,8 @@ export const AppContent: React.FC = () => {
           return <CSVImportPage />;
         case 'reports':
           return <ReportsPage />;
+        case 'corrections':
+          return <ReviewCorrectionsPage />;
         case 'notices':
           return <NoticesPage />;
         case 'audit_logs':

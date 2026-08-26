@@ -45,8 +45,34 @@ export const ReviewCorrectionsPage: React.FC = () => {
   ) || user?.faculty;
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
-  // Filter requests strictly assigned to this faculty (or all for admin/hod)
-  const myClaims = role === 'super_admin' ? corrections : getFacultyCorrectionRequests(facultyId);
+  // Filter requests strictly assigned to this faculty (or department-wide for HOD, or all for admin)
+  const myClaims = React.useMemo(() => {
+    if (role === 'super_admin') {
+      return corrections;
+    }
+    if (role === 'hod') {
+      const deptId = user?.department_id || currentFaculty?.department_id;
+      if (!deptId) return corrections;
+      return corrections.filter(c => {
+        const rec = c.record || attendanceRecords.find(r => r.id === c.attendance_record_id);
+        const sess = rec?.session || attendanceSessions.find(s => s.id === rec?.attendance_session_id);
+        const sub = sess?.subject || subjects.find(s => s.id === sess?.subject_id);
+        const fac = sess?.faculty || faculty.find(f => f.id === sess?.faculty_id);
+        return sub?.department_id === deptId || fac?.department_id === deptId || !sub?.department_id;
+      });
+    }
+    return getFacultyCorrectionRequests(facultyId);
+  }, [role, user, currentFaculty, corrections, attendanceRecords, attendanceSessions, subjects, faculty, facultyId, getFacultyCorrectionRequests]);
+
+  const reviewerTitle = React.useMemo(() => {
+    if (role === 'hod') {
+      return `${currentFaculty?.full_name || user?.full_name || 'HOD'} (HOD)`;
+    }
+    if (role === 'super_admin') {
+      return `${user?.full_name || 'Super Admin'} (Admin)`;
+    }
+    return currentFaculty?.full_name || user?.full_name || 'Faculty Member';
+  }, [role, currentFaculty, user]);
 
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -124,7 +150,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
         </div>
 
         <div className="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/25 text-[#00ff88]">
-          Reviewer: <strong className="text-white">{currentFaculty?.full_name || user?.full_name || 'Faculty Member'}</strong>
+          Reviewer: <strong className="text-white">{reviewerTitle}</strong>
         </div>
       </div>
 
@@ -221,7 +247,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                       <div>
                         <span className="font-mono text-xs font-black text-emerald-400">{stud?.roll_number}</span>
                         <h4 className="text-sm font-bold text-white mt-0.5">{stud?.full_name || 'Student'}</h4>
-                        <span className="text-[10px] text-slate-400">Section {sec?.name || 'A'}</span>
+                        <span className="text-[10px] text-slate-400">Section {sec?.name || stud?.section?.name || ''}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 shrink-0">
@@ -321,7 +347,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                               {stud?.full_name || 'Student'}
                             </div>
                             <div className="text-[11px] text-emerald-400 font-mono font-semibold">
-                              Roll: {stud?.roll_number} • Sec {sec?.name || stud?.section?.name || 'A'}
+                              Roll: {stud?.roll_number} • Sec {sec?.name || stud?.section?.name || ''}
                             </div>
                           </td>
 
@@ -330,7 +356,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
                               {sub?.subject_name || 'Subject'}
                             </div>
                             <div className="text-[10px] text-slate-400 font-mono">
-                              {sub?.subject_code} • Room {sec?.room_number || 'A-007'}
+                              {sub?.subject_code} {sec?.room_number ? `• Room ${sec.room_number}` : ''}
                             </div>
                           </td>
 

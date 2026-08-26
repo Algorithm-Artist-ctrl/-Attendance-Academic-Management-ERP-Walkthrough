@@ -41,7 +41,15 @@ export const AppShell: React.FC<AppShellProps> = ({
   onTabChange,
 }) => {
   const { user, role, logout } = useAuth();
-  const { institution, corrections, getFacultyCorrectionRequests, faculty } = useAcademic();
+  const { 
+    institution, 
+    corrections, 
+    getFacultyCorrectionRequests, 
+    faculty,
+    attendanceRecords,
+    attendanceSessions,
+    subjects
+  } = useAcademic();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const currentFaculty = React.useMemo(() => {
@@ -67,15 +75,18 @@ export const AppShell: React.FC<AppShellProps> = ({
     if (role === 'hod') {
       const deptId = user?.department_id || currentFaculty?.department_id;
       if (!deptId) return corrections.filter(c => c.status === 'pending').length;
-      return corrections.filter(c => c.status === 'pending' && (
-        c.record?.session?.subject?.department_id === deptId ||
-        c.record?.session?.faculty?.department_id === deptId ||
-        !c.record?.session?.subject?.department_id
-      )).length;
+      return corrections.filter(c => {
+        if (c.status !== 'pending') return false;
+        const rec = c.record || attendanceRecords.find(r => r.id === c.attendance_record_id);
+        const sess = rec?.session || attendanceSessions.find(s => s.id === rec?.attendance_session_id);
+        const sub = sess?.subject || subjects.find(s => s.id === sess?.subject_id);
+        const fac = sess?.faculty || faculty.find(f => f.id === sess?.faculty_id);
+        return sub?.department_id === deptId || fac?.department_id === deptId || !sub?.department_id;
+      }).length;
     }
     // super_admin
     return corrections.filter(c => c.status === 'pending').length;
-  }, [corrections, role, user, currentFaculty, getFacultyCorrectionRequests]);
+  }, [corrections, role, user, currentFaculty, getFacultyCorrectionRequests, attendanceRecords, attendanceSessions, subjects, faculty]);
 
   // Build navigation items based on role (matching Screen 2, 6, 9)
   const getNavItems = () => {
