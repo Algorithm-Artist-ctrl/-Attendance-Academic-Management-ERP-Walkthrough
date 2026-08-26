@@ -137,22 +137,22 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
             <Calendar className="w-6 h-6 text-[#00ff88]" />
             {activeScheduleTab === 'coordinator' 
-              ? `Complete Timetable — Section ${coordinatedSection?.name} (${coordinatedSection?.room_number || 'A007'})`
+              ? `Complete Timetable — Section ${coordinatedSection?.name} (${coordinatedSection?.room_number || 'Classroom'})`
               : 'Official Faculty Teaching Schedule'
             }
           </h1>
           <p className="text-xs text-slate-300 mt-1 font-medium">
             {activeScheduleTab === 'coordinator'
-              ? `Displaying all 42 weekly scheduled periods across all department faculty for Section ${coordinatedSection?.name}`
+              ? `Displaying all ${coordinatorEntries.length} weekly scheduled periods across all department faculty for Section ${coordinatedSection?.name}`
               : <>Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • {dept?.name || 'Academic Department'}</>
             }
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
             <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-emerald-500/25 text-[#00ff88] font-bold">
-              {activeScheduleTab === 'coordinator' ? `Section ${coordinatedSection?.name} (${coordinatedSection?.room_number})` : sectionNames}
+              {activeScheduleTab === 'coordinator' ? `Section ${coordinatedSection?.name} (${coordinatedSection?.room_number || 'Classroom'})` : sectionNames}
             </span>
             <span>•</span>
-            <span>B.Tech 2nd Year (CSE / CSE+IT)</span>
+            <span>{dept?.name || 'Engineering'}</span>
             <span>•</span>
             <span>Subjects: <strong className="text-slate-200">{activeScheduleTab === 'coordinator' ? 'All Section Courses' : (subjectCodes || 'All Assigned')}</strong></span>
           </div>
@@ -161,7 +161,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
         <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
           <div className="text-xs font-semibold bg-slate-950/80 px-4 py-2 rounded-xl border border-emerald-500/20 text-[#00ff88] flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            <span>Odd Semester 2026–2027</span>
+            <span>Academic Session 2026–2027</span>
           </div>
         </div>
       </div>
@@ -180,16 +180,16 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
             {activeScheduleTab === 'coordinator' ? 'Classroom Venue' : 'Assigned Subjects'}
           </span>
           <span className="text-xl font-black text-white block mt-0.5">
-            {activeScheduleTab === 'coordinator' ? (coordinatedSection?.room_number || 'A007') : `${taughtSubjects.length} Courses`}
+            {activeScheduleTab === 'coordinator' ? (coordinatedSection?.room_number || 'Classroom') : `${taughtSubjects.length} Courses`}
           </span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/15">
           <span className="text-[10px] text-slate-400 block font-semibold">
-            {activeScheduleTab === 'coordinator' ? 'Academic Program' : 'Sections Covered'}
+            {activeScheduleTab === 'coordinator' ? 'Academic Department' : 'Sections Covered'}
           </span>
           <span className="text-xl font-black text-white block mt-0.5 truncate">
-            {activeScheduleTab === 'coordinator' ? 'B.Tech CSE' : `${taughtSections.length} Sections`}
+            {activeScheduleTab === 'coordinator' ? (dept?.name || 'Department') : `${taughtSections.length} Sections`}
           </span>
         </div>
 

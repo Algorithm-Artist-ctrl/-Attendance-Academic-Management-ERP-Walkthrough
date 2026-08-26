@@ -271,7 +271,7 @@ export class AITimetableService {
     
     // Authoritative Section & Room from uploadContext
     const selectedSectionName = uploadContext?.sectionName || doc.section_name || 'B';
-    const selectedRoomNumber = uploadContext?.roomNumber || doc.room_number || (selectedSectionName === 'B' ? 'A006' : 'A007');
+    const selectedRoomNumber = uploadContext?.roomNumber || doc.room_number || `Room ${selectedSectionName}`;
     const selectedEffectiveFrom = uploadContext?.effectiveFrom || doc.effective_from || new Date().toISOString().split('T')[0];
 
     const warnings: string[] = [...(doc.warnings || [])];
@@ -363,7 +363,7 @@ export class AITimetableService {
          fileName.toLowerCase().includes('sec b') || fileName.toLowerCase().includes('section b'));
     
     const sectionName = isSectionB ? 'B' : 'A';
-    const roomNumber = uploadContext?.roomNumber || (isSectionB ? 'A006' : 'A007');
+    const roomNumber = uploadContext?.roomNumber || `Room ${sectionName}`;
     const incharge = isSectionB ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary';
     const effectiveFrom = uploadContext?.effectiveFrom || '2026-08-20';
 

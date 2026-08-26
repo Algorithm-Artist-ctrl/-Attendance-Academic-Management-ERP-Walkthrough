@@ -60,8 +60,11 @@ export const StudentTimetablePage: React.FC = () => {
   ];
 
   const isSectionB = currentSection?.name === 'B';
-  const branchName = currentSection ? (isSectionB ? 'CSE + IT' : 'CSE') : 'Curriculum';
-  const classIncharge = currentSection?.class_coordinator?.full_name || (isSectionB ? 'Mr. Imran Raza Khan' : 'Ms. Hemlata Chaudhary');
+  const branchName = currentStudent?.department?.code || program?.code || 'CSE';
+  const classIncharge = faculty.find(f => f.id === currentSection?.class_coordinator_id)?.full_name || 
+                        currentSection?.class_coordinator?.full_name || 
+                        'Class Coordinator';
+  const displayRoom = currentSection?.room_number || 'Assigned Classroom';
 
   return (
     <div className="space-y-6">
@@ -73,7 +76,7 @@ export const StudentTimetablePage: React.FC = () => {
             Official Academic Timetable
           </h1>
           <p className="text-xs text-slate-300 mt-1 font-medium">
-            {program?.name || 'B.Tech'}{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'Assigned'}</span> ({currentSection?.room_number || (isSectionB ? 'A006' : 'A007')}) • Class Coordinator: <span className="text-white font-semibold">{classIncharge}</span>
+            {program?.name || 'B.Tech'}{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'Assigned'}</span> ({displayRoom}) • Class Coordinator: <span className="text-white font-semibold">{classIncharge}</span>
           </p>
         </div>
 
@@ -185,7 +188,7 @@ export const StudentTimetablePage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="font-bold text-[#00ff88]">{entry.room_number || currentSection?.room_number || (isSectionB ? 'A006' : 'A007')}</span>
+                        <span className="font-bold text-[#00ff88]">{entry.room_number || currentSection?.room_number || 'Room'}</span>
                       </div>
                     </div>
                   </div>
@@ -246,7 +249,7 @@ export const StudentTimetablePage: React.FC = () => {
                                   {sub?.subject_code}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-semibold">
-                                  {entry.room_number || currentSection?.room_number || (isSectionB ? 'A006' : 'A007')}
+                                  {entry.room_number || currentSection?.room_number || 'Room'}
                                 </span>
                               </div>
                               <span className="font-bold text-white block text-xs truncate" title={sub?.subject_name}>

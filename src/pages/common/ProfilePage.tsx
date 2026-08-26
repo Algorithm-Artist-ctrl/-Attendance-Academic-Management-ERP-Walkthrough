@@ -463,7 +463,7 @@ export const ProfilePage: React.FC = () => {
                       </h4>
                     </div>
                     <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-900 border border-emerald-500/30 text-[#00ff88]">
-                      {cSec.room_number || 'Room A007'}
+                      {cSec.room_number ? `Room ${cSec.room_number}` : `Section ${cSec.name}`}
                     </span>
                   </div>
 

@@ -292,14 +292,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                       OFFICIAL CLASS COORDINATOR
                     </span>
                     <span className="text-xs text-slate-400 font-mono">
-                      Room {coordinatedSection.room_number || 'A007'}
+                      {coordinatedSection.room_number ? `Room ${coordinatedSection.room_number}` : `Section ${coordinatedSection.name}`}
                     </span>
                   </div>
                   <h3 className="text-base font-black text-white mt-1">
-                    Class Coordinator Portal — Section {coordinatedSection.name} (B.Tech CSE 2nd Year)
+                    Class Coordinator Portal — Section {coordinatedSection.name}
                   </h3>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Coordinating {secStudents.length} enrolled students and complete weekly timetable oversight
+                    Coordinating {secStudents.length} enrolled students and complete weekly timetable oversight ({secTotalLectures.length} weekly periods)
                   </p>
                 </div>
               </div>

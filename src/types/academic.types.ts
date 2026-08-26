@@ -90,6 +90,9 @@ export interface TodayLectureItem {
 
 export interface TimetableConflict {
   type: 'faculty' | 'room' | 'section';
+  severity?: 'blocking' | 'warning';
+  targetSectionName?: string;
+  conflictSourceName?: string;
   message: string;
   conflictingEntry?: any;
 }

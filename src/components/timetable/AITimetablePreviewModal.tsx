@@ -290,7 +290,7 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
                         ...updated[activeDocIndex],
                         section_name: newSec.name,
                         target_section_id: newSec.id,
-                        room_number: newSec.room_number || (newSec.name === 'B' ? 'A006' : 'A007')
+                        room_number: newSec.room_number || `Room ${newSec.name}`
                       };
                       return updated;
                     });
@@ -300,7 +300,7 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
               >
                 {sections.map(s => (
                   <option key={s.id} value={s.id}>
-                    Section {s.name} ({s.room_number || (s.name === 'B' ? 'A006' : 'A007')})
+                    Section {s.name} ({s.room_number || `Room ${s.name}`})
                   </option>
                 ))}
               </select>
@@ -327,15 +327,33 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
           </div>
         )}
 
-        {/* Conflict Alert Banner if any conflicts exist */}
-        {report.conflicts.length > 0 && (
+        {/* Blocking Collisions Alert (Same-Section simultaneous periods) */}
+        {report.conflicts.filter(c => c.severity === 'blocking').length > 0 && (
           <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs space-y-1.5 animate-pulse">
             <div className="flex items-center gap-2 font-black text-rose-300">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{report.conflicts.length} Timetable Scheduling Conflict(s) Detected</span>
+              <span>{report.conflicts.filter(c => c.severity === 'blocking').length} Target Section Collision(s) Detected (Blocking)</span>
             </div>
             <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-200 pl-1">
-              {report.conflicts.map((c, i) => (
+              {report.conflicts.filter(c => c.severity === 'blocking').map((c, i) => (
+                <li key={i}>{c.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Cross-Section Overlap Notices (Informational Warnings - Does NOT block Section replacement) */}
+        {report.conflicts.filter(c => c.severity !== 'blocking').length > 0 && (
+          <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Cross-Section Overlap Notice ({report.conflicts.filter(c => c.severity !== 'blocking').length} Overlaps with other sections)</span>
+            </div>
+            <p className="text-[11px] text-amber-200/80">
+              The following faculty or rooms overlap with existing schedules in other sections. This will not prevent publishing the authoritative timetable for Target Section {currentDoc.section_name}.
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-200/90 pl-1">
+              {report.conflicts.filter(c => c.severity !== 'blocking').map((c, i) => (
                 <li key={i}>{c.message}</li>
               ))}
             </ul>

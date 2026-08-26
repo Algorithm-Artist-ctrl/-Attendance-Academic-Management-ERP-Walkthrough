@@ -106,7 +106,7 @@ export class TimetableIngestionService {
         .insert([{
           name: doc.section_name || 'B',
           semester_id: report.semester?.id,
-          room_number: doc.room_number || (doc.section_name === 'B' ? 'A006' : 'A007'),
+          room_number: doc.room_number || `Room ${doc.section_name || 'B'}`,
           class_coordinator_id: report.classCoordinator?.id,
           active: true,
         }])
@@ -308,7 +308,7 @@ export class TimetableIngestionService {
           period_number: slot.period_number,
           start_time: slot.start_time || '09:00',
           end_time: slot.end_time || '09:50',
-          room_number: slot.room_number || doc.room_number || 'A007',
+          room_number: slot.room_number || doc.room_number || `Room ${doc.section_name || ''}`,
           lecture_type: slot.lecture_type || 'Theory',
           active: true,
         });
@@ -338,7 +338,7 @@ export class TimetableIngestionService {
         period_number: diff.period_number,
         start_time: diff.start_time,
         end_time: diff.end_time,
-        room_number: newSlot.room_number || doc.room_number || 'A007',
+        room_number: newSlot.room_number || doc.room_number || `Room ${doc.section_name || ''}`,
         lecture_type: newSlot.lecture_type || 'Theory',
         active: true,
       });

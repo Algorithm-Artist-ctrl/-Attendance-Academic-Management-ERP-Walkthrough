@@ -283,7 +283,10 @@ export class TimetableResolver {
 
             slotConflict = {
               type: 'faculty',
-              message: `Faculty conflict: ${resolvedFac.full_name} (${resolvedFac.faculty_code || 'FAC'}) is assigned to Section ${conflictSecName} on ${day} ${existStart}–${existEnd} and Section ${targetSecName} on ${day} ${slotStart}–${slotEnd} in Room ${facultyOverlap.room_number || 'Room'}.`,
+              severity: 'warning',
+              targetSectionName: targetSecName,
+              conflictSourceName: conflictSecName,
+              message: `Cross-section faculty overlap: ${resolvedFac.full_name} (${resolvedFac.faculty_code || 'FAC'}) is assigned to Section ${conflictSecName} on ${day} ${existStart}–${existEnd} and Target Section ${targetSecName} on ${day} ${slotStart}–${slotEnd} in Room ${facultyOverlap.room_number || 'Room'}.`,
               conflictingEntry: facultyOverlap
             };
             conflicts.push(slotConflict);
@@ -311,7 +314,10 @@ export class TimetableResolver {
 
             slotConflict = {
               type: 'room',
-              message: `Room conflict: Room ${roomToTest} is already occupied by Section ${conflictSecName} on ${day} ${existStart}–${existEnd}.`,
+              severity: 'warning',
+              targetSectionName: targetSecName,
+              conflictSourceName: conflictSecName,
+              message: `Room overlap: Room ${roomToTest} is already occupied by Section ${conflictSecName} on ${day} ${existStart}–${existEnd}.`,
               conflictingEntry: roomOverlap
             };
             conflicts.push(slotConflict);
@@ -329,7 +335,9 @@ export class TimetableResolver {
           if (sameSecOverlap) {
             slotConflict = {
               type: 'section',
-              message: `Section scheduling conflict: Section ${targetSecName} has multiple simultaneous classes on ${day} ${slotStart}–${slotEnd} (${newSlot.subject_code} and ${sameSecOverlap.subject_code}).`,
+              severity: 'blocking',
+              targetSectionName: targetSecName,
+              message: `Section scheduling collision: Section ${targetSecName} has multiple simultaneous classes on ${day} ${slotStart}–${slotEnd} (${newSlot.subject_code} and ${sameSecOverlap.subject_code}).`,
             };
             conflicts.push(slotConflict);
           }
@@ -378,7 +386,7 @@ export class TimetableResolver {
             ...newSlot,
             resolvedSubject: resolvedSub,
             resolvedFaculty: resolvedFac,
-            room_number: newSlot?.room_number || doc.room_number || oldSlot?.room_number || 'A007'
+            room_number: newSlot?.room_number || doc.room_number || oldSlot?.room_number || `Room ${doc.section_name || ''}`
           },
           changes,
           conflict: slotConflict

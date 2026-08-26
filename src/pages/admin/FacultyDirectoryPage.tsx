@@ -240,7 +240,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                       {coordinatedSec && (
                         <div className="mt-2 p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-[11px]">
                           <span className="text-[#00ff88] font-bold">Class Coordinator</span>
-                          <span className="text-white font-bold font-mono">Section {coordinatedSec.name} ({coordinatedSec.room_number || 'A007'})</span>
+                          <span className="text-white font-bold font-mono">Section {coordinatedSec.name} {coordinatedSec.room_number ? `(${coordinatedSec.room_number})` : ''}</span>
                         </div>
                       )}
                     </div>
