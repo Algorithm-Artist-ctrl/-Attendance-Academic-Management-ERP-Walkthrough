@@ -429,6 +429,17 @@ export class TimetableIngestionService {
       insertedEntries = (inserted || []) as TimetableEntry[];
     }
 
+    // 7.1 Verify Actual Database Write (Source of Truth check)
+    const { count: verifiedCount, error: verifyErr } = await supabase
+      .from('timetable_entries')
+      .select('id', { count: 'exact' })
+      .eq('section_id', targetSectionId)
+      .eq('active', true);
+
+    if (verifyErr || !verifiedCount || verifiedCount === 0) {
+      throw new Error(`Database verification failed: Expected active timetable entries in Supabase for section, found ${verifiedCount || 0}.`);
+    }
+
     // 8. Synchronize faculty_subject_assignments in Supabase
     const distinctPairs = new Map<string, { facultyId: string; subjectId: string }>();
     for (const row of newTimetableRows) {

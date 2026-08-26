@@ -349,8 +349,8 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Cross-Section Overlap Notice ({report.conflicts.filter(c => c.severity !== 'blocking').length} Overlaps with other sections)</span>
             </div>
-            <p className="text-[11px] text-amber-200/80">
-              The following faculty or rooms overlap with existing schedules in other sections. This will not prevent publishing the authoritative timetable for Target Section {currentDoc.section_name}.
+            <p className="text-[11px] text-amber-200/90 font-medium">
+              Cross-section overlap detected. This timetable will still be published because Section {currentDoc.section_name} is the selected target section.
             </p>
             <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-200/90 pl-1">
               {report.conflicts.filter(c => c.severity !== 'blocking').map((c, i) => (
