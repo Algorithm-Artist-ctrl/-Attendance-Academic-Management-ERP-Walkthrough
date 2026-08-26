@@ -100,22 +100,35 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
 
     const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
     const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
-    const list: Array<{ subject: typeof subjects[0]; section: typeof sections[0] }> = [];
+    const taughtSubjectIds = new Set<string>();
+    const directAssignedPairs = new Set<string>();
 
     for (const fsa of myFsa) {
-      const sub = subjects.find(s => s.id === fsa.subject_id);
-      const sec = sections.find(s => s.id === fsa.section_id);
-      if (sub && sec) {
-        if (!list.some(item => item.subject.id === sub.id && item.section.id === sec.id)) {
-          list.push({ subject: sub, section: sec });
-        }
-      }
+      taughtSubjectIds.add(fsa.subject_id);
+      directAssignedPairs.add(`${fsa.subject_id}:${fsa.section_id}`);
+    }
+    for (const t of myTt) {
+      taughtSubjectIds.add(t.subject_id);
+      directAssignedPairs.add(`${t.subject_id}:${t.section_id}`);
     }
 
-    for (const t of myTt) {
-      const sub = subjects.find(s => s.id === t.subject_id);
-      const sec = sections.find(s => s.id === t.section_id);
-      if (sub && sec) {
+    const relevantSubjects = (taughtSubjectIds.size > 0 && !isSuperAdmin)
+      ? subjects.filter(s => taughtSubjectIds.has(s.id) && s.active)
+      : (currentFaculty?.department_id 
+          ? subjects.filter(s => (s.department_id === currentFaculty.department_id || !s.department_id) && s.active) 
+          : subjects.filter(s => s.active));
+
+    const list: Array<{ subject: typeof subjects[0]; section: typeof sections[0] }> = [];
+
+    for (const sub of relevantSubjects) {
+      const matchSecs = sections.filter(sec => {
+        if (!sec.active) return false;
+        if (directAssignedPairs.has(`${sub.id}:${sec.id}`)) return true;
+        if (sub.semester_id && sec.semester_id === sub.semester_id) return true;
+        return false;
+      });
+
+      for (const sec of (matchSecs.length > 0 ? matchSecs : sections.filter(s => s.active))) {
         if (!list.some(item => item.subject.id === sub.id && item.section.id === sec.id)) {
           list.push({ subject: sub, section: sec });
         }
@@ -123,7 +136,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     }
 
     return list;
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId]);
+  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId, currentFaculty]);
 
   // Selected Subject & Section State
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(

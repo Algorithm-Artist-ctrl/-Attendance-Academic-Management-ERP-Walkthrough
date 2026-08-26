@@ -216,7 +216,7 @@ export const StudentAssignmentsPage: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || 'A'}
+                      {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || ''}
                     </span>
                     <span className={clsx(
                       "px-2.5 py-0.5 rounded text-[11px] font-semibold",

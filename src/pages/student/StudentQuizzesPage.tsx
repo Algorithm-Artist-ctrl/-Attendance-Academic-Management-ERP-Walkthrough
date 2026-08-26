@@ -134,7 +134,7 @@ export const StudentQuizzesPage: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                      {quiz.subject?.subject_code || 'Course'} • Section {quiz.section?.name || 'A'}
+                      {quiz.subject?.subject_code || 'Course'} • Section {quiz.section?.name || ''}
                     </span>
                     <span className={clsx(
                       "px-2.5 py-0.5 rounded text-[11px] font-semibold",

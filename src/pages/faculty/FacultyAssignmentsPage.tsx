@@ -62,60 +62,54 @@ export const FacultyAssignmentsPage: React.FC = () => {
     return courseAssignments.filter(a => a.faculty_id === currentFacultyId);
   }, [courseAssignments, isSuperAdmin, currentFacultyId]);
 
-  // Allowed subjects & sections strictly assigned to this faculty
+  // Allowed subjects & sections dynamically resolved from database relationships
   const myAssignedSubjects = useMemo(() => {
-    if (isSuperAdmin) {
-      return subjects.map(s => ({
-        subject: s,
-        sections: sections
-      }));
+    // 1. Determine subjects taught by this faculty (FSA, Timetable, or Department curriculum)
+    const taughtSubjectIds = new Set<string>();
+    for (const fsa of facultySubjectAssignments) {
+      if (fsa.faculty_id === currentFacultyId && fsa.active) {
+        taughtSubjectIds.add(fsa.subject_id);
+      }
     }
-    const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
-    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
-    const subMap = new Map<string, { subject: typeof subjects[0]; sections: typeof sections }>();
-    
-    for (const fsa of myFsa) {
-      const sub = subjects.find(s => s.id === fsa.subject_id);
-      const sec = sections.find(s => s.id === fsa.section_id);
-      if (sub && sec) {
-        if (!subMap.has(sub.id)) {
-          subMap.set(sub.id, { subject: sub, sections: [sec] });
-        } else {
-          const existing = subMap.get(sub.id)!;
-          if (!existing.sections.some(s => s.id === sec.id)) {
-            existing.sections.push(sec);
-          }
-        }
+    for (const t of timetable) {
+      if (t.faculty_id === currentFacultyId && t.active) {
+        taughtSubjectIds.add(t.subject_id);
       }
     }
 
-    for (const t of myTt) {
-      const sub = subjects.find(s => s.id === t.subject_id);
-      const sec = sections.find(s => s.id === t.section_id);
-      if (sub && sec) {
-        if (!subMap.has(sub.id)) {
-          subMap.set(sub.id, { subject: sub, sections: [sec] });
-        } else {
-          const existing = subMap.get(sub.id)!;
-          if (!existing.sections.some(s => s.id === sec.id)) {
-            existing.sections.push(sec);
-          }
-        }
-      }
-    }
+    const relevantSubjects = (taughtSubjectIds.size > 0 && !isSuperAdmin)
+      ? subjects.filter(s => taughtSubjectIds.has(s.id) && s.active)
+      : (currentFaculty?.department_id 
+          ? subjects.filter(s => (s.department_id === currentFaculty.department_id || !s.department_id) && s.active) 
+          : subjects.filter(s => s.active));
 
-    return Array.from(subMap.values());
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId]);
+    return relevantSubjects.map(sub => {
+      // Find all active sections for this subject's semester and department
+      const matchingSections = sections.filter(sec => {
+        if (!sec.active) return false;
+        if (sub.semester_id) return sec.semester_id === sub.semester_id;
+        return true;
+      });
+
+      const sortedSections = (matchingSections.length > 0 ? matchingSections : sections.filter(s => s.active))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      return {
+        subject: sub,
+        sections: sortedSections,
+      };
+    });
+  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId, currentFaculty]);
 
   const myAssignedSections = useMemo(() => {
-    if (isSuperAdmin) return sections;
+    if (isSuperAdmin) return sections.filter(s => s.active);
     const secSet = new Set<string>();
     for (const item of myAssignedSubjects) {
       for (const sec of item.sections) {
         secSet.add(sec.id);
       }
     }
-    return sections.filter(sec => secSet.has(sec.id));
+    return sections.filter(sec => secSet.has(sec.id) && sec.active);
   }, [isSuperAdmin, myAssignedSubjects, sections]);
 
   // Search & Filter
@@ -165,8 +159,9 @@ export const FacultyAssignmentsPage: React.FC = () => {
     setSubmissionType('both');
     setAllowLateSubmission(true);
     if (myAssignedSubjects.length > 0) {
-      setSelectedSubjectId(myAssignedSubjects[0].subject.id);
-      setSelectedSectionId(myAssignedSubjects[0].sections[0]?.id || '');
+      const firstSub = myAssignedSubjects[0];
+      setSelectedSubjectId(firstSub.subject.id);
+      setSelectedSectionId(firstSub.sections[0]?.id || '');
     }
     setIsCreateModalOpen(true);
   };
@@ -175,7 +170,9 @@ export const FacultyAssignmentsPage: React.FC = () => {
     setSelectedSubjectId(subId);
     const subObj = myAssignedSubjects.find(s => s.subject.id === subId);
     if (subObj && subObj.sections.length > 0) {
-      setSelectedSectionId(subObj.sections[0].id);
+      if (!subObj.sections.some(sec => sec.id === selectedSectionId)) {
+        setSelectedSectionId(subObj.sections[0].id);
+      }
     }
   };
 
@@ -391,7 +388,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || 'A'} • Odd Semester 2026–27
+                      {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || ''} • Odd Semester 2026–27
                     </span>
                     <div className="flex items-center gap-1">
                       <button 
@@ -512,16 +509,36 @@ export const FacultyAssignmentsPage: React.FC = () => {
               <select
                 value={selectedSectionId}
                 onChange={(e) => setSelectedSectionId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-medium"
               >
                 {myAssignedSubjects
                   .find(s => s.subject.id === selectedSubjectId)
                   ?.sections.map(sec => (
-                    <option key={sec.id} value={sec.id}>Section {sec.name}</option>
+                    <option key={sec.id} value={sec.id}>
+                      Section {sec.name} {sec.room_number ? `(${sec.room_number})` : ''}
+                    </option>
                   ))}
               </select>
             </div>
           </div>
+
+          {/* Target Audience Scope Preview */}
+          {(() => {
+            const currentSubObj = myAssignedSubjects.find(s => s.subject.id === selectedSubjectId);
+            const currentSecObj = currentSubObj?.sections.find(sec => sec.id === selectedSectionId) || sections.find(s => s.id === selectedSectionId);
+            if (!currentSecObj) return null;
+            return (
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-xs text-blue-300 flex items-start gap-2.5">
+                <Users className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-white">Target Scope: Section {currentSecObj.name} {currentSecObj.room_number ? `(Room ${currentSecObj.room_number})` : ''}</span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    This assignment will be published strictly to students enrolled in Section {currentSecObj.name}. Other sections will not have access.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">Instructions / Description</label>

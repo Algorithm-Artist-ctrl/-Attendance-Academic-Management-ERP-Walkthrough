@@ -164,8 +164,9 @@ export const StudentDirectoryPage: React.FC = () => {
               className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
             >
               <option value="ALL">All Sections</option>
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
+              {sections.filter(s => s.active).map(sec => (
+                <option key={sec.id} value={sec.name}>Section {sec.name}</option>
+              ))}
             </select>
           </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -14,13 +14,19 @@ import {
   ShieldCheck,
   FileQuestion,
   Award,
-  FileText
+  FileText,
+  Upload,
+  ExternalLink,
+  FileCheck,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { Modal } from '../../components/common/Modal';
 import { CyberGauge3D } from '../../components/3d/CyberGauge3D';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
+import { Assignment, AssignmentSubmission, Quiz } from '../../types/database.types';
 import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
@@ -41,14 +47,106 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     corrections,
     students,
     courseAssignments,
-    quizzes
+    assignmentSubmissions,
+    quizzes,
+    quizResults,
+    submitAssignment
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
   const student = currentStudent;
   const studentId = currentStudent?.id || '';
-  const mySectionQuizzes = quizzes.filter(q => q.section_id === currentStudent?.section_id && q.active);
-  const mySectionAssignments = courseAssignments.filter(a => a.section_id === currentStudent?.section_id && a.active);
+  const mySectionQuizzes = useMemo(() => {
+    if (!currentStudent?.section_id) return [];
+    return quizzes.filter(q => q.section_id === currentStudent.section_id && q.active);
+  }, [quizzes, currentStudent?.section_id]);
+
+  const mySectionAssignments = useMemo(() => {
+    if (!currentStudent?.section_id) return [];
+    return courseAssignments.filter(a => a.section_id === currentStudent.section_id && a.active);
+  }, [courseAssignments, currentStudent?.section_id]);
+
+  const mySubmissionsMap = useMemo(() => {
+    if (!currentStudent) return new Map<string, AssignmentSubmission>();
+    const map = new Map<string, AssignmentSubmission>();
+    for (const sub of assignmentSubmissions.filter(s => s.student_id === currentStudent.id)) {
+      map.set(sub.assignment_id, sub);
+    }
+    return map;
+  }, [assignmentSubmissions, currentStudent]);
+
+  // Quick Assignment Submission Modal State
+  const [quickSubmitAssignment, setQuickSubmitAssignment] = useState<Assignment | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmittingFile, setIsSubmittingFile] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccessMsg, setSubmitSuccessMsg] = useState('');
+
+  const handleQuickSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickSubmitAssignment || !currentStudent) return;
+    setSubmitError('');
+    setSubmitSuccessMsg('');
+
+    if (quickSubmitAssignment.submission_type === 'google_form') {
+      try {
+        setIsSubmittingFile(true);
+        await submitAssignment({
+          assignmentId: quickSubmitAssignment.id,
+          studentId: currentStudent.id,
+          submissionType: 'google_form',
+          googleFormSubmitted: true,
+        });
+        setSubmitSuccessMsg('Google Form submission recorded successfully!');
+        setTimeout(() => {
+          setQuickSubmitAssignment(null);
+          setSubmitSuccessMsg('');
+        }, 1500);
+      } catch (err: any) {
+        setSubmitError(err.message || 'Failed to record Google Form submission.');
+      } finally {
+        setIsSubmittingFile(false);
+      }
+      return;
+    }
+
+    if (!selectedFile) {
+      setSubmitError('Please select a file to upload.');
+      return;
+    }
+
+    try {
+      setIsSubmittingFile(true);
+      const reader = new FileReader();
+      const fileDataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedFile);
+      });
+
+      await submitAssignment({
+        assignmentId: quickSubmitAssignment.id,
+        studentId: currentStudent.id,
+        submissionType: 'file_upload',
+        filePath: fileDataUrl,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        mimeType: selectedFile.type,
+      });
+
+      setSubmitSuccessMsg('Assignment submitted successfully!');
+      setTimeout(() => {
+        setQuickSubmitAssignment(null);
+        setSelectedFile(null);
+        setSubmitSuccessMsg('');
+      }, 1500);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to submit assignment.');
+    } finally {
+      setIsSubmittingFile(false);
+    }
+  };
+
   const stats = getStudentAttendance(studentId);
 
   const section = sections.find(s => s.id === currentStudent?.section_id) || 
@@ -526,6 +624,178 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
 
       </div>
 
+      {/* 7. ACADEMIC ASSIGNMENTS & QUIZZES (SECTION SCOPED) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                Section {section?.name || 'Assigned'} Assignments & Quizzes
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 font-semibold">
+                  {mySectionAssignments.length} Assignments • {mySectionQuizzes.length} Quizzes
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Tasks, file submissions and Google Form assessments published for your section
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate('student_assignments')}
+              className="text-xs font-bold text-blue-400 hover:underline cursor-pointer"
+            >
+              All Assignments →
+            </button>
+            <span className="text-slate-600">•</span>
+            <button
+              onClick={() => onNavigate('quizzes')}
+              className="text-xs font-bold text-purple-400 hover:underline cursor-pointer"
+            >
+              All Quizzes →
+            </button>
+          </div>
+        </div>
+
+        {/* Assignments Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {mySectionAssignments.length === 0 ? (
+            <div className="col-span-full py-8 text-center glass-panel rounded-2xl border border-slate-800 text-slate-400">
+              <FileCheck className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-300">No active assignments for Section {section?.name || 'Assigned'}.</p>
+              <p className="text-[11px] text-slate-500">Newly assigned homework and practicals will appear here</p>
+            </div>
+          ) : (
+            mySectionAssignments.map(asgn => {
+              const sub = mySubmissionsMap.get(asgn.id);
+              const dueDate = new Date(asgn.due_date);
+              const isPastDue = new Date() > dueDate;
+              const isSubmitted = !!sub;
+
+              return (
+                <div
+                  key={asgn.id}
+                  className="glass-panel rounded-2xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 font-bold border border-blue-500/20">
+                        {asgn.subject?.subject_code || 'Subject'}
+                      </span>
+                      <span className={clsx(
+                        'px-2 py-0.5 rounded-full text-[10px] font-black',
+                        isSubmitted
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : isPastDue
+                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      )}>
+                        {isSubmitted ? (sub.status === 'graded' ? `Graded: ${sub.marks_obtained}/${asgn.max_marks}` : 'Submitted') : isPastDue ? 'Past Due' : 'Pending'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-white line-clamp-1">{asgn.title}</h4>
+                      <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">{asgn.description || asgn.subject?.subject_name}</p>
+                    </div>
+
+                    <div className="text-[11px] text-slate-400 space-y-1 pt-1 border-t border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <span>Faculty: <strong className="text-slate-200">{asgn.faculty?.full_name || 'Faculty'}</strong></span>
+                        <span>Max: <strong className="text-[#00ff88]">{asgn.max_marks} M</strong></span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Clock className="w-3 h-3 text-blue-400" />
+                        <span>Due: <strong className="text-slate-200">{dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-blue-500/10 flex items-center gap-2">
+                    {isSubmitted ? (
+                      <div className="w-full flex items-center justify-between text-xs">
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {sub.file_name ? sub.file_name.slice(0, 16) + '...' : 'Submitted'}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[11px] py-1 px-2 h-auto"
+                          onClick={() => {
+                            setQuickSubmitAssignment(asgn);
+                            setSelectedFile(null);
+                            setSubmitError('');
+                          }}
+                        >
+                          Resubmit
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full text-xs"
+                        leftIcon={<Upload className="w-3.5 h-3.5" />}
+                        onClick={() => {
+                          setQuickSubmitAssignment(asgn);
+                          setSelectedFile(null);
+                          setSubmitError('');
+                        }}
+                      >
+                        Submit Assignment
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Quizzes Quick Attempt Grid */}
+        {mySectionQuizzes.length > 0 && (
+          <div className="pt-2">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Active Section Quizzes (Google Forms)
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {mySectionQuizzes.map(quiz => {
+                return (
+                  <div
+                    key={quiz.id}
+                    className="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/25 flex flex-col justify-between space-y-2.5"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-purple-300">{quiz.subject?.subject_code || 'Quiz'}</span>
+                        <span className="text-[#00ff88] font-bold">{quiz.max_marks} Marks</span>
+                      </div>
+                      <h5 className="text-xs font-bold text-white mt-1 line-clamp-1">{quiz.title}</h5>
+                      <p className="text-[11px] text-slate-400">By {quiz.faculty?.full_name || 'Faculty'}</p>
+                    </div>
+
+                    <a
+                      href={quiz.google_form_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <span>Attempt Quiz</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Claim Attendance Modal */}
       {selectedLectureForClaim && (
         <ClaimAttendanceModal
@@ -533,6 +803,98 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           onClose={() => setSelectedLectureForClaim(null)}
           lecture={selectedLectureForClaim}
         />
+      )}
+
+      {/* QUICK ASSIGNMENT SUBMISSION MODAL */}
+      {quickSubmitAssignment && (
+        <Modal
+          isOpen={true}
+          onClose={() => setQuickSubmitAssignment(null)}
+          title={`Submit: ${quickSubmitAssignment.title}`}
+        >
+          <form onSubmit={handleQuickSubmit} className="space-y-4 text-xs">
+            {submitError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {submitError}
+              </div>
+            )}
+            {submitSuccessMsg && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {submitSuccessMsg}
+              </div>
+            )}
+
+            <div className="p-3 rounded-xl bg-slate-950/80 border border-blue-500/20 space-y-1.5">
+              <div className="flex items-center justify-between font-bold text-white">
+                <span>{quickSubmitAssignment.subject?.subject_code} - {quickSubmitAssignment.subject?.subject_name}</span>
+                <span className="text-[#00ff88]">Max: {quickSubmitAssignment.max_marks} Marks</span>
+              </div>
+              <p className="text-slate-400">{quickSubmitAssignment.description || 'Follow instructions given by faculty.'}</p>
+              <div className="text-[11px] text-slate-500">
+                Faculty: <strong className="text-slate-300">{quickSubmitAssignment.faculty?.full_name}</strong> • Section: <strong className="text-slate-300">{section?.name}</strong>
+              </div>
+            </div>
+
+            {quickSubmitAssignment.google_form_url && (
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-purple-300 block">Google Form Task Link</span>
+                  <span className="text-[10px] text-slate-400">Complete the form externally if required</span>
+                </div>
+                <a
+                  href={quickSubmitAssignment.google_form_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold inline-flex items-center gap-1.5"
+                >
+                  <span>Open Form</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
+
+            {quickSubmitAssignment.submission_type !== 'google_form' && (
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1.5">Upload Submission File (PDF / Doc / Image) *</label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer bg-slate-950 border border-slate-800 rounded-xl p-2"
+                />
+                {selectedFile && (
+                  <p className="text-[11px] text-emerald-400 mt-1">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickSubmitAssignment(null)}
+                disabled={isSubmittingFile}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                isLoading={isSubmittingFile}
+                leftIcon={<Upload className="w-3.5 h-3.5" />}
+              >
+                {quickSubmitAssignment.submission_type === 'google_form' ? 'Confirm Google Form Submitted' : 'Submit File to Supabase'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
