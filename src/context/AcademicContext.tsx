@@ -475,6 +475,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           debouncedSyncFromSupabase();
         }
       )
+      .on(
+        'broadcast',
+        { event: 'timetable_updated' },
+        (payload) => {
+          // Immediate re-fetch on section timetable publishing
+          loadDataFromSupabase(true);
+        }
+      )
       .subscribe();
 
     return () => {

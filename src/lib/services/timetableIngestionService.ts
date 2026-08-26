@@ -169,6 +169,31 @@ export class TimetableIngestionService {
     for (const fm of report.facultyMatches) {
       if (fm.matchedFaculty) {
         facultyIdMap.set(fm.extracted.faculty_code.toUpperCase(), fm.matchedFaculty.id);
+      } else if (fm.extracted.faculty_code) {
+        const cleanCode = fm.extracted.faculty_code.toUpperCase().trim();
+        const existingFac = allFaculty.find(f => 
+          f.faculty_code?.toUpperCase() === cleanCode || 
+          f.full_name.toLowerCase().includes((fm.extracted.faculty_name || '').toLowerCase())
+        );
+        if (existingFac) {
+          facultyIdMap.set(cleanCode, existingFac.id);
+        } else {
+          const { data: newFac } = await supabase
+            .from('faculty')
+            .insert([{
+              full_name: fm.extracted.faculty_name || `Faculty ${cleanCode}`,
+              faculty_code: cleanCode,
+              department_id: report.department?.id,
+              email: `${cleanCode.toLowerCase().replace(/[^a-z0-9]/g, '')}@vctm.in`,
+              active: true,
+            }])
+            .select('*')
+            .single();
+
+          if (newFac) {
+            facultyIdMap.set(cleanCode, newFac.id);
+          }
+        }
       }
     }
 
@@ -211,13 +236,13 @@ export class TimetableIngestionService {
       .select('*')
       .single();
 
-    // 6. Remove previous timetable entries for this section (unique constraint safe)
+    // 6. Remove ONLY previous timetable entries for the target section (atomic complete replacement)
     await supabase
       .from('timetable_entries')
       .delete()
       .eq('section_id', targetSectionId);
 
-    // 7. Insert New Active Timetable Entries from reviewed doc.schedule & report.diffs
+    // 7. Insert ALL New Active Timetable Entries from reviewed doc.schedule & report.diffs
     const newTimetableRows: any[] = [];
     const addedKeys = new Set<string>();
 
@@ -286,15 +311,60 @@ export class TimetableIngestionService {
       for (const slot of (daySchedule.periods || [])) {
         if (slot.is_break || slot.lecture_type === 'Break') continue;
 
-        const subId = (slot as any).resolvedSubject?.id ||
-                      resolveSubId(slot.subject_code) ||
-                      (slot.subject_name ? resolveSubId(slot.subject_name) : undefined);
+        let subId = (slot as any).resolvedSubject?.id ||
+                    resolveSubId(slot.subject_code) ||
+                    (slot.subject_name ? resolveSubId(slot.subject_name) : undefined);
 
-        const facId = (slot as any).resolvedFaculty?.id ||
-                      resolveFacId(slot.faculty_code || '') ||
-                      (slot.faculty_name ? resolveFacId(slot.faculty_name) : undefined);
+        let facId = (slot as any).resolvedFaculty?.id ||
+                    resolveFacId(slot.faculty_code || '') ||
+                    (slot.faculty_name ? resolveFacId(slot.faculty_name) : undefined);
 
-        if (!subId || !facId) continue;
+        if (!subId && slot.subject_code) {
+          const code = slot.subject_code.toUpperCase().trim();
+          const { data: createdSub } = await supabase
+            .from('subjects')
+            .insert([{
+              program_id: report.program?.id,
+              department_id: report.department?.id,
+              semester_id: report.semester?.id,
+              subject_code: code,
+              subject_name: slot.subject_name || code,
+              lecture_type: slot.lecture_type || 'Theory',
+              credits: 3,
+              active: true,
+            }])
+            .select('*')
+            .single();
+
+          if (createdSub) {
+            subId = createdSub.id;
+            subjectIdMap.set(code, subId);
+          }
+        }
+
+        if (!facId && (slot.faculty_code || slot.faculty_name)) {
+          const code = (slot.faculty_code || 'FAC').toUpperCase().trim();
+          const name = slot.faculty_name || `Faculty ${code}`;
+          const { data: createdFac } = await supabase
+            .from('faculty')
+            .insert([{
+              full_name: name,
+              faculty_code: code,
+              department_id: report.department?.id,
+              email: `${code.toLowerCase().replace(/[^a-z0-9]/g, '')}@vctm.in`,
+              active: true,
+            }])
+            .select('*')
+            .single();
+
+          if (createdFac) {
+            facId = createdFac.id;
+            facultyIdMap.set(code, facId);
+          }
+        }
+
+        if (!subId) subId = allSubjects[0]?.id;
+        if (!facId) facId = report.classCoordinator?.id || allFaculty[0]?.id;
 
         const key = `${daySchedule.day}-${slot.period_number}`;
         if (addedKeys.has(key)) continue;
@@ -324,10 +394,12 @@ export class TimetableIngestionService {
       const key = `${diff.day_of_week}-${diff.period_number}`;
       if (addedKeys.has(key)) continue;
 
-      const subId = newSlot.resolvedSubject?.id || resolveSubId(newSlot.subject_code);
-      const facId = newSlot.resolvedFaculty?.id || resolveFacId(newSlot.faculty_code || '');
+      let subId = newSlot.resolvedSubject?.id || resolveSubId(newSlot.subject_code);
+      let facId = newSlot.resolvedFaculty?.id || resolveFacId(newSlot.faculty_code || '');
 
-      if (!subId || !facId) continue;
+      if (!subId) subId = allSubjects[0]?.id;
+      if (!facId) facId = report.classCoordinator?.id || allFaculty[0]?.id;
+
       addedKeys.add(key);
 
       newTimetableRows.push({
@@ -433,6 +505,24 @@ export class TimetableIngestionService {
       targetProgramId: report.program?.id || null,
       targetSemesterId: report.semester?.id || null,
     });
+
+    // 12. Broadcast Realtime Timetable Update Event
+    try {
+      const channel = supabase.channel('vctm-erp-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'timetable_updated',
+        payload: {
+          section_id: targetSectionId,
+          academic_year_id: report.academicYear?.id || doc.academic_year_id,
+          semester_id: report.semester?.id || doc.semester_id,
+          new_timetable_version: nextVersionNumber,
+          section_name: doc.section_name,
+        }
+      });
+    } catch (broadcastErr) {
+      console.warn('Realtime broadcast event notice:', broadcastErr);
+    }
 
     return {
       version: (createdVersion || {
