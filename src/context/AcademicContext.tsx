@@ -18,6 +18,8 @@ import {
   AuditLog,
   AttendanceStatus,
   DayOfWeek,
+  LectureType,
+  TimetableVersion,
   Assignment,
   AssignmentSubmission,
   Quiz,
@@ -168,6 +170,22 @@ interface AcademicContextType {
   addTimetableEntry: (entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) => Promise<TimetableEntry>;
   updateTimetableEntry: (id: string, updates: Partial<TimetableEntry>) => Promise<TimetableEntry>;
   deleteTimetableEntry: (id: string) => Promise<boolean>;
+  saveSectionTimetable: (params: {
+    sectionId: string;
+    entries: Array<{
+      subject_id: string;
+      faculty_id: string;
+      day_of_week: DayOfWeek;
+      period_number: number;
+      start_time: string;
+      end_time: string;
+      room_number?: string;
+      lecture_type?: LectureType;
+      active?: boolean;
+    }>;
+    publishedBy?: string;
+    effectiveDate?: string;
+  }) => Promise<{ success: boolean; count: number; version?: TimetableVersion }>;
   checkTimetableConflict: (entry: Omit<TimetableEntry, 'id'>, excludeId?: string) => TimetableConflict | null;
   saveAttendance: (params: {
     timetableEntryId?: string;
@@ -783,6 +801,27 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const res = await supabaseService.deleteTimetableEntry(id);
     erpStorage.deleteTimetableEntry(id);
     await refreshData();
+    return res;
+  };
+
+  const saveSectionTimetable = async (params: {
+    sectionId: string;
+    entries: Array<{
+      subject_id: string;
+      faculty_id: string;
+      day_of_week: DayOfWeek;
+      period_number: number;
+      start_time: string;
+      end_time: string;
+      room_number?: string;
+      lecture_type?: LectureType;
+      active?: boolean;
+    }>;
+    publishedBy?: string;
+    effectiveDate?: string;
+  }) => {
+    const res = await supabaseService.saveSectionTimetable(params);
+    await refreshData(true);
     return res;
   };
 
@@ -1452,6 +1491,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addTimetableEntry,
         updateTimetableEntry,
         deleteTimetableEntry,
+        saveSectionTimetable,
         checkTimetableConflict,
         saveAttendance,
         submitCorrectionRequest,

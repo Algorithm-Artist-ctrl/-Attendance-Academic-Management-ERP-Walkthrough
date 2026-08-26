@@ -17,6 +17,8 @@ import {
   AttendanceCorrection, 
   AuditLog, 
   AttendanceStatus,
+  DayOfWeek,
+  LectureType,
   TimetableVersion,
   Assignment,
   AssignmentSubmission,
@@ -830,7 +832,221 @@ export const supabaseService = {
   async deleteTimetableEntry(id: string) {
     const { error } = await supabase.from('timetable_entries').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
     return true;
+  },
+
+  async saveSectionTimetable(params: {
+    sectionId: string;
+    entries: Array<{
+      subject_id: string;
+      faculty_id: string;
+      day_of_week: DayOfWeek;
+      period_number: number;
+      start_time: string;
+      end_time: string;
+      room_number?: string;
+      lecture_type?: LectureType;
+      active?: boolean;
+    }>;
+    publishedBy?: string;
+    effectiveDate?: string;
+  }): Promise<{ success: boolean; count: number; version?: TimetableVersion }> {
+    if (!params.sectionId) {
+      throw new Error('Target Section ID is required to save timetable.');
+    }
+
+    // 1. Fetch section details from Supabase
+    const { data: sectionData, error: secErr } = await supabase
+      .from('sections')
+      .select('*, semester:semesters(*, academic_year:academic_years(*, program:programs(*, department:departments(*))))')
+      .eq('id', params.sectionId)
+      .single();
+
+    if (secErr || !sectionData) {
+      throw new Error(`Section not found: ${secErr?.message || params.sectionId}`);
+    }
+
+    const deptId = sectionData.semester?.academic_year?.program?.department_id || sectionData.department_id;
+    const defaultRoom = sectionData.room_number || `Room ${sectionData.name}`;
+    const effectiveFrom = params.effectiveDate || getISTTodayDate();
+    const publishedBy = params.publishedBy || 'HOD / Super Administrator';
+
+    // 2. Fetch latest version number to increment
+    const { data: existingVersions } = await supabase
+      .from('timetable_versions')
+      .select('version_number')
+      .eq('section_id', params.sectionId)
+      .order('version_number', { ascending: false })
+      .limit(1);
+
+    const nextVersionNumber = (existingVersions && existingVersions.length > 0)
+      ? (existingVersions[0].version_number + 1)
+      : 1;
+
+    // 3. Mark old versions as superseded
+    await supabase
+      .from('timetable_versions')
+      .update({ status: 'superseded', updated_at: new Date().toISOString() })
+      .eq('section_id', params.sectionId)
+      .eq('status', 'active');
+
+    // 4. Create new active TimetableVersion
+    const { data: createdVersion } = await supabase
+      .from('timetable_versions')
+      .insert([{
+        department_id: deptId,
+        section_id: params.sectionId,
+        version_number: nextVersionNumber,
+        effective_from: effectiveFrom,
+        status: 'active',
+        approved_by: publishedBy,
+        approved_at: new Date().toISOString(),
+        changes_summary: {
+          action: 'MANUAL_HOD_SECTION_SAVE',
+          total_slots: params.entries.length,
+          effective_from: effectiveFrom,
+          room: defaultRoom,
+        }
+      }])
+      .select('*')
+      .single();
+
+    // 5. Delete ALL previous timetable entries strictly for this section
+    const { error: delErr } = await supabase
+      .from('timetable_entries')
+      .delete()
+      .eq('section_id', params.sectionId);
+
+    if (delErr) {
+      throw new Error(`Failed to clear previous section timetable: ${delErr.message}`);
+    }
+
+    // 6. Format new rows with default rooms & active status
+    const rowsToInsert = params.entries.map(e => ({
+      section_id: params.sectionId,
+      subject_id: e.subject_id,
+      faculty_id: e.faculty_id,
+      day_of_week: e.day_of_week,
+      period_number: e.period_number,
+      start_time: e.start_time || '09:00',
+      end_time: e.end_time || '09:50',
+      room_number: e.room_number || defaultRoom,
+      lecture_type: e.lecture_type || 'Theory',
+      active: true,
+    }));
+
+    if (rowsToInsert.length > 0) {
+      const { error: insertErr } = await supabase
+        .from('timetable_entries')
+        .insert(rowsToInsert)
+        .select('*');
+
+      if (insertErr) {
+        throw new Error(`Failed to insert timetable records: ${insertErr.message}`);
+      }
+    }
+
+    // 7. Verify Actual Database Write (Source of truth check)
+    const { count: verifiedCount, error: verifyErr } = await supabase
+      .from('timetable_entries')
+      .select('id', { count: 'exact' })
+      .eq('section_id', params.sectionId)
+      .eq('active', true);
+
+    if (verifyErr || (rowsToInsert.length > 0 && verifiedCount !== rowsToInsert.length)) {
+      throw new Error(`Database verification failed: Expected ${rowsToInsert.length} active entries in Supabase, found ${verifiedCount || 0}.`);
+    }
+
+    // 8. Synchronize faculty_subject_assignments
+    const distinctPairs = new Map<string, { facultyId: string; subjectId: string }>();
+    for (const row of rowsToInsert) {
+      const pairKey = `${row.faculty_id}-${row.subject_id}`;
+      if (!distinctPairs.has(pairKey)) {
+        distinctPairs.set(pairKey, { facultyId: row.faculty_id, subjectId: row.subject_id });
+      }
+    }
+
+    for (const pair of distinctPairs.values()) {
+      const { data: existingAssignment } = await supabase
+        .from('faculty_subject_assignments')
+        .select('id, active')
+        .eq('faculty_id', pair.facultyId)
+        .eq('subject_id', pair.subjectId)
+        .eq('section_id', params.sectionId)
+        .maybeSingle();
+
+      if (!existingAssignment) {
+        await supabase.from('faculty_subject_assignments').insert([{
+          faculty_id: pair.facultyId,
+          subject_id: pair.subjectId,
+          section_id: params.sectionId,
+          academic_session_id: '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d', // 2026-2027
+          active: true,
+        }]);
+      } else if (!existingAssignment.active) {
+        await supabase
+          .from('faculty_subject_assignments')
+          .update({ active: true, updated_at: new Date().toISOString() })
+          .eq('id', existingAssignment.id);
+      }
+    }
+
+    // 9. Invalidate Master Cache
+    this.invalidateMasterCache();
+
+    // 10. Record Audit Log in Supabase
+    await supabase.from('audit_logs').insert([{
+      action: 'TIMETABLE_MANUALLY_EDITED_AND_PUBLISHED',
+      actor_name: publishedBy,
+      actor_role: 'hod',
+      entity_type: 'timetable_version',
+      entity_id: createdVersion?.id || params.sectionId,
+      new_values: {
+        section_id: params.sectionId,
+        section_name: sectionData.name,
+        version: nextVersionNumber,
+        effective_from: effectiveFrom,
+        slots_count: rowsToInsert.length,
+      }
+    }]);
+
+    // 11. Create Official Circular / Notice for affected students & faculty
+    await this.publishNotice({
+      title: `Official Timetable Updated — Section ${sectionData.name} (W.E.F. ${effectiveFrom})`,
+      category: 'Academic',
+      author: publishedBy,
+      content: `The official academic timetable for Section ${sectionData.name} has been published by HOD (Version ${nextVersionNumber}, Effective ${effectiveFrom}, Room: ${defaultRoom}). Total ${rowsToInsert.length} periods active. All students and assigned faculty are requested to follow this schedule.`,
+      isPinned: true,
+      targetAudience: `Section ${sectionData.name}`,
+      targetSectionId: params.sectionId,
+      targetDepartmentId: deptId || null,
+      targetProgramId: sectionData.semester?.academic_year?.program_id || null,
+      targetSemesterId: sectionData.semester_id || null,
+    });
+
+    // 12. Broadcast Realtime Timetable Update Event
+    try {
+      const channel = supabase.channel('vctm-erp-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'timetable_updated',
+        payload: {
+          section_id: params.sectionId,
+          section_name: sectionData.name,
+          new_timetable_version: nextVersionNumber,
+          timestamp: new Date().toISOString(),
+        }
+      });
+    } catch (realtimeErr) {
+      console.warn('Realtime broadcast notice skipped:', realtimeErr);
+    }
+
+    return {
+      success: true,
+      count: verifiedCount || 0,
+      version: createdVersion as TimetableVersion,
+    };
   },
 
   // ==========================================
