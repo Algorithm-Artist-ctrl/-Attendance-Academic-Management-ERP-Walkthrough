@@ -25,7 +25,7 @@ async function runSectionWiseEditingAcceptanceSuite() {
   let passedTests = 0;
   let totalTests = 0;
 
-  function assert(condition: boolean, message: string) {
+  function assert(condition: any, message: string) {
     totalTests++;
     if (!condition) {
       console.error(`❌ FAILED (${totalTests}): ${message}`);
@@ -231,7 +231,7 @@ async function runSectionWiseEditingAcceptanceSuite() {
     .eq('active', true);
 
   assert(secBSlotsAfter?.length === 42, `TEST C: Section B has exactly 42 slots (got: ${secBSlotsAfter?.length})`);
-  assert(secBSlotsAfter?.every(s => s.section_id === secB.id), 'TEST C: Every Section B slot belongs strictly to Section B');
+  assert(Boolean(secBSlotsAfter && secBSlotsAfter.length > 0 && secBSlotsAfter.every(s => s.section_id === secB.id)), 'TEST C: Every Section B slot belongs strictly to Section B');
 
   console.log('\n--- PART 4: Student Dashboard & Timetable Live Sync ---');
   // Student Tarun Kushwah in Section B must see Section B MON Period 1 = DSTL with Mr. Wasim in A006
