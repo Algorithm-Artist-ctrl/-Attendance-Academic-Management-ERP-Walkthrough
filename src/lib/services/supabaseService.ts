@@ -851,6 +851,8 @@ export const supabaseService = {
     }>;
     publishedBy?: string;
     effectiveDate?: string;
+    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE';
+    sourceUrl?: string;
   }): Promise<{ success: boolean; count: number; version?: TimetableVersion }> {
     if (!params.sectionId) {
       throw new Error('Target Section ID is required to save timetable.');
@@ -871,6 +873,7 @@ export const supabaseService = {
     const defaultRoom = sectionData.room_number || `Room ${sectionData.name}`;
     const effectiveFrom = params.effectiveDate || getISTTodayDate();
     const publishedBy = params.publishedBy || 'HOD / Super Administrator';
+    const actionType = params.sourceType || 'MANUAL_HOD_SECTION_SAVE';
 
     // 2. Fetch latest version number to increment
     const { data: existingVersions } = await supabase
@@ -891,38 +894,7 @@ export const supabaseService = {
       .eq('section_id', params.sectionId)
       .eq('status', 'active');
 
-    // 4. Create new active TimetableVersion
-    const { data: createdVersion } = await supabase
-      .from('timetable_versions')
-      .insert([{
-        department_id: deptId,
-        section_id: params.sectionId,
-        version_number: nextVersionNumber,
-        effective_from: effectiveFrom,
-        status: 'active',
-        approved_by: publishedBy,
-        approved_at: new Date().toISOString(),
-        changes_summary: {
-          action: 'MANUAL_HOD_SECTION_SAVE',
-          total_slots: params.entries.length,
-          effective_from: effectiveFrom,
-          room: defaultRoom,
-        }
-      }])
-      .select('*')
-      .single();
-
-    // 5. Delete ALL previous timetable entries strictly for this section
-    const { error: delErr } = await supabase
-      .from('timetable_entries')
-      .delete()
-      .eq('section_id', params.sectionId);
-
-    if (delErr) {
-      throw new Error(`Failed to clear previous section timetable: ${delErr.message}`);
-    }
-
-    // 6. Format new rows with default rooms & active status
+    // 4. Format new rows with default rooms & active status
     const rowsToInsert = params.entries.map(e => ({
       section_id: params.sectionId,
       subject_id: e.subject_id,
@@ -935,6 +907,40 @@ export const supabaseService = {
       lecture_type: e.lecture_type || 'Theory',
       active: true,
     }));
+
+    // 5. Create new active TimetableVersion storing full period snapshot
+    const { data: createdVersion } = await supabase
+      .from('timetable_versions')
+      .insert([{
+        department_id: deptId,
+        section_id: params.sectionId,
+        version_number: nextVersionNumber,
+        effective_from: effectiveFrom,
+        status: 'active',
+        approved_by: publishedBy,
+        approved_at: new Date().toISOString(),
+        changes_summary: {
+          action: actionType,
+          source_type: actionType,
+          source_url: params.sourceUrl || null,
+          total_slots: rowsToInsert.length,
+          effective_from: effectiveFrom,
+          room: defaultRoom,
+          snapshot: rowsToInsert,
+        }
+      }])
+      .select('*')
+      .single();
+
+    // 6. Delete ALL previous timetable entries strictly for this section (Atomic replacement)
+    const { error: delErr } = await supabase
+      .from('timetable_entries')
+      .delete()
+      .eq('section_id', params.sectionId);
+
+    if (delErr) {
+      throw new Error(`Failed to clear previous section timetable: ${delErr.message}`);
+    }
 
     if (rowsToInsert.length > 0) {
       const { error: insertErr } = await supabase
@@ -997,7 +1003,7 @@ export const supabaseService = {
 
     // 10. Record Audit Log in Supabase
     await supabase.from('audit_logs').insert([{
-      action: 'TIMETABLE_MANUALLY_EDITED_AND_PUBLISHED',
+      action: 'TIMETABLE_SECTION_REPLACED_AND_PUBLISHED',
       actor_name: publishedBy,
       actor_role: 'hod',
       entity_type: 'timetable_version',
@@ -1006,6 +1012,8 @@ export const supabaseService = {
         section_id: params.sectionId,
         section_name: sectionData.name,
         version: nextVersionNumber,
+        source_type: actionType,
+        source_url: params.sourceUrl || null,
         effective_from: effectiveFrom,
         slots_count: rowsToInsert.length,
       }
@@ -1016,7 +1024,7 @@ export const supabaseService = {
       title: `Official Timetable Updated — Section ${sectionData.name} (W.E.F. ${effectiveFrom})`,
       category: 'Academic',
       author: publishedBy,
-      content: `The official academic timetable for Section ${sectionData.name} has been published by HOD (Version ${nextVersionNumber}, Effective ${effectiveFrom}, Room: ${defaultRoom}). Total ${rowsToInsert.length} periods active. All students and assigned faculty are requested to follow this schedule.`,
+      content: `The official academic timetable for Section ${sectionData.name} has been published by HOD (${actionType}, Version ${nextVersionNumber}, Effective ${effectiveFrom}, Room: ${defaultRoom}). Total ${rowsToInsert.length} periods active. All students and assigned faculty are requested to follow this schedule.`,
       isPinned: true,
       targetAudience: `Section ${sectionData.name}`,
       targetSectionId: params.sectionId,
@@ -1035,6 +1043,7 @@ export const supabaseService = {
           section_id: params.sectionId,
           section_name: sectionData.name,
           new_timetable_version: nextVersionNumber,
+          source_type: actionType,
           timestamp: new Date().toISOString(),
         }
       });
@@ -1047,6 +1056,54 @@ export const supabaseService = {
       count: verifiedCount || 0,
       version: createdVersion as TimetableVersion,
     };
+  },
+
+  /**
+   * Rollback / Restore a section's timetable to a previous version snapshot atomically
+   */
+  async rollbackToVersion(params: {
+    versionId: string;
+    restoredBy?: string;
+  }): Promise<{ success: boolean; count: number; version?: TimetableVersion }> {
+    const { data: targetVersion, error: verErr } = await supabase
+      .from('timetable_versions')
+      .select('*')
+      .eq('id', params.versionId)
+      .single();
+
+    if (verErr || !targetVersion) {
+      throw new Error(`Target timetable version not found: ${verErr?.message || params.versionId}`);
+    }
+
+    const sectionId = targetVersion.section_id;
+    if (!sectionId) {
+      throw new Error('Target version does not contain a valid section association.');
+    }
+
+    const snapshot = targetVersion.changes_summary?.snapshot;
+    if (!snapshot || !Array.isArray(snapshot) || snapshot.length === 0) {
+      throw new Error(`Version ${targetVersion.version_number} does not contain a recoverable period snapshot.`);
+    }
+
+    const actorName = params.restoredBy || 'HOD / Administrator';
+
+    return await this.saveSectionTimetable({
+      sectionId,
+      entries: snapshot.map((s: any) => ({
+        subject_id: s.subject_id,
+        faculty_id: s.faculty_id,
+        day_of_week: s.day_of_week,
+        period_number: s.period_number,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        room_number: s.room_number,
+        lecture_type: s.lecture_type,
+        active: true,
+      })),
+      publishedBy: `${actorName} (Rollback to v${targetVersion.version_number})`,
+      effectiveDate: targetVersion.effective_from || getISTTodayDate(),
+      sourceType: 'ROLLBACK_RESTORE',
+    });
   },
 
   // ==========================================

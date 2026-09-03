@@ -202,7 +202,7 @@ async function runHODTimetableLiveSyncTests() {
   console.log('\n--- SUITE 8: Version History & Archival Verification ---');
   const allVersionsForSecA = freshDB!.timetableVersions.filter(v => v.section_id === secA.id);
   assert(allVersionsForSecA.some(v => v.status === 'active'), 'Active version exists for Section A');
-  assert(allVersionsForSecA.every(v => v.status === 'active' || v.status === 'archived'), 'All versions properly categorized as active or archived');
+  assert(allVersionsForSecA.every(v => v.status === 'active' || v.status === 'archived' || v.status === 'superseded'), 'All versions properly categorized as active, superseded or archived');
 
   // 9. Teardown & Canonical Schedule Restoration
   console.log('\n--- SUITE 9: Teardown & Canonical Schedule Restoration ---');

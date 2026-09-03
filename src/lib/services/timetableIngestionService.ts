@@ -427,6 +427,23 @@ export class TimetableIngestionService {
         throw new Error(insertErr.message || 'Failed to insert active timetable records.');
       }
       insertedEntries = (inserted || []) as TimetableEntry[];
+
+      if (createdVersion?.id) {
+        await supabase
+          .from('timetable_versions')
+          .update({
+            changes_summary: {
+              stats: report.stats,
+              room_number: doc.room_number,
+              class_incharge: doc.class_incharges,
+              w_e_f: effectiveFrom,
+              total_slots: newTimetableRows.length,
+              source_type: 'AI_DOCUMENT_INGESTION',
+              snapshot: newTimetableRows,
+            }
+          })
+          .eq('id', createdVersion.id);
+      }
     }
 
     // 7.1 Verify Actual Database Write (Source of Truth check)

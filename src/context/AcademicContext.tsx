@@ -185,6 +185,12 @@ interface AcademicContextType {
     }>;
     publishedBy?: string;
     effectiveDate?: string;
+    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE';
+    sourceUrl?: string;
+  }) => Promise<{ success: boolean; count: number; version?: TimetableVersion }>;
+  rollbackToVersion: (params: {
+    versionId: string;
+    restoredBy?: string;
   }) => Promise<{ success: boolean; count: number; version?: TimetableVersion }>;
   checkTimetableConflict: (entry: Omit<TimetableEntry, 'id'>, excludeId?: string) => TimetableConflict | null;
   saveAttendance: (params: {
@@ -819,8 +825,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }>;
     publishedBy?: string;
     effectiveDate?: string;
+    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE';
+    sourceUrl?: string;
   }) => {
     const res = await supabaseService.saveSectionTimetable(params);
+    await refreshData(true);
+    return res;
+  };
+
+  const rollbackToVersion = async (params: {
+    versionId: string;
+    restoredBy?: string;
+  }) => {
+    const res = await supabaseService.rollbackToVersion(params);
     await refreshData(true);
     return res;
   };
@@ -1492,6 +1509,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateTimetableEntry,
         deleteTimetableEntry,
         saveSectionTimetable,
+        rollbackToVersion,
         checkTimetableConflict,
         saveAttendance,
         submitCorrectionRequest,

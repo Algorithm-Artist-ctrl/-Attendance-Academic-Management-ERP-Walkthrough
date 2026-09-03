@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -17,7 +17,11 @@ import {
   X,
   Layers,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  FileSpreadsheet,
+  Download,
+  UploadCloud,
+  FileText
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +30,7 @@ import { Modal } from '../../components/common/Modal';
 import { DayOfWeek, LectureType, TimetableEntry } from '../../types/database.types';
 import { formatTime12H, getISTDayOfWeek } from '../../lib/utils/dateUtils';
 import { TimetableConflict, ExtractedTimetableDocument } from '../../types/academic.types';
+import { csvTimetableService, CSVValidationResult } from '../../lib/services/csvTimetableService';
 import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
@@ -68,6 +73,13 @@ export const TimetableManagerPage: React.FC = () => {
   const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [extractedDocs, setExtractedDocs] = useState<ExtractedTimetableDocument[]>([]);
+
+  // CSV URL and File Ingestion State
+  const [csvUrl, setCsvUrl] = useState('');
+  const [isFetchingCSV, setIsFetchingCSV] = useState(false);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const [csvPreview, setCsvPreview] = useState<CSVValidationResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Publishing state
   const [isPublishing, setIsPublishing] = useState(false);
@@ -271,6 +283,110 @@ export const TimetableManagerPage: React.FC = () => {
     }
   };
 
+  // ----------------------------------------------------
+  // CSV INGESTION & ATOMIC REPLACEMENT HANDLERS
+  // ----------------------------------------------------
+  const handleFetchCSV = async () => {
+    if (!csvUrl.trim()) {
+      setCsvError('Please enter a valid CSV URL.');
+      return;
+    }
+    setIsFetchingCSV(true);
+    setCsvError(null);
+    setCsvPreview(null);
+    try {
+      const csvText = await csvTimetableService.fetchTimetableCSV(csvUrl);
+      const validation = csvTimetableService.parseAndValidateCSV(csvText, {
+        targetSection: currentSection,
+        subjects,
+        faculty,
+      });
+
+      if (!validation.valid) {
+        setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
+        return;
+      }
+
+      setCsvPreview(validation);
+    } catch (err: any) {
+      setCsvError(err.message || 'Failed to fetch CSV timetable.');
+    } finally {
+      setIsFetchingCSV(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvError(null);
+    setCsvPreview(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) {
+        setCsvError('Uploaded CSV file is empty.');
+        return;
+      }
+      const validation = csvTimetableService.parseAndValidateCSV(content, {
+        targetSection: currentSection,
+        subjects,
+        faculty,
+      });
+
+      if (!validation.valid) {
+        setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
+        return;
+      }
+
+      setCsvPreview(validation);
+    };
+    reader.onerror = () => {
+      setCsvError('Failed to read uploaded CSV file.');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImportAndReplaceFromCSV = async () => {
+    if (!csvPreview || csvPreview.entries.length === 0) return;
+
+    setIsPublishing(true);
+    setPublishError(null);
+    setPublishSuccessMsg(null);
+
+    try {
+      const result = await saveSectionTimetable({
+        sectionId: selectedSectionId,
+        entries: csvPreview.entries.map(e => ({
+          subject_id: e.subject_id || subjects[0]?.id,
+          faculty_id: e.faculty_id || faculty[0]?.id,
+          day_of_week: e.day_of_week,
+          period_number: e.period_number,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          room_number: e.room_number || currentSection?.room_number || 'Room A-007',
+          lecture_type: e.lecture_type || 'Theory',
+          active: true,
+        })),
+        publishedBy: user?.full_name || 'HOD / Super Administrator',
+        sourceType: csvUrl ? 'CSV_URL' : 'CSV_UPLOAD',
+        sourceUrl: csvUrl || undefined,
+      });
+
+      setPublishSuccessMsg(`Section ${currentSection?.name} Timetable completely replaced and published! (${result.count} periods active, Version ${result.version?.version_number || 'New'})`);
+      setCsvPreview(null);
+      setCsvUrl('');
+      setIsEditMode(false);
+      await refreshData(true);
+    } catch (err: any) {
+      setPublishError(err.message || 'Failed to replace section timetable.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const todayDay = getISTDayOfWeek();
   const defaultDay = (days.includes(todayDay as any) ? todayDay : 'MON') as DayOfWeek;
   const [selectedMobileDay, setSelectedMobileDay] = useState<DayOfWeek>(defaultDay);
@@ -302,6 +418,8 @@ export const TimetableManagerPage: React.FC = () => {
               onChange={(e) => {
                 setSelectedSectionId(e.target.value);
                 setIsEditMode(false);
+                setCsvPreview(null);
+                setCsvError(null);
               }}
               className="px-3 py-2 bg-slate-950/90 border-2 border-emerald-500/40 rounded-xl text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88] touch-target cursor-pointer"
             >
@@ -358,6 +476,131 @@ export const TimetableManagerPage: React.FC = () => {
             Versions
           </Button>
         </div>
+      </div>
+
+      {/* CSV TIMETABLE SOURCE PANEL */}
+      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+              <FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                CSV Timetable Source
+                <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
+                  Target: Section {currentSection?.name}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Paste a remote CSV URL or upload a CSV file to atomically replace Section {currentSection?.name}'s complete schedule
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".csv,text/csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              leftIcon={<UploadCloud className="w-4 h-4 text-emerald-400" />}
+              className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
+            >
+              Upload CSV File
+            </Button>
+          </div>
+        </div>
+
+        {/* URL Input Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-2.5">
+          <div className="relative flex-1 w-full">
+            <input
+              type="url"
+              value={csvUrl}
+              onChange={(e) => {
+                setCsvUrl(e.target.value);
+                setCsvError(null);
+              }}
+              placeholder="Paste CSV URL (e.g. https://example.com/section_a_timetable.csv)..."
+              className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] font-mono shadow-inner"
+            />
+          </div>
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={handleFetchCSV}
+            isLoading={isFetchingCSV}
+            leftIcon={<Download className="w-4 h-4 text-slate-950" />}
+            className="w-full sm:w-auto font-black shadow-[0_0_15px_rgba(0,255,136,0.25)] shrink-0"
+          >
+            Fetch CSV
+          </Button>
+        </div>
+
+        {/* CSV Validation Error Display */}
+        {csvError && (
+          <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-black text-rose-200">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>CSV Ingestion Issue Detected — Existing Section Timetable Unchanged</span>
+              </div>
+              <button onClick={() => setCsvError(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap font-sans text-[11px] text-rose-200/90 pl-1">{csvError}</pre>
+          </div>
+        )}
+
+        {/* CSV Preview Summary & One-Click Replace */}
+        {csvPreview && (
+          <div className="p-4 sm:p-5 rounded-3xl bg-emerald-500/10 border-2 border-emerald-500/40 text-white space-y-3 animate-in zoom-in-95">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 font-black text-sm text-[#00ff88]">
+                  <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />
+                  <span>Valid Timetable Source — {csvPreview.totalSlots} Periods Ready for Section {currentSection?.name}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
+                  {Object.entries(csvPreview.dayBreakdown).map(([d, count]) => (
+                    <span key={d} className="px-2 py-0.5 rounded-lg bg-slate-950 border border-emerald-500/20 font-mono text-[10px]">
+                      <strong>{d}:</strong> <span className="text-emerald-400">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCsvPreview(null)}
+                  className="text-xs text-slate-400 border-slate-700 hover:bg-slate-900"
+                >
+                  Discard
+                </Button>
+                <Button
+                  variant="neon"
+                  size="sm"
+                  onClick={handleImportAndReplaceFromCSV}
+                  isLoading={isPublishing}
+                  leftIcon={<ShieldCheck className="w-4 h-4 text-slate-950" />}
+                  className="font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]"
+                >
+                  Import & Replace Section {currentSection?.name} ({csvPreview.totalSlots} Slots)
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* EDIT MODE PROMINENT ACTION BANNER */}
