@@ -1,5 +1,6 @@
 import { DayOfWeek, LectureType, Section, Subject, Faculty } from '../../types/database.types';
 import { ExtractedTimetableDocument, UploadTargetContext } from '../../types/academic.types';
+import { fetchCSVContent } from '../utils/urlUtils';
 
 export interface RawCSVRow {
   day?: string;
@@ -52,61 +53,10 @@ export class CSVTimetableService {
   }
 
   /**
-   * Safely fetch a remote CSV timetable from a URL
+   * Safely fetch a remote CSV timetable from a Google Sheets or direct URL
    */
   public async fetchTimetableCSV(url: string): Promise<string> {
-    const cleanUrl = url.trim();
-    if (!cleanUrl) {
-      throw new Error('CSV URL cannot be empty.');
-    }
-
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      throw new Error('Invalid CSV URL: Must begin with http:// or https://');
-    }
-
-    // Protect against private intranet loopbacks if running server-side
-    const forbiddenHosts = ['localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254'];
-    try {
-      const parsed = new URL(cleanUrl);
-      if (forbiddenHosts.includes(parsed.hostname.toLowerCase())) {
-        throw new Error('Access to local/private network addresses is restricted for security.');
-      }
-    } catch (e: any) {
-      if (e.message.includes('restricted')) throw e;
-      throw new Error(`Malformed URL structure: ${e.message}`);
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-    try {
-      const response = await fetch(cleanUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/csv, text/plain, application/json, */*',
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText} — Failed to fetch CSV from source URL.`);
-      }
-
-      const text = await response.text();
-      if (!text || text.trim().length === 0) {
-        throw new Error('The retrieved CSV file is empty.');
-      }
-
-      return text;
-    } catch (err: any) {
-      clearTimeout(timeout);
-      if (err.name === 'AbortError') {
-        throw new Error('Request timed out while fetching CSV timetable (limit: 15s).');
-      }
-      throw new Error(`Failed to fetch CSV from "${cleanUrl}": ${err.message}`);
-    }
+    return await fetchCSVContent(url);
   }
 
   /**

@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
-import { GraduationCap, Search, Plus, Filter, UserCheck, Mail, Phone, BookOpen, Layers, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  GraduationCap, 
+  Search, 
+  Plus, 
+  Filter, 
+  UserCheck, 
+  Mail, 
+  Phone, 
+  BookOpen, 
+  Layers, 
+  Trash2,
+  FileSpreadsheet,
+  Download,
+  UploadCloud,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  X
+} from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AdmissionType, Student } from '../../types/database.types';
+import { studentSyncService, StudentSyncResult } from '../../lib/services/studentSyncService';
 import { clsx } from 'clsx';
 
 export const StudentDirectoryPage: React.FC = () => {
@@ -22,12 +41,79 @@ export const StudentDirectoryPage: React.FC = () => {
     students,
     assignments,
     addStudent,
-    deleteStudent
+    deleteStudent,
+    refreshData
   } = useAcademic();
 
   const isSuperAdmin = role === 'super_admin';
   const isHOD = role === 'hod';
   const isFaculty = role === 'faculty';
+
+  // Google Sheet Sync State for Super Admin
+  const [googleSheetUrl, setGoogleSheetUrl] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<StudentSyncResult | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
+    return localStorage.getItem('vctm_last_student_sync') || '';
+  });
+  const [showErrors, setShowErrors] = useState(false);
+  const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSyncStudents = async () => {
+    if (!googleSheetUrl.trim()) {
+      alert('Please enter a valid Google Sheet CSV URL.');
+      return;
+    }
+    setIsSyncing(true);
+    setSyncSuccessToast(null);
+    try {
+      const result = await studentSyncService.syncStudents(
+        { url: googleSheetUrl },
+        { performedBy: user?.full_name || 'Tarun Kushwah (Super Admin)' }
+      );
+      setSyncResult(result);
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString();
+      setLastSyncTime(timeStr);
+      localStorage.setItem('vctm_last_student_sync', timeStr);
+      setSyncSuccessToast(`✓ Student synchronization complete — ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged${result.errorCount > 0 ? `, ${result.errorCount} rejected` : ''}`);
+      await refreshData(true);
+    } catch (err: any) {
+      alert(`Student Sync Failed: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSyncing(true);
+    setSyncSuccessToast(null);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      try {
+        const result = await studentSyncService.syncStudents(
+          { csvContent: content },
+          { performedBy: user?.full_name || 'Tarun Kushwah (Super Admin)' }
+        );
+        setSyncResult(result);
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString();
+        setLastSyncTime(timeStr);
+        localStorage.setItem('vctm_last_student_sync', timeStr);
+        setSyncSuccessToast(`✓ File synchronization complete — ${result.added} added, ${result.updated} updated, ${result.unchanged} unchanged${result.errorCount > 0 ? `, ${result.errorCount} rejected` : ''}`);
+        await refreshData(true);
+      } catch (err: any) {
+        alert(`File Sync Failed: ${err.message}`);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   // Role-based student filtering
   const accessibleStudents = React.useMemo(() => {
@@ -164,6 +250,132 @@ export const StudentDirectoryPage: React.FC = () => {
           </Button>
         )}
       </div>
+
+      {/* Student Data Source Panel for Super Admin */}
+      {isSuperAdmin && (
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/25 space-y-4 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                  Student Data Source
+                  <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
+                    Super Admin Master Sync
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Synchronize students from a published Google Sheet CSV URL or local file (Upsert by Roll No.)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv,text/csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                leftIcon={<UploadCloud className="w-4 h-4 text-emerald-400" />}
+                className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
+              >
+                Upload CSV File
+              </Button>
+            </div>
+          </div>
+
+          {/* URL Input Bar & Sync Button */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5">
+            <div className="relative flex-1 w-full">
+              <input
+                type="url"
+                value={googleSheetUrl}
+                onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                placeholder="Paste Google Sheet CSV URL (e.g. https://docs.google.com/spreadsheets/d/.../export?format=csv)..."
+                className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] font-mono shadow-inner"
+              />
+            </div>
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={handleSyncStudents}
+              isLoading={isSyncing}
+              leftIcon={<Download className="w-4 h-4 text-slate-950" />}
+              className="w-full sm:w-auto font-black shadow-[0_0_15px_rgba(0,255,136,0.25)] shrink-0"
+            >
+              SYNC STUDENTS
+            </Button>
+          </div>
+
+          {/* Last Sync & Result Metadata */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-emerald-500/10 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-500" />
+              <span>Last Sync: <strong className="text-slate-200">{lastSyncTime || 'Never'}</strong></span>
+            </div>
+
+            {syncResult && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Sync Result:</span>
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] font-bold">
+                  {syncResult.added} added
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 font-bold">
+                  {syncResult.updated} updated
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-bold">
+                  {syncResult.unchanged} unchanged
+                </span>
+                {syncResult.errorCount > 0 && (
+                  <button 
+                    onClick={() => setShowErrors(!showErrors)}
+                    className="px-2 py-0.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold hover:bg-rose-500/25 transition-colors cursor-pointer"
+                  >
+                    {syncResult.errorCount} errors {showErrors ? '▲' : '▼'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Expandable Errors List */}
+          {showErrors && syncResult && syncResult.errors.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs space-y-1.5 animate-in fade-in">
+              <div className="font-bold flex items-center gap-1.5 text-rose-200">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <span>Rows Rejected During Sync ({syncResult.errors.length}):</span>
+              </div>
+              <ul className="list-disc pl-5 space-y-1 text-[11px] text-rose-300/90 font-mono max-h-40 overflow-y-auto">
+                {syncResult.errors.map((err, i) => (
+                  <li key={i}>
+                    Row {err.row}{err.rollNumber ? ` (${err.rollNumber})` : ''}: {err.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {syncSuccessToast && (
+            <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center justify-between animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{syncSuccessToast}</span>
+              </div>
+              <button onClick={() => setSyncSuccessToast(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">

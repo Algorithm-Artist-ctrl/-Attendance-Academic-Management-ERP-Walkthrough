@@ -905,7 +905,7 @@ export const supabaseService = {
     }>;
     publishedBy?: string;
     effectiveDate?: string;
-    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE';
+    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE' | 'GOOGLE_SHEET_CSV_SYNC' | 'CSV_FILE_UPLOAD' | string;
     sourceUrl?: string;
   }): Promise<{ success: boolean; count: number; version?: TimetableVersion }> {
     if (!params.sectionId) {
@@ -962,7 +962,55 @@ export const supabaseService = {
       active: true,
     }));
 
-    // 5. Create new active TimetableVersion storing full period snapshot
+    // Attempt Atomic RPC replacement in PostgreSQL transaction first
+    try {
+      const { data: rpcResult, error: rpcErr } = await supabase.rpc('replace_section_timetable', {
+        p_section_id: params.sectionId,
+        p_department_id: deptId,
+        p_approved_by: publishedBy,
+        p_effective_from: effectiveFrom,
+        p_source_type: actionType,
+        p_source_url: params.sourceUrl || null,
+        p_entries: rowsToInsert,
+      });
+
+      if (!rpcErr && rpcResult && rpcResult.success) {
+        // Fetch created version
+        const { data: createdVer } = await supabase
+          .from('timetable_versions')
+          .select('*')
+          .eq('id', rpcResult.version_id)
+          .maybeSingle();
+
+        this.invalidateMasterCache();
+
+        // Broadcast Realtime Update
+        try {
+          const channel = supabase.channel('vctm-erp-realtime-channel');
+          await channel.send({
+            type: 'broadcast',
+            event: 'timetable_updated',
+            payload: {
+              section_id: params.sectionId,
+              section_name: sectionData.name,
+              new_timetable_version: rpcResult.version_number,
+              source_type: actionType,
+              timestamp: new Date().toISOString(),
+            }
+          });
+        } catch {}
+
+        return {
+          success: true,
+          count: rpcResult.period_count,
+          version: createdVer || undefined,
+        };
+      }
+    } catch (rpcEx) {
+      console.warn('RPC replace_section_timetable fallback to client transaction:', rpcEx);
+    }
+
+    // 5. Create new active TimetableVersion storing full period snapshot (Fallback)
     const { data: createdVersion } = await supabase
       .from('timetable_versions')
       .insert([{
@@ -1165,6 +1213,52 @@ export const supabaseService = {
       effectiveDate: targetVersion.effective_from || getISTTodayDate(),
       sourceType: 'ROLLBACK_RESTORE',
     });
+  },
+
+  /**
+   * Check for genuine cross-section faculty scheduling conflicts without blocking timetable updates
+   */
+  async checkFacultyCrossSectionConflicts(params: {
+    sectionId: string;
+    entries: Array<{ faculty_id: string; day_of_week: DayOfWeek; period_number: number; subject_id?: string }>;
+  }): Promise<Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string }>> {
+    const facultyIds = Array.from(new Set(params.entries.map(e => e.faculty_id).filter(Boolean)));
+    if (facultyIds.length === 0) return [];
+
+    const { data: otherEntries, error } = await supabase
+      .from('timetable_entries')
+      .select('faculty_id, day_of_week, period_number, section_id, sections(name), subjects(subject_code), faculty(full_name)')
+      .in('faculty_id', facultyIds)
+      .neq('section_id', params.sectionId)
+      .eq('active', true);
+
+    if (error || !otherEntries || otherEntries.length === 0) return [];
+
+    const conflicts: Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string }> = [];
+
+    for (const e of params.entries) {
+      const match = otherEntries.find((o: any) => 
+        o.faculty_id === e.faculty_id &&
+        o.day_of_week === e.day_of_week &&
+        o.period_number === e.period_number
+      );
+
+      if (match) {
+        const facName = (match as any).faculty?.full_name || 'Faculty Member';
+        const secName = (match as any).sections?.name || 'Other Section';
+        const subCode = (match as any).subjects?.subject_code;
+
+        conflicts.push({
+          facultyName: facName,
+          day: e.day_of_week,
+          period: e.period_number,
+          otherSectionName: secName,
+          otherSubjectCode: subCode,
+        });
+      }
+    }
+
+    return conflicts;
   },
 
   // ==========================================

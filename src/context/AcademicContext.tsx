@@ -191,7 +191,7 @@ interface AcademicContextType {
     }>;
     publishedBy?: string;
     effectiveDate?: string;
-    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE';
+    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE' | 'GOOGLE_SHEET_CSV_SYNC' | 'CSV_FILE_UPLOAD' | string;
     sourceUrl?: string;
   }) => Promise<{ success: boolean; count: number; version?: TimetableVersion }>;
   rollbackToVersion: (params: {
@@ -867,7 +867,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }>;
     publishedBy?: string;
     effectiveDate?: string;
-    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE';
+    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE' | 'GOOGLE_SHEET_CSV_SYNC' | 'CSV_FILE_UPLOAD' | string;
     sourceUrl?: string;
   }) => {
     const res = await supabaseService.saveSectionTimetable(params);

@@ -31,6 +31,7 @@ import { DayOfWeek, LectureType, TimetableEntry } from '../../types/database.typ
 import { formatTime12H, getISTDayOfWeek } from '../../lib/utils/dateUtils';
 import { TimetableConflict, ExtractedTimetableDocument } from '../../types/academic.types';
 import { csvTimetableService, CSVValidationResult } from '../../lib/services/csvTimetableService';
+import { supabaseService } from '../../lib/services/supabaseService';
 import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
@@ -96,6 +97,8 @@ export const TimetableManagerPage: React.FC = () => {
   const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [crossSectionWarnings, setCrossSectionWarnings] = useState<string[]>([]);
+  const [facultyConflicts, setFacultyConflicts] = useState<Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string }>>([]);
+  const [showConflictDetails, setShowConflictDetails] = useState(false);
 
   const days: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const dayLabels: Record<DayOfWeek, string> = {
@@ -294,16 +297,20 @@ export const TimetableManagerPage: React.FC = () => {
   };
 
   // ----------------------------------------------------
-  // CSV INGESTION & ATOMIC REPLACEMENT HANDLERS
   // ----------------------------------------------------
-  const handleFetchCSV = async () => {
+  // ONE-CLICK GOOGLE SHEET & CSV TIMETABLE SYNC HANDLERS
+  // ----------------------------------------------------
+  const handleSyncTimetable = async () => {
     if (!csvUrl.trim()) {
-      setCsvError('Please enter a valid CSV URL.');
+      setCsvError('Please enter a valid Google Sheet CSV URL.');
       return;
     }
-    setIsFetchingCSV(true);
+    setIsPublishing(true);
     setCsvError(null);
-    setCsvPreview(null);
+    setPublishSuccessMsg(null);
+    setFacultyConflicts([]);
+    setShowConflictDetails(false);
+
     try {
       const csvText = await csvTimetableService.fetchTimetableCSV(csvUrl);
       const validation = csvTimetableService.parseAndValidateCSV(csvText, {
@@ -317,59 +324,21 @@ export const TimetableManagerPage: React.FC = () => {
         return;
       }
 
-      setCsvPreview(validation);
-    } catch (err: any) {
-      setCsvError(err.message || 'Failed to fetch CSV timetable.');
-    } finally {
-      setIsFetchingCSV(false);
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setCsvError(null);
-    setCsvPreview(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (!content) {
-        setCsvError('Uploaded CSV file is empty.');
-        return;
-      }
-      const validation = csvTimetableService.parseAndValidateCSV(content, {
-        targetSection: currentSection,
-        subjects,
-        faculty,
+      // Check for genuine faculty cross-section scheduling conflicts
+      const conflicts = await supabaseService.checkFacultyCrossSectionConflicts({
+        sectionId: selectedSectionId,
+        entries: validation.entries.map(e => ({
+          faculty_id: e.faculty_id || '',
+          day_of_week: e.day_of_week,
+          period_number: e.period_number,
+          subject_id: e.subject_id
+        }))
       });
 
-      if (!validation.valid) {
-        setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
-        return;
-      }
-
-      setCsvPreview(validation);
-    };
-    reader.onerror = () => {
-      setCsvError('Failed to read uploaded CSV file.');
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleImportAndReplaceFromCSV = async () => {
-    if (!csvPreview || csvPreview.entries.length === 0) return;
-
-    setIsPublishing(true);
-    setPublishError(null);
-    setPublishSuccessMsg(null);
-
-    try {
+      // Atomically replace section timetable
       const result = await saveSectionTimetable({
         sectionId: selectedSectionId,
-        entries: csvPreview.entries.map(e => ({
+        entries: validation.entries.map(e => ({
           subject_id: e.subject_id || subjects[0]?.id,
           faculty_id: e.faculty_id || faculty[0]?.id,
           day_of_week: e.day_of_week,
@@ -380,21 +349,100 @@ export const TimetableManagerPage: React.FC = () => {
           lecture_type: e.lecture_type || 'Theory',
           active: true,
         })),
-        publishedBy: user?.full_name || 'HOD / Super Administrator',
-        sourceType: csvUrl ? 'CSV_URL' : 'CSV_UPLOAD',
-        sourceUrl: csvUrl || undefined,
+        publishedBy: user?.full_name || 'HOD / Central Administrator',
+        sourceType: 'GOOGLE_SHEET_CSV_SYNC',
+        sourceUrl: csvUrl,
       });
 
-      setPublishSuccessMsg(`Section ${currentSection?.name} Timetable completely replaced and published! (${result.count} periods active, Version ${result.version?.version_number || 'New'})`);
-      setCsvPreview(null);
-      setCsvUrl('');
+      setPublishSuccessMsg(`✓ Timetable updated • ${result.count} periods synchronized`);
+      if (conflicts && conflicts.length > 0) {
+        setFacultyConflicts(conflicts);
+      }
       setIsEditMode(false);
       await refreshData(true);
     } catch (err: any) {
-      setPublishError(err.message || 'Failed to replace section timetable.');
+      setCsvError(err.message || 'Sync failed — existing timetable was not changed.');
     } finally {
       setIsPublishing(false);
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvError(null);
+    setPublishSuccessMsg(null);
+    setFacultyConflicts([]);
+    setShowConflictDetails(false);
+    setIsPublishing(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (!content) {
+        setCsvError('Uploaded CSV file is empty.');
+        setIsPublishing(false);
+        return;
+      }
+      try {
+        const validation = csvTimetableService.parseAndValidateCSV(content, {
+          targetSection: currentSection,
+          subjects,
+          faculty,
+        });
+
+        if (!validation.valid) {
+          setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
+          setIsPublishing(false);
+          return;
+        }
+
+        const conflicts = await supabaseService.checkFacultyCrossSectionConflicts({
+          sectionId: selectedSectionId,
+          entries: validation.entries.map(e => ({
+            faculty_id: e.faculty_id || '',
+            day_of_week: e.day_of_week,
+            period_number: e.period_number,
+            subject_id: e.subject_id
+          }))
+        });
+
+        const result = await saveSectionTimetable({
+          sectionId: selectedSectionId,
+          entries: validation.entries.map(e => ({
+            subject_id: e.subject_id || subjects[0]?.id,
+            faculty_id: e.faculty_id || faculty[0]?.id,
+            day_of_week: e.day_of_week,
+            period_number: e.period_number,
+            start_time: e.start_time,
+            end_time: e.end_time,
+            room_number: e.room_number || currentSection?.room_number || 'Room A-007',
+            lecture_type: e.lecture_type || 'Theory',
+            active: true,
+          })),
+          publishedBy: user?.full_name || 'HOD / Central Administrator',
+          sourceType: 'CSV_FILE_UPLOAD',
+        });
+
+        setPublishSuccessMsg(`✓ Timetable updated • ${result.count} periods synchronized`);
+        if (conflicts && conflicts.length > 0) {
+          setFacultyConflicts(conflicts);
+        }
+        setIsEditMode(false);
+        await refreshData(true);
+      } catch (err: any) {
+        setCsvError(err.message || 'Sync failed — existing timetable was not changed.');
+      } finally {
+        setIsPublishing(false);
+      }
+    };
+    reader.onerror = () => {
+      setCsvError('Failed to read uploaded CSV file.');
+      setIsPublishing(false);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const todayDay = getISTDayOfWeek();
@@ -522,7 +570,7 @@ export const TimetableManagerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* CSV TIMETABLE SOURCE PANEL */}
+      {/* TIMETABLE CSV SOURCE PANEL */}
       <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -531,13 +579,13 @@ export const TimetableManagerPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
-                CSV Timetable Source
+                Timetable CSV Source
                 <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
                   Target: Section {currentSection?.name}
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Paste a remote CSV URL or upload a CSV file to atomically replace Section {currentSection?.name}'s complete schedule
+                Paste a Google Sheet CSV URL or upload a CSV file to atomically synchronize Section {currentSection?.name}'s schedule
               </p>
             </div>
           </div>
@@ -562,7 +610,7 @@ export const TimetableManagerPage: React.FC = () => {
           </div>
         </div>
 
-        {/* URL Input Bar */}
+        {/* URL Input Bar & One-Click Sync */}
         <div className="flex flex-col sm:flex-row items-center gap-2.5">
           <div className="relative flex-1 w-full">
             <input
@@ -572,21 +620,61 @@ export const TimetableManagerPage: React.FC = () => {
                 setCsvUrl(e.target.value);
                 setCsvError(null);
               }}
-              placeholder="Paste CSV URL (e.g. https://example.com/section_a_timetable.csv)..."
+              placeholder="Paste Google Sheet CSV URL (e.g. https://docs.google.com/spreadsheets/d/.../export?format=csv)..."
               className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] font-mono shadow-inner"
             />
           </div>
           <Button
             variant="neon"
             size="sm"
-            onClick={handleFetchCSV}
-            isLoading={isFetchingCSV}
+            onClick={handleSyncTimetable}
+            isLoading={isPublishing}
             leftIcon={<Download className="w-4 h-4 text-slate-950" />}
             className="w-full sm:w-auto font-black shadow-[0_0_15px_rgba(0,255,136,0.25)] shrink-0"
           >
-            Fetch CSV
+            SYNC TIMETABLE
           </Button>
         </div>
+
+        {/* Compact Success Toast */}
+        {publishSuccessMsg && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#00ff88] shrink-0" />
+              <span>{publishSuccessMsg}</span>
+            </div>
+            <button onClick={() => setPublishSuccessMsg(null)} className="text-slate-400 hover:text-white cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Compact Non-Blocking Faculty Conflict Alert */}
+        {facultyConflicts.length > 0 && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-black text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>⚠ {facultyConflicts.length} faculty scheduling conflict{facultyConflicts.length > 1 ? 's' : ''} detected</span>
+              </div>
+              <button
+                onClick={() => setShowConflictDetails(!showConflictDetails)}
+                className="text-xs font-bold text-amber-400 hover:underline cursor-pointer"
+              >
+                [{showConflictDetails ? 'Hide Details' : 'View Details'}]
+              </button>
+            </div>
+            {showConflictDetails && (
+              <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-200/90 font-mono pt-1">
+                {facultyConflicts.map((c, i) => (
+                  <li key={i}>
+                    {c.facultyName} has concurrent class at {c.day} Period {c.period} in Section {c.otherSectionName}{c.otherSubjectCode ? ` (${c.otherSubjectCode})` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* CSV Validation Error Display */}
         {csvError && (
@@ -594,55 +682,13 @@ export const TimetableManagerPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-black text-rose-200">
                 <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>CSV Ingestion Issue Detected — Existing Section Timetable Unchanged</span>
+                <span>Sync failed — existing timetable was not changed.</span>
               </div>
               <button onClick={() => setCsvError(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <pre className="whitespace-pre-wrap font-sans text-[11px] text-rose-200/90 pl-1">{csvError}</pre>
-          </div>
-        )}
-
-        {/* CSV Preview Summary & One-Click Replace */}
-        {csvPreview && (
-          <div className="p-4 sm:p-5 rounded-3xl bg-emerald-500/10 border-2 border-emerald-500/40 text-white space-y-3 animate-in zoom-in-95">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 font-black text-sm text-[#00ff88]">
-                  <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />
-                  <span>Valid Timetable Source — {csvPreview.totalSlots} Periods Ready for Section {currentSection?.name}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
-                  {Object.entries(csvPreview.dayBreakdown).map(([d, count]) => (
-                    <span key={d} className="px-2 py-0.5 rounded-lg bg-slate-950 border border-emerald-500/20 font-mono text-[10px]">
-                      <strong>{d}:</strong> <span className="text-emerald-400">{count}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCsvPreview(null)}
-                  className="text-xs text-slate-400 border-slate-700 hover:bg-slate-900"
-                >
-                  Discard
-                </Button>
-                <Button
-                  variant="neon"
-                  size="sm"
-                  onClick={handleImportAndReplaceFromCSV}
-                  isLoading={isPublishing}
-                  leftIcon={<ShieldCheck className="w-4 h-4 text-slate-950" />}
-                  className="font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]"
-                >
-                  Import & Replace Section {currentSection?.name} ({csvPreview.totalSlots} Slots)
-                </Button>
-              </div>
-            </div>
           </div>
         )}
       </div>
