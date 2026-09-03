@@ -29,28 +29,43 @@ export const HODAcademicOversightPage: React.FC = () => {
     subjects, 
     sections, 
     faculty, 
-    students 
+    students,
+    years,
+    semesters
   } = useAcademic();
 
+  const [selectedYearFilter, setSelectedYearFilter] = useState('ALL');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState('ALL');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
   const [activeTab, setActiveTab] = useState<'assignments' | 'quizzes' | 'sessional'>('assignments');
 
+  const dynamicSections = useMemo(() => {
+    if (selectedYearFilter === 'ALL') return sections.filter(s => s.active);
+    const matchingSemIds = semesters.filter(s => s.academic_year_id === selectedYearFilter).map(s => s.id);
+    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+  }, [sections, semesters, selectedYearFilter]);
+
   const filteredAssignments = useMemo(() => {
     return courseAssignments.filter(a => {
+      const sec = sections.find(s => s.id === a.section_id);
+      const sem = semesters.find(s => s.id === sec?.semester_id);
+      const matchYr = selectedYearFilter === 'ALL' || sem?.academic_year_id === selectedYearFilter;
       const matchSec = selectedSectionFilter === 'ALL' || a.section_id === selectedSectionFilter;
       const matchSub = selectedSubjectFilter === 'ALL' || a.subject_id === selectedSubjectFilter;
-      return matchSec && matchSub;
+      return matchYr && matchSec && matchSub;
     });
-  }, [courseAssignments, selectedSectionFilter, selectedSubjectFilter]);
+  }, [courseAssignments, sections, semesters, selectedYearFilter, selectedSectionFilter, selectedSubjectFilter]);
 
   const filteredQuizzes = useMemo(() => {
     return quizzes.filter(q => {
+      const sec = sections.find(s => s.id === q.section_id);
+      const sem = semesters.find(s => s.id === sec?.semester_id);
+      const matchYr = selectedYearFilter === 'ALL' || sem?.academic_year_id === selectedYearFilter;
       const matchSec = selectedSectionFilter === 'ALL' || q.section_id === selectedSectionFilter;
       const matchSub = selectedSubjectFilter === 'ALL' || q.subject_id === selectedSubjectFilter;
-      return matchSec && matchSub;
+      return matchYr && matchSec && matchSub;
     });
-  }, [quizzes, selectedSectionFilter, selectedSubjectFilter]);
+  }, [quizzes, sections, semesters, selectedYearFilter, selectedSectionFilter, selectedSubjectFilter]);
 
   return (
     <div className="space-y-6">
@@ -126,21 +141,34 @@ export const HODAcademicOversightPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={selectedYearFilter}
+            onChange={(e) => {
+              setSelectedYearFilter(e.target.value);
+              setSelectedSectionFilter('ALL');
+            }}
+            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-[#00ff88] font-bold focus:outline-none focus:border-emerald-500 cursor-pointer"
+          >
+            <option value="ALL" className="text-white">All Years</option>
+            {years.map(y => (
+              <option key={y.id} value={y.id} className="text-white">{y.name}</option>
+            ))}
+          </select>
           <select
             value={selectedSectionFilter}
             onChange={(e) => setSelectedSectionFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="ALL">All Sections</option>
-            {sections.map(s => (
+            {dynamicSections.map(s => (
               <option key={s.id} value={s.id}>Section {s.name}</option>
             ))}
           </select>
           <select
             value={selectedSubjectFilter}
             onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="ALL">All Subjects</option>
             {subjects.map(s => (

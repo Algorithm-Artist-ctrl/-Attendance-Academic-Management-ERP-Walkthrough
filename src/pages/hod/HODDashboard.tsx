@@ -31,6 +31,9 @@ export const HODDashboard: React.FC = () => {
     students, 
     subjects, 
     assignments, 
+    sessions,
+    years,
+    semesters,
     getStudentAttendance,
     refreshData 
   } = useAcademic();
@@ -48,17 +51,37 @@ export const HODDashboard: React.FC = () => {
          f.id === dept?.hod_faculty_id
   ) || user?.faculty;
 
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
   const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
   const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
   const [extractedDocs, setExtractedDocs] = useState<ExtractedTimetableDocument[]>([]);
 
-  // Compute stats for all students
+  // Dynamic sections based on selectedYearFilter
+  const dynamicSections = useMemo(() => {
+    if (selectedYearFilter === 'ALL') {
+      return sections.filter(s => s.active);
+    }
+    const matchingSemIds = semesters.filter(s => s.academic_year_id === selectedYearFilter).map(s => s.id);
+    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+  }, [sections, semesters, selectedYearFilter]);
+
+  // Unique section names available for the filter pills
+  const availableSectionNames = useMemo(() => {
+    const names = Array.from(new Set(dynamicSections.map(s => s.name)));
+    return ['ALL', ...names.sort()];
+  }, [dynamicSections]);
+
+  // Compute stats for department students, scoped by selectedYearFilter
   const studentStats: StudentOverallAttendance[] = useMemo(() => {
     return students
-      .filter(s => s.department_id === dept.id && s.active)
+      .filter(s => {
+        if (s.department_id !== dept?.id || !s.active) return false;
+        if (selectedYearFilter !== 'ALL' && s.academic_year_id !== selectedYearFilter) return false;
+        return true;
+      })
       .map(s => getStudentAttendance(s.id));
-  }, [students, dept.id, getStudentAttendance]);
+  }, [students, dept?.id, selectedYearFilter, getStudentAttendance]);
 
   const filteredStats = useMemo(() => {
     if (selectedSectionFilter === 'ALL') return studentStats;
@@ -66,6 +89,11 @@ export const HODDashboard: React.FC = () => {
   }, [studentStats, selectedSectionFilter]);
 
   const defaulters = studentStats.filter(s => s.isDefaulter || s.percentage < 75);
+
+  const activeSessionName = useMemo(() => {
+    const curr = sessions.find(s => s.is_current);
+    return curr?.name ? `Academic Session ${curr.name}` : 'Academic Session 2026-2027';
+  }, [sessions]);
 
   const handleExportDefaultersCSV = () => {
     const data = defaulters.map(d => ({
@@ -77,7 +105,7 @@ export const HODDashboard: React.FC = () => {
       Attendance_Percentage: `${d.percentage}%`,
       Status: 'Defaulter (<75%)',
     }));
-    exportToCSV(data, `VCTM_CSE_Defaulters_Report_${getISTTodayDate()}`);
+    exportToCSV(data, `VCTM_${dept?.code || 'CSE'}_Defaulters_Report_${getISTTodayDate()}`);
   };
 
   const handleExportDefaultersPDF = () => {
@@ -97,7 +125,7 @@ export const HODDashboard: React.FC = () => {
       subtitle: 'Official Academic Audit Report — VCTM Aligarh',
       department: dept?.name || 'Academic Department',
       section: selectedSectionFilter === 'ALL' ? 'All Sections' : `Section ${selectedSectionFilter}`,
-      academicYear: 'Academic Session 2026-2027',
+      academicYear: activeSessionName,
       tableHeaders: headers,
       tableRows: rows,
       filename: `VCTM_${dept?.code || 'Dept'}_Defaulters_${getISTTodayDate()}`,
@@ -130,6 +158,24 @@ export const HODDashboard: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Academic Year Filter */}
+          <div className="flex items-center gap-1.5 bg-slate-950/90 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-xs shadow-[0_0_10px_rgba(0,255,136,0.1)]">
+            <span className="text-slate-400 font-bold uppercase text-[10px]">Year:</span>
+            <select
+              value={selectedYearFilter}
+              onChange={(e) => {
+                setSelectedYearFilter(e.target.value);
+                setSelectedSectionFilter('ALL');
+              }}
+              className="bg-transparent text-xs font-black text-[#00ff88] focus:outline-none cursor-pointer"
+            >
+              <option value="ALL" className="bg-slate-950 text-white">All Years</option>
+              {years.map(y => (
+                <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+              ))}
+            </select>
+          </div>
+
           <Button
             variant="neon"
             size="sm"
@@ -162,11 +208,13 @@ export const HODDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-400">Total CSE Students</p>
+            <p className="text-xs font-semibold text-slate-400">Total {dept?.code || 'CSE'} Students</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {students.length}
+              {studentStats.length}
             </h3>
-            <span className="text-[10px] text-emerald-400 font-semibold">53 Sec A • 53 Sec B</span>
+            <span className="text-[10px] text-emerald-400 font-semibold">
+              {selectedYearFilter === 'ALL' ? 'Across All Years' : years.find(y => y.id === selectedYearFilter)?.name}
+            </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
             <GraduationCap className="w-5 h-5" />
@@ -225,7 +273,7 @@ export const HODDashboard: React.FC = () => {
 
           {/* Section Filter Pills */}
           <div className="bg-slate-950/80 p-1 rounded-xl border border-emerald-500/20 flex items-center text-xs font-bold">
-            {['ALL', 'A', 'B'].map((sec) => (
+            {availableSectionNames.map((sec) => (
               <button
                 key={sec}
                 onClick={() => setSelectedSectionFilter(sec)}

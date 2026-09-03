@@ -156,6 +156,12 @@ interface AcademicContextType {
   addSection: (sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) => Promise<Section>;
   updateSection: (id: string, updates: Partial<Section>) => Promise<Section>;
   deleteSection: (id: string) => Promise<boolean>;
+  addAcademicYear: (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => Promise<AcademicYear>;
+  updateAcademicYear: (id: string, updates: Partial<AcademicYear>) => Promise<AcademicYear>;
+  deleteAcademicYear: (id: string) => Promise<boolean>;
+  addSemester: (sem: Omit<Semester, 'id' | 'created_at' | 'updated_at'>) => Promise<Semester>;
+  updateSemester: (id: string, updates: Partial<Semester>) => Promise<Semester>;
+  deleteSemester: (id: string) => Promise<boolean>;
   addFaculty: (fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) => Promise<Faculty>;
   updateFaculty: (id: string, updates: Partial<Faculty>) => Promise<Faculty>;
   deleteFaculty: (id: string) => Promise<boolean>;
@@ -704,6 +710,42 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const deleteSection = async (id: string) => {
     const res = await supabaseService.deleteSection(id);
     erpStorage.deleteSection(id);
+    await refreshData();
+    return res;
+  };
+
+  const addAcademicYear = async (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => {
+    const res = await supabaseService.addAcademicYear(year);
+    await refreshData();
+    return res;
+  };
+
+  const updateAcademicYear = async (id: string, updates: Partial<AcademicYear>) => {
+    const res = await supabaseService.updateAcademicYear(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteAcademicYear = async (id: string) => {
+    const res = await supabaseService.deleteAcademicYear(id);
+    await refreshData();
+    return res;
+  };
+
+  const addSemester = async (sem: Omit<Semester, 'id' | 'created_at' | 'updated_at'>) => {
+    const res = await supabaseService.addSemester(sem);
+    await refreshData();
+    return res;
+  };
+
+  const updateSemester = async (id: string, updates: Partial<Semester>) => {
+    const res = await supabaseService.updateSemester(id, updates);
+    await refreshData();
+    return res;
+  };
+
+  const deleteSemester = async (id: string) => {
+    const res = await supabaseService.deleteSemester(id);
     await refreshData();
     return res;
   };
@@ -1494,6 +1536,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addSection,
         updateSection,
         deleteSection,
+        addAcademicYear,
+        updateAcademicYear,
+        deleteAcademicYear,
+        addSemester,
+        updateSemester,
+        deleteSemester,
         addFaculty,
         updateFaculty,
         deleteFaculty,

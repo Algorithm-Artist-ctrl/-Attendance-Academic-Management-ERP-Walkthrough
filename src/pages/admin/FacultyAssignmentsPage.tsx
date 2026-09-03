@@ -12,11 +12,14 @@ export const FacultyAssignmentsPage: React.FC = () => {
     subjects, 
     sections, 
     sessions, 
+    years,
+    semesters,
     addAssignment,
     deleteAssignment
   } = useAcademic();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [yearFilter, setYearFilter] = useState<string>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form state
@@ -28,13 +31,17 @@ export const FacultyAssignmentsPage: React.FC = () => {
     const fac = faculty.find(f => f.id === a.faculty_id);
     const sub = subjects.find(s => s.id === a.subject_id);
     const sec = sections.find(s => s.id === a.section_id);
+    const sem = semesters.find(s => s.id === sec?.semester_id);
 
-    return (
+    const matchesYear = yearFilter === 'ALL' || sem?.academic_year_id === yearFilter;
+
+    const matchesSearch = 
       (fac?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sub?.subject_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sub?.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (sec?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+      (sec?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+    return matchesYear && matchesSearch;
   });
 
   const handleDeleteAllocation = async (id: string, facultyName: string, subjectCode: string) => {
@@ -49,12 +56,14 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
+    const activeSession = sessions.find(s => s.is_current) || sessions[0];
+
     try {
       await addAssignment({
         faculty_id: selectedFacultyId,
         subject_id: selectedSubjectId,
         section_id: selectedSectionId,
-        academic_session_id: sessions[0]?.id || 'session-2026-2027',
+        academic_session_id: activeSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e',
         active: true,
       });
       setIsModalOpen(false);
@@ -87,8 +96,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
+      {/* Search & Filter Bar */}
+      <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
             <Search className="w-4 h-4" />
@@ -102,9 +111,25 @@ export const FacultyAssignmentsPage: React.FC = () => {
           />
         </div>
 
-        <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
-          {filtered.length} Active Workload Allocations
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-400 font-semibold">Year:</span>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+            >
+              <option value="ALL" className="bg-slate-950 text-white">All Years</option>
+              {years.map(y => (
+                <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
+            {filtered.length} Workloads
+          </span>
+        </div>
       </div>
 
       {/* Allocations Table */}
@@ -115,7 +140,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
               <tr>
                 <th className="px-5 py-3.5">Faculty Full Name</th>
                 <th className="px-5 py-3.5">Subject</th>
-                <th className="px-5 py-3.5 text-center">Section</th>
+                <th className="px-5 py-3.5 text-center">Section / Cohort</th>
                 <th className="px-5 py-3.5 text-center">Status</th>
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
@@ -125,6 +150,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 const fac = faculty.find(f => f.id === fa.faculty_id);
                 const sub = subjects.find(s => s.id === fa.subject_id);
                 const sec = sections.find(s => s.id === fa.section_id);
+                const sem = semesters.find(s => s.id === sec?.semester_id);
+                const yr = years.find(y => y.id === sem?.academic_year_id);
 
                 return (
                   <tr key={fa.id} className="hover:bg-emerald-500/5 transition-colors">
@@ -139,7 +166,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                     </td>
                     <td className="px-5 py-4 text-center">
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
-                        Section {sec?.name}
+                        {yr ? `${yr.name} • ` : ''}Sec {sec?.name}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-center">
@@ -200,15 +227,21 @@ export const FacultyAssignmentsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Section</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Section / Cohort</label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
               className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
             >
-              {sections.map(sec => (
-                <option key={sec.id} value={sec.id}>Section {sec.name}</option>
-              ))}
+              {sections.map(sec => {
+                const sem = semesters.find(s => s.id === sec.semester_id);
+                const yr = years.find(y => y.id === sem?.academic_year_id);
+                return (
+                  <option key={sec.id} value={sec.id}>
+                    {yr ? `${yr.name} • ` : ''}Section {sec.name} ({sec.room_number || 'TBD'})
+                  </option>
+                );
+              })}
             </select>
           </div>
 

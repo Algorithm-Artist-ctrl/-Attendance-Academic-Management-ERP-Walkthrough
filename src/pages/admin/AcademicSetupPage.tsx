@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3, Calendar } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -12,6 +12,8 @@ export const AcademicSetupPage: React.FC = () => {
     institution, 
     departments, 
     programs, 
+    years,
+    semesters,
     sections, 
     faculty, 
     addDepartment,
@@ -21,6 +23,8 @@ export const AcademicSetupPage: React.FC = () => {
     addSection,
     updateSection,
     deleteSection,
+    addAcademicYear,
+    addSemester,
     claimWindowDays,
     setClaimWindowDays
   } = useAcademic();
@@ -28,6 +32,10 @@ export const AcademicSetupPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>('departments');
   const [tempClaimDays, setTempClaimDays] = useState(claimWindowDays);
   const [policySaved, setPolicySaved] = useState(false);
+
+  // Section filtering states
+  const [filterYearId, setFilterYearId] = useState<string>('ALL');
+  const [filterSemesterId, setFilterSemesterId] = useState<string>('ALL');
 
   // New Department Modal state
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -42,14 +50,23 @@ export const AcademicSetupPage: React.FC = () => {
   const [newProgDeptId, setNewProgDeptId] = useState(departments[0]?.id || '');
   const [newProgDuration, setNewProgDuration] = useState(4);
 
+  // New Year Modal state
+  const [isYearModalOpen, setIsYearModalOpen] = useState(false);
+  const [newYearProgId, setNewYearProgId] = useState(programs[0]?.id || '');
+  const [newYearNumber, setNewYearNumber] = useState(1);
+  const [newYearName, setNewYearName] = useState('');
+
   // New Section Modal state
   const [isSecModalOpen, setIsSecModalOpen] = useState(false);
+  const [newSecYearId, setNewSecYearId] = useState<string>('');
+  const [newSecSemesterId, setNewSecSemesterId] = useState<string>('');
   const [newSecName, setNewSecName] = useState('');
   const [newSecRoom, setNewSecRoom] = useState('');
   const [newSecCoordinatorId, setNewSecCoordinatorId] = useState('');
 
   // Edit Section Modal state
   const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [editSecSemesterId, setEditSecSemesterId] = useState('');
   const [editSecName, setEditSecName] = useState('');
   const [editSecRoom, setEditSecRoom] = useState('');
   const [editSecCoordinatorId, setEditSecCoordinatorId] = useState('');
@@ -126,13 +143,53 @@ export const AcademicSetupPage: React.FC = () => {
     }
   };
 
+  const filteredSections = useMemo(() => {
+    return sections.filter(sec => {
+      const sem = semesters.find(s => s.id === sec.semester_id);
+      if (filterYearId !== 'ALL' && sem?.academic_year_id !== filterYearId) {
+        return false;
+      }
+      if (filterSemesterId !== 'ALL' && sec.semester_id !== filterSemesterId) {
+        return false;
+      }
+      return true;
+    });
+  }, [sections, semesters, filterYearId, filterSemesterId]);
+
+  const availableSemestersForFilter = useMemo(() => {
+    if (filterYearId === 'ALL') return semesters;
+    return semesters.filter(s => s.academic_year_id === filterYearId);
+  }, [semesters, filterYearId]);
+
+  const availableSemestersForAdd = useMemo(() => {
+    if (!newSecYearId) return semesters;
+    return semesters.filter(s => s.academic_year_id === newSecYearId);
+  }, [semesters, newSecYearId]);
+
+  const openAddSectionModal = () => {
+    const defaultYear = filterYearId !== 'ALL' ? filterYearId : (years[0]?.id || '');
+    setNewSecYearId(defaultYear);
+    const sems = semesters.filter(s => s.academic_year_id === defaultYear);
+    setNewSecSemesterId(sems[0]?.id || semesters[0]?.id || '');
+    setNewSecName('');
+    setNewSecRoom('');
+    setNewSecCoordinatorId('');
+    setIsSecModalOpen(true);
+  };
+
   const handleCreateSec = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSecName.trim()) return;
 
+    const targetSemesterId = newSecSemesterId || availableSemestersForAdd[0]?.id || semesters[0]?.id;
+    if (!targetSemesterId) {
+      alert('Please select or configure an academic semester first.');
+      return;
+    }
+
     try {
       await addSection({
-        semester_id: 'sem-3rd-odd-01',
+        semester_id: targetSemesterId,
         name: newSecName.trim().toUpperCase(),
         room_number: newSecRoom.trim() || 'TBD',
         class_coordinator_id: newSecCoordinatorId || undefined,
@@ -143,8 +200,9 @@ export const AcademicSetupPage: React.FC = () => {
       setNewSecRoom('');
       setNewSecCoordinatorId('');
       setIsSecModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to add section:', err);
+      alert(err.message || 'Failed to add section');
     }
   };
 
@@ -154,6 +212,7 @@ export const AcademicSetupPage: React.FC = () => {
 
     try {
       await updateSection(editingSection.id, {
+        semester_id: editSecSemesterId || editingSection.semester_id,
         name: editSecName.trim().toUpperCase(),
         room_number: editSecRoom.trim() || undefined,
         class_coordinator_id: editSecCoordinatorId || undefined,
@@ -375,25 +434,61 @@ export const AcademicSetupPage: React.FC = () => {
       {/* Sections Tab */}
       {activeTab === 'sections' && (
         <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+          <div className="px-6 py-4 border-b border-emerald-500/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/40">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">Class Sections & Room Allocation</h3>
-              <p className="text-xs text-slate-400">Classrooms and assigned coordinators</p>
+              <h3 className="text-sm font-bold text-white tracking-wide">Class Sections & Multi-Year Academic Structure</h3>
+              <p className="text-xs text-slate-400">Classrooms, semesters, and assigned coordinators across all academic years</p>
             </div>
-            <Button
-              size="sm"
-              variant="neon"
-              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
-              onClick={() => setIsSecModalOpen(true)}
-            >
-              Add Section
-            </Button>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Year Filter */}
+              <div className="flex items-center gap-1 bg-slate-900/80 border border-emerald-500/20 rounded-xl px-2.5 py-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Year:</span>
+                <select
+                  value={filterYearId}
+                  onChange={(e) => {
+                    setFilterYearId(e.target.value);
+                    setFilterSemesterId('ALL');
+                  }}
+                  className="bg-transparent text-xs font-bold text-[#00ff88] focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-slate-950 text-white">All Years</option>
+                  {years.map(y => (
+                    <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Semester Filter */}
+              <div className="flex items-center gap-1 bg-slate-900/80 border border-emerald-500/20 rounded-xl px-2.5 py-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Semester:</span>
+                <select
+                  value={filterSemesterId}
+                  onChange={(e) => setFilterSemesterId(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-200 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-slate-950 text-white">All Semesters</option>
+                  {availableSemestersForFilter.map(s => (
+                    <option key={s.id} value={s.id} className="bg-slate-950 text-white">{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <Button
+                size="sm"
+                variant="neon"
+                leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+                onClick={openAddSectionModal}
+              >
+                Add Section
+              </Button>
+            </div>
           </div>
 
-          {sections.length === 0 ? (
+          {filteredSections.length === 0 ? (
             <div className="p-12 text-center text-slate-400">
               <Layers className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="font-semibold text-slate-300">No sections configured</p>
+              <p className="font-semibold text-slate-300">No sections found for selected filters</p>
               <p className="text-xs text-slate-500 mt-1">Configure sections and room mappings with "Add Section"</p>
             </div>
           ) : (
@@ -401,7 +496,9 @@ export const AcademicSetupPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
                   <tr>
-                    <th className="px-5 py-3.5">Section Name</th>
+                    <th className="px-5 py-3.5">Section</th>
+                    <th className="px-5 py-3.5">Academic Year</th>
+                    <th className="px-5 py-3.5">Semester</th>
                     <th className="px-5 py-3.5">Assigned Classroom</th>
                     <th className="px-5 py-3.5">Class Coordinator / Incharge</th>
                     <th className="px-5 py-3.5 text-center">Status</th>
@@ -409,12 +506,20 @@ export const AcademicSetupPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-emerald-500/10">
-                  {sections.map((sec) => {
+                  {filteredSections.map((sec) => {
                     const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
+                    const sem = semesters.find(s => s.id === sec.semester_id);
+                    const yr = years.find(y => y.id === sem?.academic_year_id);
                     return (
                       <tr key={sec.id} className="hover:bg-emerald-500/5 transition-colors">
-                        <td className="px-5 py-4 font-bold text-white text-sm">Section {sec.name}</td>
-                        <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'Room A-007'}</td>
+                        <td className="px-5 py-4 font-bold text-white text-sm">
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[#00ff88]">
+                            Section {sec.name}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 font-semibold text-slate-200">{yr?.name || '—'}</td>
+                        <td className="px-5 py-4 text-slate-300">{sem?.name || '—'}</td>
+                        <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'TBD'}</td>
                         <td className="px-5 py-4 text-slate-300 font-medium">
                           {coordinator ? `${coordinator.full_name} (${coordinator.faculty_code || 'Faculty'})` : '—'}
                         </td>
@@ -428,6 +533,7 @@ export const AcademicSetupPage: React.FC = () => {
                             <button
                               onClick={() => {
                                 setEditingSection(sec);
+                                setEditSecSemesterId(sec.semester_id);
                                 setEditSecName(sec.name);
                                 setEditSecRoom(sec.room_number || '');
                                 setEditSecCoordinatorId(sec.class_coordinator_id || '');
@@ -607,6 +713,36 @@ export const AcademicSetupPage: React.FC = () => {
       >
         <form onSubmit={handleCreateSec} className="space-y-4">
           <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Academic Year</label>
+            <select
+              value={newSecYearId}
+              onChange={(e) => {
+                setNewSecYearId(e.target.value);
+                const sems = semesters.filter(s => s.academic_year_id === e.target.value);
+                setNewSecSemesterId(sems[0]?.id || '');
+              }}
+              required
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            >
+              {years.map(y => (
+                <option key={y.id} value={y.id}>{y.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Semester</label>
+            <select
+              value={newSecSemesterId}
+              onChange={(e) => setNewSecSemesterId(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            >
+              {availableSemestersForAdd.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Section Identifier (e.g. C)</label>
             <input
               type="text"
@@ -653,10 +789,26 @@ export const AcademicSetupPage: React.FC = () => {
         isOpen={!!editingSection}
         onClose={() => setEditingSection(null)}
         title="Edit Section & Class Coordinator"
-        description="Update classroom allocation and assign the official Class Coordinator"
+        description="Update classroom allocation, semester affiliation, and assign the official Class Coordinator"
         maxWidth="md"
       >
         <form onSubmit={handleUpdateSec} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Semester / Academic Cohort</label>
+            <select
+              value={editSecSemesterId}
+              onChange={(e) => setEditSecSemesterId(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            >
+              {semesters.map(s => {
+                const yr = years.find(y => y.id === s.academic_year_id);
+                return (
+                  <option key={s.id} value={s.id}>{yr ? `${yr.name} • ` : ''}{s.name}</option>
+                );
+              })}
+            </select>
+          </div>
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Section Identifier</label>
             <input

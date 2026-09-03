@@ -27,43 +27,51 @@ export const CSVImportPage: React.FC = () => {
     sections, 
     faculty, 
     students, 
-    addStudent, 
+    addStudent,
+    updateStudent,
     refreshData 
   } = useAcademic();
 
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedCohortYearId, setSelectedCohortYearId] = useState<string>(years[0]?.id || '');
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<CSVValidationResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [importSummary, setImportSummary] = useState<{ imported: number; updated: number; correctionNeeded: number } | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setFileName(file.name);
-    setImportSuccess(null);
+    setImportSummary(null);
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target?.result as string;
       setCsvContent(text);
-      validateCSV(text);
+      validateCSV(text, selectedCohortYearId);
     };
     reader.readAsText(file);
   };
 
-  const validateCSV = async (text: string) => {
+  const validateCSV = async (text: string, cohortYearId?: string) => {
     setIsValidating(true);
+    const activeYearId = cohortYearId || selectedCohortYearId || years[0]?.id;
+    const activeSemester = semesters.find(s => s.academic_year_id === activeYearId) || semesters[0];
+    const activeSession = sessions.find(s => s.is_current) || sessions[0];
+
     try {
       const result = await parseAndValidateStudentCSV(text, {
         institutionId: institution.id,
-        departmentId: departments[0]?.id || 'dept-cse-01',
-        programId: programs[0]?.id || 'prog-btech-cse-01',
-        sessionId: sessions[0]?.id || 'session-2026-2027',
-        yearId: years[1]?.id || 'year-2nd',
-        semesterId: semesters[0]?.id || 'sem-3rd',
-        defaultSectionId: sections[0]?.id || 'sec-btech-cse-2-a',
+        departmentId: departments[0]?.id || 'fe5bc365-7a68-4290-b05e-acfa274f748a',
+        programId: programs[0]?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
+        sessionId: activeSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e',
+        yearId: activeYearId,
+        semesterId: activeSemester?.id,
+        defaultSectionId: sections[0]?.id,
+        years,
+        semesters,
         sections,
         faculty,
         existingStudents: students,
@@ -82,21 +90,43 @@ export const CSVImportPage: React.FC = () => {
     setIsImporting(true);
     try {
       let importedCount = 0;
+      let updatedCount = 0;
+
       for (const studentData of validationResult.validRows) {
-        await addStudent({
-          ...studentData,
-          active: true,
-        });
-        importedCount++;
+        if (studentData.isUpdate && studentData.existingStudentId) {
+          await updateStudent(studentData.existingStudentId, {
+            full_name: studentData.full_name,
+            admission_type: studentData.admission_type,
+            section_id: studentData.section_id,
+            academic_year_id: studentData.academic_year_id,
+            semester_id: studentData.semester_id,
+            email: studentData.email,
+            phone: studentData.phone,
+            mentor_faculty_id: studentData.mentor_faculty_id,
+          });
+          updatedCount++;
+        } else {
+          await addStudent({
+            ...studentData,
+            active: true,
+          });
+          importedCount++;
+        }
       }
 
-      setImportSuccess(`Successfully registered ${importedCount} student accounts into the ERP!`);
+      setImportSummary({
+        imported: importedCount,
+        updated: updatedCount,
+        correctionNeeded: validationResult.invalidRows.length,
+      });
+
       setCsvContent(null);
       setFileName(null);
       setValidationResult(null);
       await refreshData();
     } catch (err: any) {
       console.error(err);
+      alert(err.message || 'Failed to import student rows');
     } finally {
       setIsImporting(false);
     }
@@ -105,25 +135,43 @@ export const CSVImportPage: React.FC = () => {
   const handleDownloadSampleCSV = () => {
     const sample = [
       {
-        roll_number: '2503400100091',
-        full_name: 'ROHIT SHARMA',
-        section_name: 'A',
+        roll_no: '24001',
+        name: 'Rahul Sharma',
+        email: 'rahul@college.edu',
+        year: '1',
+        section: 'A',
         admission_type: 'Regular',
         mentor_name: 'Hemlata',
-        email: 'rohit@student.vctm.in',
-        phone: '9876543210',
       },
       {
-        roll_number: '2503400100092',
-        full_name: 'SNEHA VERMA',
-        section_name: 'B',
+        roll_no: '24002',
+        name: 'Aman Verma',
+        email: 'aman@college.edu',
+        year: '1',
+        section: 'A',
         admission_type: 'Regular',
-        mentor_name: 'Imran',
-        email: 'sneha@student.vctm.in',
-        phone: '9876543211',
+        mentor_name: 'Hemlata',
+      },
+      {
+        roll_no: '24003',
+        name: 'Neha Gupta',
+        email: 'neha@college.edu',
+        year: '1',
+        section: 'B',
+        admission_type: 'Regular',
+        mentor_name: 'Wasim',
+      },
+      {
+        roll_no: '25001',
+        name: 'Ravi Kumar',
+        email: 'ravi@college.edu',
+        year: '2',
+        section: 'A',
+        admission_type: 'Regular',
+        mentor_name: 'Hemlata',
       },
     ];
-    exportToCSV(sample, 'VCTM_Student_Import_Template');
+    exportToCSV(sample, 'VCTM_MultiYear_Student_Import_Template');
   };
 
   return (
@@ -150,12 +198,43 @@ export const CSVImportPage: React.FC = () => {
         </Button>
       </div>
 
-      {importSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95">
-          <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
-          <span>{importSuccess}</span>
+      {importSummary && (
+        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-bold space-y-1.5 animate-in zoom-in-95">
+          <div className="flex items-center gap-2 text-emerald-300">
+            <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
+            <span className="text-sm">✓ {importSummary.imported} students imported</span>
+          </div>
+          {importSummary.updated > 0 && (
+            <div className="flex items-center gap-2 text-[#00ff88] pl-7">
+              <span>✓ {importSummary.updated} students updated</span>
+            </div>
+          )}
+          {importSummary.correctionNeeded > 0 && (
+            <div className="flex items-center gap-2 text-amber-300 pl-7">
+              <AlertCircle className="w-4 h-4 text-amber-400" />
+              <span>⚠ {importSummary.correctionNeeded} rows need correction</span>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Cohort Selector Banner */}
+      <div className="flex flex-wrap items-center gap-3 bg-slate-950/60 px-4 py-3 rounded-2xl border border-emerald-500/20 text-xs">
+        <span className="font-bold text-slate-300">Default Cohort (if row year omitted):</span>
+        <select
+          value={selectedCohortYearId}
+          onChange={(e) => {
+            setSelectedCohortYearId(e.target.value);
+            if (csvContent) validateCSV(csvContent, e.target.value);
+          }}
+          className="px-3 py-1.5 bg-slate-900 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+        >
+          {years.map(y => (
+            <option key={y.id} value={y.id}>{y.name}</option>
+          ))}
+        </select>
+        <span className="text-slate-400 text-[11px]">(If CSV specifies a "year" column like 1, 2, 3, 4, row values take precedence)</span>
+      </div>
 
       {/* Upload Box */}
       <div className="glass-panel rounded-3xl p-8 border border-emerald-500/20 text-center space-y-4">

@@ -44,28 +44,48 @@ export const StudentDirectoryPage: React.FC = () => {
   }, [students, isSuperAdmin, isHOD, isFaculty, user, assignments]);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [yearFilter, setYearFilter] = useState<string>('ALL');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
   const [admissionFilter, setAdmissionFilter] = useState<string>('ALL');
+
+  // Dynamic sections based on yearFilter
+  const availableSections = React.useMemo(() => {
+    if (yearFilter === 'ALL') return sections.filter(s => s.active);
+    const matchingSemIds = semesters.filter(sem => sem.academic_year_id === yearFilter).map(sem => sem.id);
+    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+  }, [sections, semesters, yearFilter]);
 
   // Add Student modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newRoll, setNewRoll] = useState('');
   const [newName, setNewName] = useState('');
   const [newAdmissionType, setNewAdmissionType] = useState<AdmissionType>('Regular');
+  const [newStudentYearId, setNewStudentYearId] = useState(years[0]?.id || '');
   const [newSectionId, setNewSectionId] = useState(sections[0]?.id || '');
   const [newMentorId, setNewMentorId] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // Semesters & sections for Add Modal
+  const addModalSemesters = React.useMemo(() => {
+    return semesters.filter(sem => sem.academic_year_id === newStudentYearId);
+  }, [semesters, newStudentYearId]);
+
+  const addModalSections = React.useMemo(() => {
+    const semIds = addModalSemesters.map(s => s.id);
+    return sections.filter(sec => semIds.includes(sec.semester_id) && sec.active);
+  }, [sections, addModalSemesters]);
+
   const filteredStudents = accessibleStudents.filter(s => {
     const matchesSearch = 
       s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSection = sectionFilter === 'ALL' || s.section?.name === sectionFilter;
+    const matchesYear = yearFilter === 'ALL' || s.academic_year_id === yearFilter;
+    const matchesSection = sectionFilter === 'ALL' || s.section_id === sectionFilter || s.section?.name === sectionFilter;
     const matchesAdmission = admissionFilter === 'ALL' || s.admission_type === admissionFilter;
 
-    return matchesSearch && matchesSection && matchesAdmission;
+    return matchesSearch && matchesYear && matchesSection && matchesAdmission;
   });
 
   const handleDelete = async (id: string, name: string) => {
@@ -86,15 +106,20 @@ export const StudentDirectoryPage: React.FC = () => {
       return;
     }
 
+    const selectedSec = sections.find(s => s.id === newSectionId) || addModalSections[0] || sections[0];
+    const secSemester = semesters.find(s => s.id === selectedSec?.semester_id) || addModalSemesters[0] || semesters[0];
+    const secYear = years.find(y => y.id === secSemester?.academic_year_id) || years.find(y => y.id === newStudentYearId) || years[0];
+    const activeSession = sessions.find(s => s.is_current) || sessions[0];
+
     try {
       await addStudent({
         institution_id: institution.id,
-        department_id: departments[0]?.id || 'dept-cse-01',
-        program_id: programs[0]?.id || 'prog-btech-cse-01',
-        academic_session_id: sessions[0]?.id || 'session-2026-2027',
-        academic_year_id: years[1]?.id || 'year-2nd',
-        semester_id: semesters[0]?.id || 'sem-3rd',
-        section_id: newSectionId,
+        department_id: departments[0]?.id || 'fe5bc365-7a68-4290-b05e-acfa274f748a',
+        program_id: programs[0]?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
+        academic_session_id: activeSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e',
+        academic_year_id: secYear?.id || years[0]?.id,
+        semester_id: secSemester?.id || semesters[0]?.id,
+        section_id: selectedSec?.id || newSectionId,
         roll_number: newRoll.trim(),
         full_name: newName.trim().toUpperCase(),
         admission_type: newAdmissionType,
@@ -155,17 +180,34 @@ export const StudentDirectoryPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-400 font-semibold">Year:</span>
+            <select
+              value={yearFilter}
+              onChange={(e) => {
+                setYearFilter(e.target.value);
+                setSectionFilter('ALL');
+              }}
+              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+            >
+              <option value="ALL" className="bg-slate-950 text-white">All Years</option>
+              {years.map(y => (
+                <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-slate-400 font-semibold">Section:</span>
             <select
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
             >
               <option value="ALL">All Sections</option>
-              {sections.filter(s => s.active).map(sec => (
-                <option key={sec.id} value={sec.name}>Section {sec.name}</option>
+              {availableSections.map(sec => (
+                <option key={sec.id} value={sec.id}>Section {sec.name}</option>
               ))}
             </select>
           </div>
@@ -175,7 +217,7 @@ export const StudentDirectoryPage: React.FC = () => {
             <select
               value={admissionFilter}
               onChange={(e) => setAdmissionFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
             >
               <option value="ALL">All Types</option>
               <option value="Regular">Regular</option>
@@ -257,6 +299,7 @@ export const StudentDirectoryPage: React.FC = () => {
                       <th className="px-5 py-3.5">#</th>
                       <th className="px-5 py-3.5">Roll Number</th>
                       <th className="px-5 py-3.5">Student Name</th>
+                      <th className="px-5 py-3.5 text-center">Year</th>
                       <th className="px-5 py-3.5 text-center">Section</th>
                       <th className="px-5 py-3.5 text-center">Admission Type</th>
                       <th className="px-5 py-3.5">Assigned Mentor</th>
@@ -265,49 +308,55 @@ export const StudentDirectoryPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-500/10">
-                    {filteredStudents.map((stud, idx) => (
-                      <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
-                        <td className="px-5 py-3.5 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm">
-                          {stud.roll_number}
-                        </td>
-                        <td className="px-5 py-3.5 font-bold text-white text-sm">
-                          {stud.full_name}
-                        </td>
-                        <td className="px-5 py-3.5 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
-                            Sec {stud.section?.name}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-center">
-                          <span className={clsx(
-                            'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
-                            stud.admission_type === 'Lateral Entry'
-                              ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                              : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                          )}>
-                            {stud.admission_type}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-300 font-medium">
-                          {stud.mentor?.full_name || '—'}
-                        </td>
-                        <td className="px-5 py-3.5 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <button
-                            onClick={() => handleDelete(stud.id, stud.full_name)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            title="Delete Student"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredStudents.map((stud, idx) => {
+                      const yr = years.find(y => y.id === stud.academic_year_id);
+                      return (
+                        <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
+                          <td className="px-5 py-3.5 font-mono text-slate-500">{idx + 1}</td>
+                          <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm">
+                            {stud.roll_number}
+                          </td>
+                          <td className="px-5 py-3.5 font-bold text-white text-sm">
+                            {stud.full_name}
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-semibold text-slate-300">
+                            {yr?.name || '—'}
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                              Sec {stud.section?.name}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <span className={clsx(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
+                              stud.admission_type === 'Lateral Entry'
+                                ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+                                : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                            )}>
+                              {stud.admission_type}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-slate-300 font-medium">
+                            {stud.mentor?.full_name || '—'}
+                          </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                              Active
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <button
+                              onClick={() => handleDelete(stud.id, stud.full_name)}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Delete Student"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -320,13 +369,13 @@ export const StudentDirectoryPage: React.FC = () => {
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title="Add Single Student Record"
-        description="Insert an individual student record directly into the college database"
+        title="Add New Student to College Roster"
+        description="Official enrollment record into the institutional database"
         maxWidth="md"
       >
         <form onSubmit={handleAddStudent} className="space-y-4">
           {modalError && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold">
               {modalError}
             </div>
           )}
@@ -361,29 +410,53 @@ export const StudentDirectoryPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Section</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Academic Year</label>
               <select
-                value={newSectionId}
-                onChange={(e) => setNewSectionId(e.target.value)}
+                value={newStudentYearId}
+                onChange={(e) => {
+                  setNewStudentYearId(e.target.value);
+                  const matchingSems = semesters.filter(s => s.academic_year_id === e.target.value);
+                  const sIds = matchingSems.map(s => s.id);
+                  const matchingSecs = sections.filter(sec => sIds.includes(sec.semester_id));
+                  if (matchingSecs[0]) setNewSectionId(matchingSecs[0].id);
+                }}
                 className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               >
-                {sections.map(s => (
-                  <option key={s.id} value={s.id}>Section {s.name}</option>
+                {years.map(y => (
+                  <option key={y.id} value={y.id}>{y.name}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Target Section</label>
               <select
-                value={newAdmissionType}
-                onChange={(e) => setNewAdmissionType(e.target.value as AdmissionType)}
+                value={newSectionId}
+                onChange={(e) => setNewSectionId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               >
-                <option value="Regular">Regular</option>
-                <option value="Lateral Entry">Lateral Entry</option>
+                {addModalSections.map(s => {
+                  const sem = semesters.find(sm => sm.id === s.semester_id);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      Section {s.name} ({s.room_number || 'TBD'}) {sem ? `• ${sem.name}` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
+            <select
+              value={newAdmissionType}
+              onChange={(e) => setNewAdmissionType(e.target.value as AdmissionType)}
+              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            >
+              <option value="Regular">Regular</option>
+              <option value="Lateral Entry">Lateral Entry</option>
+            </select>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">

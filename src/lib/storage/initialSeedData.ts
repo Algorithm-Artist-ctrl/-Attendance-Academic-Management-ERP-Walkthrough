@@ -671,7 +671,7 @@ export const INITIAL_USER_PROFILES: UserProfile[] = [
     id: 'user-admin-01',
     email: 'admin@vctm.in',
     role: 'super_admin',
-    full_name: 'VCTM Central Administrator',
+    full_name: 'Tarun Kushwah',
     phone: '9876543200',
   },
   // HOD
@@ -836,7 +836,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-001',
     actor_id: 'user-admin-01',
-    actor_name: 'VCTM Central Administrator',
+    actor_name: 'Tarun Kushwah',
     actor_role: 'super_admin',
     action: 'SYSTEM_INITIALIZATION',
     entity_type: 'system',

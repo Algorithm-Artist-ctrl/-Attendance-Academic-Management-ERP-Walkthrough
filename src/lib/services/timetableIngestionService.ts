@@ -466,6 +466,13 @@ export class TimetableIngestionService {
       }
     }
 
+    const { data: currentSessionData } = await supabase
+      .from('academic_sessions')
+      .select('id')
+      .eq('is_current', true)
+      .maybeSingle();
+    const currentSessionId = currentSessionData?.id || '';
+
     for (const pair of distinctPairs.values()) {
       const { data: existingAssignment } = await supabase
         .from('faculty_subject_assignments')
@@ -480,7 +487,7 @@ export class TimetableIngestionService {
           faculty_id: pair.facultyId,
           subject_id: pair.subjectId,
           section_id: targetSectionId,
-          academic_session_id: '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d', // 2026-2027
+          academic_session_id: currentSessionId,
           active: true,
         }]);
       } else if (!existingAssignment.active) {

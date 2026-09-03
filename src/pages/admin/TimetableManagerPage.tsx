@@ -55,18 +55,28 @@ export const TimetableManagerPage: React.FC = () => {
     subjects, 
     faculty, 
     timetable, 
+    years,
+    semesters,
     saveSectionTimetable,
     refreshData
   } = useAcademic();
 
+  const [selectedYearId, setSelectedYearId] = useState<string>('ALL');
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => sections[0]?.id || 'sec-btech-cse-2-a');
+
+  // Dynamic sections filtered by selected academic year
+  const filteredSections = useMemo(() => {
+    if (selectedYearId === 'ALL') return sections.filter(s => s.active);
+    const matchingSemIds = semesters.filter(s => s.academic_year_id === selectedYearId).map(s => s.id);
+    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+  }, [sections, semesters, selectedYearId]);
   
-  // Ensure selectedSectionId updates when sections load
+  // Ensure selectedSectionId updates when sections or year filter changes
   useEffect(() => {
-    if (sections.length > 0 && !sections.some(s => s.id === selectedSectionId)) {
-      setSelectedSectionId(sections[0].id);
+    if (filteredSections.length > 0 && !filteredSections.some(s => s.id === selectedSectionId)) {
+      setSelectedSectionId(filteredSections[0].id);
     }
-  }, [sections, selectedSectionId]);
+  }, [filteredSections, selectedSectionId]);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
@@ -410,6 +420,36 @@ export const TimetableManagerPage: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Year Selector */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400 font-bold hidden sm:inline">Year:</span>
+            <select
+              value={selectedYearId}
+              onChange={(e) => {
+                const yr = e.target.value;
+                setSelectedYearId(yr);
+                const matchingSemIds = yr === 'ALL'
+                  ? []
+                  : semesters.filter(s => s.academic_year_id === yr).map(s => s.id);
+                const nextSecs = yr === 'ALL'
+                  ? sections
+                  : sections.filter(s => matchingSemIds.includes(s.semester_id));
+                if (nextSecs.length > 0 && !nextSecs.some(s => s.id === selectedSectionId)) {
+                  setSelectedSectionId(nextSecs[0].id);
+                }
+                setIsEditMode(false);
+                setCsvPreview(null);
+                setCsvError(null);
+              }}
+              className="px-3 py-2 bg-slate-950/90 border-2 border-emerald-500/40 rounded-xl text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88] touch-target cursor-pointer"
+            >
+              <option value="ALL">All Years</option>
+              {years.map(y => (
+                <option key={y.id} value={y.id}>{y.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Dynamic Section Dropdown */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-400 font-bold hidden sm:inline">Section:</span>
@@ -423,11 +463,15 @@ export const TimetableManagerPage: React.FC = () => {
               }}
               className="px-3 py-2 bg-slate-950/90 border-2 border-emerald-500/40 rounded-xl text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88] touch-target cursor-pointer"
             >
-              {sections.map(s => (
-                <option key={s.id} value={s.id}>
-                  Section {s.name} ({s.room_number || 'Room'})
-                </option>
-              ))}
+              {filteredSections.map(s => {
+                const sem = semesters.find(sm => sm.id === s.semester_id);
+                const yr = years.find(y => y.id === sem?.academic_year_id);
+                return (
+                  <option key={s.id} value={s.id}>
+                    {yr ? `${yr.name} • ` : ''}Section {s.name} ({s.room_number || 'Room'})
+                  </option>
+                );
+              })}
             </select>
           </div>
 

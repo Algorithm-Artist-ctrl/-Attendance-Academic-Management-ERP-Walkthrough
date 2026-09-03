@@ -803,6 +803,60 @@ export const supabaseService = {
     return true;
   },
 
+  // ── Academic Year CRUD ──
+  async addAcademicYear(year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase.from('academic_years').insert(year).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as AcademicYear;
+  },
+
+  async updateAcademicYear(id: string, updates: Partial<AcademicYear>) {
+    const { data, error } = await supabase.from('academic_years').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as AcademicYear;
+  },
+
+  async deleteAcademicYear(id: string) {
+    const { error } = await supabase.from('academic_years').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return true;
+  },
+
+  // ── Semester CRUD ──
+  async addSemester(sem: Omit<Semester, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase.from('semesters').insert(sem).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Semester;
+  },
+
+  async updateSemester(id: string, updates: Partial<Semester>) {
+    const { data, error } = await supabase.from('semesters').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Semester;
+  },
+
+  async deleteSemester(id: string) {
+    const { error } = await supabase.from('semesters').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return true;
+  },
+
+  // ── Dynamic Session Resolver ──
+  async getCurrentSessionId(): Promise<string> {
+    const { data } = await supabase
+      .from('academic_sessions')
+      .select('id')
+      .eq('is_current', true)
+      .maybeSingle();
+    return data?.id || '';
+  },
+
   async addAssignment(assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) {
     const { data, error } = await supabase.from('faculty_subject_assignments').insert(assign).select().single();
     if (error) throw new Error(error.message);
@@ -973,6 +1027,13 @@ export const supabaseService = {
       }
     }
 
+    const { data: currentSessionData } = await supabase
+      .from('academic_sessions')
+      .select('id')
+      .eq('is_current', true)
+      .maybeSingle();
+    const currentSessionId = currentSessionData?.id || '';
+
     for (const pair of distinctPairs.values()) {
       const { data: existingAssignment } = await supabase
         .from('faculty_subject_assignments')
@@ -987,7 +1048,7 @@ export const supabaseService = {
           faculty_id: pair.facultyId,
           subject_id: pair.subjectId,
           section_id: params.sectionId,
-          academic_session_id: '8ef97eaa-8868-4b17-8ff9-c9d3cfb9160d', // 2026-2027
+          academic_session_id: currentSessionId,
           active: true,
         }]);
       } else if (!existingAssignment.active) {

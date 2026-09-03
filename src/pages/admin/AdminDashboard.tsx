@@ -27,6 +27,7 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const { 
+    sessions,
     students, 
     faculty, 
     departments, 
@@ -89,7 +90,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 z-10">
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Welcome back, {user?.full_name || 'Super Administrator'}
+            Welcome back, {user?.full_name || 'Administrator'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
             Super Administrator • Vivekananda College of Technology & Management • System Online
@@ -276,7 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
           )}
 
           <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between text-xs text-slate-400">
-            <span>Overall Session: 2026-2027</span>
+            <span>Overall Session: {sessions.find(s => s.is_current)?.name || '2026-2027'}</span>
             <button onClick={() => onNavigate('reports')} className="text-[#00ff88] font-bold hover:underline">
               Full Analytics Report →
             </button>
@@ -364,7 +365,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
         </button>
 
         <button
-          onClick={() => onNavigate('csv_import')}
+          onClick={() => onNavigate('import')}
           className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left group"
         >
           <FileSpreadsheet className="w-5 h-5 text-emerald-400 group-hover:text-[#00ff88] mb-2" />
