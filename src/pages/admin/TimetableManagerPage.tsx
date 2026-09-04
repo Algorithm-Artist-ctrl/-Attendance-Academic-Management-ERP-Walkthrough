@@ -52,16 +52,20 @@ interface DraftSlot {
 export const TimetableManagerPage: React.FC = () => {
   const { user } = useAuth();
   const { 
+    departments,
     sections, 
     subjects, 
     faculty, 
     timetable, 
-    years,
-    semesters,
-    saveSectionTimetable,
-    refreshData
+    years, 
+    semesters, 
+    saveSectionTimetable, 
+    refreshData 
   } = useAcademic();
 
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isHOD = user?.role === 'hod';
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('ALL');
   const [selectedYearId, setSelectedYearId] = useState<string>('ALL');
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => sections[0]?.id || 'sec-btech-cse-2-a');
 
@@ -165,6 +169,7 @@ export const TimetableManagerPage: React.FC = () => {
 
   // Open Slot Editor for specific day & period
   const handleOpenSlotEditor = (day: DayOfWeek, period: number) => {
+    if (isSuperAdmin) return;
     const key = `${day}-${period}`;
     const existing = draftSlots.get(key);
     const time = getStandardTimeForPeriod(period);
@@ -240,6 +245,7 @@ export const TimetableManagerPage: React.FC = () => {
 
   // Publish Section Timetable to Supabase (Full Section Replacement)
   const handlePublishTimetable = async () => {
+    if (isSuperAdmin) return;
     setIsPublishing(true);
     setPublishError(null);
     setPublishSuccessMsg(null);
@@ -301,6 +307,7 @@ export const TimetableManagerPage: React.FC = () => {
   // ONE-CLICK GOOGLE SHEET & CSV TIMETABLE SYNC HANDLERS
   // ----------------------------------------------------
   const handleSyncTimetable = async () => {
+    if (isSuperAdmin) return;
     if (!csvUrl.trim()) {
       setCsvError('Please enter a valid Google Sheet CSV URL.');
       return;
@@ -368,6 +375,7 @@ export const TimetableManagerPage: React.FC = () => {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isSuperAdmin) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -459,15 +467,39 @@ export const TimetableManagerPage: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
             <Calendar className="w-6 h-6 text-[#00ff88]" />
-            Department Schedule Management
+            {isSuperAdmin ? 'Timetable Overview' : 'Department Schedule Management'}
+            {isSuperAdmin && (
+              <span className="text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+                Institution View-Only
+              </span>
+            )}
           </h1>
           <p className="text-xs text-slate-300 mt-1">
-            Authoritative section-wise schedule matrix with live editing, collision resolution & real-time sync
+            {isSuperAdmin 
+              ? 'Institution-wide timetable inspection & conflict monitoring • Timetable operations managed by respective department HODs'
+              : 'Authoritative section-wise schedule matrix with live editing, collision resolution & real-time sync'}
           </p>
         </div>
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Department Selector (Super Admin Institution Monitoring) */}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-400 font-bold hidden sm:inline">Dept:</span>
+              <select
+                value={selectedDeptId}
+                onChange={(e) => setSelectedDeptId(e.target.value)}
+                className="px-3 py-2 bg-slate-950/90 border-2 border-blue-500/40 rounded-xl text-xs text-blue-300 font-bold focus:outline-none focus:border-blue-400 touch-target cursor-pointer"
+              >
+                <option value="ALL">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Year Selector */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-400 font-bold hidden sm:inline">Year:</span>
@@ -523,8 +555,8 @@ export const TimetableManagerPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Edit Mode Toggle Button */}
-          {!isEditMode ? (
+          {/* HOD Operational Controls: Edit Mode Toggle */}
+          {!isSuperAdmin && (!isEditMode ? (
             <Button
               variant="outline"
               size="sm"
@@ -544,20 +576,22 @@ export const TimetableManagerPage: React.FC = () => {
             >
               Cancel Edits
             </Button>
+          ))}
+
+          {/* HOD Operational Controls: AI Timetable Ingestion */}
+          {!isSuperAdmin && (
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={() => setIsAIUploadOpen(true)}
+              leftIcon={<Sparkles className="w-4 h-4 text-slate-950" />}
+              className="touch-target font-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
+            >
+              AI Timetable Ingestion
+            </Button>
           )}
 
-          {/* AI Timetable Ingestion */}
-          <Button
-            variant="neon"
-            size="sm"
-            onClick={() => setIsAIUploadOpen(true)}
-            leftIcon={<Sparkles className="w-4 h-4 text-slate-950" />}
-            className="touch-target font-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
-          >
-            AI Timetable Ingestion
-          </Button>
-
-          {/* Versions History */}
+          {/* Versions History (View-Only Audit for Super Admin, Restore enabled for HOD) */}
           <Button
             variant="outline"
             size="sm"
@@ -565,133 +599,168 @@ export const TimetableManagerPage: React.FC = () => {
             leftIcon={<History className="w-4 h-4 text-[#00ff88]" />}
             className="touch-target font-semibold"
           >
-            Versions
+            {isSuperAdmin ? 'Audit Versions' : 'Versions'}
           </Button>
         </div>
       </div>
 
-      {/* TIMETABLE CSV SOURCE PANEL */}
-      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
-              <FileSpreadsheet className="w-5 h-5" />
+      {/* SUPER ADMIN INSTITUTION MONITORING BANNER */}
+      {isSuperAdmin && (
+        <div className="glass-panel rounded-3xl p-5 border border-blue-500/20 bg-blue-950/20 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-white tracking-tight flex items-center gap-2">
+                  Academic Schedule Monitoring
+                  <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+                    Super Admin View-Only
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Super Admin monitors department schedules, faculty allocations, and scheduling conflicts. Department HODs manage operational editing and synchronization.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
-                Timetable CSV Source
-                <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
-                  Target: Section {currentSection?.name}
-                </span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Paste a Google Sheet CSV URL or upload a CSV file to atomically synchronize Section {currentSection?.name}'s schedule
-              </p>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-emerald-400 font-bold">
+                {sectionTimetable.length} Active Periods
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-blue-500/20 text-blue-300 font-bold">
+                Room: {currentSection?.room_number || 'Unassigned'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HOD OPERATIONAL TIMETABLE CSV SOURCE PANEL */}
+      {!isSuperAdmin && (
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                  Timetable CSV Source
+                  <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
+                    Target: Section {currentSection?.name}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Paste a Google Sheet CSV URL or upload a CSV file to atomically synchronize Section {currentSection?.name}'s schedule
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv,text/csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                leftIcon={<UploadCloud className="w-4 h-4 text-emerald-400" />}
+                className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
+              >
+                Upload CSV File
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".csv,text/csv"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
+          {/* URL Input Bar & One-Click Sync */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5">
+            <div className="relative flex-1 w-full">
+              <input
+                type="url"
+                value={csvUrl}
+                onChange={(e) => {
+                  setCsvUrl(e.target.value);
+                  setCsvError(null);
+                }}
+                placeholder="Paste Google Sheet URL (e.g. https://docs.google.com/spreadsheets/d/.../edit)..."
+                className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] font-mono shadow-inner"
+              />
+            </div>
             <Button
-              variant="outline"
+              variant="neon"
               size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              leftIcon={<UploadCloud className="w-4 h-4 text-emerald-400" />}
-              className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
+              onClick={handleSyncTimetable}
+              isLoading={isPublishing}
+              leftIcon={<Download className="w-4 h-4 text-slate-950" />}
+              className="w-full sm:w-auto font-black shadow-[0_0_15px_rgba(0,255,136,0.25)] shrink-0"
             >
-              Upload CSV File
+              SYNC TIMETABLE
             </Button>
           </div>
-        </div>
 
-        {/* URL Input Bar & One-Click Sync */}
-        <div className="flex flex-col sm:flex-row items-center gap-2.5">
-          <div className="relative flex-1 w-full">
-            <input
-              type="url"
-              value={csvUrl}
-              onChange={(e) => {
-                setCsvUrl(e.target.value);
-                setCsvError(null);
-              }}
-              placeholder="Paste Google Sheet CSV URL (e.g. https://docs.google.com/spreadsheets/d/.../export?format=csv)..."
-              className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] font-mono shadow-inner"
-            />
-          </div>
-          <Button
-            variant="neon"
-            size="sm"
-            onClick={handleSyncTimetable}
-            isLoading={isPublishing}
-            leftIcon={<Download className="w-4 h-4 text-slate-950" />}
-            className="w-full sm:w-auto font-black shadow-[0_0_15px_rgba(0,255,136,0.25)] shrink-0"
-          >
-            SYNC TIMETABLE
-          </Button>
-        </div>
-
-        {/* Compact Success Toast */}
-        {publishSuccessMsg && (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center justify-between animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#00ff88] shrink-0" />
-              <span>{publishSuccessMsg}</span>
-            </div>
-            <button onClick={() => setPublishSuccessMsg(null)} className="text-slate-400 hover:text-white cursor-pointer">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Compact Non-Blocking Faculty Conflict Alert */}
-        {facultyConflicts.length > 0 && (
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-black text-amber-200">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>⚠ {facultyConflicts.length} faculty scheduling conflict{facultyConflicts.length > 1 ? 's' : ''} detected</span>
+          {/* Compact Success Toast */}
+          {publishSuccessMsg && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center justify-between animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#00ff88] shrink-0" />
+                <span>{publishSuccessMsg}</span>
               </div>
-              <button
-                onClick={() => setShowConflictDetails(!showConflictDetails)}
-                className="text-xs font-bold text-amber-400 hover:underline cursor-pointer"
-              >
-                [{showConflictDetails ? 'Hide Details' : 'View Details'}]
+              <button onClick={() => setPublishSuccessMsg(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            {showConflictDetails && (
-              <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-200/90 font-mono pt-1">
-                {facultyConflicts.map((c, i) => (
-                  <li key={i}>
-                    {c.facultyName} has concurrent class at {c.day} Period {c.period} in Section {c.otherSectionName}{c.otherSubjectCode ? ` (${c.otherSubjectCode})` : ''}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* CSV Validation Error Display */}
-        {csvError && (
-          <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs space-y-2 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-black text-rose-200">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>Sync failed — existing timetable was not changed.</span>
+          {/* Compact Non-Blocking Faculty Conflict Alert */}
+          {facultyConflicts.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-black text-amber-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>⚠ {facultyConflicts.length} faculty scheduling conflict{facultyConflicts.length > 1 ? 's' : ''} detected</span>
+                </div>
+                <button
+                  onClick={() => setShowConflictDetails(!showConflictDetails)}
+                  className="text-xs font-bold text-amber-400 hover:underline cursor-pointer"
+                >
+                  [{showConflictDetails ? 'Hide Details' : 'View Details'}]
+                </button>
               </div>
-              <button onClick={() => setCsvError(null)} className="text-slate-400 hover:text-white cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
+              {showConflictDetails && (
+                <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-200/90 font-mono pt-1">
+                  {facultyConflicts.map((c, i) => (
+                    <li key={i}>
+                      {c.facultyName} has concurrent class at {c.day} Period {c.period} in Section {c.otherSectionName}{c.otherSubjectCode ? ` (${c.otherSubjectCode})` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <pre className="whitespace-pre-wrap font-sans text-[11px] text-rose-200/90 pl-1">{csvError}</pre>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* CSV Validation Error Display */}
+          {csvError && (
+            <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-black text-rose-200">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>Sync failed — existing timetable was not changed.</span>
+                </div>
+                <button onClick={() => setCsvError(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <pre className="whitespace-pre-wrap font-sans text-[11px] text-rose-200/90 pl-1">{csvError}</pre>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* EDIT MODE PROMINENT ACTION BANNER */}
       {isEditMode && (

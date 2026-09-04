@@ -243,6 +243,8 @@ export const AppContent: React.FC = () => {
       switch (activeTab) {
         case 'profile':
           return <ProfilePage />;
+        case 'academic_oversight':
+          return <HODAcademicOversightPage />;
         case 'academic_setup':
           return <AcademicSetupPage />;
         case 'students':

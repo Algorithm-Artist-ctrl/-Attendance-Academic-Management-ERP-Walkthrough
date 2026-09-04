@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase/supabaseClient';
 import { studentSyncService } from '../lib/services/studentSyncService';
 import { csvTimetableService } from '../lib/services/csvTimetableService';
 import { supabaseService } from '../lib/services/supabaseService';
-import { normalizeGoogleSheetUrl, validateSafePublicUrl } from '../lib/utils/urlUtils';
+import { normalizeGoogleSheetUrl, parseGoogleSheetUrl, validateSafePublicUrl } from '../lib/utils/urlUtils';
 
 let passed = 0;
 let failed = 0;
@@ -369,9 +369,22 @@ XYZ_DAY,99,99:99,99:99,NONEXISTENT_SUB,NONEXISTENT_FAC,Room X,Invalid`;
   // URL UTILS & SSRF VERIFICATION
   // =========================================================================
   console.log('\n--- BONUS: Google Sheet URL Normalizer & SSRF Guards ---');
-  const rawSheetUrl = 'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0';
-  const normUrl = normalizeGoogleSheetUrl(rawSheetUrl);
-  assert(normUrl.includes('/export?format=csv&gid=0'), 'URL: Google Sheet edit URL normalized to export CSV URL');
+  
+  // Format 1: /edit
+  const p1 = parseGoogleSheetUrl('https://docs.google.com/spreadsheets/d/SPREADSHEET_123/edit');
+  assert(p1.isGoogleSheet && p1.spreadsheetId === 'SPREADSHEET_123' && p1.exportCsvUrl === 'https://docs.google.com/spreadsheets/d/SPREADSHEET_123/export?format=csv', 'URL Format 1: /edit extracted spreadsheetId and generated CSV export');
+
+  // Format 2: /edit?usp=sharing
+  const p2 = parseGoogleSheetUrl('https://docs.google.com/spreadsheets/d/SPREADSHEET_123/edit?usp=sharing');
+  assert(p2.isGoogleSheet && p2.spreadsheetId === 'SPREADSHEET_123' && p2.exportCsvUrl === 'https://docs.google.com/spreadsheets/d/SPREADSHEET_123/export?format=csv', 'URL Format 2: /edit?usp=sharing extracted spreadsheetId and generated CSV export');
+
+  // Format 3: /edit#gid=123456
+  const p3 = parseGoogleSheetUrl('https://docs.google.com/spreadsheets/d/SPREADSHEET_123/edit#gid=123456');
+  assert(p3.isGoogleSheet && p3.gid === '123456' && p3.exportCsvUrl === 'https://docs.google.com/spreadsheets/d/SPREADSHEET_123/export?format=csv&gid=123456', 'URL Format 3: /edit#gid=123456 extracted gid and generated tab-specific CSV export');
+
+  // Format 4: Published CSV URL
+  const p4 = parseGoogleSheetUrl('https://docs.google.com/spreadsheets/d/e/2PACX-1vSpreadsheet/pub?output=csv');
+  assert(Boolean(p4.isGoogleSheet && p4.exportCsvUrl?.includes('/pub?output=csv')), 'URL Format 4: Published CSV URL recognized');
 
   const ssrf1 = validateSafePublicUrl('http://127.0.0.1:8080/secret');
   assert(!ssrf1.valid, 'SSRF: Blocked 127.0.0.1 loopback');

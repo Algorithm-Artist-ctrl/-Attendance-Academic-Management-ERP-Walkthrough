@@ -166,7 +166,7 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
                       W.E.F. <strong className="text-emerald-300">{ver.effective_from}</strong>
                     </span>
 
-                    {ver.status !== 'active' && (
+                    {ver.status !== 'active' && user?.role !== 'super_admin' && (
                       <Button
                         variant="outline"
                         size="sm"
