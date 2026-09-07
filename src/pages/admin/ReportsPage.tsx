@@ -15,6 +15,7 @@ import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
+import { ATTENDANCE_ELIGIBILITY_THRESHOLD } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
 export const ReportsPage: React.FC = () => {
@@ -24,6 +25,7 @@ export const ReportsPage: React.FC = () => {
     subjects, 
     students, 
     faculty,
+    sessions,
     getStudentAttendance 
   } = useAcademic();
 
@@ -41,8 +43,8 @@ export const ReportsPage: React.FC = () => {
       const matchesSection = selectedSection === 'ALL' || s.sectionName === selectedSection;
       const matchesStatus = 
         selectedStatusFilter === 'ALL' ? true :
-        selectedStatusFilter === 'DEFAULTER' ? s.isDefaulter || s.percentage < 75 :
-        s.percentage >= 75;
+        selectedStatusFilter === 'DEFAULTER' ? s.isDefaulter || s.percentage < ATTENDANCE_ELIGIBILITY_THRESHOLD :
+        s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD;
       const matchesSearch = 
         s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -60,7 +62,7 @@ export const ReportsPage: React.FC = () => {
       Present_Count: s.presentLectures,
       Absent_Count: s.totalLectures - s.presentLectures,
       Attendance_Percentage: `${s.percentage}%`,
-      Audit_Status: s.percentage >= 75 ? 'Eligible for Exams' : 'Defaulter (<75%)',
+      Audit_Status: s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD ? 'Eligible for Exams' : 'Defaulter (<75%)',
     }));
     exportToCSV(data, `VCTM_College_Attendance_Audit_${getISTTodayDate()}`);
   };
@@ -74,15 +76,18 @@ export const ReportsPage: React.FC = () => {
       s.totalLectures,
       s.presentLectures,
       `${s.percentage}%`,
-      s.percentage >= 75 ? 'Eligible' : 'Defaulter'
+      s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD ? 'Eligible' : 'Defaulter'
     ]);
+
+    const activeSession = sessions.find(s => s.is_current);
+    const sessionLabel = activeSession?.name ? `Academic Session ${activeSession.name}` : 'Academic Session';
 
     exportAttendanceReportPDF({
       title: 'COLLEGE ATTENDANCE AUDIT & ELIGIBILITY REPORT',
       subtitle: 'Vivekananda College of Technology & Management, Aligarh (340)',
       department: departments[0]?.name || 'Academic Department',
       section: selectedSection === 'ALL' ? 'All Sections' : `Section ${selectedSection}`,
-      academicYear: 'Academic Session 2026-2027',
+      academicYear: sessionLabel,
       tableHeaders: headers,
       tableRows: rows,
       filename: `VCTM_Attendance_Report_${getISTTodayDate()}`,

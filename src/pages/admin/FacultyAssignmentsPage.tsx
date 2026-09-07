@@ -63,7 +63,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
         faculty_id: selectedFacultyId,
         subject_id: selectedSubjectId,
         section_id: selectedSectionId,
-        academic_session_id: activeSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e',
+        academic_session_id: activeSession?.id || '',
         active: true,
       });
       setIsModalOpen(false);

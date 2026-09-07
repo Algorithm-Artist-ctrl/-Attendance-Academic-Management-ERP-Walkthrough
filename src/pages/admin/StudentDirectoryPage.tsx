@@ -200,9 +200,9 @@ export const StudentDirectoryPage: React.FC = () => {
     try {
       await addStudent({
         institution_id: institution.id,
-        department_id: departments[0]?.id || 'fe5bc365-7a68-4290-b05e-acfa274f748a',
-        program_id: programs[0]?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
-        academic_session_id: activeSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e',
+        department_id: departments[0]?.id || '',
+        program_id: programs[0]?.id || '',
+        academic_session_id: activeSession?.id || '',
         academic_year_id: secYear?.id || years[0]?.id,
         semester_id: secSemester?.id || semesters[0]?.id,
         section_id: selectedSec?.id || newSectionId,

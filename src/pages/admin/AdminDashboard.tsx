@@ -37,10 +37,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     auditLogs 
   } = useAcademic();
 
-  const totalStudents = students.length;
-  const totalFaculty = faculty.length;
-  const totalDepts = departments.length;
-  const totalPrograms = programs.length;
+  const totalStudents = students.filter(s => s.active !== false).length;
+  const totalFaculty = faculty.filter(f => f.active !== false).length;
+  const totalDepts = departments.filter(d => d.active !== false).length;
+  const totalPrograms = programs.filter(p => p.active !== false).length;
 
   // Calculate overall attendance rate
   const totalPresent = attendanceRecords.filter(r => r.status === 'Present').length;
@@ -277,7 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
           )}
 
           <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between text-xs text-slate-400">
-            <span>Overall Session: {sessions.find(s => s.is_current)?.name || '2026-2027'}</span>
+            <span>Overall Session: {sessions.find(s => s.is_current)?.name || sessions[0]?.name || 'Current'}</span>
             <button onClick={() => onNavigate('reports')} className="text-[#00ff88] font-bold hover:underline">
               Full Analytics Report →
             </button>

@@ -616,7 +616,7 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-2 border-t border-emerald-500/20 text-slate-300 font-medium">
               <div><span className="text-slate-500 text-[10px] block uppercase">Section</span>Section {currentDoc.section_name} ({currentDoc.room_number})</div>
               <div><span className="text-slate-500 text-[10px] block uppercase">Effective From</span>{currentDoc.effective_from}</div>
-              <div><span className="text-slate-500 text-[10px] block uppercase">Periods Updated</span>42 Active Slots</div>
+              <div><span className="text-slate-500 text-[10px] block uppercase">Periods Updated</span>{report.stats.totalSlots > 0 ? `${report.stats.totalSlots} Active Slots` : 'Slots Synchronized'}</div>
               <div><span className="text-slate-500 text-[10px] block uppercase">Status</span><span className="text-[#00ff88] font-bold">Published & Active</span></div>
             </div>
           </div>

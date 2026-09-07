@@ -61,8 +61,8 @@ export const SubjectsPage: React.FC = () => {
 
     try {
       await addSubject({
-        program_id: programs[0]?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
-        department_id: departments[0]?.id || 'fe5bc365-7a68-4290-b05e-acfa274f748a',
+        program_id: programs[0]?.id || '',
+        department_id: departments[0]?.id || '',
         semester_id: targetSemesterId,
         subject_code: subjectCode.trim().toUpperCase(),
         subject_name: subjectName.trim(),

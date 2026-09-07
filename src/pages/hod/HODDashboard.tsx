@@ -20,6 +20,7 @@ import { getISTTodayDate, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance, ExtractedTimetableDocument } from '../../types/academic.types';
 import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
+import { ATTENDANCE_ELIGIBILITY_THRESHOLD } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
 export const HODDashboard: React.FC = () => {
@@ -88,11 +89,29 @@ export const HODDashboard: React.FC = () => {
     return studentStats.filter(s => s.sectionName === selectedSectionFilter);
   }, [studentStats, selectedSectionFilter]);
 
-  const defaulters = studentStats.filter(s => s.isDefaulter || s.percentage < 75);
+  const defaulters = useMemo(() => {
+    return studentStats.filter(s => s.isDefaulter || s.percentage < ATTENDANCE_ELIGIBILITY_THRESHOLD);
+  }, [studentStats]);
+
+  // Strictly department-scoped active faculty
+  const deptFaculty = useMemo(() => {
+    return faculty.filter(f => f.department_id === dept?.id && f.active);
+  }, [faculty, dept?.id]);
+
+  // Compute workload assignment percentage based on real database records
+  const assignedDeptFacultyCount = useMemo(() => {
+    const assignedIds = new Set(assignments.filter(a => a.active).map(a => a.faculty_id));
+    return deptFaculty.filter(f => assignedIds.has(f.id)).length;
+  }, [deptFaculty, assignments]);
+
+  const workloadPercentage = useMemo(() => {
+    if (deptFaculty.length === 0) return 0;
+    return Math.round((assignedDeptFacultyCount / deptFaculty.length) * 100);
+  }, [deptFaculty.length, assignedDeptFacultyCount]);
 
   const activeSessionName = useMemo(() => {
     const curr = sessions.find(s => s.is_current);
-    return curr?.name ? `Academic Session ${curr.name}` : 'Academic Session 2026-2027';
+    return curr?.name ? `Academic Session ${curr.name}` : 'Academic Session';
   }, [sessions]);
 
   const handleExportDefaultersCSV = () => {
@@ -225,9 +244,9 @@ export const HODDashboard: React.FC = () => {
           <div>
             <p className="text-xs font-semibold text-slate-400">Department Faculty</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {faculty.length}
+              {deptFaculty.length}
             </h3>
-            <span className="text-[10px] text-slate-400 font-medium">100% Workload Assigned</span>
+            <span className="text-[10px] text-slate-400 font-medium">{workloadPercentage}% Workload Assigned</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
             <Users className="w-5 h-5" />

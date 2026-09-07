@@ -1,16 +1,18 @@
 import { DayOfWeek } from '../../types/database.types';
+import { INSTITUTION_TIMEZONE } from '../../config/academicConfig';
 
 // Format current date in Asia/Kolkata (IST) timezone as YYYY-MM-DD
 export function getISTTodayDate(): string {
+  const now = new Date();
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
+    timeZone: INSTITUTION_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date());
-  const year = parts.find(p => p.type === 'year')?.value || '2026';
-  const month = parts.find(p => p.type === 'month')?.value || '08';
-  const day = parts.find(p => p.type === 'day')?.value || '23';
+  }).formatToParts(now);
+  const year = parts.find(p => p.type === 'year')?.value || String(now.getFullYear());
+  const month = parts.find(p => p.type === 'month')?.value || String(now.getMonth() + 1).padStart(2, '0');
+  const day = parts.find(p => p.type === 'day')?.value || String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 

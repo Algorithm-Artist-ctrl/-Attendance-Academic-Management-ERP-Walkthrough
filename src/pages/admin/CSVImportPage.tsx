@@ -64,9 +64,9 @@ export const CSVImportPage: React.FC = () => {
     try {
       const result = await parseAndValidateStudentCSV(text, {
         institutionId: institution.id,
-        departmentId: departments[0]?.id || 'fe5bc365-7a68-4290-b05e-acfa274f748a',
-        programId: programs[0]?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
-        sessionId: activeSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e',
+        departmentId: departments[0]?.id || '',
+        programId: programs[0]?.id || '',
+        sessionId: activeSession?.id || '',
         yearId: activeYearId,
         semesterId: activeSemester?.id,
         defaultSectionId: sections[0]?.id,

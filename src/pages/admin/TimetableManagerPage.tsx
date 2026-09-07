@@ -33,6 +33,7 @@ import { TimetableConflict, ExtractedTimetableDocument } from '../../types/acade
 import { csvTimetableService, CSVValidationResult } from '../../lib/services/csvTimetableService';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
+import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS } from '../../config/academicConfig';
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
 import { clsx } from 'clsx';
@@ -67,7 +68,7 @@ export const TimetableManagerPage: React.FC = () => {
   const isHOD = user?.role === 'hod';
   const [selectedDeptId, setSelectedDeptId] = useState<string>('ALL');
   const [selectedYearId, setSelectedYearId] = useState<string>('ALL');
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => sections[0]?.id || 'sec-btech-cse-2-a');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => sections[0]?.id || '');
 
   // Dynamic sections filtered by selected academic year
   const filteredSections = useMemo(() => {
@@ -115,8 +116,6 @@ export const TimetableManagerPage: React.FC = () => {
     SUN: 'Sunday',
   };
 
-  const periods = [1, 2, 3, 4, 6, 7, 8];
-
   const currentSection = useMemo(() => {
     return sections.find(s => s.id === selectedSectionId) || sections[0];
   }, [sections, selectedSectionId]);
@@ -125,6 +124,15 @@ export const TimetableManagerPage: React.FC = () => {
   const sectionTimetable = useMemo(() => {
     return timetable.filter(t => t.section_id === selectedSectionId && t.active);
   }, [timetable, selectedSectionId]);
+
+  // Dynamically derive period numbers from database entries or fallback to standard institutional periods
+  const periods = useMemo(() => {
+    if (sectionTimetable.length > 0) {
+      const distinct = Array.from(new Set(sectionTimetable.map(t => t.period_number))).sort((a, b) => a - b);
+      if (distinct.length > 0) return distinct;
+    }
+    return DEFAULT_INSTITUTIONAL_PERIODS.filter(p => !p.is_break).map(p => p.period_number);
+  }, [sectionTimetable]);
 
   // Draft in-memory map for Edit Mode: Key = `${day_of_week}-${period_number}`
   const [draftSlots, setDraftSlots] = useState<Map<string, DraftSlot>>(new Map());
@@ -142,7 +150,7 @@ export const TimetableManagerPage: React.FC = () => {
         end_time: t.end_time || '09:50',
         subject_id: t.subject_id,
         faculty_id: t.faculty_id,
-        room_number: t.room_number || currentSection?.room_number || 'Room A-007',
+        room_number: t.room_number || currentSection?.room_number || '',
         lecture_type: t.lecture_type || 'Theory',
       });
     }
@@ -155,16 +163,15 @@ export const TimetableManagerPage: React.FC = () => {
   const [editingSlot, setEditingSlot] = useState<DraftSlot | null>(null);
 
   const getStandardTimeForPeriod = (p: number) => {
-    switch (p) {
-      case 1: return { start: '09:00', end: '09:50' };
-      case 2: return { start: '09:50', end: '10:40' };
-      case 3: return { start: '10:40', end: '11:30' };
-      case 4: return { start: '11:30', end: '12:20' };
-      case 6: return { start: '13:10', end: '14:00' };
-      case 7: return { start: '14:00', end: '14:50' };
-      case 8: return { start: '14:50', end: '15:40' };
-      default: return { start: '09:00', end: '09:50' };
+    const existing = sectionTimetable.find(t => t.period_number === p && t.start_time && t.end_time);
+    if (existing) {
+      return { start: existing.start_time, end: existing.end_time };
     }
+    const standard = DEFAULT_INSTITUTIONAL_PERIODS.find(dp => dp.period_number === p);
+    if (standard) {
+      return { start: standard.start_time, end: standard.end_time };
+    }
+    return { start: '09:00', end: '09:50' };
   };
 
   // Open Slot Editor for specific day & period
@@ -184,7 +191,7 @@ export const TimetableManagerPage: React.FC = () => {
         end_time: time.end,
         subject_id: subjects[0]?.id || '',
         faculty_id: faculty[0]?.id || '',
-        room_number: currentSection?.room_number || 'Room A-007',
+        room_number: currentSection?.room_number || '',
         lecture_type: 'Theory',
       });
     }
@@ -235,7 +242,7 @@ export const TimetableManagerPage: React.FC = () => {
         end_time: t.end_time || '09:50',
         subject_id: t.subject_id,
         faculty_id: t.faculty_id,
-        room_number: t.room_number || currentSection?.room_number || 'Room A-007',
+        room_number: t.room_number || currentSection?.room_number || '',
         lecture_type: t.lecture_type || 'Theory',
       });
     }
@@ -352,7 +359,7 @@ export const TimetableManagerPage: React.FC = () => {
           period_number: e.period_number,
           start_time: e.start_time,
           end_time: e.end_time,
-          room_number: e.room_number || currentSection?.room_number || 'Room A-007',
+          room_number: e.room_number || currentSection?.room_number || '',
           lecture_type: e.lecture_type || 'Theory',
           active: true,
         })),
@@ -425,7 +432,7 @@ export const TimetableManagerPage: React.FC = () => {
             period_number: e.period_number,
             start_time: e.start_time,
             end_time: e.end_time,
-            room_number: e.room_number || currentSection?.room_number || 'Room A-007',
+            room_number: e.room_number || currentSection?.room_number || '',
             lecture_type: e.lecture_type || 'Theory',
             active: true,
           })),
@@ -871,7 +878,7 @@ export const TimetableManagerPage: React.FC = () => {
           <div className="h-6 w-px bg-emerald-500/20" />
           <div>
             <span className="text-slate-500 block text-[10px] uppercase font-bold">Scheduled Classes</span>
-            <span className="font-bold text-emerald-400 text-sm">{scheduledCount} / 42 Periods</span>
+            <span className="font-bold text-emerald-400 text-sm">{scheduledCount} Scheduled {scheduledCount === 1 ? 'Class' : 'Classes'}</span>
           </div>
         </div>
 

@@ -1631,6 +1631,67 @@ export const supabaseService = {
     }
 
     return upsertResult.data as SessionalMark[];
+  },
+
+  // ==========================================
+  // REAL-TIME SERVER-SIDE COUNT HELPERS
+  // ==========================================
+  async getStudentCount(filters?: { departmentId?: string; yearId?: string; sectionId?: string; activeOnly?: boolean }): Promise<number> {
+    let query = supabase.from('students').select('id', { count: 'exact', head: true });
+    if (filters?.activeOnly !== false) query = query.eq('active', true);
+    if (filters?.departmentId) query = query.eq('department_id', filters.departmentId);
+    if (filters?.yearId) query = query.eq('academic_year_id', filters.yearId);
+    if (filters?.sectionId) query = query.eq('section_id', filters.sectionId);
+    const { count, error } = await query;
+    if (error) {
+      console.warn('Error fetching student count:', error.message);
+      return 0;
+    }
+    return count || 0;
+  },
+
+  async getFacultyCount(filters?: { departmentId?: string; activeOnly?: boolean }): Promise<number> {
+    let query = supabase.from('faculty').select('id', { count: 'exact', head: true });
+    if (filters?.activeOnly !== false) query = query.eq('active', true);
+    if (filters?.departmentId) query = query.eq('department_id', filters.departmentId);
+    const { count, error } = await query;
+    if (error) {
+      console.warn('Error fetching faculty count:', error.message);
+      return 0;
+    }
+    return count || 0;
+  },
+
+  async getTimetableCount(filters?: { sectionId?: string; dayOfWeek?: DayOfWeek; activeOnly?: boolean }): Promise<number> {
+    let query = supabase.from('timetable_entries').select('id', { count: 'exact', head: true });
+    if (filters?.activeOnly !== false) query = query.eq('active', true);
+    if (filters?.sectionId) query = query.eq('section_id', filters.sectionId);
+    if (filters?.dayOfWeek) query = query.eq('day_of_week', filters.dayOfWeek);
+    const { count, error } = await query;
+    if (error) {
+      console.warn('Error fetching timetable count:', error.message);
+      return 0;
+    }
+    return count || 0;
+  },
+
+  async getInstitutionKPIs() {
+    const [studentsRes, facultyRes, deptsRes, subjectsRes, sectionsRes, timetableRes] = await Promise.all([
+      supabase.from('students').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('faculty').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('departments').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('sections').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('timetable_entries').select('id', { count: 'exact', head: true }).eq('active', true),
+    ]);
+    return {
+      totalStudents: studentsRes.count || 0,
+      totalFaculty: facultyRes.count || 0,
+      totalDepartments: deptsRes.count || 0,
+      totalSubjects: subjectsRes.count || 0,
+      totalSections: sectionsRes.count || 0,
+      totalTimetableEntries: timetableRes.count || 0,
+    };
   }
 };
 
