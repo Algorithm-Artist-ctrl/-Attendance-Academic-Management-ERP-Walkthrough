@@ -249,6 +249,15 @@ interface AcademicContextType {
     studentId?: string;
     dateStr: string;
   }) => TodayLectureItem[];
+  refreshStudents: () => Promise<void>;
+  refreshTimetable: (sectionId?: string) => Promise<void>;
+  refreshAttendance: () => Promise<void>;
+  refreshCorrections: () => Promise<void>;
+  refreshFaculty: () => Promise<void>;
+  refreshSections: () => Promise<void>;
+  refreshSubjects: () => Promise<void>;
+  refreshAssignments: () => Promise<void>;
+  refreshAssessments: () => Promise<void>;
   resetToInitialSeed: () => void;
 }
 
@@ -282,6 +291,26 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [sessionalAssessments, setSessionalAssessments] = useState<SessionalAssessment[]>([]);
   const [sessionalMarks, setSessionalMarks] = useState<SessionalMark[]>([]);
   const [marksHistory, setMarksHistory] = useState<MarksHistory[]>([]);
+
+  // Stable refs for cross-table joins to eliminate stale closures in granular callbacks
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
+  const facultyRef = useRef(faculty);
+  facultyRef.current = faculty;
+  const subjectsRef = useRef(subjects);
+  subjectsRef.current = subjects;
+  const departmentsRef = useRef(departments);
+  departmentsRef.current = departments;
+  const studentsRef = useRef(students);
+  studentsRef.current = students;
+  const attendanceSessionsRef = useRef(attendanceSessions);
+  attendanceSessionsRef.current = attendanceSessions;
+  const attendanceRecordsRef = useRef(attendanceRecords);
+  attendanceRecordsRef.current = attendanceRecords;
+  const courseAssignmentsRef = useRef(courseAssignments);
+  courseAssignmentsRef.current = courseAssignments;
+  const sessionalAssessmentsRef = useRef(sessionalAssessments);
+  sessionalAssessmentsRef.current = sessionalAssessments;
 
   // Function to load and enrich latest records from Supabase
   const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
@@ -476,52 +505,317 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  // Granular Entity Refreshers for Targeted UI Updates Without Full-App Reload
+  const refreshStudents = useCallback(async () => {
+    try {
+      const rawStudents = await supabaseService.fetchStudents();
+      const curSections = sectionsRef.current;
+      const curFaculty = facultyRef.current;
+      const curDepts = departmentsRef.current;
+      const enrichedStudents: Student[] = rawStudents.map(s => {
+        const matchedSection = curSections.find(sec => sec.id === s.section_id) ||
+                               curSections.find(sec => sec.name === (s.section as any)?.name);
+        return {
+          ...s,
+          section: matchedSection,
+          section_id: matchedSection?.id || s.section_id,
+          mentor: curFaculty.find(f => f.id === s.mentor_faculty_id),
+          department: curDepts.find(d => d.id === s.department_id),
+        };
+      });
+      setStudents(enrichedStudents);
+      erpStorage.setStudents(enrichedStudents);
+    } catch (err) {
+      console.error('Failed to refresh students:', err);
+    }
+  }, []);
+
+  const refreshTimetable = useCallback(async (sectionId?: string) => {
+    try {
+      const rawEntries = await supabaseService.fetchTimetable(sectionId);
+      const curSubjects = subjectsRef.current;
+      const curFaculty = facultyRef.current;
+      const curSections = sectionsRef.current;
+
+      const enriched: TimetableEntry[] = rawEntries.map(t => ({
+        ...t,
+        subject: curSubjects.find(s => s.id === t.subject_id),
+        faculty: curFaculty.find(f => f.id === t.faculty_id),
+        section: curSections.find(sec => sec.id === t.section_id),
+      }));
+
+      if (sectionId) {
+        setTimetable(prev => {
+          const others = prev.filter(t => t.section_id !== sectionId);
+          const merged = [...others, ...enriched];
+          erpStorage.setTimetable(merged);
+          return merged;
+        });
+      } else {
+        setTimetable(enriched);
+        erpStorage.setTimetable(enriched);
+      }
+    } catch (err) {
+      console.error('Failed to refresh timetable:', err);
+    }
+  }, []);
+
+  const refreshAttendance = useCallback(async () => {
+    try {
+      const { attendanceSessions: rawSessions, attendanceRecords: rawRecords } = await supabaseService.fetchAttendance();
+      const curFaculty = facultyRef.current;
+      const curSubjects = subjectsRef.current;
+      const curSections = sectionsRef.current;
+      const curStudents = studentsRef.current;
+
+      const enrichedSessions: AttendanceSession[] = rawSessions.map(sess => ({
+        ...sess,
+        faculty: curFaculty.find(f => f.id === sess.faculty_id),
+        subject: curSubjects.find(s => s.id === sess.subject_id),
+        section: curSections.find(sec => sec.id === sess.section_id),
+      }));
+
+      const enrichedRecords: AttendanceRecord[] = rawRecords.map(rec => ({
+        ...rec,
+        student: curStudents.find(s => s.id === rec.student_id),
+        session: enrichedSessions.find(sess => sess.id === rec.attendance_session_id),
+      }));
+
+      setAttendanceSessions(enrichedSessions);
+      setAttendanceRecords(enrichedRecords);
+      erpStorage.setAttendanceSessions(enrichedSessions);
+      erpStorage.setAttendanceRecords(enrichedRecords);
+    } catch (err) {
+      console.error('Failed to refresh attendance:', err);
+    }
+  }, []);
+
+  const refreshCorrections = useCallback(async () => {
+    try {
+      const rawCorrections = await supabaseService.fetchCorrections();
+      const curRecords = attendanceRecordsRef.current;
+      const curSessions = attendanceSessionsRef.current;
+      const curStudents = studentsRef.current;
+      const curFaculty = facultyRef.current;
+
+      const enrichedCorrections: AttendanceCorrection[] = rawCorrections.map(c => {
+        const rec = curRecords.find(r => r.id === c.attendance_record_id);
+        const matchedSession = rec?.session || curSessions.find(s => s.id === rec?.attendance_session_id);
+        const matchedStudent = curStudents.find(s => s.id === c.student_id);
+        const matchedReviewer = curFaculty.find(f => f.id === c.reviewed_by);
+        return {
+          ...c,
+          record: rec,
+          session: matchedSession,
+          student: matchedStudent,
+          reviewer: matchedReviewer,
+        };
+      });
+
+      setCorrections(enrichedCorrections);
+      erpStorage.setCorrections(enrichedCorrections);
+    } catch (err) {
+      console.error('Failed to refresh corrections:', err);
+    }
+  }, []);
+
+  const refreshFaculty = useCallback(async () => {
+    try {
+      const loadedFaculty = await supabaseService.fetchFaculty();
+      setFaculty(loadedFaculty);
+      erpStorage.setFaculty(loadedFaculty);
+    } catch (err) {
+      console.error('Failed to refresh faculty:', err);
+    }
+  }, []);
+
+  const refreshSections = useCallback(async () => {
+    try {
+      const loadedSections = await supabaseService.fetchSections();
+      setSections(loadedSections);
+      erpStorage.setSections(loadedSections);
+    } catch (err) {
+      console.error('Failed to refresh sections:', err);
+    }
+  }, []);
+
+  const refreshSubjects = useCallback(async () => {
+    try {
+      const loadedSubjects = await supabaseService.fetchSubjects();
+      setSubjects(loadedSubjects);
+      erpStorage.setSubjects(loadedSubjects);
+    } catch (err) {
+      console.error('Failed to refresh subjects:', err);
+    }
+  }, []);
+
+  const refreshAssignments = useCallback(async () => {
+    try {
+      const rawAssignments = await supabaseService.fetchAssignments();
+      const curFaculty = facultyRef.current;
+      const curSubjects = subjectsRef.current;
+      const curSections = sectionsRef.current;
+
+      const enrichedAssignments: FacultySubjectAssignment[] = rawAssignments.map(a => ({
+        ...a,
+        faculty: curFaculty.find(f => f.id === a.faculty_id),
+        subject: curSubjects.find(s => s.id === a.subject_id),
+        section: curSections.find(sec => sec.id === a.section_id),
+      }));
+
+      setAssignments(enrichedAssignments);
+      erpStorage.setAssignments(enrichedAssignments);
+    } catch (err) {
+      console.error('Failed to refresh assignments:', err);
+    }
+  }, []);
+
+  const refreshAssessments = useCallback(async () => {
+    try {
+      const data = await supabaseService.fetchAssessments();
+      const curSubjects = subjectsRef.current;
+      const curFaculty = facultyRef.current;
+      const curSections = sectionsRef.current;
+      const curStudents = studentsRef.current;
+
+      const enrichedCourseAssignments: Assignment[] = data.courseAssignments.map(a => ({
+        ...a,
+        subject: curSubjects.find(s => s.id === a.subject_id),
+        faculty: curFaculty.find(f => f.id === a.faculty_id),
+        section: curSections.find(sec => sec.id === a.section_id),
+      }));
+
+      const enrichedSubmissions: AssignmentSubmission[] = data.assignmentSubmissions.map(sub => ({
+        ...sub,
+        student: curStudents.find(s => s.id === sub.student_id),
+        assignment: enrichedCourseAssignments.find(a => a.id === sub.assignment_id),
+        grader: curFaculty.find(f => f.id === sub.graded_by),
+      }));
+
+      const enrichedQuizzes: Quiz[] = data.quizzes.map(q => ({
+        ...q,
+        subject: curSubjects.find(s => s.id === q.subject_id),
+        faculty: curFaculty.find(f => f.id === q.faculty_id),
+        section: curSections.find(sec => sec.id === q.section_id),
+      }));
+
+      const enrichedQuizResults: QuizResult[] = data.quizResults.map(qr => ({
+        ...qr,
+        student: curStudents.find(s => s.id === qr.student_id),
+        quiz: enrichedQuizzes.find(q => q.id === qr.quiz_id),
+        grader: curFaculty.find(f => f.id === qr.graded_by),
+      }));
+
+      const enrichedAssessments: SessionalAssessment[] = data.sessionalAssessments.map(sa => ({
+        ...sa,
+        subject: curSubjects.find(s => s.id === sa.subject_id),
+        faculty: curFaculty.find(f => f.id === sa.faculty_id),
+        section: curSections.find(sec => sec.id === sa.section_id),
+      }));
+
+      const enrichedSessionalMarks: SessionalMark[] = data.sessionalMarks.map(sm => ({
+        ...sm,
+        student: curStudents.find(s => s.id === sm.student_id),
+        subject: curSubjects.find(s => s.id === sm.subject_id),
+        faculty: curFaculty.find(f => f.id === sm.faculty_id),
+        section: curSections.find(sec => sec.id === sm.section_id),
+        sessional_assessment: enrichedAssessments.find(a => a.id === sm.sessional_assessment_id),
+      }));
+
+      const enrichedMarksHistory: MarksHistory[] = data.marksHistory.map(mh => ({
+        ...mh,
+        student: curStudents.find(s => s.id === mh.student_id),
+        subject: curSubjects.find(s => s.id === mh.subject_id),
+      }));
+
+      setCourseAssignments(enrichedCourseAssignments);
+      setAssignmentSubmissions(enrichedSubmissions);
+      setQuizzes(enrichedQuizzes);
+      setQuizResults(enrichedQuizResults);
+      setSessionalAssessments(enrichedAssessments);
+      setSessionalMarks(enrichedSessionalMarks);
+      setMarksHistory(enrichedMarksHistory);
+    } catch (err) {
+      console.error('Failed to refresh assessments:', err);
+    }
+  }, []);
+
+  // Table-specific debouncing to prevent event storms while remaining responsive
+  const debounceTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  const debounceTableSync = useCallback((table: string, callback: () => void, delay = 80) => {
+    if (debounceTimersRef.current[table]) {
+      clearTimeout(debounceTimersRef.current[table]);
+    }
+    debounceTimersRef.current[table] = setTimeout(() => {
+      callback();
+    }, delay);
+  }, []);
+
   // Initial load
   useEffect(() => {
     loadDataFromSupabase(true);
   }, [loadDataFromSupabase]);
 
-  // Debounced realtime synchronization to prevent request storms
-  const realtimeDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const debouncedSyncFromSupabase = useCallback(() => {
-    if (realtimeDebounceTimerRef.current) {
-      clearTimeout(realtimeDebounceTimerRef.current);
-    }
-    realtimeDebounceTimerRef.current = setTimeout(() => {
-      loadDataFromSupabase(false);
-    }, 150);
-  }, [loadDataFromSupabase]);
-
-  // Realtime Supabase Channel Subscription
+  // Realtime Supabase Channel Subscription with granular event handlers
   useEffect(() => {
     const channel = supabase
       .channel('vctm-erp-realtime-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public' },
-        (payload) => {
-          // Coalesce rapid mutations to prevent render storms
-          debouncedSyncFromSupabase();
-        }
-      )
-      .on(
-        'broadcast',
-        { event: 'timetable_updated' },
-        (payload) => {
-          // Immediate re-fetch on section timetable publishing
-          loadDataFromSupabase(true);
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        debounceTableSync('students', () => refreshStudents());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, () => {
+        debounceTableSync('timetable_entries', () => refreshTimetable());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
+        debounceTableSync('attendance', () => refreshAttendance());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
+        debounceTableSync('attendance', () => refreshAttendance());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
+        debounceTableSync('attendance_corrections', () => refreshCorrections());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty' }, () => {
+        debounceTableSync('faculty', () => refreshFaculty());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => {
+        debounceTableSync('sections', () => refreshSections());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
+        debounceTableSync('subjects', () => refreshSubjects());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
+        debounceTableSync('faculty_subject_assignments', () => refreshAssignments());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+        debounceTableSync('assessments', () => refreshAssessments());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
+        debounceTableSync('assessments', () => refreshAssessments());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+        debounceTableSync('assessments', () => refreshAssessments());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
+        debounceTableSync('assessments', () => refreshAssessments());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+        debounceTableSync('assessments', () => refreshAssessments());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
+        debounceTableSync('assessments', () => refreshAssessments());
+      })
+      .on('broadcast', { event: 'timetable_updated' }, () => {
+        refreshTimetable();
+      })
       .subscribe();
 
     return () => {
-      if (realtimeDebounceTimerRef.current) {
-        clearTimeout(realtimeDebounceTimerRef.current);
-      }
+      Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
       supabase.removeChannel(channel);
     };
-  }, [debouncedSyncFromSupabase]);
+  }, [debounceTableSync, refreshStudents, refreshTimetable, refreshAttendance, refreshCorrections, refreshFaculty, refreshSections, refreshSubjects, refreshAssignments, refreshAssessments]);
 
   const refreshData = async (forceRefreshMaster = false) => {
     await loadDataFromSupabase(forceRefreshMaster);
@@ -544,7 +838,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }) => {
     const result = await supabaseService.saveAttendance(params);
     erpStorage.saveAttendanceSession(params);
-    await refreshData();
+    await refreshAttendance();
     return result;
   };
 
@@ -600,7 +894,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       requestedStatus: params.requestedStatus,
       reason: params.reason,
     });
-    await refreshData();
+    await refreshCorrections();
     return res;
   };
 
@@ -613,7 +907,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }) => {
     const res = await supabaseService.reviewCorrection(params);
     erpStorage.reviewCorrectionRequest(params);
-    await refreshData();
+    await refreshCorrections();
+    await refreshAttendance();
     return res;
   };
 
@@ -696,134 +991,134 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addSection = async (sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addSection(sec);
     erpStorage.addSection(sec);
-    await refreshData();
+    await refreshSections();
     return res;
   };
 
   const updateSection = async (id: string, updates: Partial<Section>) => {
     const res = await supabaseService.updateSection(id, updates);
     erpStorage.updateSection(id, updates);
-    await refreshData();
+    await refreshSections();
     return res;
   };
 
   const deleteSection = async (id: string) => {
     const res = await supabaseService.deleteSection(id);
     erpStorage.deleteSection(id);
-    await refreshData();
+    await refreshSections();
     return res;
   };
 
   const addAcademicYear = async (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addAcademicYear(year);
-    await refreshData();
+    await refreshData(true);
     return res;
   };
 
   const updateAcademicYear = async (id: string, updates: Partial<AcademicYear>) => {
     const res = await supabaseService.updateAcademicYear(id, updates);
-    await refreshData();
+    await refreshData(true);
     return res;
   };
 
   const deleteAcademicYear = async (id: string) => {
     const res = await supabaseService.deleteAcademicYear(id);
-    await refreshData();
+    await refreshData(true);
     return res;
   };
 
   const addSemester = async (sem: Omit<Semester, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addSemester(sem);
-    await refreshData();
+    await refreshData(true);
     return res;
   };
 
   const updateSemester = async (id: string, updates: Partial<Semester>) => {
     const res = await supabaseService.updateSemester(id, updates);
-    await refreshData();
+    await refreshData(true);
     return res;
   };
 
   const deleteSemester = async (id: string) => {
     const res = await supabaseService.deleteSemester(id);
-    await refreshData();
+    await refreshData(true);
     return res;
   };
 
   const addFaculty = async (fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addFaculty(fac);
     erpStorage.addFaculty(fac);
-    await refreshData();
+    await refreshFaculty();
     return res;
   };
 
   const updateFaculty = async (id: string, updates: Partial<Faculty>) => {
     const res = await supabaseService.updateFaculty(id, updates);
     erpStorage.updateFaculty(id, updates);
-    await refreshData();
+    await refreshFaculty();
     return res;
   };
 
   const deleteFaculty = async (id: string) => {
     const res = await supabaseService.deleteFaculty(id);
     erpStorage.deleteFaculty(id);
-    await refreshData();
+    await refreshFaculty();
     return res;
   };
 
   const addSubject = async (sub: Omit<Subject, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addSubject(sub);
     erpStorage.addSubject(sub);
-    await refreshData();
+    await refreshSubjects();
     return res;
   };
 
   const updateSubject = async (id: string, updates: Partial<Subject>) => {
     const res = await supabaseService.updateSubject(id, updates);
     erpStorage.updateSubject(id, updates);
-    await refreshData();
+    await refreshSubjects();
     return res;
   };
 
   const deleteSubject = async (id: string) => {
     const res = await supabaseService.deleteSubject(id);
     erpStorage.deleteSubject(id);
-    await refreshData();
+    await refreshSubjects();
     return res;
   };
 
   const addAssignment = async (assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) => {
     const res = await supabaseService.addAssignment(assign);
     erpStorage.addAssignment(assign);
-    await refreshData();
+    await refreshAssignments();
     return res;
   };
 
   const deleteAssignment = async (id: string) => {
     const res = await supabaseService.deleteAssignment(id);
     erpStorage.deleteAssignment(id);
-    await refreshData();
+    await refreshAssignments();
     return res;
   };
 
   const addStudent = async (studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addStudent(studentData);
     erpStorage.addStudent(studentData);
-    await refreshData();
+    await refreshStudents();
     return res;
   };
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     const res = await supabaseService.updateStudent(id, updates);
     erpStorage.updateStudent(id, updates);
-    await refreshData();
+    await refreshStudents();
     return res;
   };
 
   const deleteStudent = async (id: string) => {
     const res = await supabaseService.deleteStudent(id);
     erpStorage.deleteStudent(id);
-    await refreshData();
+    await refreshStudents();
     return res;
   };
 
@@ -834,21 +1129,21 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const res = await supabaseService.addTimetableEntry(entry);
     erpStorage.addTimetableEntry(entry);
-    await refreshData();
+    await refreshTimetable();
     return res;
   };
 
   const updateTimetableEntry = async (id: string, updates: Partial<TimetableEntry>) => {
     const res = await supabaseService.updateTimetableEntry(id, updates);
     erpStorage.updateTimetableEntry(id, updates);
-    await refreshData();
+    await refreshTimetable();
     return res;
   };
 
   const deleteTimetableEntry = async (id: string) => {
     const res = await supabaseService.deleteTimetableEntry(id);
     erpStorage.deleteTimetableEntry(id);
-    await refreshData();
+    await refreshTimetable();
     return res;
   };
 
@@ -871,7 +1166,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     sourceUrl?: string;
   }) => {
     const res = await supabaseService.saveSectionTimetable(params);
-    await refreshData(true);
+    await refreshTimetable(params.sectionId);
     return res;
   };
 
@@ -880,7 +1175,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     restoredBy?: string;
   }) => {
     const res = await supabaseService.rollbackToVersion(params);
-    await refreshData(true);
+    await refreshTimetable();
     return res;
   };
 
@@ -1230,19 +1525,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // ========================================================
   const createAssignment = async (data: Omit<Assignment, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createAssignment(data);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const updateAssignment = async (id: string, updates: Partial<Assignment>) => {
     const res = await supabaseService.updateAssignment(id, updates);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const deleteCourseAssignment = async (id: string) => {
     const res = await supabaseService.deleteCourseAssignment(id);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
@@ -1257,7 +1552,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     googleFormSubmitted?: boolean;
   }) => {
     const res = await supabaseService.submitAssignment(submission);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
@@ -1268,25 +1563,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     facultyId: string;
   }) => {
     const res = await supabaseService.gradeAssignmentSubmission(params);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const createQuiz = async (quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createQuiz(quiz);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const updateQuiz = async (id: string, updates: Partial<Quiz>) => {
     const res = await supabaseService.updateQuiz(id, updates);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const deleteQuiz = async (id: string) => {
     const res = await supabaseService.deleteQuiz(id);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
@@ -1296,25 +1591,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
   }) => {
     const res = await supabaseService.saveQuizMarks(params);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const createSessionalAssessment = async (data: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createSessionalAssessment(data);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const updateSessionalAssessment = async (id: string, updates: Partial<SessionalAssessment>) => {
     const res = await supabaseService.updateSessionalAssessment(id, updates);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
   const deleteSessionalAssessment = async (id: string) => {
     const res = await supabaseService.deleteSessionalAssessment(id);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
@@ -1328,7 +1623,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
   }) => {
     const res = await supabaseService.saveSessionalMarks(params);
-    await refreshData();
+    await refreshAssessments();
     return res;
   };
 
@@ -1513,6 +1808,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         claimWindowDays,
         setClaimWindowDays,
         refreshData,
+        refreshStudents,
+        refreshTimetable,
+        refreshAttendance,
+        refreshCorrections,
+        refreshFaculty,
+        refreshSections,
+        refreshSubjects,
+        refreshAssignments,
+        refreshAssessments,
         createAssignment,
         updateAssignment,
         deleteCourseAssignment,

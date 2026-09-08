@@ -31,7 +31,7 @@ export const FacultyDirectoryPage: React.FC = () => {
   const [facCode, setFacCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [designation, setDesignation] = useState('Assistant Professor');
-  const [deptId, setDeptId] = useState(departments[0]?.id || 'dept-cse-01');
+  const [deptId, setDeptId] = useState(departments[0]?.id || '');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 

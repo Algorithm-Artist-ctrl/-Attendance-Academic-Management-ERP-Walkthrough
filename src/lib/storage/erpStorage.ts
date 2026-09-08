@@ -155,6 +155,42 @@ class ERPStorageService {
     saveToStorage(STORAGE_KEYS.AUDIT_LOGS, data.auditLogs || []);
   }
 
+  public setStudents(students: Student[]) {
+    saveToStorage(STORAGE_KEYS.STUDENTS, students);
+  }
+
+  public setTimetable(timetable: TimetableEntry[]) {
+    saveToStorage(STORAGE_KEYS.TIMETABLE, timetable);
+  }
+
+  public setFaculty(faculty: Faculty[]) {
+    saveToStorage(STORAGE_KEYS.FACULTY, faculty);
+  }
+
+  public setSections(sections: Section[]) {
+    saveToStorage(STORAGE_KEYS.SECTIONS, sections);
+  }
+
+  public setSubjects(subjects: Subject[]) {
+    saveToStorage(STORAGE_KEYS.SUBJECTS, subjects);
+  }
+
+  public setAssignments(assignments: FacultySubjectAssignment[]) {
+    saveToStorage(STORAGE_KEYS.ASSIGNMENTS, assignments);
+  }
+
+  public setAttendanceSessions(sessions: AttendanceSession[]) {
+    saveToStorage(STORAGE_KEYS.ATT_SESSIONS, sessions);
+  }
+
+  public setAttendanceRecords(records: AttendanceRecord[]) {
+    saveToStorage(STORAGE_KEYS.ATT_RECORDS, records);
+  }
+
+  public setCorrections(corrections: AttendanceCorrection[]) {
+    saveToStorage(STORAGE_KEYS.CORRECTIONS, corrections);
+  }
+
   // Master Data Getters
   public getInstitution(): Institution {
     return loadFromStorage(STORAGE_KEYS.INSTITUTION, DEFAULT_INSTITUTION);

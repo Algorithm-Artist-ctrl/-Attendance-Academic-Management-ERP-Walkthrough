@@ -32,7 +32,7 @@ import {
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
-interface MasterDataCache {
+interface StaticSetupCache {
   timestamp: number;
   data: {
     institutions: Institution[];
@@ -41,29 +41,23 @@ interface MasterDataCache {
     sessions: AcademicSession[];
     years: AcademicYear[];
     semesters: Semester[];
-    sections: Section[];
-    subjects: Subject[];
-    faculty: Faculty[];
-    assignments: FacultySubjectAssignment[];
-    students: Student[];
-    profiles: UserProfile[];
   };
 }
 
-let _masterCache: MasterDataCache | null = null;
-const MASTER_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static master setup
+let _staticCache: StaticSetupCache | null = null;
+const STATIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static institutional structure only
 
 export const supabaseService = {
-  // Clear in-memory master cache when structural entities change
+  // Clear in-memory static cache when structural entities change
   invalidateMasterCache() {
-    _masterCache = null;
+    _staticCache = null;
   },
 
-  // 1A. Fetch Static Academic Master Entities (with TTL in-memory cache)
-  async fetchMasterData(forceRefresh = false) {
+  // 1A. Fetch Static Academic Master Entities (Institutions, Depts, Programs, Sessions, Years, Semesters)
+  async fetchStaticSetup(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && _masterCache && (now - _masterCache.timestamp) < MASTER_CACHE_TTL_MS) {
-      return _masterCache.data;
+    if (!forceRefresh && _staticCache && (now - _staticCache.timestamp) < STATIC_CACHE_TTL_MS) {
+      return _staticCache.data;
     }
 
     try {
@@ -74,12 +68,6 @@ export const supabaseService = {
         { data: sessions },
         { data: years },
         { data: semesters },
-        { data: sections },
-        { data: subjects },
-        { data: faculty },
-        { data: assignments },
-        { data: students },
-        { data: profilesList },
       ] = await Promise.all([
         supabase.from('institutions').select('*'),
         supabase.from('departments').select('*'),
@@ -87,21 +75,50 @@ export const supabaseService = {
         supabase.from('academic_sessions').select('*'),
         supabase.from('academic_years').select('*'),
         supabase.from('semesters').select('*'),
-        supabase.from('sections').select('*'),
-        supabase.from('subjects').select('*'),
-        supabase.from('faculty').select('*'),
-        supabase.from('faculty_subject_assignments').select('*'),
-        supabase.from('students').select('*'),
-        supabase.from('profiles').select('*'),
       ]);
 
-      const masterResult = {
+      const staticResult = {
         institutions: (institutions as Institution[]) || [],
         departments: (departments as Department[]) || [],
         programs: (programs as Program[]) || [],
         sessions: (sessions as AcademicSession[]) || [],
         years: (years as AcademicYear[]) || [],
         semesters: (semesters as Semester[]) || [],
+      };
+
+      _staticCache = {
+        timestamp: now,
+        data: staticResult,
+      };
+
+      return staticResult;
+    } catch (err) {
+      console.error('Error fetching static setup from Supabase:', err);
+      if (_staticCache) return _staticCache.data;
+      return null;
+    }
+  },
+
+  // 1B. Fetch Dynamic Academic Entities (Sections, Subjects, Faculty, Assignments, Students, Profiles) - ALWAYS FRESH
+  async fetchAcademicEntities() {
+    try {
+      const [
+        { data: sections },
+        { data: subjects },
+        { data: faculty },
+        { data: assignments },
+        { data: students },
+        { data: profilesList },
+      ] = await Promise.all([
+        supabase.from('sections').select('*').order('name', { ascending: true }),
+        supabase.from('subjects').select('*').order('subject_code', { ascending: true }),
+        supabase.from('faculty').select('*').order('full_name', { ascending: true }),
+        supabase.from('faculty_subject_assignments').select('*'),
+        supabase.from('students').select('*').order('roll_number', { ascending: true }),
+        supabase.from('profiles').select('*'),
+      ]);
+
+      return {
         sections: (sections as Section[]) || [],
         subjects: (subjects as Subject[]) || [],
         faculty: (faculty as Faculty[]) || [],
@@ -109,21 +126,148 @@ export const supabaseService = {
         students: (students as Student[]) || [],
         profiles: (profilesList as UserProfile[]) || [],
       };
-
-      _masterCache = {
-        timestamp: now,
-        data: masterResult,
-      };
-
-      return masterResult;
     } catch (err) {
-      console.error('Error fetching master data from Supabase:', err);
-      if (_masterCache) return _masterCache.data;
+      console.error('Error fetching dynamic academic entities from Supabase:', err);
       return null;
     }
   },
 
-  // 1B. Fetch Dynamic Operational Data (Timetable, Attendance, Assessments, Audit)
+  // Backward-compatible fetchMasterData combining static setup + dynamic academic entities
+  async fetchMasterData(forceRefresh = false) {
+    const [staticSetup, academicEntities] = await Promise.all([
+      this.fetchStaticSetup(forceRefresh),
+      this.fetchAcademicEntities(),
+    ]);
+
+    if (!staticSetup || !academicEntities) return null;
+
+    return {
+      ...staticSetup,
+      ...academicEntities,
+    };
+  },
+
+  // 1C. Granular Table Fetchers for Target Realtime Invalidation (< 50ms)
+  async fetchStudents(activeOnly = false): Promise<Student[]> {
+    let q = supabase.from('students').select('*').order('roll_number', { ascending: true });
+    if (activeOnly) q = q.eq('active', true);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching students:', error.message);
+      return [];
+    }
+    return (data as Student[]) || [];
+  },
+
+  async fetchFaculty(activeOnly = false): Promise<Faculty[]> {
+    let q = supabase.from('faculty').select('*').order('full_name', { ascending: true });
+    if (activeOnly) q = q.eq('active', true);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching faculty:', error.message);
+      return [];
+    }
+    return (data as Faculty[]) || [];
+  },
+
+  async fetchSections(activeOnly = false): Promise<Section[]> {
+    let q = supabase.from('sections').select('*').order('name', { ascending: true });
+    if (activeOnly) q = q.eq('active', true);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching sections:', error.message);
+      return [];
+    }
+    return (data as Section[]) || [];
+  },
+
+  async fetchSubjects(activeOnly = false): Promise<Subject[]> {
+    let q = supabase.from('subjects').select('*').order('subject_code', { ascending: true });
+    if (activeOnly) q = q.eq('active', true);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching subjects:', error.message);
+      return [];
+    }
+    return (data as Subject[]) || [];
+  },
+
+  async fetchAssignments(activeOnly = false): Promise<FacultySubjectAssignment[]> {
+    let q = supabase.from('faculty_subject_assignments').select('*');
+    if (activeOnly) q = q.eq('active', true);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching assignments:', error.message);
+      return [];
+    }
+    return (data as FacultySubjectAssignment[]) || [];
+  },
+
+  async fetchTimetable(sectionId?: string): Promise<TimetableEntry[]> {
+    let q = supabase.from('timetable_entries').select('*').order('period_number', { ascending: true });
+    if (sectionId) q = q.eq('section_id', sectionId);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching timetable:', error.message);
+      return [];
+    }
+    return (data as TimetableEntry[]) || [];
+  },
+
+  async fetchAttendance(): Promise<{ attendanceSessions: AttendanceSession[]; attendanceRecords: AttendanceRecord[] }> {
+    const [sessRes, recRes] = await Promise.all([
+      supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
+      supabase.from('attendance_records').select('*'),
+    ]);
+    return {
+      attendanceSessions: (sessRes.data as AttendanceSession[]) || [],
+      attendanceRecords: (recRes.data as AttendanceRecord[]) || [],
+    };
+  },
+
+  async fetchCorrections(): Promise<AttendanceCorrection[]> {
+    const { data, error } = await supabase
+      .from('attendance_corrections')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching corrections:', error.message);
+      return [];
+    }
+    return (data as AttendanceCorrection[]) || [];
+  },
+
+  async fetchAssessments() {
+    const [
+      { data: courseAssignments },
+      { data: assignmentSubmissions },
+      { data: quizzes },
+      { data: quizResults },
+      { data: sessionalMarks },
+      { data: marksHistory },
+      { data: sessionalAssessments },
+    ] = await Promise.all([
+      supabase.from('assignments').select('*').order('created_at', { ascending: false }),
+      supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
+      supabase.from('quizzes').select('*').order('created_at', { ascending: false }),
+      supabase.from('quiz_results').select('*').order('created_at', { ascending: false }),
+      supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
+      supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
+      supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }),
+    ]);
+
+    return {
+      courseAssignments: (courseAssignments as Assignment[]) || [],
+      assignmentSubmissions: (assignmentSubmissions as AssignmentSubmission[]) || [],
+      quizzes: (quizzes as Quiz[]) || [],
+      quizResults: (quizResults as QuizResult[]) || [],
+      sessionalMarks: (sessionalMarks as SessionalMark[]) || [],
+      marksHistory: (marksHistory as MarksHistory[]) || [],
+      sessionalAssessments: (sessionalAssessments as SessionalAssessment[]) || [],
+    };
+  },
+
+  // 1D. Fetch Dynamic Operational Data (Timetable, Attendance, Assessments, Audit)
   async fetchOperationalData() {
     try {
       const [
@@ -177,20 +321,22 @@ export const supabaseService = {
     }
   },
 
-  // 1C. Fetch All Master & Operational Data (Composed efficiently)
+  // 1E. Fetch All Master & Operational Data (Composed in parallel)
   async fetchAllData(forceRefreshMaster = false) {
     try {
-      const [masterData, operationalData] = await Promise.all([
-        this.fetchMasterData(forceRefreshMaster),
+      const [staticSetup, academicEntities, operationalData] = await Promise.all([
+        this.fetchStaticSetup(forceRefreshMaster),
+        this.fetchAcademicEntities(),
         this.fetchOperationalData(),
       ]);
 
-      if (!masterData || !operationalData) {
+      if (!staticSetup || !academicEntities || !operationalData) {
         return null;
       }
 
       return {
-        ...masterData,
+        ...staticSetup,
+        ...academicEntities,
         ...operationalData,
       };
     } catch (err) {

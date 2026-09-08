@@ -16,7 +16,9 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -173,6 +175,16 @@ export const StudentDirectoryPage: React.FC = () => {
 
     return matchesSearch && matchesYear && matchesSection && matchesAdmission;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 25;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, yearFilter, sectionFilter, admissionFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleDelete = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to remove student "${name}" from the database?`)) {
@@ -451,7 +463,7 @@ export const StudentDirectoryPage: React.FC = () => {
           <>
             {/* MOBILE VIEW: Touch-Friendly Student Cards */}
             <div className="space-y-3 md:hidden">
-              {filteredStudents.map((stud, idx) => (
+              {paginatedStudents.map((stud, idx) => (
                 <div 
                   key={stud.id}
                   className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3"
@@ -459,7 +471,7 @@ export const StudentDirectoryPage: React.FC = () => {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono text-slate-500">#{idx + 1}</span>
+                        <span className="text-[10px] font-mono text-slate-500">#{(currentPage - 1) * pageSize + idx + 1}</span>
                         <span className="font-mono text-xs font-black text-emerald-400">{stud.roll_number}</span>
                       </div>
                       <h3 className="text-sm font-bold text-white mt-0.5">{stud.full_name}</h3>
@@ -520,11 +532,11 @@ export const StudentDirectoryPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-emerald-500/10">
-                    {filteredStudents.map((stud, idx) => {
+                    {paginatedStudents.map((stud, idx) => {
                       const yr = years.find(y => y.id === stud.academic_year_id);
                       return (
                         <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
-                          <td className="px-5 py-3.5 font-mono text-slate-500">{idx + 1}</td>
+                          <td className="px-5 py-3.5 font-mono text-slate-500">{(currentPage - 1) * pageSize + idx + 1}</td>
                           <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm">
                             {stud.roll_number}
                           </td>
@@ -573,6 +585,36 @@ export const StudentDirectoryPage: React.FC = () => {
                 </table>
               </div>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredStudents.length > pageSize && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 glass-panel rounded-2xl border border-emerald-500/20 text-xs text-slate-400 mt-4">
+                <div>
+                  Showing <span className="font-semibold text-white">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * pageSize, filteredStudents.length)}</span> of <span className="font-semibold text-white">{filteredStudents.length}</span> students
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-emerald-500/25 bg-slate-950/60 hover:bg-emerald-500/10 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </button>
+                  <span className="px-3 py-1 font-semibold text-white">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-emerald-500/25 bg-slate-950/60 hover:bg-emerald-500/10 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
