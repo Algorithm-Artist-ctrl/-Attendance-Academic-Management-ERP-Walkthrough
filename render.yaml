@@ -2,13 +2,15 @@ services:
   - type: web
     name: vctm-erp-attendance-academic-system
     env: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     staticPublishPath: ./dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: VITE_SUPABASE_URL
         value: https://obssoojzryqiudllnlkh.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
