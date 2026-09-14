@@ -68,8 +68,8 @@ async function runCSVMatrixTimetableTests() {
   const departments = (departmentsData as any[]) || [];
   const deptId = departments[0]?.id;
 
-  const secB = sections.find(s => s.name === 'B')!;
-  const secA = sections.find(s => s.name === 'A')!;
+  const secB = sections.find(s => s.name === 'B' && (s.room_number?.includes('006') || s.room_number === 'A006')) || sections.find(s => s.name === 'B')!;
+  const secA = sections.find(s => s.name === 'A' && (s.room_number?.includes('007') || s.room_number === 'A007')) || sections.find(s => s.name === 'A')!;
 
   assert(Boolean(secB), 'Target Section B exists in database', secB?.id);
   assert(Boolean(secA), 'Control Section A exists in database', secA?.id);

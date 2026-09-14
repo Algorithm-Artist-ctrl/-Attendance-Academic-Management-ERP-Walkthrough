@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRight, Building2, FileText, Sparkles, Trash2, UploadCloud } from 'lucide-react';
+import { AlertCircle, ArrowRight, Building2, FileText, RotateCcw, Sparkles, Trash2, UploadCloud } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useAcademic } from '../../context/AcademicContext';
@@ -170,11 +170,46 @@ export const AITimetableUploadModal: React.FC<AITimetableUploadModalProps> = ({ 
           <div className="text-[11px] text-emerald-400 font-semibold mt-2">PDF</div>
         </div>
 
-        {files.length > 0 && <div className="space-y-2"><div className="flex items-center justify-between text-xs font-bold text-slate-300"><span>Selected PDF files ({files.length})</span><button type="button" onClick={resetFiles} className="text-rose-400 hover:underline">Clear</button></div>{files.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/15 text-xs text-white"><div className="flex items-center gap-2.5 truncate"><FileText className="w-4 h-4 text-[#00ff88] shrink-0" /><span className="font-semibold truncate">{file.name}</span><span className="text-[10px] text-slate-400">({(file.size / 1024).toFixed(1)} KB)</span></div>{!isExtracting && <button type="button" onClick={e => { e.stopPropagation(); setFiles(current => current.filter((_, i) => i !== index)); }} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>}</div>)}</div>}
+        {isExtracting && (
+          <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/30 space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-[#00ff88]">PDF Extraction in Progress</span>
+              <span className="text-white font-mono">{progress}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-emerald-500 to-[#00ff88] transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-[11px] text-slate-400 truncate">{progressMessage || 'Processing document with Gemini AI...'}</p>
+          </div>
+        )}
 
-        {isExtracting && <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/30 space-y-2"><div className="flex items-center justify-between text-xs font-bold"><span className="text-[#00ff88]">PDF extraction</span><span className="text-white font-mono">{progress}%</span></div><div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-500 to-[#00ff88] transition-all" style={{ width: `${progress}%` }} /></div><p className="text-[11px] text-slate-400 truncate">{progressMessage}</p></div>}
-        {errorMessage && <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{errorMessage}</span></div>}
-        <div className="flex justify-end gap-3 pt-2"><Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isExtracting}>Cancel</Button><Button type="button" variant="neon" size="sm" onClick={handleStartExtraction} disabled={!files.length || isExtracting || !sectionId || !sessionId || !effectiveFrom} isLoading={isExtracting} rightIcon={<ArrowRight className="w-4 h-4 text-slate-950" />}>Extract PDF & Validate</Button></div>
+        {errorMessage && (
+          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <div>
+                <p className="font-semibold text-rose-200">Extraction Unsuccessful</p>
+                <p className="mt-0.5 text-rose-300/90 leading-relaxed">{errorMessage}</p>
+              </div>
+            </div>
+            {files.length > 0 && !isExtracting && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleStartExtraction}
+                className="shrink-0 text-xs border-rose-500/40 text-rose-200 hover:bg-rose-500/20"
+                leftIcon={<RotateCcw className="w-3.5 h-3.5 text-rose-300" />}
+              >
+                Retry Extraction
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isExtracting}>Cancel</Button>
+          <Button type="button" variant="neon" size="sm" onClick={handleStartExtraction} disabled={!files.length || isExtracting || !sectionId || !sessionId || !effectiveFrom} isLoading={isExtracting} rightIcon={<ArrowRight className="w-4 h-4 text-slate-950" />}>Extract PDF & Validate</Button>
+        </div>
       </div>
     </Modal>
   );
