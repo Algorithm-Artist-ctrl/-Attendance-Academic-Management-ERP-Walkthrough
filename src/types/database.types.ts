@@ -1,6 +1,6 @@
 export type UserRole = 'super_admin' | 'hod' | 'faculty' | 'student';
 
-export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports' | 'Lunch' | 'Other';
+export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports' | 'Lunch' | 'Other' | 'Break';
 
 export type AdmissionType = 'Regular' | 'Lateral Entry';
 

@@ -40,7 +40,7 @@ export class AITimetableService {
       onProgress?.('Extracting timetable locally...');
       const ai = new GoogleGenAI({ apiKey: localKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'application/pdf', data } }, { text: PROMPT }] }],
         config: { responseMimeType: 'application/json', temperature: 0 }
       });

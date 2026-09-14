@@ -36,7 +36,7 @@ async function handleExtract(req, res) {
 
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
     contents: [{ role: 'user', parts: [
       { inlineData: { mimeType: 'application/pdf', data: body.data } },
       { text: prompt }
