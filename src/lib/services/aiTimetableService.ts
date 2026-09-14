@@ -10,56 +10,57 @@ export async function fileToBase64(file: File | Blob): Promise<string> {
   return btoa(binary);
 }
 
-const TIMETABLE_VISION_PROMPT = `Extract the uploaded college timetable into the requested JSON schema. Never invent or substitute institution-specific values. Read values from the document where present. The selected upload context is authoritative for target IDs and scope metadata. Extract every visible timetable cell, including lunch/break/activity cells. Preserve exact start/end times from the document. Do not replace missing times with made-up defaults. For merged labs spanning multiple periods, emit one entry per actual period. For blank cells, emit no entry. Break/activity entries may have empty subject or faculty values. Return ONLY valid JSON with institution_name, program_name, branch_name, academic_year, semester, section_name, effective_from, room_number, class_incharges, subject_mappings, faculty_mappings, schedule, overall_confidence, confidence_breakdown, and warnings. Schedule days must use MON,TUE,WED,THU,FRI,SAT and each period must contain period_number,start_time,end_time,subject_code,subject_name,faculty_code,faculty_name,room_number,lecture_type,is_break,confidence.`;
+const PROMPT = `Extract the uploaded college timetable into JSON. Never invent institution-specific values. Read values from the PDF. Extract every visible timetable cell, including lunch/break/activity cells. Preserve exact start/end times. For merged labs spanning multiple periods, emit one entry per actual period. Blank cells produce no entry. Break/activity entries may have empty subject or faculty values. Return ONLY JSON with institution_name, program_name, branch_name, academic_year, semester, section_name, effective_from, room_number, class_incharges, subject_mappings, faculty_mappings, schedule, overall_confidence, confidence_breakdown, and warnings. Schedule days use MON,TUE,WED,THU,FRI,SAT. Each period contains period_number,start_time,end_time,subject_code,subject_name,faculty_code,faculty_name,room_number,lecture_type,is_break,confidence. Do not invent missing values.`;
 
 export class AITimetableService {
   private static instance: AITimetableService;
-  private customApiKey: string | null = null;
-
-  private constructor() {
-    this.customApiKey = typeof window !== 'undefined' ? localStorage.getItem('vctm_gemini_api_key') : null;
-  }
-
+  private constructor() {}
   public static getInstance(): AITimetableService {
     if (!this.instance) this.instance = new AITimetableService();
     return this.instance;
   }
 
-  public setApiKey(key: string | null) {
-    this.customApiKey = key?.trim() || null;
-    if (typeof window !== 'undefined') {
-      if (this.customApiKey) localStorage.setItem('vctm_gemini_api_key', this.customApiKey);
-      else localStorage.removeItem('vctm_gemini_api_key');
-    }
+  public setApiKey(_key: string | null) {
+    // Production uses the server-side GEMINI_API_KEY. Kept as a no-op for compatibility.
   }
 
   public getApiKey(): string | null {
-    return this.customApiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || null;
+    // Only a local development VITE key is supported; production secrets stay server-side.
+    return (import.meta as any).env?.VITE_GEMINI_API_KEY || null;
   }
 
   public async extractTimetableImage(file: File | Blob, fileName: string, onProgress?: (message: string) => void, uploadContext?: UploadTargetContext): Promise<ExtractedTimetableDocument> {
-    if (!(file.type === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf'))) {
-      throw new Error('Only PDF timetable files are supported.');
-    }
-    const apiKey = this.getApiKey();
-    if (!apiKey) throw new Error('PDF extraction is not configured. Provide the Gemini API key through the supported configuration.');
-
+    if (!(file.type === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf'))) throw new Error('Only PDF timetable files are supported.');
     onProgress?.('Reading PDF...');
     const data = await fileToBase64(file);
-    onProgress?.('Extracting timetable from PDF...');
-
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'application/pdf', data } }, { text: TIMETABLE_VISION_PROMPT }] }],
-      config: { responseMimeType: 'application/json', temperature: 0 }
-    });
-
-    const raw = (response.text || '').replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-    if (!raw) throw new Error('No timetable data was returned from the PDF.');
     let parsed: Partial<ExtractedTimetableDocument>;
-    try { parsed = JSON.parse(raw); } catch { throw new Error('The PDF parser returned invalid timetable data.'); }
-    return this.normalizeAndValidateExtractedDocument({ ...parsed, source_file_name: fileName, raw_text: raw }, uploadContext);
+
+    const localKey = this.getApiKey();
+    if (localKey && (import.meta as any).env?.DEV) {
+      onProgress?.('Extracting timetable locally...');
+      const ai = new GoogleGenAI({ apiKey: localKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'application/pdf', data } }, { text: PROMPT }] }],
+        config: { responseMimeType: 'application/json', temperature: 0 }
+      });
+      const raw = (response.text || '').replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+      if (!raw) throw new Error('No timetable data was returned from the PDF.');
+      try { parsed = JSON.parse(raw); } catch { throw new Error('The PDF parser returned invalid timetable data.'); }
+    } else {
+      onProgress?.('Extracting timetable securely on the ERP server...');
+      const response = await fetch('/api/timetable/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ data })
+      });
+      let body: any = null;
+      try { body = await response.json(); } catch { body = null; }
+      if (!response.ok) throw new Error(body?.error || `PDF extraction failed (${response.status}).`);
+      parsed = body;
+    }
+
+    return this.normalizeAndValidateExtractedDocument({ ...parsed, source_file_name: fileName }, uploadContext);
   }
 
   public async extractMultipleTimetables(files: File[], onProgress?: (overallPercent: number, currentFileName: string, message: string) => void, uploadContext?: UploadTargetContext): Promise<ExtractedTimetableDocument[]> {
@@ -67,8 +68,7 @@ export class AITimetableService {
     const results: ExtractedTimetableDocument[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const result = await this.extractTimetableImage(file, file.name, message => onProgress?.(Math.round((i / files.length) * 100), file.name, message), uploadContext);
-      results.push(result);
+      results.push(await this.extractTimetableImage(file, file.name, message => onProgress?.(Math.round((i / files.length) * 100), file.name, message), uploadContext));
       onProgress?.(Math.round(((i + 1) / files.length) * 100), file.name, 'PDF extracted successfully.');
     }
     return results;
