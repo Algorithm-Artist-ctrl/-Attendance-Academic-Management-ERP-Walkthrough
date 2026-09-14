@@ -151,9 +151,13 @@ export const HODDashboard: React.FC = () => {
     });
   };
 
-  const avgAttendance = studentStats.length > 0
-    ? Math.round(studentStats.reduce((acc, s) => acc + s.percentage, 0) / studentStats.length)
-    : 0;
+  const avgAttendance = useMemo(() => {
+    if (studentStats.length === 0) return null;
+    return Math.round(
+      studentStats.reduce((acc, s) => acc + s.percentage, 0) /
+      studentStats.length
+    );
+  }, [studentStats]);
 
   return (
     <div className="space-y-6">
@@ -269,9 +273,13 @@ export const HODDashboard: React.FC = () => {
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-400">Avg Attendance</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {avgAttendance}%
-            </h3>
+            {avgAttendance === null ? (
+              <p className="text-sm text-slate-400">No attendance records</p>
+            ) : (
+              <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+                {avgAttendance}%
+              </h3>
+            )}
             <span className="text-[10px] text-emerald-400 font-semibold">Across All Subjects</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">

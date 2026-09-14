@@ -106,6 +106,10 @@ export class CSVTimetableService {
 
   public parseAndValidateCSV(csvText: string, context: { targetSection: Section; subjects: Subject[]; faculty: Faculty[] }): CSVValidationResult {
     const lines = this.parseCSVLines(csvText);
+    const format = this.detectFormat(lines);
+    if (format === 'matrix') {
+      return this.parseMatrixCSV(lines, context);
+    }
     const errors: string[] = [];
     const warnings: string[] = [];
     const entries: ValidatedCSVTimetableEntry[] = [];
@@ -211,6 +215,142 @@ export class CSVTimetableService {
       const facultyName = faculty.full_name.toLowerCase().replace(/mr\.|ms\.|mrs\.|dr\.|prof\./g, '').replace(/\s+/g, ' ').trim();
       return (cleanCode && facultyCodes.includes(cleanCode)) || (cleanName && (facultyName === cleanName || facultyName.includes(cleanName) || cleanName.includes(facultyName)));
     });
+  }
+
+  // Detect CSV format (matrix vs normalized)
+  private detectFormat(lines: string[][]): 'matrix' | 'normalized' {
+    if (lines.length < 2) return 'normalized';
+    const header = lines[5] || lines[0];
+    const firstCell = header[0]?.toLowerCase() || '';
+    const hasDayTime = firstCell.includes('day') && firstCell.includes('time');
+    const periodCols = header.slice(1).some(col => /^\s*[IVX]+\s*\(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\)\s*$/i.test(col.trim()));
+    return hasDayTime && periodCols ? 'matrix' : 'normalized';
+  }
+
+  // Parse matrix‑style CSV (metadata + day rows + period columns)
+  private parseMatrixCSV(lines: string[][], context: { targetSection: Section; subjects: Subject[]; faculty: Faculty[] }): CSVValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const entries: ValidatedCSVTimetableEntry[] = [];
+    const dayBreakdown: Record<string, number> = {};
+
+    // ---- Metadata validation ----
+    const metaLines = lines.slice(0, 5);
+    const sectionMatch = metaLines[2]?.join(' ')?.match(/Section:\s*([^.]*)/i);
+    const roomMatch = metaLines[3]?.join(' ')?.match(/Room No\.:\s*([^.]*)/i);
+    if (sectionMatch) {
+      const csvSection = sectionMatch[1].trim();
+      if (csvSection !== context.targetSection.name) {
+        errors.push(`CSV metadata section "${csvSection}" does not match selected section "${context.targetSection.name}".`);
+      }
+    }
+    if (roomMatch) {
+      const csvRoom = roomMatch[1].trim();
+      const sectionRoom = context.targetSection.room_number?.trim() || '';
+      if (csvRoom && csvRoom !== sectionRoom) {
+        errors.push(`CSV classroom "${csvRoom}" does not match the selected section's room "${sectionRoom}".`);
+      }
+    }
+
+    // ---- Header row (expected at index 5) ----
+    const header = lines[5];
+    if (!header) {
+      errors.push('Matrix CSV missing header row at expected position.');
+      return { valid: false, errors, warnings, totalSlots: 0, dayBreakdown, entries: [] };
+    }
+
+    // Build period map: column index -> { periodNumber, start, end }
+    const periodMap: Record<number, { periodNumber: number; start: string; end: string }> = {};
+    header.slice(1).forEach((col, idx) => {
+      const match = col.trim().match(/^([IVX]+)\s*\((\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\)$/i);
+      if (match) {
+        const roman = match[1].toUpperCase();
+        const start = match[2];
+        const end = match[3];
+        const periodNumber = this.romanToNumber(roman);
+        if (periodNumber) {
+          periodMap[idx + 1] = { periodNumber, start, end };
+        } else {
+          warnings.push(`Unrecognised period label "${roman}" in header.`);
+        }
+      } else {
+        warnings.push(`Header column ${idx + 2} does not match expected period pattern.`);
+      }
+    });
+
+    // ---- Day rows (starting at index 6) ----
+    for (let i = 6; i < lines.length; i++) {
+      const row = lines[i];
+      if (!row || row.length === 0) continue;
+      const dayRaw = row[0];
+      const day = this.normalizeDay(dayRaw);
+      if (!day || day === 'SUN') {
+        errors.push(`Row ${i + 1}: invalid or missing day label "${dayRaw}".`);
+        continue;
+      }
+      for (let colIdx = 1; colIdx < row.length; colIdx++) {
+        const cell = row[colIdx]?.trim();
+        if (!cell) continue; // empty slot
+        const periodInfo = periodMap[colIdx];
+        if (!periodInfo) {
+          warnings.push(`No period info for column ${colIdx + 1} (row ${i + 1}).`);
+          continue;
+        }
+        const lowerCell = cell.toLowerCase();
+        const isBreak = lowerCell.includes('lunch') || lowerCell.includes('break') || lowerCell.includes('sports') || lowerCell.includes('holiday') || lowerCell.includes('vacation');
+        let subjectToken = '';
+        let facultyCode = '';
+        if (!isBreak) {
+          const splitMatch = cell.match(/^([^\(]+)\s*\(([^)]+)\)\s*$/);
+          if (splitMatch) {
+            subjectToken = splitMatch[1].trim();
+            facultyCode = splitMatch[2].trim();
+          } else {
+            subjectToken = cell;
+          }
+        }
+        const matchedSubject = isBreak ? undefined : this.findMatchingSubject(facultyCode, subjectToken, context.subjects);
+        if (!isBreak && !matchedSubject) {
+          errors.push(`Row ${i + 1}, ${day} Period ${periodInfo.periodNumber}: subject "${subjectToken}" not found.`);
+          continue;
+        }
+        const matchedFaculty = isBreak ? undefined : this.findMatchingFaculty(facultyCode, subjectToken, context.faculty);
+        if (!isBreak && !matchedFaculty) {
+          errors.push(`Row ${i + 1}, ${day} Period ${periodInfo.periodNumber}: faculty "${facultyCode}" not found.`);
+          continue;
+        }
+        // Duplicate detection within matrix
+        if (entries.find(e => e.day_of_week === day && e.period_number === periodInfo.periodNumber)) {
+          errors.push(`Duplicate entry for ${day} Period ${periodInfo.periodNumber}.`);
+          continue;
+        }
+        dayBreakdown[day] = (dayBreakdown[day] || 0) + 1;
+        entries.push({
+          day_of_week: day,
+          period_number: periodInfo.periodNumber,
+          start_time: periodInfo.start,
+          end_time: periodInfo.end,
+          subject_code: matchedSubject?.subject_code || subjectToken,
+          subject_name: matchedSubject?.subject_name || subjectToken,
+          subject_id: matchedSubject?.id,
+          faculty_code: matchedFaculty?.faculty_code || facultyCode,
+          faculty_name: matchedFaculty?.full_name || facultyCode,
+          faculty_id: matchedFaculty?.id,
+          room_number: context.targetSection.room_number || '',
+          lecture_type: isBreak ? 'Other' : 'Theory',
+        });
+      }
+    }
+
+    if (!entries.length && !errors.length) errors.push('No timetable rows were found in matrix CSV.');
+    return { valid: errors.length === 0, errors, warnings, totalSlots: entries.length, dayBreakdown, entries: errors.length ? [] : entries };
+  }
+
+  // Convert Roman numerals (I, II, III, …) to period numbers
+  private romanToNumber(roman: string): number | null {
+    const map: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 };
+    const clean = roman.replace(/\s+/g, '').toUpperCase();
+    return map[clean] || null;
   }
 }
 

@@ -138,9 +138,17 @@ CREATE TABLE IF NOT EXISTS public.faculty (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add Foreign Key for HOD back to departments
-ALTER TABLE public.departments
-    ADD CONSTRAINT fk_dept_hod FOREIGN KEY (hod_faculty_id) REFERENCES public.faculty(id) ON DELETE SET NULL;
+-- Add Foreign Key for HOD back to departments (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_dept_hod'
+    ) THEN
+        ALTER TABLE public.departments
+            ADD CONSTRAINT fk_dept_hod FOREIGN KEY (hod_faculty_id)
+            REFERENCES public.faculty(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Sections (Section A, Section B, etc.)
 CREATE TABLE IF NOT EXISTS public.sections (
@@ -477,22 +485,32 @@ CREATE POLICY "Super admin manage semesters"
     ON public.semesters FOR ALL TO authenticated
     USING (public.current_user_role() = 'super_admin');
 
+-- Policies for sections
+DROP POLICY IF EXISTS "Authenticated users can read sections" ON public.sections;
 CREATE POLICY "Authenticated users can read sections"
     ON public.sections FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Super admin manage sections" ON public.sections;
 CREATE POLICY "Super admin manage sections"
     ON public.sections FOR ALL TO authenticated
     USING (public.current_user_role() = 'super_admin');
 
+-- Policies for subjects
+DROP POLICY IF EXISTS "Authenticated users can read subjects" ON public.subjects;
 CREATE POLICY "Authenticated users can read subjects"
     ON public.subjects FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Super admin manage subjects" ON public.subjects;
 CREATE POLICY "Super admin manage subjects"
     ON public.subjects FOR ALL TO authenticated
     USING (public.current_user_role() = 'super_admin');
 
--- 3. Faculty Policies
+-- Policies for faculty
+DROP POLICY IF EXISTS "Authenticated users can view faculty list" ON public.faculty;
 CREATE POLICY "Authenticated users can view faculty list"
     ON public.faculty FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Super admin and HOD can manage faculty" ON public.faculty;
 CREATE POLICY "Super admin and HOD can manage faculty"
     ON public.faculty FOR ALL TO authenticated
     USING (
@@ -500,15 +518,18 @@ CREATE POLICY "Super admin and HOD can manage faculty"
         OR (public.current_user_role() = 'hod' AND department_id = public.current_user_department_id())
     );
 
--- 4. Faculty Subject Assignments
+-- Policies for faculty assignments
+DROP POLICY IF EXISTS "Authenticated users can view faculty assignments" ON public.faculty_subject_assignments;
 CREATE POLICY "Authenticated users can view faculty assignments"
     ON public.faculty_subject_assignments FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Super admin can manage faculty assignments" ON public.faculty_subject_assignments;
 CREATE POLICY "Super admin can manage faculty assignments"
     ON public.faculty_subject_assignments FOR ALL TO authenticated
     USING (public.current_user_role() = 'super_admin');
 
--- 5. Students Policies
+-- Policies for students
+DROP POLICY IF EXISTS "Students view own profile, faculty/hod/admin view students" ON public.students;
 CREATE POLICY "Students view own profile, faculty/hod/admin view students"
     ON public.students FOR SELECT TO authenticated
     USING (
@@ -518,6 +539,7 @@ CREATE POLICY "Students view own profile, faculty/hod/admin view students"
         OR (public.current_user_role() = 'student' AND id = public.current_user_student_id())
     );
 
+DROP POLICY IF EXISTS "Super admin and HOD can manage students" ON public.students;
 CREATE POLICY "Super admin and HOD can manage students"
     ON public.students FOR ALL TO authenticated
     USING (
@@ -525,10 +547,12 @@ CREATE POLICY "Super admin and HOD can manage students"
         OR (public.current_user_role() = 'hod' AND department_id = public.current_user_department_id())
     );
 
--- 6. Timetable Policies
+-- Policies for timetable
+DROP POLICY IF EXISTS "Authenticated users can view timetable" ON public.timetable_entries;
 CREATE POLICY "Authenticated users can view timetable"
     ON public.timetable_entries FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Super admin and HOD can manage timetable" ON public.timetable_entries;
 CREATE POLICY "Super admin and HOD can manage timetable"
     ON public.timetable_entries FOR ALL TO authenticated
     USING (
@@ -536,7 +560,8 @@ CREATE POLICY "Super admin and HOD can manage timetable"
         OR public.current_user_role() = 'hod'
     );
 
--- 7. Attendance Sessions Policies
+-- Policies for attendance sessions
+DROP POLICY IF EXISTS "Users can view attendance sessions" ON public.attendance_sessions;
 CREATE POLICY "Users can view attendance sessions"
     ON public.attendance_sessions FOR SELECT TO authenticated
     USING (
@@ -546,6 +571,7 @@ CREATE POLICY "Users can view attendance sessions"
         ))
     );
 
+DROP POLICY IF EXISTS "Assigned faculty can create attendance sessions" ON public.attendance_sessions;
 CREATE POLICY "Assigned faculty can create attendance sessions"
     ON public.attendance_sessions FOR INSERT TO authenticated
     WITH CHECK (
@@ -557,6 +583,7 @@ CREATE POLICY "Assigned faculty can create attendance sessions"
         )
     );
 
+DROP POLICY IF EXISTS "Faculty can update own attendance sessions" ON public.attendance_sessions;
 CREATE POLICY "Faculty can update own attendance sessions"
     ON public.attendance_sessions FOR UPDATE TO authenticated
     USING (
@@ -564,7 +591,8 @@ CREATE POLICY "Faculty can update own attendance sessions"
         OR (public.current_user_role() = 'faculty' AND faculty_id = public.current_user_faculty_id())
     );
 
--- 8. Attendance Records Policies
+-- Policies for attendance records
+DROP POLICY IF EXISTS "Students can view only their own attendance records" ON public.attendance_records;
 CREATE POLICY "Students can view only their own attendance records"
     ON public.attendance_records FOR SELECT TO authenticated
     USING (
@@ -573,6 +601,7 @@ CREATE POLICY "Students can view only their own attendance records"
         OR (public.current_user_role() = 'student' AND student_id = public.current_user_student_id())
     );
 
+DROP POLICY IF EXISTS "Assigned faculty can insert attendance records" ON public.attendance_records;
 CREATE POLICY "Assigned faculty can insert attendance records"
     ON public.attendance_records FOR INSERT TO authenticated
     WITH CHECK (
@@ -580,6 +609,7 @@ CREATE POLICY "Assigned faculty can insert attendance records"
         OR (public.current_user_role() = 'faculty' AND marked_by = public.current_user_faculty_id())
     );
 
+DROP POLICY IF EXISTS "Assigned faculty or admin can update attendance records" ON public.attendance_records;
 CREATE POLICY "Assigned faculty or admin can update attendance records"
     ON public.attendance_records FOR UPDATE TO authenticated
     USING (
@@ -587,7 +617,8 @@ CREATE POLICY "Assigned faculty or admin can update attendance records"
         OR (public.current_user_role() = 'faculty' AND marked_by = public.current_user_faculty_id())
     );
 
--- 9. Attendance Corrections Policies
+-- Policies for attendance corrections
+DROP POLICY IF EXISTS "Students can view own requests, faculty/hod/admin view relevant" ON public.attendance_corrections;
 CREATE POLICY "Students can view own requests, faculty/hod/admin view relevant"
     ON public.attendance_corrections FOR SELECT TO authenticated
     USING (
@@ -596,6 +627,7 @@ CREATE POLICY "Students can view own requests, faculty/hod/admin view relevant"
         OR (public.current_user_role() = 'student' AND student_id = public.current_user_student_id())
     );
 
+DROP POLICY IF EXISTS "Students can insert own correction requests" ON public.attendance_corrections;
 CREATE POLICY "Students can insert own correction requests"
     ON public.attendance_corrections FOR INSERT TO authenticated
     WITH CHECK (
@@ -603,17 +635,20 @@ CREATE POLICY "Students can insert own correction requests"
         AND student_id = public.current_user_student_id()
     );
 
+DROP POLICY IF EXISTS "Faculty and admin can update correction requests (review)" ON public.attendance_corrections;
 CREATE POLICY "Faculty and admin can update correction requests (review)"
     ON public.attendance_corrections FOR UPDATE TO authenticated
     USING (
         public.current_user_role() IN ('super_admin', 'faculty', 'hod')
     );
 
--- 10. Audit Logs Policies
+-- Policies for audit logs
+DROP POLICY IF EXISTS "Admins and HODs can view audit logs" ON public.audit_logs;
 CREATE POLICY "Admins and HODs can view audit logs"
     ON public.audit_logs FOR SELECT TO authenticated
     USING (public.current_user_role() IN ('super_admin', 'hod'));
 
+DROP POLICY IF EXISTS "System and authorized users can insert audit logs" ON public.audit_logs;
 CREATE POLICY "System and authorized users can insert audit logs"
     ON public.audit_logs FOR INSERT TO authenticated
     WITH CHECK (true);

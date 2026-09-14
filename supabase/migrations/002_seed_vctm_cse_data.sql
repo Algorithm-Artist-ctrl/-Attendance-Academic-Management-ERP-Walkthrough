@@ -80,7 +80,10 @@ BEGIN
     ON CONFLICT (employee_code) DO UPDATE SET full_name = EXCLUDED.full_name, faculty_code = EXCLUDED.faculty_code;
 
     -- Update Department HOD
-    UPDATE public.departments SET hod_faculty_id = v_fac_wasim WHERE id = v_dept_id;
+-- Update Department HOD to actual faculty ID
+UPDATE public.departments
+    SET hod_faculty_id = (SELECT id FROM public.faculty WHERE employee_code = 'FAC-CSE-001')
+    WHERE id = v_dept_id;
 
     -- 4. Insert Program (B.Tech)
     INSERT INTO public.programs (id, department_id, name, code, duration_years, active)

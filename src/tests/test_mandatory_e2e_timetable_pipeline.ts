@@ -39,8 +39,8 @@ async function runMandatoryE2ETests() {
 
   // STEP 1: Select B.Tech CSE -> 2nd Year -> Section A
   console.log('\n▶ PHASE 1: TARGET & CONTROL SELECTION & RECORD CURRENT STATE');
-  const { data: secAData } = await supabase.from('sections').select('*').eq('id', 'fc93a413-c18d-4e72-9624-146767bc286b').single();
-  const { data: secBData } = await supabase.from('sections').select('*').eq('id', '233957c0-4fef-42c6-8285-40ebf73ea6b7').single();
+  const { data: secAData } = await supabase.from('sections').select('*').eq('name', 'A').single();
+  const { data: secBData } = await supabase.from('sections').select('*').eq('name', 'B').single();
   
   assert(Boolean(secAData), '1. Selected B.Tech CSE -> 2nd Year -> Section A exists', secAData?.id);
   assert(Boolean(secBData), '1. Control Section B exists in database', secBData?.id);
