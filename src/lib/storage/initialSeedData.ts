@@ -661,24 +661,7 @@ export const INITIAL_STUDENTS_SEC_B: Student[] = [
   { id: 'stud-b-52', institution_id: INST_ID, department_id: DEPT_CSE_ID, program_id: PROG_BTECH_CSE_ID, academic_session_id: SESSION_2026_2027_ID, academic_year_id: YEAR_2ND_ID, semester_id: SEM_3RD_ID, section_id: SEC_B_ID, roll_number: '2603400139010', full_name: 'UVAID', admission_type: 'Lateral Entry', mentor_faculty_id: FAC_FAIZAN_ID, active: true, created_at: '2026-08-01T00:00:00Z' },
   { id: 'stud-b-53', institution_id: INST_ID, department_id: DEPT_CSE_ID, program_id: PROG_BTECH_CSE_ID, academic_session_id: SESSION_2026_2027_ID, academic_year_id: YEAR_2ND_ID, semester_id: SEM_3RD_ID, section_id: SEC_B_ID, roll_number: '2603400139011', full_name: 'VIKRANT SINGH', admission_type: 'Lateral Entry', mentor_faculty_id: FAC_FAIZAN_ID, active: true, created_at: '2026-08-01T00:00:00Z' }
 ];
-export const INITIAL_STUDENTS_SEC_A: Student[] = [
-  {
-    id: 'stud-a-01',
-    institution_id: INST_ID,
-    department_id: DEPT_CSE_ID,
-    program_id: PROG_BTECH_CSE_ID,
-    academic_session_id: SESSION_2026_2027_ID,
-    academic_year_id: YEAR_2ND_ID,
-    semester_id: SEM_3RD_ID,
-    section_id: SEC_A_ID,
-    roll_number: '2403400131001',
-    full_name: 'TEST STUDENT A',
-    admission_type: 'Regular',
-    mentor_faculty_id: FAC_HEMLATA_ID,
-    active: true,
-    created_at: '2026-08-01T00:00:00Z'
-  }
-];
+
 
 export const ALL_INITIAL_STUDENTS: Student[] = [...INITIAL_STUDENTS_SEC_A, ...INITIAL_STUDENTS_SEC_B];
 
@@ -821,8 +804,6 @@ if (process.env.SEED_ATTENDANCE === 'true' && process.env.NODE_ENV !== 'producti
   ];
 }
 export const INITIAL_ATTENDANCE_SESSIONS = _INITIAL_ATTENDANCE_SESSIONS;
-
-];
 
 // Generate attendance records for initial sessions (most present, few absent to allow test correction)
 export const INITIAL_ATTENDANCE_RECORDS: AttendanceRecord[] = [];

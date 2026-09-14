@@ -10,9 +10,8 @@ const cleanup = async () => {
   for (const table of tables) {
     const { error, count } = await supabase
       .from(table)
-      .delete()
-      .lt('created_at', cutoffDate)
-      .select('id', { count: 'exact' });
+      .delete({ count: 'exact' })
+      .lt('created_at', cutoffDate);
     if (error) {
       console.error(`Failed to delete from ${table}:`, error);
       process.exit(1);
