@@ -30,21 +30,6 @@ College Code: **340** | Academic Session: **2026–2027 (Odd Semester)**
 
 ---
 
-## 🔑 Quick Login Credentials (For Testing)
-
-| Role | Identifier (Roll / Email) | Default Password | Persona / Description |
-|---|---|---|---|
-| **Super Admin** | `admin@vctm.in` | `admin123` | Central College Administrator |
-| **HOD** | `wasim.cse@vctm.in` | `hod123` | Mr. Wasim (HOD CSE) |
-| **Faculty (Sec A)** | `hemlata.cse@vctm.in` | `123456` | Ms. Hemlata Chaudhary (Coordinator Sec A) |
-| **Faculty (Sec B)** | `imran.cse@vctm.in` | `123456` | Mr. Imran Raza Khan (Coordinator Sec B) |
-| **Faculty** | `alok.cse@vctm.in` | `123456` | Mr. Alok Gupta (DS / Lab) |
-| **Student (Sec A)** | `2403400100047` | `123456` | SHAZEB (Section A Regular) |
-| **Student (Sec A)** | `2503400100001` | `123456` | ADITYA KISHOR SARASWAT (Sec A) |
-| **Student (Sec A - Lateral)** | `2603400109001` | `123456` | AHMAD SHEERZ (Sec A Lateral Entry) |
-| **Student (Sec B)** | `2403400130012` | `123456` | LUBHNESH KUMAR (Section B Regular) |
-
-*(You can also use the **Role Switcher** in the top navigation bar to test personas instantly).*
 
 ---
 
