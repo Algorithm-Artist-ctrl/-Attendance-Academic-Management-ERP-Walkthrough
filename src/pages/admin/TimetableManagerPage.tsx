@@ -33,7 +33,7 @@ import { TimetableConflict, ExtractedTimetableDocument } from '../../types/acade
 import { csvTimetableService, CSVValidationResult } from '../../lib/services/csvTimetableService';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
-import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS } from '../../config/academicConfig';
+import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS, CANONICAL_PERIOD_NUMBERS } from '../../config/academicConfig';
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
 import { TimetableConflictEngine, TimetableConflictItem } from '../../lib/services/timetableConflictEngine';
@@ -45,8 +45,8 @@ interface DraftSlot {
   period_number: number;
   start_time: string;
   end_time: string;
-  subject_id: string;
-  faculty_id: string;
+  subject_id?: string | null;
+  faculty_id?: string | null;
   room_number: string;
   lecture_type: LectureType;
 }
@@ -61,6 +61,7 @@ export const TimetableManagerPage: React.FC = () => {
     timetable, 
     years, 
     semesters, 
+    assignments,
     saveSectionTimetable, 
     deleteSectionTimetable,
     refreshData 
@@ -69,8 +70,14 @@ export const TimetableManagerPage: React.FC = () => {
   const isSuperAdmin = user?.role === 'super_admin';
   const isHOD = user?.role === 'hod';
   const [selectedDeptId, setSelectedDeptId] = useState<string>('ALL');
-  const [selectedYearId, setSelectedYearId] = useState<string>('ALL');
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => sections[0]?.id || '');
+  const [selectedYearId, setSelectedYearId] = useState<string>(() => {
+    const y2 = years.find(y => y.year_number === 2);
+    return y2 ? y2.id : 'ALL';
+  });
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
+    const secA = sections.find(s => s.name === 'A' && (s.room_number === 'A007' || s.id === 'fc93a413-c18d-4e72-9624-146767bc286b')) || sections[0];
+    return secA ? secA.id : 'fc93a413-c18d-4e72-9624-146767bc286b';
+  });
 
   // Dynamic sections filtered by selected academic year
   const filteredSections = useMemo(() => {
@@ -85,6 +92,13 @@ export const TimetableManagerPage: React.FC = () => {
       setSelectedSectionId(filteredSections[0].id);
     }
   }, [filteredSections, selectedSectionId]);
+
+  useEffect(() => {
+    if (years.length > 0 && selectedYearId === 'ALL') {
+      const y2 = years.find(y => y.year_number === 2);
+      if (y2) setSelectedYearId(y2.id);
+    }
+  }, [years]);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
@@ -130,14 +144,10 @@ export const TimetableManagerPage: React.FC = () => {
     return timetable.filter(t => t.section_id === selectedSectionId && t.active);
   }, [timetable, selectedSectionId]);
 
-  // Dynamically derive period numbers from database entries or fallback to standard institutional periods
+  // Institutional standard period schedule (Periods 1 to 8, including Period 5 Lunch)
   const periods = useMemo(() => {
-    if (sectionTimetable.length > 0) {
-      const distinct = Array.from(new Set(sectionTimetable.map(t => t.period_number))).sort((a, b) => a - b);
-      if (distinct.length > 0) return distinct;
-    }
-    return DEFAULT_INSTITUTIONAL_PERIODS.filter(p => !p.is_break).map(p => p.period_number);
-  }, [sectionTimetable]);
+    return CANONICAL_PERIOD_NUMBERS;
+  }, []);
 
   // Real-time conflict analysis against current database state for the viewed section
   const activeSectionConflicts = useMemo(() => {
@@ -161,9 +171,12 @@ export const TimetableManagerPage: React.FC = () => {
       sections,
       subjects,
       faculty,
+      assignments,
+      semesters,
+      academicYears: years,
     });
     return report.conflicts;
-  }, [timetable, selectedSectionId, sections, subjects, faculty, currentSection]);
+  }, [timetable, selectedSectionId, sections, subjects, faculty, assignments, semesters, years, currentSection]);
 
   // Combined conflict list: displays newly encountered import/edit errors, or existing DB collisions
   const displayedConflicts = useMemo(() => {
@@ -220,15 +233,16 @@ export const TimetableManagerPage: React.FC = () => {
     if (existing) {
       setEditingSlot({ ...existing });
     } else {
+      const isLunch = period === 5;
       setEditingSlot({
         day_of_week: day,
         period_number: period,
         start_time: time.start,
         end_time: time.end,
-        subject_id: subjects[0]?.id || '',
-        faculty_id: faculty[0]?.id || '',
-        room_number: currentSection?.room_number || '',
-        lecture_type: 'Theory',
+        subject_id: isLunch ? null : (subjects[0]?.id || ''),
+        faculty_id: isLunch ? null : (faculty[0]?.id || ''),
+        room_number: isLunch ? 'Refectory / Break' : (currentSection?.room_number || ''),
+        lecture_type: isLunch ? 'Lunch' : 'Theory',
       });
     }
   };
@@ -238,10 +252,15 @@ export const TimetableManagerPage: React.FC = () => {
     e.preventDefault();
     if (!editingSlot) return;
 
+    const isLunch = editingSlot.lecture_type === 'Lunch';
     const key = `${editingSlot.day_of_week}-${editingSlot.period_number}`;
     setDraftSlots(prev => {
       const next = new Map(prev);
-      next.set(key, { ...editingSlot });
+      next.set(key, {
+        ...editingSlot,
+        subject_id: isLunch ? null : (editingSlot.subject_id || null),
+        faculty_id: isLunch ? null : (editingSlot.faculty_id || null),
+      });
       return next;
     });
 
@@ -342,6 +361,9 @@ export const TimetableManagerPage: React.FC = () => {
         sections,
         subjects,
         faculty,
+        assignments,
+        semesters,
+        academicYears: years,
       });
 
       if (conflictReport.hasBlockingConflicts) {
@@ -429,6 +451,9 @@ export const TimetableManagerPage: React.FC = () => {
         sections,
         subjects,
         faculty,
+        assignments,
+        semesters,
+        academicYears: years,
       });
 
       if (conflictReport.hasBlockingConflicts) {
@@ -513,6 +538,9 @@ export const TimetableManagerPage: React.FC = () => {
           sections,
           subjects,
           faculty,
+          assignments,
+          semesters,
+          academicYears: years,
         });
 
         if (conflictReport.hasBlockingConflicts) {
@@ -1111,21 +1139,30 @@ export const TimetableManagerPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-bold text-white tracking-tight">{sub?.subject_name || 'Subject'}</h4>
-                  <p className="text-xs text-emerald-400 font-mono mt-0.5">{sub?.subject_code}</p>
-                </div>
+                {entry.lecture_type === 'Lunch' ? (
+                  <div className="py-2">
+                    <h4 className="text-sm font-black text-amber-300 tracking-wider">LUNCH BREAK</h4>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">12:20 – 13:10 • Refectory / Break Time</p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <h4 className="text-sm font-bold text-white tracking-tight">{sub?.subject_name || 'Subject'}</h4>
+                      <p className="text-xs text-emerald-400 font-mono mt-0.5">{sub?.subject_code}</p>
+                    </div>
 
-                <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-[11px] text-slate-300">
-                  <div className="flex items-center gap-1.5 truncate max-w-[65%]">
-                    <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="truncate">{fac?.full_name || 'Faculty'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="font-bold text-[#00ff88]">{entry.room_number || currentSection?.room_number}</span>
-                  </div>
-                </div>
+                    <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-[11px] text-slate-300">
+                      <div className="flex items-center gap-1.5 truncate max-w-[65%]">
+                        <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="truncate">{fac?.full_name || (entry.lecture_type === 'Sports' ? 'Sports Coordinator' : 'Faculty')}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="font-bold text-[#00ff88]">{entry.room_number || currentSection?.room_number}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -1182,6 +1219,46 @@ export const TimetableManagerPage: React.FC = () => {
                           ) : (
                             <span className="text-slate-600 font-mono">—</span>
                           )}
+                        </td>
+                      );
+                    }
+
+                    if (entry.lecture_type === 'Lunch') {
+                      return (
+                        <td key={period} className="p-2 border-r border-emerald-500/10">
+                          <div className={clsx(
+                            "p-2.5 rounded-xl text-center space-y-1 group relative transition-all bg-amber-950/25 border border-amber-500/30",
+                            isEditMode && "hover:border-amber-400"
+                          )}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-mono font-bold text-amber-400/80 uppercase tracking-wider">Break</span>
+                              {isEditMode ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleOpenSlotEditor(day, period)}
+                                    className="text-amber-400 hover:text-white p-0.5 rounded cursor-pointer"
+                                    title="Edit Slot"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleClearSlot(day, period)}
+                                    className="text-slate-500 hover:text-rose-400 p-0.5 rounded cursor-pointer"
+                                    title="Clear Slot"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="py-1.5">
+                              <span className="font-black text-amber-300 block text-xs tracking-wider">LUNCH BREAK</span>
+                              <span className="text-[10px] text-slate-400 font-mono">12:20 – 13:10</span>
+                            </div>
+                            <div className="text-[10px] pt-1 border-t border-amber-500/20 text-slate-400 truncate">
+                              Refectory
+                            </div>
+                          </div>
                         </td>
                       );
                     }
@@ -1305,10 +1382,11 @@ export const TimetableManagerPage: React.FC = () => {
             <div>
               <label className="block text-slate-400 font-semibold mb-1">Subject</label>
               <select
-                value={editingSlot.subject_id}
-                onChange={(e) => setEditingSlot({ ...editingSlot, subject_id: e.target.value })}
+                value={editingSlot.subject_id || ''}
+                onChange={(e) => setEditingSlot({ ...editingSlot, subject_id: e.target.value || null })}
                 className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
               >
+                <option value="">— None / Non-Instructional Break —</option>
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
                 ))}
@@ -1318,10 +1396,11 @@ export const TimetableManagerPage: React.FC = () => {
             <div>
               <label className="block text-slate-400 font-semibold mb-1">Faculty Professor</label>
               <select
-                value={editingSlot.faculty_id}
-                onChange={(e) => setEditingSlot({ ...editingSlot, faculty_id: e.target.value })}
+                value={editingSlot.faculty_id || ''}
+                onChange={(e) => setEditingSlot({ ...editingSlot, faculty_id: e.target.value || null })}
                 className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
               >
+                <option value="">— None / Non-Instructional Break —</option>
                 {faculty.map(f => (
                   <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.designation})</option>
                 ))}
@@ -1343,7 +1422,22 @@ export const TimetableManagerPage: React.FC = () => {
                 <label className="block text-slate-400 font-semibold mb-1">Class Format / Lecture Type</label>
                 <select
                   value={editingSlot.lecture_type}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, lecture_type: e.target.value as LectureType })}
+                  onChange={(e) => {
+                    const newType = e.target.value as LectureType;
+                    const isLunch = newType === 'Lunch';
+                    const isSports = newType === 'Sports';
+                    setEditingSlot({
+                      ...editingSlot,
+                      lecture_type: newType,
+                      ...(isLunch ? {
+                        subject_id: null,
+                        faculty_id: null,
+                        room_number: editingSlot.room_number || 'Refectory / Break'
+                      } : isSports ? {
+                        room_number: editingSlot.room_number || 'Sports Ground'
+                      } : {})
+                    });
+                  }}
                   className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
                 >
                   <option value="Theory">Theory Lecture</option>
@@ -1351,6 +1445,9 @@ export const TimetableManagerPage: React.FC = () => {
                   <option value="Workshop">Workshop</option>
                   <option value="Project">Project Session</option>
                   <option value="Tutorial">Tutorial</option>
+                  <option value="Sports">Sports Session</option>
+                  <option value="Lunch">Lunch Break</option>
+                  <option value="Other">Other Institutional Activity</option>
                 </select>
               </div>
             </div>

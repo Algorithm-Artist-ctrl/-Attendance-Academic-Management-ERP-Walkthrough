@@ -45,7 +45,7 @@ export const FeedbackPage: React.FC = () => {
       );
 
       if (match) {
-        setSelectedFacultyId(match.faculty_id);
+        setSelectedFacultyId(match.faculty_id || '');
       } else {
         setSelectedFacultyId('');
       }

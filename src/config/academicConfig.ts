@@ -32,3 +32,19 @@ export const DEFAULT_INSTITUTIONAL_PERIODS: InstitutionalPeriodDefinition[] = [
 ];
 
 export const ACADEMIC_DAYS: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+export const CANONICAL_PERIOD_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+export function getCanonicalPeriodTiming(periodNumber: number): { start_time: string; end_time: string; is_break: boolean } {
+  const p = DEFAULT_INSTITUTIONAL_PERIODS.find(item => item.period_number === periodNumber);
+  if (p) {
+    return { start_time: p.start_time, end_time: p.end_time, is_break: !!p.is_break };
+  }
+  return { start_time: '09:00', end_time: '09:50', is_break: false };
+}
+
+export function getCanonicalPeriodLabel(periodNumber: number): string {
+  const p = DEFAULT_INSTITUTIONAL_PERIODS.find(item => item.period_number === periodNumber);
+  return p ? p.name : `Period ${periodNumber}`;
+}
+

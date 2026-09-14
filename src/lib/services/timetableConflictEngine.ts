@@ -1,10 +1,10 @@
-import { DayOfWeek, LectureType, Section, Subject, Faculty, FacultySubjectAssignment, TimetableEntry } from '../../types/database.types';
+import { DayOfWeek, LectureType, Section, Subject, Faculty, FacultySubjectAssignment, TimetableEntry, Semester, AcademicYear } from '../../types/database.types';
 
 export interface ProposedTimetableEntry {
   id?: string;
   section_id?: string;
-  subject_id: string;
-  faculty_id: string;
+  subject_id?: string | null;
+  faculty_id?: string | null;
   day_of_week: DayOfWeek;
   period_number: number;
   start_time: string;
@@ -87,6 +87,8 @@ export class TimetableConflictEngine {
     subjects: Subject[];
     faculty: Faculty[];
     assignments?: FacultySubjectAssignment[];
+    semesters?: Semester[];
+    academicYears?: AcademicYear[];
   }): ConflictAnalysisReport {
     const {
       targetSectionId,
@@ -96,6 +98,8 @@ export class TimetableConflictEngine {
       subjects,
       faculty,
       assignments = [],
+      semesters = [],
+      academicYears = [],
     } = params;
 
     const conflicts: TimetableConflictItem[] = [];
@@ -106,6 +110,15 @@ export class TimetableConflictEngine {
     const sectionMap = new Map(sections.map(s => [s.id, s]));
     const subjectMap = new Map(subjects.map(s => [s.id, s]));
     const facultyMap = new Map(faculty.map(f => [f.id, f]));
+
+    const getSectionDisplayName = (secId: string): string => {
+      const sec = sectionMap.get(secId);
+      if (!sec) return 'another section';
+      const sem = semesters.find(s => s.id === sec.semester_id);
+      const yr = sem ? academicYears.find(y => y.id === sem.academic_year_id) : undefined;
+      const yrPrefix = yr ? `${yr.name} ` : (sem ? `Sem ${sem.semester_number} ` : '');
+      return `${yrPrefix}Section ${sec.name} (${sec.room_number || 'Room TBD'})`;
+    };
 
     // Verify Rule E: Target section exists and active
     const targetSection = sectionMap.get(targetSectionId);
@@ -149,10 +162,10 @@ export class TimetableConflictEngine {
       const entry = proposedEntries[idx];
       let entryHasBlockingError = false;
 
-      const fac = facultyMap.get(entry.faculty_id);
-      const sub = subjectMap.get(entry.subject_id);
+      const fac = entry.faculty_id ? facultyMap.get(entry.faculty_id) : undefined;
+      const sub = entry.subject_id ? subjectMap.get(entry.subject_id) : undefined;
       const facName = fac?.full_name || entry.faculty_name || 'Faculty Member';
-      const subCode = sub?.subject_code || entry.subject_code || 'Subject';
+      const subCode = sub?.subject_code || entry.subject_code || (entry.lecture_type === 'Lunch' ? 'Lunch Break' : 'Subject');
       const roomNum = (entry.room_number || targetSection.room_number || '').trim();
       const timeStr = `${entry.start_time}–${entry.end_time}`;
 
@@ -179,10 +192,9 @@ export class TimetableConflictEngine {
       // -------------------------------------------------------------
       for (const prior of processedProposed) {
         if (prior.day_of_week === entry.day_of_week) {
-          const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time) ||
-                           entry.period_number === prior.period_number;
+          const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time);
           if (overlaps) {
-            const priorSub = subjectMap.get(prior.subject_id)?.subject_code || prior.subject_code || 'Class';
+            const priorSub = prior.subject_id ? (subjectMap.get(prior.subject_id)?.subject_code || prior.subject_code || 'Class') : (prior.lecture_type || 'Break');
             conflicts.push({
               rule: 'SAME_SECTION',
               severity: 'blocking',
@@ -201,49 +213,52 @@ export class TimetableConflictEngine {
       // -------------------------------------------------------------
       // Rule B: Faculty Conflict (Simultaneous double-booking)
       // -------------------------------------------------------------
-      // B1: Against other entries in this proposed batch
-      for (const prior of processedProposed) {
-        if (prior.faculty_id && prior.faculty_id === entry.faculty_id && prior.day_of_week === entry.day_of_week) {
-          const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time) ||
-                           entry.period_number === prior.period_number;
-          if (overlaps) {
-            conflicts.push({
-              rule: 'FACULTY_OVERLAP',
-              severity: 'blocking',
-              day: entry.day_of_week,
-              period_number: entry.period_number,
-              timeRange: timeStr,
-              message: `Faculty double-booking: ${facName} is scheduled twice on ${entry.day_of_week} during overlapping times (${timeStr}).`,
-              entry,
-              conflictingEntry: prior,
-            });
-            entryHasBlockingError = true;
+      if (entry.faculty_id && entry.lecture_type !== 'Lunch') {
+        // B1: Against other entries in this proposed batch
+        for (const prior of processedProposed) {
+          if (prior.faculty_id && prior.faculty_id === entry.faculty_id && prior.day_of_week === entry.day_of_week) {
+            const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time);
+            if (overlaps) {
+              conflicts.push({
+                rule: 'FACULTY_OVERLAP',
+                severity: 'blocking',
+                day: entry.day_of_week,
+                period_number: entry.period_number,
+                timeRange: timeStr,
+                message: `Faculty double-booking: ${facName} is scheduled twice on ${entry.day_of_week} during overlapping times (${timeStr}).`,
+                entry,
+                conflictingEntry: prior,
+              });
+              entryHasBlockingError = true;
+            }
           }
         }
-      }
 
-      // B2: Against other sections in active Supabase DB
-      for (const dbEntry of otherSectionDbEntries) {
-        if (dbEntry.faculty_id && dbEntry.faculty_id === entry.faculty_id && dbEntry.day_of_week === entry.day_of_week) {
-          const dbStart = dbEntry.start_time || '09:00';
-          const dbEnd = dbEntry.end_time || '09:50';
-          const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, dbStart, dbEnd) ||
-                           entry.period_number === dbEntry.period_number;
+        // B2: Against other sections in active Supabase DB
+        for (const dbEntry of otherSectionDbEntries) {
+          if (entry.id && dbEntry.id && entry.id === dbEntry.id) continue;
+          if (entry.section_id && dbEntry.section_id && entry.section_id === dbEntry.section_id) continue;
+          if (dbEntry.section_id === targetSectionId) continue;
 
-          if (overlaps) {
-            const conflictSec = sectionMap.get(dbEntry.section_id);
-            const secName = conflictSec ? `Section ${conflictSec.name}` : 'another section';
-            conflicts.push({
-              rule: 'FACULTY_OVERLAP',
-              severity: 'blocking',
-              day: entry.day_of_week,
-              period_number: entry.period_number,
-              timeRange: timeStr,
-              message: `Faculty conflict: ${facName} is already assigned to ${secName} on ${entry.day_of_week} ${dbStart}–${dbEnd} (Period ${dbEntry.period_number}).`,
-              entry,
-              conflictingEntry: dbEntry,
-            });
-            entryHasBlockingError = true;
+          if (dbEntry.faculty_id && dbEntry.faculty_id === entry.faculty_id && dbEntry.day_of_week === entry.day_of_week && dbEntry.lecture_type !== 'Lunch') {
+            const dbStart = dbEntry.start_time || '09:00';
+            const dbEnd = dbEntry.end_time || '09:50';
+            const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, dbStart, dbEnd);
+
+            if (overlaps) {
+              const secName = getSectionDisplayName(dbEntry.section_id);
+              conflicts.push({
+                rule: 'FACULTY_OVERLAP',
+                severity: 'blocking',
+                day: entry.day_of_week,
+                period_number: entry.period_number,
+                timeRange: timeStr,
+                message: `Faculty conflict: ${facName} is already assigned to ${secName} on ${entry.day_of_week} ${dbStart}–${dbEnd} (Period ${dbEntry.period_number}).`,
+                entry,
+                conflictingEntry: dbEntry,
+              });
+              entryHasBlockingError = true;
+            }
           }
         }
       }
@@ -251,17 +266,18 @@ export class TimetableConflictEngine {
       // -------------------------------------------------------------
       // Rule C: Room Collision (Simultaneous room occupancy)
       // -------------------------------------------------------------
-      if (roomNum) {
+      if (roomNum && roomNum.toUpperCase() !== 'TBD' && entry.lecture_type !== 'Lunch') {
         // C1: Against other entries in this proposed batch
         for (const prior of processedProposed) {
           const priorRoom = (prior.room_number || targetSection.room_number || '').trim();
           if (
             priorRoom && 
+            priorRoom.toUpperCase() !== 'TBD' &&
             priorRoom.toLowerCase() === roomNum.toLowerCase() && 
-            prior.day_of_week === entry.day_of_week
+            prior.day_of_week === entry.day_of_week &&
+            prior.lecture_type !== 'Lunch'
           ) {
-            const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time) ||
-                             entry.period_number === prior.period_number;
+            const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time);
             if (overlaps) {
               conflicts.push({
                 rule: 'ROOM_COLLISION',
@@ -280,20 +296,24 @@ export class TimetableConflictEngine {
 
         // C2: Against other sections in active Supabase DB
         for (const dbEntry of otherSectionDbEntries) {
+          if (entry.id && dbEntry.id && entry.id === dbEntry.id) continue;
+          if (entry.section_id && dbEntry.section_id && entry.section_id === dbEntry.section_id) continue;
+          if (dbEntry.section_id === targetSectionId) continue;
+          if (dbEntry.lecture_type === 'Lunch') continue;
+
           const dbRoom = (dbEntry.room_number || '').trim();
           if (
             dbRoom && 
+            dbRoom.toUpperCase() !== 'TBD' &&
             dbRoom.toLowerCase() === roomNum.toLowerCase() && 
             dbEntry.day_of_week === entry.day_of_week
           ) {
             const dbStart = dbEntry.start_time || '09:00';
             const dbEnd = dbEntry.end_time || '09:50';
-            const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, dbStart, dbEnd) ||
-                             entry.period_number === dbEntry.period_number;
+            const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, dbStart, dbEnd);
 
             if (overlaps) {
-              const conflictSec = sectionMap.get(dbEntry.section_id);
-              const secName = conflictSec ? `Section ${conflictSec.name}` : 'another section';
+              const secName = getSectionDisplayName(dbEntry.section_id);
               conflicts.push({
                 rule: 'ROOM_COLLISION',
                 severity: 'blocking',
@@ -313,7 +333,14 @@ export class TimetableConflictEngine {
       // -------------------------------------------------------------
       // Rule D: Invalid Faculty/Subject Assignment (Warning)
       // -------------------------------------------------------------
-      if (entry.faculty_id && entry.subject_id && assignments.length > 0) {
+      if (
+        entry.faculty_id && 
+        entry.subject_id && 
+        entry.lecture_type !== 'Lunch' && 
+        entry.lecture_type !== 'Sports' && 
+        entry.lecture_type !== 'Other' && 
+        assignments.length > 0
+      ) {
         const hasAssignment = assignments.some(a => 
           a.active &&
           a.faculty_id === entry.faculty_id &&

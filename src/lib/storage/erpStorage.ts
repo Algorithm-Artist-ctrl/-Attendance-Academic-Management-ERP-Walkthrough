@@ -446,6 +446,16 @@ class ERPStorageService {
     return true;
   }
 
+  public updateAssignment(id: string, updates: Partial<FacultySubjectAssignment>): FacultySubjectAssignment | null {
+    const list = this.getAssignments();
+    const idx = list.findIndex(a => a.id === id);
+    if (idx === -1) return null;
+    list[idx] = { ...list[idx], ...updates };
+    saveToStorage(STORAGE_KEYS.ASSIGNMENTS, list);
+    this.addAuditLog('FACULTY_ASSIGNMENT_UPDATED', 'faculty_subject_assignments', id, undefined, list[idx]);
+    return list[idx];
+  }
+
   public getStudents(): Student[] {
     const students = loadFromStorage<Student[]>(STORAGE_KEYS.STUDENTS, []);
     const sections = this.getSections();

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Layers, Plus, Search, User, BookOpen, Trash2 } from 'lucide-react';
+import { Layers, Plus, Search, User, BookOpen, Trash2, Edit3, AlertCircle } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { FacultySubjectAssignment } from '../../types/database.types';
 
 export const FacultyAssignmentsPage: React.FC = () => {
   const { 
@@ -15,17 +15,21 @@ export const FacultyAssignmentsPage: React.FC = () => {
     years,
     semesters,
     addAssignment,
+    updateFacultyAssignment,
     deleteAssignment
   } = useAcademic();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('ALL');
+  const [sectionFilter, setSectionFilter] = useState<string>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
 
   // Form state
   const [selectedFacultyId, setSelectedFacultyId] = useState(faculty[0]?.id || '');
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
   const [selectedSectionId, setSelectedSectionId] = useState(sections[0]?.id || '');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const filtered = assignments.filter(a => {
     const fac = faculty.find(f => f.id === a.faculty_id);
@@ -34,6 +38,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
     const sem = semesters.find(s => s.id === sec?.semester_id);
 
     const matchesYear = yearFilter === 'ALL' || sem?.academic_year_id === yearFilter;
+    const matchesSection = sectionFilter === 'ALL' || a.section_id === sectionFilter;
 
     const matchesSearch = 
       (fac?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,8 +46,26 @@ export const FacultyAssignmentsPage: React.FC = () => {
       (sub?.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sec?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesYear && matchesSearch;
+    return matchesYear && matchesSection && matchesSearch;
   });
+
+  const handleOpenCreateModal = () => {
+    setEditingAssignmentId(null);
+    setFormError(null);
+    setSelectedFacultyId(faculty[0]?.id || '');
+    setSelectedSubjectId(subjects[0]?.id || '');
+    setSelectedSectionId(sections[0]?.id || '');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (fa: FacultySubjectAssignment) => {
+    setEditingAssignmentId(fa.id);
+    setFormError(null);
+    setSelectedFacultyId(fa.faculty_id);
+    setSelectedSubjectId(fa.subject_id);
+    setSelectedSectionId(fa.section_id);
+    setIsModalOpen(true);
+  };
 
   const handleDeleteAllocation = async (id: string, facultyName: string, subjectCode: string) => {
     if (window.confirm(`Are you sure you want to remove teaching allocation for "${facultyName}" on "${subjectCode}"?`)) {
@@ -56,19 +79,45 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    // Validate duplicate allocation for same subject in same section
+    const existing = assignments.find(a => 
+      a.subject_id === selectedSubjectId && 
+      a.section_id === selectedSectionId && 
+      a.active &&
+      (!editingAssignmentId || a.id !== editingAssignmentId)
+    );
+
+    if (existing) {
+      const facName = faculty.find(f => f.id === existing.faculty_id)?.full_name || 'Another faculty';
+      const subCode = subjects.find(s => s.id === selectedSubjectId)?.subject_code || 'Subject';
+      setFormError(`Duplicate Allocation: ${subCode} is already assigned to ${facName} in this section. Please edit the existing allocation or choose another.`);
+      return;
+    }
+
     const activeSession = sessions.find(s => s.is_current) || sessions[0];
 
     try {
-      await addAssignment({
-        faculty_id: selectedFacultyId,
-        subject_id: selectedSubjectId,
-        section_id: selectedSectionId,
-        academic_session_id: activeSession?.id || '',
-        active: true,
-      });
+      if (editingAssignmentId) {
+        await updateFacultyAssignment(editingAssignmentId, {
+          faculty_id: selectedFacultyId,
+          subject_id: selectedSubjectId,
+          section_id: selectedSectionId,
+        });
+      } else {
+        await addAssignment({
+          faculty_id: selectedFacultyId,
+          subject_id: selectedSubjectId,
+          section_id: selectedSectionId,
+          academic_session_id: activeSession?.id || '',
+          active: true,
+        });
+      }
       setIsModalOpen(false);
+      setEditingAssignmentId(null);
     } catch (err: any) {
-      alert(`Assignment Error: ${err.message}`);
+      setFormError(`Assignment Error: ${err.message}`);
     }
   };
 
@@ -89,7 +138,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
         <Button
           variant="neon"
           size="sm"
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
         >
           Assign Subject
@@ -111,7 +160,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-slate-400 font-semibold">Year:</span>
             <select
@@ -122,6 +171,22 @@ export const FacultyAssignmentsPage: React.FC = () => {
               <option value="ALL" className="bg-slate-950 text-white">All Years</option>
               {years.map(y => (
                 <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-400 font-semibold">Section:</span>
+            <select
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+            >
+              <option value="ALL" className="bg-slate-950 text-white">All Sections</option>
+              {sections.map(s => (
+                <option key={s.id} value={s.id} className="bg-slate-950 text-white">
+                  Sec {s.name} ({s.room_number || 'Room TBD'})
+                </option>
               ))}
             </select>
           </div>
@@ -158,7 +223,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                     <td className="px-5 py-4 font-bold text-white text-sm">
                       {fac?.full_name || 'Faculty'}
                       <span className="block text-[10px] text-emerald-400 font-mono">
-                        Code: {fac?.faculty_code || fac?.employee_code}
+                        Code: {fac?.faculty_code || fac?.employee_code || 'FAC'}
                       </span>
                     </td>
                     <td className="px-5 py-4 font-semibold text-slate-200">
@@ -175,13 +240,22 @@ export const FacultyAssignmentsPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => handleDeleteAllocation(fa.id, fac?.full_name || 'Faculty', sub?.subject_code || 'Subject')}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                        title="Remove Allocation"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenEditModal(fa)}
+                          className="p-1.5 text-slate-400 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                          title="Edit Allocation"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAllocation(fa.id, fac?.full_name || 'Faculty', sub?.subject_code || 'Subject')}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Remove Allocation"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -191,15 +265,26 @@ export const FacultyAssignmentsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Allocation Modal */}
+      {/* Add / Edit Allocation Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Assign Faculty to Subject"
-        description="Allocate teaching responsibility for a subject & section"
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingAssignmentId(null);
+          setFormError(null);
+        }}
+        title={editingAssignmentId ? "Edit Faculty Teaching Allocation" : "Assign Faculty to Subject"}
+        description={editingAssignmentId ? "Modify the allocated professor, subject, or section" : "Allocate teaching responsibility for a subject & section"}
         maxWidth="md"
       >
         <form onSubmit={handleAssign} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Faculty Member</label>
             <select
@@ -246,8 +331,21 @@ export const FacultyAssignmentsPage: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="neon" size="sm">Save Allocation</Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setIsModalOpen(false);
+                setEditingAssignmentId(null);
+                setFormError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="neon" size="sm">
+              {editingAssignmentId ? "Update Allocation" : "Save Allocation"}
+            </Button>
           </div>
         </form>
       </Modal>

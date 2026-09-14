@@ -108,8 +108,10 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       directAssignedPairs.add(`${fsa.subject_id}:${fsa.section_id}`);
     }
     for (const t of myTt) {
-      taughtSubjectIds.add(t.subject_id);
-      directAssignedPairs.add(`${t.subject_id}:${t.section_id}`);
+      if (t.subject_id) {
+        taughtSubjectIds.add(t.subject_id);
+        directAssignedPairs.add(`${t.subject_id}:${t.section_id}`);
+      }
     }
 
     const relevantSubjects = (taughtSubjectIds.size > 0 && !isSuperAdmin)

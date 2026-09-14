@@ -1,6 +1,6 @@
 export type UserRole = 'super_admin' | 'hod' | 'faculty' | 'student';
 
-export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports';
+export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports' | 'Lunch' | 'Other';
 
 export type AdmissionType = 'Regular' | 'Lateral Entry';
 
@@ -67,14 +67,28 @@ export interface Semester {
   active: boolean;
 }
 
+export interface Classroom {
+  id: string;
+  room_number: string;
+  building?: string;
+  floor?: string;
+  capacity?: number;
+  room_type?: string;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Section {
   id: string;
   semester_id: string;
   name: string;
   room_number: string;
+  classroom_id?: string;
   class_coordinator_id?: string;
   active: boolean;
   class_coordinator?: Faculty;
+  classroom?: Classroom;
 }
 
 export interface Subject {
@@ -141,18 +155,20 @@ export interface Student {
 export interface TimetableEntry {
   id: string;
   section_id: string;
-  subject_id: string;
-  faculty_id: string;
+  subject_id?: string | null;
+  faculty_id?: string | null;
   day_of_week: DayOfWeek;
   period_number: number;
   start_time: string;
   end_time: string;
   room_number: string;
+  classroom_id?: string | null;
   lecture_type: LectureType;
   active: boolean;
   subject?: Subject;
   faculty?: Faculty;
   section?: Section;
+  classroom?: Classroom;
 }
 
 export interface AttendanceSession {

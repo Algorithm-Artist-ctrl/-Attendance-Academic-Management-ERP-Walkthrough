@@ -128,6 +128,9 @@ export class TimetableIngestionService {
         })
         .eq('id', targetSectionId);
     }
+    if (!targetSectionId) {
+      throw new Error('Target section ID could not be resolved or created in database.');
+    }
 
     // 2. Fetch authoritative database subjects and faculty
     const { data: dbSubjects } = await supabase.from('subjects').select('*').eq('active', true);
@@ -197,52 +200,7 @@ export class TimetableIngestionService {
       }
     }
 
-    // 4. Supersede Old Timetable Version for this section
-    await supabase
-      .from('timetable_versions')
-      .update({ status: 'superseded', updated_at: new Date().toISOString() })
-      .eq('section_id', targetSectionId)
-      .eq('status', 'active');
-
-    // Determine version number
-    const { data: existingVersions } = await supabase
-      .from('timetable_versions')
-      .select('version_number')
-      .eq('section_id', targetSectionId)
-      .order('version_number', { ascending: false })
-      .limit(1);
-
-    const nextVersionNumber = (existingVersions && existingVersions[0] ? existingVersions[0].version_number : 0) + 1;
-
-    // 5. Create New Timetable Version in Supabase
-    const { data: createdVersion, error: verErr } = await supabase
-      .from('timetable_versions')
-      .insert([{
-        department_id: report.department?.id,
-        section_id: targetSectionId,
-        version_number: nextVersionNumber,
-        effective_from: effectiveFrom,
-        status: 'active',
-        uploaded_by: doc.source_file_name,
-        approved_by: approvedBy,
-        approved_at: new Date().toISOString(),
-        changes_summary: {
-          stats: report.stats,
-          room_number: doc.room_number,
-          class_incharge: doc.class_incharges,
-          w_e_f: effectiveFrom,
-        }
-      }])
-      .select('*')
-      .single();
-
-    // 6. Remove ONLY previous timetable entries for the target section (atomic complete replacement)
-    await supabase
-      .from('timetable_entries')
-      .delete()
-      .eq('section_id', targetSectionId);
-
-    // 7. Insert ALL New Active Timetable Entries from reviewed doc.schedule & report.diffs
+    // 4. Assemble All New Active Timetable Entries from reviewed doc.schedule & report.diffs
     const newTimetableRows: any[] = [];
     const addedKeys = new Set<string>();
 
@@ -416,86 +374,51 @@ export class TimetableIngestionService {
       });
     }
 
-    let insertedEntries: TimetableEntry[] = [];
-    if (newTimetableRows.length > 0) {
-      const { data: inserted, error: insertErr } = await supabase
-        .from('timetable_entries')
-        .insert(newTimetableRows)
-        .select('*');
+    // 5. Atomic Replacement via Unified saveSectionTimetable
+    const saveResult = await supabaseService.saveSectionTimetable({
+      sectionId: targetSectionId,
+      entries: newTimetableRows,
+      publishedBy: approvedBy,
+      effectiveDate: effectiveFrom,
+      sourceType: 'AI_INGESTION',
+      sourceUrl: doc.source_file_name,
+    });
 
-      if (insertErr) {
-        throw new Error(insertErr.message || 'Failed to insert active timetable records.');
-      }
-      insertedEntries = (inserted || []) as TimetableEntry[];
-
-      if (createdVersion?.id) {
-        await supabase
-          .from('timetable_versions')
-          .update({
-            changes_summary: {
-              stats: report.stats,
-              room_number: doc.room_number,
-              class_incharge: doc.class_incharges,
-              w_e_f: effectiveFrom,
-              total_slots: newTimetableRows.length,
-              source_type: 'AI_DOCUMENT_INGESTION',
-              snapshot: newTimetableRows,
-            }
-          })
-          .eq('id', createdVersion.id);
-      }
+    if (!saveResult.success) {
+      throw new Error('Failed to atomically publish new timetable entries.');
     }
 
-    // 7.1 Verify Actual Database Write (Source of Truth check)
-    const { count: verifiedCount, error: verifyErr } = await supabase
+    // 6. Fetch newly active verified timetable entries with relations
+    const { data: verifiedEntries, error: verifyErr } = await supabase
       .from('timetable_entries')
-      .select('id', { count: 'exact' })
+      .select('*, subject:subjects(*), faculty:faculty(*)')
       .eq('section_id', targetSectionId)
-      .eq('active', true);
+      .eq('active', true)
+      .order('period_number', { ascending: true });
 
-    if (verifyErr || !verifiedCount || verifiedCount === 0) {
-      throw new Error(`Database verification failed: Expected active timetable entries in Supabase for section, found ${verifiedCount || 0}.`);
+    if (verifyErr || !verifiedEntries || verifiedEntries.length === 0) {
+      throw new Error(`Database verification failed: Expected active timetable entries in Supabase for section, found ${verifiedEntries?.length || 0}.`);
     }
 
-    // 8. Synchronize faculty_subject_assignments in Supabase
-    const distinctPairs = new Map<string, { facultyId: string; subjectId: string }>();
-    for (const row of newTimetableRows) {
-      const pairKey = `${row.faculty_id}-${row.subject_id}`;
-      if (!distinctPairs.has(pairKey)) {
-        distinctPairs.set(pairKey, { facultyId: row.faculty_id, subjectId: row.subject_id });
-      }
-    }
+    const insertedEntries = verifiedEntries as TimetableEntry[];
+    const createdVersion = saveResult.version;
+    const nextVersionNumber = createdVersion?.version_number || 1;
 
-    const { data: currentSessionData } = await supabase
-      .from('academic_sessions')
-      .select('id')
-      .eq('is_current', true)
-      .maybeSingle();
-    const currentSessionId = currentSessionData?.id || '';
-
-    for (const pair of distinctPairs.values()) {
-      const { data: existingAssignment } = await supabase
-        .from('faculty_subject_assignments')
-        .select('id, active')
-        .eq('faculty_id', pair.facultyId)
-        .eq('subject_id', pair.subjectId)
-        .eq('section_id', targetSectionId)
-        .maybeSingle();
-
-      if (!existingAssignment) {
-        await supabase.from('faculty_subject_assignments').insert([{
-          faculty_id: pair.facultyId,
-          subject_id: pair.subjectId,
-          section_id: targetSectionId,
-          academic_session_id: currentSessionId,
-          active: true,
-        }]);
-      } else if (!existingAssignment.active) {
-        await supabase
-          .from('faculty_subject_assignments')
-          .update({ active: true, updated_at: new Date().toISOString() })
-          .eq('id', existingAssignment.id);
-      }
+    if (createdVersion?.id) {
+      await supabase
+        .from('timetable_versions')
+        .update({
+          changes_summary: {
+            stats: report.stats,
+            room_number: doc.room_number,
+            class_incharge: doc.class_incharges,
+            w_e_f: effectiveFrom,
+            total_slots: newTimetableRows.length,
+            source_type: 'AI_DOCUMENT_INGESTION',
+            snapshot: newTimetableRows,
+          }
+        })
+        .eq('id', createdVersion.id);
     }
 
     // 9. Update Timetable Import record status

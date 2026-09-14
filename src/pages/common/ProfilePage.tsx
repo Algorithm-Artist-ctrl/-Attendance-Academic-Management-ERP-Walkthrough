@@ -36,7 +36,8 @@ export const ProfilePage: React.FC = () => {
     assignments,
     timetable,
     students,
-    getStudentAttendance
+    getStudentAttendance,
+    refreshData
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
@@ -65,12 +66,22 @@ export const ProfilePage: React.FC = () => {
   const facultyAssignedSubjectNames = subjects.filter(s => myTaughtSubjectIds.includes(s.id)).map(s => `${s.subject_code} (${s.subject_name})`).join(', ');
   const facultyAssignedSectionNames = sections.filter(s => myTaughtSectionIds.includes(s.id)).map(s => `Section ${s.name}`).join(', ');
 
-  // Edit contact state
+  // Edit contact and profile state
   const [isEditing, setIsEditing] = useState(false);
+  const [fullName, setFullName] = useState(user?.full_name || '');
   const [phone, setPhone] = useState(student?.phone || currentFaculty?.phone || user?.phone || '');
+  const [designation, setDesignation] = useState(currentFaculty?.designation || '');
   const [email, setEmail] = useState(user?.email || (student ? `${student.roll_number}@student.vctm.in` : ''));
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [successBannerText, setSuccessBannerText] = useState('Profile Contact Updated Successfully!');
+  const [successBannerText, setSuccessBannerText] = useState('Profile Updated Successfully!');
+
+  React.useEffect(() => {
+    if (user?.full_name) setFullName(user.full_name);
+    if (student?.phone || currentFaculty?.phone || user?.phone) {
+      setPhone(student?.phone || currentFaculty?.phone || user?.phone || '');
+    }
+    if (currentFaculty?.designation) setDesignation(currentFaculty.designation);
+  }, [user, student, currentFaculty]);
 
   // Account Security Modal States
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
@@ -91,15 +102,20 @@ export const ProfilePage: React.FC = () => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const res = await updateUserProfile({ phone: phone.trim() });
+      const res = await updateUserProfile({ 
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        designation: currentFaculty ? designation.trim() : undefined,
+      });
       if (!res.success) {
-        setSuccessBannerText(res.error || 'Failed to update contact info');
+        setSuccessBannerText(res.error || 'Failed to update profile info');
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3500);
         return;
       }
+      await refreshData(true);
       setIsEditing(false);
-      setSuccessBannerText('Profile Contact Information Updated Successfully in Supabase Cloud!');
+      setSuccessBannerText('Profile Information Updated and Synchronized College-wide!');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err: any) {
@@ -249,19 +265,26 @@ export const ProfilePage: React.FC = () => {
               onClick={() => setIsEditing(!isEditing)}
               leftIcon={<Edit3 className="w-3.5 h-3.5" />}
             >
-              {isEditing ? "Cancel" : "Edit Contact Info"}
+              {isEditing ? "Cancel" : "Edit Profile Info"}
             </Button>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Full Legal Name</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Full Legal Name {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                </label>
                 <input
                   type="text"
-                  disabled
-                  value={user?.full_name || ''}
-                  className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                  disabled={!isEditing || isSaving}
+                  value={isEditing ? fullName : (user?.full_name || '')}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className={`w-full px-3.5 py-2 text-xs rounded-xl ${
+                    isEditing 
+                      ? 'bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]' 
+                      : 'bg-slate-950/50 border border-emerald-500/15 text-slate-300 font-semibold'
+                  }`}
                 />
               </div>
 
@@ -396,13 +419,25 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Designation & Department</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Academic Department'}`}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
-                    />
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Designation {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>} & Department
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={designation}
+                        onChange={(e) => setDesignation(e.target.value)}
+                        placeholder="e.g. Assistant Professor & Coordinator (Sec A)"
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Academic Department'}`}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      />
+                    )}
                   </div>
 
                   <div>

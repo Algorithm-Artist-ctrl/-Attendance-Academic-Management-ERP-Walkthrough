@@ -4,13 +4,22 @@ import { AuthState, LoginCredentials } from '../types/auth.types';
 import { supabase } from '../lib/supabase/supabaseClient';
 import { erpStorage } from '../lib/storage/erpStorage';
 
+export interface UserProfileUpdates {
+  full_name?: string;
+  phone?: string;
+  avatar_url?: string;
+  designation?: string;
+  employee_code?: string;
+  faculty_code?: string;
+}
+
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchUser: (profileId: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changeEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
-  updateUserProfile: (updates: { phone?: string; avatar_url?: string }) => Promise<{ success: boolean; error?: string }>;
+  updateUserProfile: (updates: UserProfileUpdates) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -398,23 +407,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateUserProfile = async (updates: { phone?: string; avatar_url?: string }): Promise<{ success: boolean; error?: string }> => {
+  const updateUserProfile = async (updates: UserProfileUpdates): Promise<{ success: boolean; error?: string }> => {
     if (!authState.user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     try {
       const cleanPhone = updates.phone !== undefined ? updates.phone.trim() : (authState.user.phone || '');
+      const cleanName = updates.full_name !== undefined ? updates.full_name.trim() : (authState.user.full_name || '');
+      const cleanDesignation = updates.designation !== undefined ? updates.designation.trim() : (authState.user.faculty?.designation || '');
 
       // 1. Update Student record if applicable
       if (authState.user.role === 'student' || authState.user.student_id) {
         const studId = authState.user.student_id || authState.user.student?.id || authState.user.id;
+        const studentPayload: any = {
+          phone: cleanPhone,
+          updated_at: new Date().toISOString()
+        };
+        if (cleanName) studentPayload.full_name = cleanName;
+
         const { error: sErr } = await supabase
           .from('students')
-          .update({
-            phone: cleanPhone,
-            updated_at: new Date().toISOString()
-          })
+          .update(studentPayload)
           .eq('id', studId);
 
         if (sErr) console.warn('Student phone update warning:', sErr.message);
@@ -423,45 +437,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Update Faculty record if applicable
       if (authState.user.role === 'faculty' || authState.user.role === 'hod' || authState.user.faculty_id) {
         const facId = authState.user.faculty_id || authState.user.faculty?.id || authState.user.id;
+        const facultyPayload: any = {
+          phone: cleanPhone,
+          updated_at: new Date().toISOString()
+        };
+        if (cleanName) facultyPayload.full_name = cleanName;
+        if (cleanDesignation) facultyPayload.designation = cleanDesignation;
+        if (updates.employee_code) facultyPayload.employee_code = updates.employee_code.trim();
+        if (updates.faculty_code) facultyPayload.faculty_code = updates.faculty_code.trim();
+
         const { error: fErr } = await supabase
           .from('faculty')
-          .update({
-            phone: cleanPhone,
-            updated_at: new Date().toISOString()
-          })
+          .update(facultyPayload)
           .eq('id', facId);
 
-        if (fErr) console.warn('Faculty phone update warning:', fErr.message);
+        if (fErr) console.warn('Faculty profile update warning:', fErr.message);
       }
 
       // 3. Update Profiles record
+      const profilePayload: any = {
+        phone: cleanPhone,
+        avatar_url: updates.avatar_url || authState.user.avatar_url,
+        updated_at: new Date().toISOString()
+      };
+      if (cleanName) profilePayload.full_name = cleanName;
+
       const { error: pErr } = await supabase
         .from('profiles')
-        .update({
-          phone: cleanPhone,
-          avatar_url: updates.avatar_url || authState.user.avatar_url,
-          updated_at: new Date().toISOString()
-        })
+        .update(profilePayload)
         .eq('id', authState.user.id);
 
       if (pErr) {
         await supabase
           .from('profiles')
-          .update({
-            phone: cleanPhone,
-            avatar_url: updates.avatar_url || authState.user.avatar_url,
-            updated_at: new Date().toISOString()
-          })
+          .update(profilePayload)
           .or(`email.eq.${authState.user.email}`);
       }
 
       // 4. Update session user state
       const updatedUser: UserProfile = {
         ...authState.user,
+        full_name: cleanName || authState.user.full_name,
         phone: cleanPhone,
         avatar_url: updates.avatar_url || authState.user.avatar_url,
-        student: authState.user.student ? { ...authState.user.student, phone: cleanPhone } : undefined,
-        faculty: authState.user.faculty ? { ...authState.user.faculty, phone: cleanPhone } : undefined,
+        student: authState.user.student ? { 
+          ...authState.user.student, 
+          full_name: cleanName || authState.user.student.full_name,
+          phone: cleanPhone 
+        } : undefined,
+        faculty: authState.user.faculty ? { 
+          ...authState.user.faculty, 
+          full_name: cleanName || authState.user.faculty.full_name,
+          designation: cleanDesignation || authState.user.faculty.designation,
+          phone: cleanPhone 
+        } : undefined,
       };
 
       erpStorage.setCurrentSessionUser(updatedUser);
@@ -474,11 +503,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await supabase.from('audit_logs').insert([{
           action: 'PROFILE_UPDATED',
-          actor_name: authState.user.full_name,
+          actor_name: updatedUser.full_name,
           actor_role: authState.user.role,
           entity_type: 'profiles',
           entity_id: authState.user.id,
-          new_values: { phone: cleanPhone, avatar_url: updates.avatar_url }
+          new_values: { 
+            full_name: cleanName, 
+            phone: cleanPhone, 
+            designation: cleanDesignation, 
+            avatar_url: updates.avatar_url 
+          }
         }]);
       } catch {}
 

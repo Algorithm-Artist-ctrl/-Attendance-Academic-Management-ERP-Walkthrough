@@ -69,7 +69,7 @@ export const FacultyQuizzesPage: React.FC = () => {
       }
     }
     for (const t of timetable) {
-      if (t.faculty_id === currentFacultyId && t.active) {
+      if (t.faculty_id === currentFacultyId && t.active && t.subject_id) {
         taughtSubjectIds.add(t.subject_id);
       }
     }

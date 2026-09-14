@@ -169,6 +169,7 @@ interface AcademicContextType {
   updateSubject: (id: string, updates: Partial<Subject>) => Promise<Subject>;
   deleteSubject: (id: string) => Promise<boolean>;
   addAssignment: (assign: Omit<FacultySubjectAssignment, 'id' | 'created_at'>) => Promise<FacultySubjectAssignment>;
+  updateFacultyAssignment: (id: string, updates: Partial<FacultySubjectAssignment>) => Promise<FacultySubjectAssignment>;
   deleteAssignment: (id: string) => Promise<boolean>;
   addStudent: (student: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => Promise<Student>;
   updateStudent: (id: string, updates: Partial<Student>) => Promise<Student>;
@@ -180,8 +181,9 @@ interface AcademicContextType {
   saveSectionTimetable: (params: {
     sectionId: string;
     entries: Array<{
-      subject_id: string;
-      faculty_id: string;
+      subject_id?: string | null;
+      faculty_id?: string | null;
+      classroom_id?: string | null;
       day_of_week: DayOfWeek;
       period_number: number;
       start_time: string;
@@ -1095,6 +1097,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const updateFacultyAssignment = async (id: string, updates: Partial<FacultySubjectAssignment>) => {
+    const res = await supabaseService.updateFacultyAssignment(id, updates);
+    erpStorage.updateAssignment(id, updates);
+    await refreshAssignments();
+    return res;
+  };
+
   const deleteAssignment = async (id: string) => {
     const res = await supabaseService.deleteAssignment(id);
     erpStorage.deleteAssignment(id);
@@ -1151,8 +1160,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const saveSectionTimetable = async (params: {
     sectionId: string;
     entries: Array<{
-      subject_id: string;
-      faculty_id: string;
+      subject_id?: string | null;
+      faculty_id?: string | null;
+      classroom_id?: string | null;
       day_of_week: DayOfWeek;
       period_number: number;
       start_time: string;
@@ -1460,10 +1470,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         periodNumber: entry.period_number,
         startTime: entry.start_time?.substring(0, 5) || '09:00',
         endTime: entry.end_time?.substring(0, 5) || '09:50',
-        subjectId: entry.subject_id,
+        subjectId: entry.subject_id || '',
         subjectCode: sub?.subject_code || '',
         subjectName: sub?.subject_name || 'Subject',
-        facultyId: entry.faculty_id,
+        facultyId: entry.faculty_id || '',
         facultyName: fac?.full_name || 'Faculty Member',
         facultyCode: fac?.faculty_code || fac?.employee_code,
         roomNumber: entry.room_number || sec?.room_number || 'Room TBD',
@@ -1917,6 +1927,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateSubject,
         deleteSubject,
         addAssignment,
+        updateFacultyAssignment,
         deleteAssignment,
         addStudent,
         updateStudent,

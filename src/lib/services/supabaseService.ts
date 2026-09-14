@@ -1017,6 +1017,13 @@ export const supabaseService = {
     return true;
   },
 
+  async updateFacultyAssignment(id: string, updates: Partial<FacultySubjectAssignment>) {
+    const { data, error } = await supabase.from('faculty_subject_assignments').update(updates).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as FacultySubjectAssignment;
+  },
+
   async addTimetableEntry(entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase.from('timetable_entries').insert(entry).select().single();
     if (error) throw new Error(error.message);
@@ -1131,8 +1138,9 @@ export const supabaseService = {
     paramsOrSectionId: {
       sectionId: string;
       entries: Array<{
-        subject_id: string;
-        faculty_id: string;
+        subject_id?: string | null;
+        faculty_id?: string | null;
+        classroom_id?: string | null;
         day_of_week: DayOfWeek;
         period_number: number;
         start_time: string;
@@ -1208,14 +1216,16 @@ export const supabaseService = {
       if (lower === 'workshop') return 'Workshop';
       if (lower === 'project') return 'Project';
       if (lower === 'sports') return 'Sports';
+      if (lower === 'lunch' || lower === 'break') return 'Lunch';
+      if (lower === 'other') return 'Other';
       return 'Theory';
     };
 
     // 4. Format new rows with default rooms & active status
     const rowsToInsert = params.entries.map(e => ({
       section_id: params.sectionId,
-      subject_id: e.subject_id,
-      faculty_id: e.faculty_id,
+      subject_id: e.subject_id || null,
+      faculty_id: e.faculty_id || null,
       day_of_week: e.day_of_week,
       period_number: e.period_number,
       start_time: e.start_time || '09:00',
@@ -1332,6 +1342,7 @@ export const supabaseService = {
     // 8. Synchronize faculty_subject_assignments
     const distinctPairs = new Map<string, { facultyId: string; subjectId: string }>();
     for (const row of rowsToInsert) {
+      if (!row.faculty_id || !row.subject_id) continue;
       const pairKey = `${row.faculty_id}-${row.subject_id}`;
       if (!distinctPairs.has(pairKey)) {
         distinctPairs.set(pairKey, { facultyId: row.faculty_id, subjectId: row.subject_id });
