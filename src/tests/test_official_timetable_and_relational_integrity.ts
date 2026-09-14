@@ -371,10 +371,11 @@ async function runAudit() {
   // CRITERION 20: Class Coordinator view logic for Ms. Hemlata Chaudhry
   // ---------------------------------------------------------------------------
   const coordinatorFaculty = faculty.find(f => f.full_name.includes('Hemlata Chaudhry'));
-  const coordinatedSection = sections.find(s => s.class_coordinator_id === coordinatorFaculty?.id);
+  const coordinatedSections = sections.filter(s => s.class_coordinator_id === coordinatorFaculty?.id);
+  const coordinatedSecA = coordinatedSections.find(s => s.id === secA!.id);
   assert(
-    coordinatedSection?.id === secA!.id,
-    `Criterion 20: Ms. Hemlata Chaudhry is Class Coordinator of Section A (coordinated section: ${coordinatedSection?.name})`
+    Boolean(coordinatedSecA),
+    `Criterion 20: Ms. Hemlata Chaudhry is Class Coordinator of 2nd Year Section A (found: ${coordinatedSecA?.name} - ${coordinatedSecA?.room_number})`
   );
 
   console.log('\n========================================================================');

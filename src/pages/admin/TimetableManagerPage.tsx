@@ -75,8 +75,7 @@ export const TimetableManagerPage: React.FC = () => {
     return y2 ? y2.id : 'ALL';
   });
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
-    const secA = sections.find(s => s.name === 'A' && (s.room_number === 'A007' || s.id === 'fc93a413-c18d-4e72-9624-146767bc286b')) || sections[0];
-    return secA ? secA.id : 'fc93a413-c18d-4e72-9624-146767bc286b';
+    return sections[0]?.id || '';
   });
 
   // Dynamic sections filtered by selected academic year

@@ -343,8 +343,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Enriched Students with authoritative section join
         const enrichedStudents: Student[] = loadedStudents.map(s => {
-          const matchedSection = loadedSections.find(sec => sec.id === s.section_id) ||
-                                 loadedSections.find(sec => sec.name === (s.section as any)?.name);
+          const matchedSection = loadedSections.find(sec => sec.id === s.section_id);
           return {
             ...s,
             section: matchedSection,
@@ -1472,11 +1471,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         endTime: entry.end_time?.substring(0, 5) || '09:50',
         subjectId: entry.subject_id || '',
         subjectCode: sub?.subject_code || '',
-        subjectName: sub?.subject_name || 'Subject',
+        subjectName: sub?.subject_name || (entry.lecture_type === 'Lunch' ? 'Lunch Break' : ''),
         facultyId: entry.faculty_id || '',
-        facultyName: fac?.full_name || 'Faculty Member',
+        facultyName: fac?.full_name || '',
         facultyCode: fac?.faculty_code || fac?.employee_code,
-        roomNumber: entry.room_number || sec?.room_number || 'Room TBD',
+        roomNumber: entry.room_number || sec?.room_number || '',
         lectureType: entry.lecture_type || 'Theory',
         sectionId: entry.section_id,
         sectionName: sec?.name || '',

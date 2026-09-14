@@ -39,7 +39,12 @@ export const StudentAttendancePage: React.FC = () => {
     attendanceSessions,
     attendanceRecords,
     corrections,
-    students
+    students,
+    departments,
+    programs,
+    years,
+    semesters,
+    sessions
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
@@ -47,10 +52,13 @@ export const StudentAttendancePage: React.FC = () => {
   const studentId = currentStudent?.id || '';
   const stats = getStudentAttendance(studentId);
 
-  const currentSection = sections.find(s => s.id === currentStudent?.section_id) || 
-                         sections.find(s => s.name === currentStudent?.section?.name);
-  const isSectionB = currentSection?.name === 'B';
-  const branchName = isSectionB ? 'CSE + IT' : 'CSE';
+  const currentSection = sections.find(s => s.id === currentStudent?.section_id);
+  const dept = departments.find(d => d.id === currentStudent?.department_id);
+  const program = programs.find(p => p.id === currentStudent?.program_id);
+  const year = years.find(y => y.id === currentStudent?.academic_year_id);
+  const sem = semesters.find(s => s.id === currentStudent?.semester_id);
+  const session = sessions.find(s => s.id === currentStudent?.academic_session_id) || sessions[0];
+  const branchName = dept?.name || program?.name || 'Computer Science & Engineering';
 
   // Primary Navigation Tab: 'today' | 'history' | 'table' | 'claims'
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'table' | 'claims'>('today');
@@ -171,7 +179,7 @@ export const StudentAttendancePage: React.FC = () => {
             Official Attendance Ledger & History
           </h1>
           <p className="text-xs text-slate-300 mt-1">
-            B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> 2nd Year • Section <span className="text-[#00ff88] font-bold">{currentSection?.name}</span> • Odd Semester 2026–2027
+            {program?.name || 'B.Tech'} <span className="text-[#00ff88] font-bold">{branchName}</span>{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || '—'}</span>{session?.name ? ` • ${session.name}` : ''}
           </p>
         </div>
 

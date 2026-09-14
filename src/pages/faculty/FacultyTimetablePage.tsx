@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { getISTDayOfWeek } from '../../lib/utils/dateUtils';
+import { DEFAULT_INSTITUTIONAL_PERIODS } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
 interface FacultyTimetablePageProps {
@@ -80,16 +81,12 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
     SAT: 'Saturday',
   };
 
-  const timeSlots = [
-    { period: 1, label: 'Period I', time: '09:00 – 09:50' },
-    { period: 2, label: 'Period II', time: '09:50 – 10:40' },
-    { period: 3, label: 'Period III', time: '10:40 – 11:30' },
-    { period: 4, label: 'Period IV', time: '11:30 – 12:20' },
-    { period: 5, label: 'Lunch Break', time: '12:20 – 01:10', isLunch: true },
-    { period: 6, label: 'Period VI', time: '01:10 – 02:00' },
-    { period: 7, label: 'Period VII', time: '02:00 – 02:50' },
-    { period: 8, label: 'Period VIII', time: '02:50 – 03:40' },
-  ];
+  const timeSlots = DEFAULT_INSTITUTIONAL_PERIODS.map(p => ({
+    period: p.period_number,
+    label: p.is_break ? p.name : `Period ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][p.period_number - 1] || p.period_number}`,
+    time: `${p.start_time} – ${p.end_time}`,
+    isLunch: !!p.is_break,
+  }));
 
   const todayDay = getISTDayOfWeek();
   const defaultDay = (days.includes(todayDay as any) ? todayDay : 'MON') as typeof days[number];

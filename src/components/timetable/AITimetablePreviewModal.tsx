@@ -279,7 +279,7 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
             <span className="text-slate-500 font-semibold block text-[10px] uppercase tracking-wider">Target Section & Room</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <select
-                value={currentDoc.target_section_id || sections.find(s => s.name === currentDoc.section_name)?.id || ''}
+                value={currentDoc.target_section_id || (currentDoc.semester_id ? sections.find(s => s.semester_id === currentDoc.semester_id && s.name === currentDoc.section_name)?.id : '') || ''}
                 onChange={(e) => {
                   const newSecId = e.target.value;
                   const newSec = sections.find(s => s.id === newSecId);

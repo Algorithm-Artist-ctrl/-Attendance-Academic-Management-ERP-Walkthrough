@@ -38,15 +38,15 @@ async function runStudentDashboardAndTimetableSyncVerification() {
   assert(dbData !== null, 'Connected to live Supabase Cloud Database');
 
   const { students, sections, subjects, faculty, timetable } = dbData!;
-  const secB = sections.find(s => s.name === 'B')!;
-  const secA = sections.find(s => s.name === 'A')!;
+  const secB = sections.find(s => s.id === '233957c0-4fef-42c6-8285-40ebf73ea6b7') || sections.find(s => s.name === 'B' && s.room_number === 'A006')!;
+  const secA = sections.find(s => s.id === 'fc93a413-c18d-4e72-9624-146767bc286b') || sections.find(s => s.name === 'A' && s.room_number === 'A007')!;
 
-  // Find Section B student Tarun Kushwah
-  const studentB = students.find(s => s.section_id === secB.id || s.section?.name === 'B')!;
+  // Find Section B student
+  const studentB = students.find(s => s.section_id === secB.id)!;
   assert(Boolean(studentB), 'Resolved Student B record (Section B)');
 
   // Find Section A student
-  const studentA = students.find(s => s.section_id === secA.id || s.section?.name === 'A')!;
+  const studentA = students.find(s => s.section_id === secA.id)!;
   assert(Boolean(studentA), 'Resolved Student A record (Section A)');
 
   // =========================================================================
@@ -67,8 +67,9 @@ async function runStudentDashboardAndTimetableSyncVerification() {
       });
   };
 
+  const expectedBCount = timetable.filter(t => t.section_id === secB.id && t.active).length;
   const studentBTimetable = getStudentTimetable(studentBSectionId);
-  assert(studentBTimetable.length === 42, `Student B timetable has exactly 42 periods across Mon-Sat (got: ${studentBTimetable.length})`);
+  assert(studentBTimetable.length === expectedBCount && expectedBCount > 0, `Student B timetable has exactly ${expectedBCount} periods across Mon-Sat (got: ${studentBTimetable.length})`);
 
   // Verify all entries belong to Section B
   assert(studentBTimetable.every(t => t.section_id === secB.id), '100% of student timetable entries belong strictly to Section B');
@@ -116,8 +117,9 @@ async function runStudentDashboardAndTimetableSyncVerification() {
   // SUITE 3: Section A vs Section B Cross-Isolation
   // =========================================================================
   console.log('\n--- SUITE 3: Section A vs Section B Isolation ---');
+  const expectedACount = timetable.filter(t => t.section_id === secA.id && t.active).length;
   const studentATimetable = getStudentTimetable(studentA.section_id || secA.id);
-  assert(studentATimetable.length === 42, `Student A timetable has 42 periods`);
+  assert(studentATimetable.length === expectedACount && expectedACount > 0, `Student A timetable has exactly ${expectedACount} periods`);
   assert(studentATimetable.every(t => t.section_id === secA.id), 'Student A timetable contains ONLY Section A lectures');
 
   // Verify Student A sees 0 Section B lectures

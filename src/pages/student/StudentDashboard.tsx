@@ -44,6 +44,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     semesters, 
     sessions,
     programs,
+    departments,
     corrections,
     students,
     courseAssignments,
@@ -149,13 +150,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
 
   const stats = getStudentAttendance(studentId);
 
-  const section = sections.find(s => s.id === currentStudent?.section_id) || 
-                  sections.find(s => s.name === currentStudent?.section?.name);
-  const isSectionB = section?.name === 'B';
-  const branchName = isSectionB ? 'CSE + IT' : 'CSE';
+  const section = sections.find(s => s.id === currentStudent?.section_id);
+  const dept = departments.find(d => d.id === currentStudent?.department_id);
+  const prog = programs.find(p => p.id === currentStudent?.program_id);
+  const branchName = dept?.name || prog?.name || 'Computer Science & Engineering';
 
   const year = years.find(y => y.id === currentStudent?.academic_year_id);
-  const prog = programs.find(p => p.id === currentStudent?.program_id);
   const sem = semesters.find(s => s.id === currentStudent?.semester_id);
   const session = sessions.find(s => s.id === currentStudent?.academic_session_id) || sessions[0];
   const sessionName = session?.name || 'Academic Session';
@@ -193,7 +193,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '—'}</span> • B.Tech <span className="text-[#00ff88] font-bold">{branchName}</span> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
+            Roll No. <span className="text-[#00ff88] font-bold">{student?.roll_number || '—'}</span> • {prog?.name || 'B.Tech'} <span className="text-[#00ff88] font-bold">{branchName}</span> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
           </p>
         </div>
 

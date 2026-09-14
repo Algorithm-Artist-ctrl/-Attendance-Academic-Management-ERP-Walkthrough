@@ -59,8 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const freshStudent = students.find(s => s.roll_number === targetRoll || s.id === targetId);
 
           if (freshStudent) {
-            const freshSection = sections.find(sec => sec.id === freshStudent.section_id) ||
-                                 sections.find(sec => sec.name === freshStudent.section?.name);
+            const freshSection = sections.find(sec => sec.id === freshStudent.section_id);
             latestProfile = {
               ...latestProfile,
               student_id: freshStudent.id,
@@ -181,8 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (matchedStudent) {
-        const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
-                        sections.find(sec => sec.name === matchedStudent.section?.name);
+        const studSec = sections.find(sec => sec.id === matchedStudent.section_id);
         const existingProf = profiles.find(p => p.student_id === matchedStudent.id || p.email === matchedStudent.email);
         matchedProfile = existingProf || {
           id: matchedStudent.id,
@@ -235,8 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (matchedStudent) {
-        const studSec = sections.find(sec => sec.id === matchedStudent.section_id) ||
-                        sections.find(sec => sec.name === matchedStudent.section?.name);
+        const studSec = sections.find(sec => sec.id === matchedStudent.section_id);
         const existingProf = profiles.find(p => p.student_id === matchedStudent.id || p.email === matchedStudent.email);
         matchedProfile = existingProf || {
           id: matchedStudent.id,
@@ -270,8 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Ensure student profile has fully hydrated Section authority
     if (matchedProfile.student) {
-      const currentSection = sections.find(sec => sec.id === matchedProfile.student?.section_id) ||
-                             sections.find(sec => sec.name === matchedProfile.student?.section?.name);
+      const currentSection = sections.find(sec => sec.id === matchedProfile.student?.section_id);
       if (currentSection) {
         matchedProfile.student.section = currentSection;
         matchedProfile.student.section_id = currentSection.id;

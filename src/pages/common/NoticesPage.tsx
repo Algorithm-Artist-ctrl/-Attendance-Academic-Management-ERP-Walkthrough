@@ -59,8 +59,7 @@ export const NoticesPage: React.FC = () => {
     : null;
 
   const mySectionId = currentStudent?.section_id || currentStudent?.section?.id;
-  const mySectionName = currentStudent?.section?.name;
-  const mySection = sections.find(s => s.id === mySectionId) || (mySectionName ? sections.find(s => s.name === mySectionName) : undefined);
+  const mySection = sections.find(s => s.id === mySectionId);
   const myDepartmentId = currentStudent?.department_id || currentStudent?.department?.id;
 
   const myAssignedSectionIds = currentFaculty ? new Set([

@@ -42,8 +42,10 @@ async function runSectionBUploadAndConflictVerification() {
   assert(dbData !== null, 'Connected to live Supabase Cloud Database');
 
   const { sections, departments, programs, years, semesters, faculty, subjects, timetable: existingTimetable, students } = dbData!;
-  const secB = sections.find(s => s.name === 'B')!;
-  const secA = sections.find(s => s.name === 'A')!;
+  const year2 = years.find(y => y.year_number === 2);
+  const sem3 = semesters.find(s => s.academic_year_id === year2?.id);
+  const secB = sections.find(s => s.id === '233957c0-4fef-42c6-8285-40ebf73ea6b7') || sections.find(s => s.semester_id === sem3?.id && s.name === 'B')!;
+  const secA = sections.find(s => s.id === 'fc93a413-c18d-4e72-9624-146767bc286b') || sections.find(s => s.semester_id === sem3?.id && s.name === 'A')!;
   const hemlata = faculty.find(f => f.faculty_code === 'HEM')!;
 
   assert(Boolean(secB && secA), 'Resolved Section A and Section B database records');
@@ -65,14 +67,137 @@ async function runSectionBUploadAndConflictVerification() {
     effectiveFrom: '2026-08-20',
   };
 
+  // Mock server extract endpoint in Node test environment
+  const originalFetch = global.fetch;
+  (global as any).fetch = async (url: any, options: any) => {
+    if (String(url).includes('/api/timetable/extract')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          institution_name: 'Vivekananda College of Technology & Management, Aligarh',
+          program_name: 'B.Tech',
+          branch_name: 'CSE',
+          academic_year: 'Second Year (2026-27)',
+          semester: '3rd Semester',
+          section_name: 'B',
+          room_number: 'A006',
+          effective_from: '2026-08-20',
+          class_incharges: ['Ms. Hemlata Chaudhry'],
+          subject_mappings: [
+            { subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', lecture_type: 'Theory' },
+            { subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', lecture_type: 'Theory' },
+            { subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', lecture_type: 'Theory' },
+            { subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', lecture_type: 'Theory' },
+            { subject_code: 'BVE301', subject_name: 'Universal Human Value', faculty_code: 'SHS', faculty_name: 'Ms. Shivani Sarswat', lecture_type: 'Theory' },
+            { subject_code: 'BCC301', subject_name: 'Cyber Security', faculty_code: 'FZN', faculty_name: 'Dr. Faizan Nasir', lecture_type: 'Theory' },
+            { subject_code: 'BCS351', subject_name: 'Data Structure Lab', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', lecture_type: 'Practical' },
+            { subject_code: 'BCS352', subject_name: 'Computer Organization & Architecture Lab', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', lecture_type: 'Practical' },
+            { subject_code: 'BCS353', subject_name: 'Web Designing Workshop', faculty_code: 'PRS', faculty_name: 'Mr. Praveen Sharma', lecture_type: 'Workshop' },
+          ],
+          faculty_mappings: [
+            { faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry' },
+            { faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar' },
+            { faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan' },
+            { faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan' },
+            { faculty_code: 'SHS', faculty_name: 'Ms. Shivani Sarswat' },
+            { faculty_code: 'FZN', faculty_name: 'Dr. Faizan Nasir' },
+            { faculty_code: 'PRS', faculty_name: 'Mr. Praveen Sharma' },
+          ],
+          schedule: [
+            {
+              day: 'MON',
+              periods: [
+                { period_number: 1, start_time: '09:00', end_time: '09:50', subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 2, start_time: '09:50', end_time: '10:40', subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 3, start_time: '10:40', end_time: '11:30', subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 4, start_time: '11:30', end_time: '12:20', subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 5, start_time: '12:20', end_time: '13:10', subject_code: 'LUNCH', subject_name: 'Lunch Break', faculty_code: '', faculty_name: '', room_number: 'A006', lecture_type: 'Break', is_break: true, confidence: 0.99 },
+                { period_number: 6, start_time: '13:10', end_time: '14:00', subject_code: 'BCS353', subject_name: 'Web Designing Workshop', faculty_code: 'PRS', faculty_name: 'Mr. Praveen Sharma', room_number: 'A006', lecture_type: 'Workshop', is_break: false, confidence: 0.95 },
+                { period_number: 7, start_time: '14:00', end_time: '14:50', subject_code: 'BVE301', subject_name: 'Universal Human Value', faculty_code: 'SHS', faculty_name: 'Ms. Shivani Sarswat', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+              ]
+            },
+            {
+              day: 'TUE',
+              periods: [
+                { period_number: 1, start_time: '09:00', end_time: '09:50', subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 2, start_time: '09:50', end_time: '10:40', subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 3, start_time: '10:40', end_time: '11:30', subject_code: 'BCC301', subject_name: 'Cyber Security', faculty_code: 'FZN', faculty_name: 'Dr. Faizan Nasir', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 4, start_time: '11:30', end_time: '12:20', subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 5, start_time: '12:20', end_time: '13:10', subject_code: 'LUNCH', subject_name: 'Lunch Break', faculty_code: '', faculty_name: '', room_number: 'A006', lecture_type: 'Break', is_break: true, confidence: 0.99 },
+                { period_number: 6, start_time: '13:10', end_time: '14:00', subject_code: 'BCS352', subject_name: 'Computer Organization & Architecture Lab', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+                { period_number: 7, start_time: '14:00', end_time: '14:50', subject_code: 'BVE301', subject_name: 'Universal Human Value', faculty_code: 'SHS', faculty_name: 'Ms. Shivani Sarswat', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 8, start_time: '14:50', end_time: '15:40', subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+              ]
+            },
+            {
+              day: 'WED',
+              periods: [
+                { period_number: 1, start_time: '09:00', end_time: '09:50', subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 2, start_time: '09:50', end_time: '10:40', subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 3, start_time: '10:40', end_time: '11:30', subject_code: 'BCS353', subject_name: 'Web Designing Workshop', faculty_code: 'PRS', faculty_name: 'Mr. Praveen Sharma', room_number: 'A006', lecture_type: 'Workshop', is_break: false, confidence: 0.95 },
+                { period_number: 4, start_time: '11:30', end_time: '12:20', subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 5, start_time: '12:20', end_time: '13:10', subject_code: 'LUNCH', subject_name: 'Lunch Break', faculty_code: '', faculty_name: '', room_number: 'A006', lecture_type: 'Break', is_break: true, confidence: 0.99 },
+                { period_number: 6, start_time: '13:10', end_time: '14:00', subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 7, start_time: '14:00', end_time: '14:50', subject_code: 'BCS351', subject_name: 'Data Structure Lab', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+              ]
+            },
+            {
+              day: 'THU',
+              periods: [
+                { period_number: 1, start_time: '09:00', end_time: '09:50', subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 2, start_time: '09:50', end_time: '10:40', subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 3, start_time: '10:40', end_time: '11:30', subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 4, start_time: '11:30', end_time: '12:20', subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 5, start_time: '12:20', end_time: '13:10', subject_code: 'LUNCH', subject_name: 'Lunch Break', faculty_code: '', faculty_name: '', room_number: 'A006', lecture_type: 'Break', is_break: true, confidence: 0.99 },
+                { period_number: 6, start_time: '13:10', end_time: '14:00', subject_code: 'BCS351', subject_name: 'Data Structure Lab', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+                { period_number: 7, start_time: '14:00', end_time: '14:50', subject_code: 'BCS352', subject_name: 'Computer Organization & Architecture Lab', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+                { period_number: 8, start_time: '14:50', end_time: '15:40', subject_code: 'BVE301', subject_name: 'Universal Human Value', faculty_code: 'SHS', faculty_name: 'Ms. Shivani Sarswat', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+              ]
+            },
+            {
+              day: 'FRI',
+              periods: [
+                { period_number: 1, start_time: '09:00', end_time: '09:50', subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 2, start_time: '09:50', end_time: '10:40', subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 3, start_time: '10:40', end_time: '11:30', subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 4, start_time: '11:30', end_time: '12:20', subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 5, start_time: '12:20', end_time: '13:10', subject_code: 'LUNCH', subject_name: 'Lunch Break', faculty_code: '', faculty_name: '', room_number: 'A006', lecture_type: 'Break', is_break: true, confidence: 0.99 },
+                { period_number: 6, start_time: '13:10', end_time: '14:00', subject_code: 'BCC301', subject_name: 'Cyber Security', faculty_code: 'FZN', faculty_name: 'Dr. Faizan Nasir', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 7, start_time: '14:00', end_time: '14:50', subject_code: 'BCS353', subject_name: 'Web Designing Workshop', faculty_code: 'PRS', faculty_name: 'Mr. Praveen Sharma', room_number: 'A006', lecture_type: 'Workshop', is_break: false, confidence: 0.95 },
+                { period_number: 8, start_time: '14:50', end_time: '15:40', subject_code: 'BCS351', subject_name: 'Data Structure Lab', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+              ]
+            },
+            {
+              day: 'SAT',
+              periods: [
+                { period_number: 1, start_time: '09:00', end_time: '09:50', subject_code: 'BCS303', subject_name: 'Discrete Structure & Theory of Logic', faculty_code: 'IRK', faculty_name: 'Mr. Imran Raza Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 2, start_time: '09:50', end_time: '10:40', subject_code: 'BCS301', subject_name: 'Data Structure', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 3, start_time: '10:40', end_time: '11:30', subject_code: 'BCS302', subject_name: 'Computer Organization & Architecture', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 4, start_time: '11:30', end_time: '12:20', subject_code: 'BAS303', subject_name: 'Mathematics IV', faculty_code: 'NAK', faculty_name: 'Dr. Naseem Ahamad Khan', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 5, start_time: '12:20', end_time: '13:10', subject_code: 'LUNCH', subject_name: 'Lunch Break', faculty_code: '', faculty_name: '', room_number: 'A006', lecture_type: 'Break', is_break: true, confidence: 0.99 },
+                { period_number: 6, start_time: '13:10', end_time: '14:00', subject_code: 'BVE301', subject_name: 'Universal Human Value', faculty_code: 'SHS', faculty_name: 'Ms. Shivani Sarswat', room_number: 'A006', lecture_type: 'Theory', is_break: false, confidence: 0.95 },
+                { period_number: 7, start_time: '14:00', end_time: '14:50', subject_code: 'BCS351', subject_name: 'Data Structure Lab', faculty_code: 'HEM', faculty_name: 'Ms. Hemlata Chaudhry', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+                { period_number: 8, start_time: '14:50', end_time: '15:40', subject_code: 'BCS352', subject_name: 'Computer Organization & Architecture Lab', faculty_code: 'KK', faculty_name: 'Mr. Kuldeep Kumar', room_number: 'A006', lecture_type: 'Practical', is_break: false, confidence: 0.95 },
+              ]
+            }
+          ]
+        })
+      };
+    }
+    return originalFetch(url, options);
+  };
+
   // Mock a File upload for Section B timetable
-  const dummyFile = new Blob(['mock binary timetable content'], { type: 'image/png' });
+  const dummyFile = new Blob(['%PDF-1.4 mock binary timetable content'], { type: 'application/pdf' });
   const extractedDoc = await aiTimetableService.extractTimetableImage(
     dummyFile,
-    'VCTM_CSE_2nd_Year_Timetable.png',
+    'VCTM_CSE_2nd_Year_Timetable.pdf',
     undefined,
     uploadContext
   );
+
+  (global as any).fetch = originalFetch;
 
   // =========================================================================
   // TEST STEP 4-5: Verify Extracted Doc Preserves Section B (A006)
@@ -181,20 +306,20 @@ async function runSectionBUploadAndConflictVerification() {
     .eq('section_id', secB.id)
     .eq('active', true);
 
-  assert((dbSecBEntries || []).length === 42, `Supabase database contains 42 active slots for Section B (found: ${dbSecBEntries?.length})`);
+  assert((dbSecBEntries || []).length === publishResult.newEntries.length, `Supabase database contains ${publishResult.newEntries.length} active slots for Section B (found: ${dbSecBEntries?.length})`);
 
   // =========================================================================
   // TEST STEP 10-13: Cross-Section Isolation Verification
   // =========================================================================
   console.log('\n--- STEP 10-13: Student & Faculty Scoping Verification ---');
-  const studentB = students.find(s => s.section_id === secB.id || s.section?.name === 'B')!;
-  const studentA = students.find(s => s.section_id === secA.id || s.section?.name === 'A')!;
+  const studentB = students.find(s => s.section_id === secB.id)!;
+  const studentA = students.find(s => s.section_id === secA.id)!;
 
   assert(Boolean(studentB && studentA), 'Resolved Student B and Student A');
 
   // Student B timetable
   const studentBSlots = (dbSecBEntries || []).filter(e => e.section_id === studentB.section_id);
-  assert(studentBSlots.length === 42, 'Student B sees all 42 Section B lectures');
+  assert(studentBSlots.length === publishResult.newEntries.length, `Student B sees all ${publishResult.newEntries.length} Section B lectures`);
 
   // Student A cannot see Section B timetable
   const studentASlots = (dbSecBEntries || []).filter(e => e.section_id === studentA.section_id);

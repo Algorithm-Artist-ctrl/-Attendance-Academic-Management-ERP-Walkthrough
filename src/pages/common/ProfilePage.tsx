@@ -47,12 +47,10 @@ export const ProfilePage: React.FC = () => {
   const studentId = currentStudent?.id || '';
   const stats = role === 'student' && studentId ? getStudentAttendance(studentId) : null;
 
-  const sec = sections.find(s => s.id === currentStudent?.section_id) || 
-              sections.find(s => s.name === currentStudent?.section?.name);
-  const isSectionB = sec?.name === 'B';
+  const sec = sections.find(s => s.id === currentStudent?.section_id);
   const dept = departments.find(d => d.id === (student?.department_id || currentFaculty?.department_id)) || departments[0];
   const prog = programs.find(p => p.id === student?.program_id) || programs[0];
-  const branchName = prog?.name || (isSectionB ? 'Computer Science & Engineering + IT' : 'Computer Science & Engineering');
+  const branchName = dept?.name || prog?.name || 'Computer Science & Engineering';
   const year = years.find(y => y.id === student?.academic_year_id);
   const sem = semesters.find(s => s.id === student?.semester_id);
   const mentor = faculty.find(f => f.id === student?.mentor_faculty_id);

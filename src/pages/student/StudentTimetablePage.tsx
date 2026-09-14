@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { getISTDayOfWeek } from '../../lib/utils/dateUtils';
 import { DayOfWeek } from '../../types/database.types';
+import { DEFAULT_INSTITUTIONAL_PERIODS } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
 export const StudentTimetablePage: React.FC = () => {
@@ -14,18 +15,19 @@ export const StudentTimetablePage: React.FC = () => {
     faculty, 
     sections, 
     programs, 
+    departments,
     years, 
-    semesters,
+    semesters, 
     sessions,
     students 
   } = useAcademic();
 
   // Authoritative student identity resolved from database
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
-  const currentSection = sections.find(s => s.id === currentStudent?.section_id) || 
-                         sections.find(s => s.name === currentStudent?.section?.name);
+  const currentSection = sections.find(s => s.id === currentStudent?.section_id);
 
   const program = programs.find(p => p.id === currentStudent?.program_id);
+  const dept = departments.find(d => d.id === currentStudent?.department_id);
   const year = years.find(y => y.id === currentStudent?.academic_year_id);
   const sem = semesters.find(s => s.id === currentStudent?.semester_id);
   const session = sessions.find(s => s.id === currentStudent?.academic_session_id) || sessions[0];
@@ -48,19 +50,14 @@ export const StudentTimetablePage: React.FC = () => {
   const defaultDay = (days.includes(todayDay as any) ? todayDay : 'MON') as DayOfWeek;
   const [selectedMobileDay, setSelectedMobileDay] = useState<DayOfWeek>(defaultDay);
 
-  const timeSlots = [
-    { period: 1, label: 'Period I', time: '09:00 – 09:50' },
-    { period: 2, label: 'Period II', time: '09:50 – 10:40' },
-    { period: 3, label: 'Period III', time: '10:40 – 11:30' },
-    { period: 4, label: 'Period IV', time: '11:30 – 12:20' },
-    { period: 5, label: 'Lunch Break', time: '12:20 – 01:10', isLunch: true },
-    { period: 6, label: 'Period VI', time: '01:10 – 02:00' },
-    { period: 7, label: 'Period VII', time: '02:00 – 02:50' },
-    { period: 8, label: 'Period VIII', time: '02:50 – 03:40' },
-  ];
+  const timeSlots = DEFAULT_INSTITUTIONAL_PERIODS.map(p => ({
+    period: p.period_number,
+    label: p.is_break ? p.name : `Period ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][p.period_number - 1] || p.period_number}`,
+    time: `${p.start_time} – ${p.end_time}`,
+    isLunch: !!p.is_break,
+  }));
 
-  const isSectionB = currentSection?.name === 'B';
-  const branchName = currentStudent?.department?.code || program?.code || 'CSE';
+  const branchName = dept?.name || program?.name || 'Computer Science & Engineering';
   const classIncharge = faculty.find(f => f.id === currentSection?.class_coordinator_id)?.full_name || 
                         currentSection?.class_coordinator?.full_name || 
                         'Class Coordinator';
