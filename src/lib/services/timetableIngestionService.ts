@@ -122,7 +122,7 @@ export class TimetableIngestionService {
       await supabase
         .from('sections')
         .update({
-          room_number: doc.room_number || report.section?.room_number || 'Room TBD',
+          room_number: doc.room_number || report.section?.room_number || 'Room A-101',
           class_coordinator_id: report.classCoordinator?.id || report.section?.class_coordinator_id,
           updated_at: new Date().toISOString(),
         })

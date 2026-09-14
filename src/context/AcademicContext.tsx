@@ -176,6 +176,7 @@ interface AcademicContextType {
   addTimetableEntry: (entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) => Promise<TimetableEntry>;
   updateTimetableEntry: (id: string, updates: Partial<TimetableEntry>) => Promise<TimetableEntry>;
   deleteTimetableEntry: (id: string) => Promise<boolean>;
+  deleteSectionTimetable: (sectionId: string, deletedBy?: string) => Promise<boolean>;
   saveSectionTimetable: (params: {
     sectionId: string;
     entries: Array<{
@@ -1179,15 +1180,73 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const deleteSectionTimetable = async (sectionId: string, deletedBy?: string) => {
+    const res = await supabaseService.deleteSectionTimetable({ sectionId, deletedBy });
+    setTimetable(prev => {
+      const remaining = prev.filter(t => t.section_id !== sectionId);
+      erpStorage.setTimetable(remaining);
+      return remaining;
+    });
+    await refreshTimetable();
+    return res.success;
+  };
+
   // 6. Timetable Conflict Engine
   const checkTimetableConflict = (entry: Omit<TimetableEntry, 'id'>, excludeId?: string): TimetableConflict | null => {
     const activeEntries = timetable.filter(t => t.active && t.id !== excludeId);
 
-    // Rule 1: Faculty Double-Booking
+    const toMins = (t?: string) => {
+      if (!t) return 0;
+      const [h, m] = t.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+
+    const hasTimeOverlap = (e1: { start_time?: string; end_time?: string; period_number: number }, e2: { start_time?: string; end_time?: string; period_number: number }) => {
+      if (e1.start_time && e1.end_time && e2.start_time && e2.end_time) {
+        const sA = toMins(e1.start_time);
+        const eA = toMins(e1.end_time);
+        const sB = toMins(e2.start_time);
+        const eB = toMins(e2.end_time);
+        if (eA > sA && eB > sB) {
+          return sA < eB && eA > sB;
+        }
+      }
+      return e1.period_number === e2.period_number;
+    };
+
+    // Rule 0: Invalid Time Check
+    if (entry.start_time && entry.end_time && toMins(entry.end_time) <= toMins(entry.start_time)) {
+      return {
+        type: 'invalid_time',
+        severity: 'blocking',
+        message: `Invalid slot timing: End time (${entry.end_time}) must be later than start time (${entry.start_time}).`,
+      };
+    }
+
+    // Rule 1: Same Section Intra-Slot Collision
+    if (entry.section_id) {
+      const sameSecConflict = activeEntries.find(
+        t => t.section_id === entry.section_id &&
+             t.day_of_week === entry.day_of_week &&
+             hasTimeOverlap(entry, t)
+      );
+      if (sameSecConflict) {
+        const sec = sections.find(s => s.id === entry.section_id);
+        const sub = subjects.find(s => s.id === sameSecConflict.subject_id);
+        return {
+          type: 'same_section',
+          severity: 'blocking',
+          message: `Same-section collision: Section ${sec?.name || ''} already has ${sub?.subject_code || 'a lecture'} scheduled on ${entry.day_of_week} Period ${entry.period_number} (${sameSecConflict.start_time || ''}–${sameSecConflict.end_time || ''}).`,
+          conflictingEntry: sameSecConflict
+        };
+      }
+    }
+
+    // Rule 2: Faculty Double-Booking
     const facultyConflict = activeEntries.find(
       t => t.faculty_id === entry.faculty_id &&
            t.day_of_week === entry.day_of_week &&
-           t.period_number === entry.period_number
+           hasTimeOverlap(entry, t)
     );
 
     if (facultyConflict) {
@@ -1195,25 +1254,30 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const conflictSec = sections.find(s => s.id === facultyConflict.section_id);
       return {
         type: 'faculty',
-        message: `Faculty conflict: ${fac?.full_name || 'Faculty'} is already scheduled to teach Section ${conflictSec?.name || 'Unknown'} during Period ${entry.period_number} on ${entry.day_of_week}.`,
+        severity: 'blocking',
+        message: `Faculty conflict: ${fac?.full_name || 'Faculty'} is already scheduled to teach Section ${conflictSec?.name || 'Unknown'} during Period ${entry.period_number} on ${entry.day_of_week} (${facultyConflict.start_time || ''}–${facultyConflict.end_time || ''}).`,
         conflictingEntry: facultyConflict
       };
     }
 
-    // Rule 2: Room Collision
-    const roomConflict = activeEntries.find(
-      t => t.room_number.toLowerCase().trim() === entry.room_number.toLowerCase().trim() &&
-           t.day_of_week === entry.day_of_week &&
-           t.period_number === entry.period_number
-    );
+    // Rule 3: Room Collision
+    if (entry.room_number) {
+      const roomConflict = activeEntries.find(
+        t => t.room_number &&
+             t.room_number.toLowerCase().trim() === entry.room_number.toLowerCase().trim() &&
+             t.day_of_week === entry.day_of_week &&
+             hasTimeOverlap(entry, t)
+      );
 
-    if (roomConflict) {
-      const conflictSec = sections.find(s => s.id === roomConflict.section_id);
-      return {
-        type: 'room',
-        message: `Room collision: ${entry.room_number} is already occupied by Section ${conflictSec?.name || 'Unknown'} during Period ${entry.period_number} on ${entry.day_of_week}.`,
-        conflictingEntry: roomConflict
-      };
+      if (roomConflict) {
+        const conflictSec = sections.find(s => s.id === roomConflict.section_id);
+        return {
+          type: 'room',
+          severity: 'blocking',
+          message: `Room collision: ${entry.room_number} is already occupied by Section ${conflictSec?.name || 'Unknown'} during Period ${entry.period_number} on ${entry.day_of_week} (${roomConflict.start_time || ''}–${roomConflict.end_time || ''}).`,
+          conflictingEntry: roomConflict
+        };
+      }
     }
 
     return null;
@@ -1860,6 +1924,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addTimetableEntry,
         updateTimetableEntry,
         deleteTimetableEntry,
+        deleteSectionTimetable,
         saveSectionTimetable,
         rollbackToVersion,
         checkTimetableConflict,

@@ -23,7 +23,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 
 export const ProfilePage: React.FC = () => {
-  const { user, role, changePassword, changeEmail } = useAuth();
+  const { user, role, changePassword, changeEmail, updateUserProfile } = useAuth();
   const { 
     institution, 
     departments, 
@@ -85,12 +85,30 @@ export const ProfilePage: React.FC = () => {
   const [emailModalError, setEmailModalError] = useState('');
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditing(false);
-    setSuccessBannerText('Profile Contact Updated Successfully!');
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+    setIsSaving(true);
+    try {
+      const res = await updateUserProfile({ phone: phone.trim() });
+      if (!res.success) {
+        setSuccessBannerText(res.error || 'Failed to update contact info');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3500);
+        return;
+      }
+      setIsEditing(false);
+      setSuccessBannerText('Profile Contact Information Updated Successfully in Supabase Cloud!');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err: any) {
+      setSuccessBannerText(err.message || 'Error updating profile');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
@@ -248,27 +266,27 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Email Address</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Email Address <span className="text-[10px] text-slate-400 font-normal">(Managed via Account Security below)</span>
+                </label>
                 <input
                   type="email"
-                  disabled={!isEditing}
+                  disabled
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full px-3.5 py-2 text-xs rounded-xl ${
-                    isEditing 
-                      ? 'bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]' 
-                      : 'bg-slate-950/50 border border-emerald-500/15 text-slate-300 font-semibold'
-                  }`}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/50 border border-emerald-500/15 text-slate-300 font-semibold cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Contact Phone</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Contact Phone {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                </label>
                 <input
                   type="tel"
-                  disabled={!isEditing}
+                  disabled={!isEditing || isSaving}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 9876543210"
                   className={`w-full px-3.5 py-2 text-xs rounded-xl ${
                     isEditing 
                       ? 'bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]' 
@@ -411,9 +429,27 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {isEditing && (
-              <div className="flex justify-end pt-4 border-t border-emerald-500/15">
-                <Button type="submit" variant="neon" size="sm" leftIcon={<Save className="w-4 h-4 text-slate-950" />}>
-                  Save Profile Changes
+              <div className="flex justify-end pt-4 border-t border-emerald-500/15 gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setIsEditing(false);
+                    setPhone(student?.phone || currentFaculty?.phone || user?.phone || '');
+                  }}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="neon" 
+                  size="sm" 
+                  disabled={isSaving}
+                  leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+                >
+                  {isSaving ? 'Saving...' : 'Save Profile Changes'}
                 </Button>
               </div>
             )}

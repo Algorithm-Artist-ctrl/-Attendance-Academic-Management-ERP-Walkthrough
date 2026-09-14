@@ -1036,24 +1036,130 @@ export const supabaseService = {
     return true;
   },
 
-  async saveSectionTimetable(params: {
-    sectionId: string;
-    entries: Array<{
-      subject_id: string;
-      faculty_id: string;
-      day_of_week: DayOfWeek;
-      period_number: number;
-      start_time: string;
-      end_time: string;
-      room_number?: string;
-      lecture_type?: LectureType;
-      active?: boolean;
-    }>;
-    publishedBy?: string;
-    effectiveDate?: string;
-    sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE' | 'GOOGLE_SHEET_CSV_SYNC' | 'CSV_FILE_UPLOAD' | string;
-    sourceUrl?: string;
-  }): Promise<{ success: boolean; count: number; version?: TimetableVersion }> {
+  /**
+   * Atomically delete all timetable entries for a section, archive previous versions, and broadcast realtime update
+   */
+  async deleteSectionTimetable(
+    paramsOrSectionId: { sectionId: string; deletedBy?: string } | string,
+    deletedByParam?: string
+  ): Promise<{ success: boolean; deletedCount: number }> {
+    const sectionId = typeof paramsOrSectionId === 'string' ? paramsOrSectionId : paramsOrSectionId.sectionId;
+    const deletedBy = (typeof paramsOrSectionId === 'string' ? deletedByParam : paramsOrSectionId.deletedBy) || 'HOD';
+
+    // 1. Try PostgreSQL RPC first
+    try {
+      const { data: rpcResult, error: rpcErr } = await supabase.rpc('delete_section_timetable', {
+        p_section_id: sectionId,
+        p_deleted_by: deletedBy,
+      });
+
+      if (!rpcErr && rpcResult && rpcResult.success) {
+        this.invalidateMasterCache();
+        try {
+          const channel = supabase.channel('vctm-erp-realtime-channel');
+          await channel.send({
+            type: 'broadcast',
+            event: 'timetable_updated',
+            payload: {
+              section_id: sectionId,
+              period_count: 0,
+              action: 'DELETED',
+              timestamp: new Date().toISOString(),
+            }
+          });
+        } catch {}
+
+        return { success: true, deletedCount: rpcResult.deleted_count || 0 };
+      }
+    } catch (rpcEx) {
+      console.warn('RPC delete_section_timetable fallback to client:', rpcEx);
+    }
+
+    // 2. Client fallback
+    const { count: existingCount } = await supabase
+      .from('timetable_entries')
+      .select('id', { count: 'exact' })
+      .eq('section_id', sectionId);
+
+    const { error: delErr } = await supabase
+      .from('timetable_entries')
+      .delete()
+      .eq('section_id', sectionId);
+
+    if (delErr) {
+      throw new Error(`Failed to delete section timetable: ${delErr.message}`);
+    }
+
+    await supabase
+      .from('timetable_versions')
+      .update({ status: 'archived', updated_at: new Date().toISOString() })
+      .eq('section_id', sectionId)
+      .eq('status', 'active');
+
+    await supabase.from('audit_logs').insert([{
+      action: 'TIMETABLE_SECTION_DELETED',
+      actor_name: deletedBy,
+      actor_role: 'hod',
+      entity_type: 'sections',
+      entity_id: sectionId,
+      new_values: {
+        section_id: sectionId,
+        deleted_entries_count: existingCount || 0,
+      }
+    }]);
+
+    this.invalidateMasterCache();
+
+    try {
+      const channel = supabase.channel('vctm-erp-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'timetable_updated',
+        payload: {
+          section_id: sectionId,
+          period_count: 0,
+          action: 'DELETED',
+          timestamp: new Date().toISOString(),
+        }
+      });
+    } catch {}
+
+    return { success: true, deletedCount: existingCount || 0 };
+  },
+
+  async saveSectionTimetable(
+    paramsOrSectionId: {
+      sectionId: string;
+      entries: Array<{
+        subject_id: string;
+        faculty_id: string;
+        day_of_week: DayOfWeek;
+        period_number: number;
+        start_time: string;
+        end_time: string;
+        room_number?: string;
+        lecture_type?: LectureType;
+        active?: boolean;
+      }>;
+      publishedBy?: string;
+      effectiveDate?: string;
+      sourceType?: 'CSV_URL' | 'CSV_UPLOAD' | 'MANUAL_EDIT' | 'AI_INGESTION' | 'ROLLBACK_RESTORE' | 'GOOGLE_SHEET_CSV_SYNC' | 'CSV_FILE_UPLOAD' | string;
+      sourceUrl?: string;
+    } | string,
+    entriesParam?: Array<any>,
+    publishedByParam?: string
+  ): Promise<{ success: boolean; count: number; version?: TimetableVersion }> {
+    const params = typeof paramsOrSectionId === 'string'
+      ? {
+          sectionId: paramsOrSectionId,
+          entries: entriesParam || [],
+          publishedBy: publishedByParam || 'HOD / Super Administrator',
+          effectiveDate: undefined as string | undefined,
+          sourceType: undefined as string | undefined,
+          sourceUrl: undefined as string | undefined,
+        }
+      : paramsOrSectionId;
+
     if (!params.sectionId) {
       throw new Error('Target Section ID is required to save timetable.');
     }
@@ -1094,6 +1200,17 @@ export const supabaseService = {
       .eq('section_id', params.sectionId)
       .eq('status', 'active');
 
+    const normalizeLectureType = (lt?: string): LectureType => {
+      if (!lt) return 'Theory';
+      const lower = lt.toLowerCase();
+      if (lower === 'practical' || lower === 'lab') return 'Practical';
+      if (lower === 'tutorial') return 'Tutorial';
+      if (lower === 'workshop') return 'Workshop';
+      if (lower === 'project') return 'Project';
+      if (lower === 'sports') return 'Sports';
+      return 'Theory';
+    };
+
     // 4. Format new rows with default rooms & active status
     const rowsToInsert = params.entries.map(e => ({
       section_id: params.sectionId,
@@ -1104,7 +1221,7 @@ export const supabaseService = {
       start_time: e.start_time || '09:00',
       end_time: e.end_time || '09:50',
       room_number: e.room_number || defaultRoom,
-      lecture_type: e.lecture_type || 'Theory',
+      lecture_type: normalizeLectureType(e.lecture_type),
       active: true,
     }));
 
@@ -1366,33 +1483,48 @@ export const supabaseService = {
    */
   async checkFacultyCrossSectionConflicts(params: {
     sectionId: string;
-    entries: Array<{ faculty_id: string; day_of_week: DayOfWeek; period_number: number; subject_id?: string }>;
-  }): Promise<Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string }>> {
+    entries: Array<{ faculty_id: string; day_of_week: DayOfWeek; period_number: number; start_time?: string; end_time?: string; subject_id?: string }>;
+  }): Promise<Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string; timeRange?: string }>> {
     const facultyIds = Array.from(new Set(params.entries.map(e => e.faculty_id).filter(Boolean)));
     if (facultyIds.length === 0) return [];
 
     const { data: otherEntries, error } = await supabase
       .from('timetable_entries')
-      .select('faculty_id, day_of_week, period_number, section_id, sections(name), subjects(subject_code), faculty(full_name)')
+      .select('faculty_id, day_of_week, period_number, start_time, end_time, section_id, sections(name), subjects(subject_code), faculty(full_name)')
       .in('faculty_id', facultyIds)
       .neq('section_id', params.sectionId)
       .eq('active', true);
 
     if (error || !otherEntries || otherEntries.length === 0) return [];
 
-    const conflicts: Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string }> = [];
+    const conflicts: Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string; timeRange?: string }> = [];
+
+    const toMins = (t?: string) => {
+      if (!t) return 0;
+      const [h, m] = t.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
 
     for (const e of params.entries) {
-      const match = otherEntries.find((o: any) => 
-        o.faculty_id === e.faculty_id &&
-        o.day_of_week === e.day_of_week &&
-        o.period_number === e.period_number
-      );
+      const match = otherEntries.find((o: any) => {
+        if (o.faculty_id !== e.faculty_id || o.day_of_week !== e.day_of_week) return false;
+        if (e.start_time && e.end_time && o.start_time && o.end_time) {
+          const sA = toMins(e.start_time);
+          const eA = toMins(e.end_time);
+          const sB = toMins(o.start_time);
+          const eB = toMins(o.end_time);
+          if (eA > sA && eB > sB) {
+            return sA < eB && eA > sB;
+          }
+        }
+        return o.period_number === e.period_number;
+      });
 
       if (match) {
         const facName = (match as any).faculty?.full_name || 'Faculty Member';
         const secName = (match as any).sections?.name || 'Other Section';
         const subCode = (match as any).subjects?.subject_code;
+        const timeRange = (match as any).start_time && (match as any).end_time ? `${(match as any).start_time}–${(match as any).end_time}` : undefined;
 
         conflicts.push({
           facultyName: facName,
@@ -1400,6 +1532,7 @@ export const supabaseService = {
           period: e.period_number,
           otherSectionName: secName,
           otherSubjectCode: subCode,
+          timeRange,
         });
       }
     }

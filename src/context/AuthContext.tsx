@@ -10,6 +10,7 @@ interface AuthContextType extends AuthState {
   switchUser: (profileId: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changeEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
+  updateUserProfile: (updates: { phone?: string; avatar_url?: string }) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -397,6 +398,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUserProfile = async (updates: { phone?: string; avatar_url?: string }): Promise<{ success: boolean; error?: string }> => {
+    if (!authState.user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const cleanPhone = updates.phone !== undefined ? updates.phone.trim() : (authState.user.phone || '');
+
+      // 1. Update Student record if applicable
+      if (authState.user.role === 'student' || authState.user.student_id) {
+        const studId = authState.user.student_id || authState.user.student?.id || authState.user.id;
+        const { error: sErr } = await supabase
+          .from('students')
+          .update({
+            phone: cleanPhone,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', studId);
+
+        if (sErr) console.warn('Student phone update warning:', sErr.message);
+      }
+
+      // 2. Update Faculty record if applicable
+      if (authState.user.role === 'faculty' || authState.user.role === 'hod' || authState.user.faculty_id) {
+        const facId = authState.user.faculty_id || authState.user.faculty?.id || authState.user.id;
+        const { error: fErr } = await supabase
+          .from('faculty')
+          .update({
+            phone: cleanPhone,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', facId);
+
+        if (fErr) console.warn('Faculty phone update warning:', fErr.message);
+      }
+
+      // 3. Update Profiles record
+      const { error: pErr } = await supabase
+        .from('profiles')
+        .update({
+          phone: cleanPhone,
+          avatar_url: updates.avatar_url || authState.user.avatar_url,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', authState.user.id);
+
+      if (pErr) {
+        await supabase
+          .from('profiles')
+          .update({
+            phone: cleanPhone,
+            avatar_url: updates.avatar_url || authState.user.avatar_url,
+            updated_at: new Date().toISOString()
+          })
+          .or(`email.eq.${authState.user.email}`);
+      }
+
+      // 4. Update session user state
+      const updatedUser: UserProfile = {
+        ...authState.user,
+        phone: cleanPhone,
+        avatar_url: updates.avatar_url || authState.user.avatar_url,
+        student: authState.user.student ? { ...authState.user.student, phone: cleanPhone } : undefined,
+        faculty: authState.user.faculty ? { ...authState.user.faculty, phone: cleanPhone } : undefined,
+      };
+
+      erpStorage.setCurrentSessionUser(updatedUser);
+      setAuthState(prev => ({
+        ...prev,
+        user: updatedUser,
+      }));
+
+      // 5. Audit log
+      try {
+        await supabase.from('audit_logs').insert([{
+          action: 'PROFILE_UPDATED',
+          actor_name: authState.user.full_name,
+          actor_role: authState.user.role,
+          entity_type: 'profiles',
+          entity_id: authState.user.id,
+          new_values: { phone: cleanPhone, avatar_url: updates.avatar_url }
+        }]);
+      } catch {}
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Update profile error:', err);
+      return { success: false, error: err.message || 'Failed to update profile' };
+    }
+  };
+
   const switchUser = (profileId: string) => {
     const profiles = erpStorage.getProfiles();
     const profile = profiles.find(p => p.id === profileId);
@@ -413,7 +505,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, switchUser, changePassword, changeEmail }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, switchUser, changePassword, changeEmail, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

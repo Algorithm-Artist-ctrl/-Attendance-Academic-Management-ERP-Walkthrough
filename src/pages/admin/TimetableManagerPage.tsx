@@ -36,6 +36,7 @@ import { AITimetableUploadModal } from '../../components/timetable/AITimetableUp
 import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS } from '../../config/academicConfig';
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
+import { TimetableConflictEngine, TimetableConflictItem } from '../../lib/services/timetableConflictEngine';
 import { clsx } from 'clsx';
 
 interface DraftSlot {
@@ -61,6 +62,7 @@ export const TimetableManagerPage: React.FC = () => {
     years, 
     semesters, 
     saveSectionTimetable, 
+    deleteSectionTimetable,
     refreshData 
   } = useAcademic();
 
@@ -97,12 +99,15 @@ export const TimetableManagerPage: React.FC = () => {
   const [csvPreview, setCsvPreview] = useState<CSVValidationResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Publishing state
+  // Publishing & Deletion state
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [crossSectionWarnings, setCrossSectionWarnings] = useState<string[]>([]);
   const [facultyConflicts, setFacultyConflicts] = useState<Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string }>>([]);
+  const [detectedConflicts, setDetectedConflicts] = useState<TimetableConflictItem[]>([]);
   const [showConflictDetails, setShowConflictDetails] = useState(false);
 
   const days: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -133,6 +138,37 @@ export const TimetableManagerPage: React.FC = () => {
     }
     return DEFAULT_INSTITUTIONAL_PERIODS.filter(p => !p.is_break).map(p => p.period_number);
   }, [sectionTimetable]);
+
+  // Real-time conflict analysis against current database state for the viewed section
+  const activeSectionConflicts = useMemo(() => {
+    if (!selectedSectionId) return [];
+    const sectionEntries = timetable.filter(t => t.section_id === selectedSectionId && t.active);
+    const report = TimetableConflictEngine.analyzeConflicts({
+      targetSectionId: selectedSectionId,
+      proposedEntries: sectionEntries.map(t => ({
+        id: t.id,
+        section_id: t.section_id,
+        subject_id: t.subject_id,
+        faculty_id: t.faculty_id,
+        day_of_week: t.day_of_week,
+        period_number: t.period_number,
+        start_time: t.start_time || '09:00',
+        end_time: t.end_time || '09:50',
+        room_number: t.room_number || currentSection?.room_number || '',
+        lecture_type: t.lecture_type,
+      })),
+      currentDbEntries: timetable,
+      sections,
+      subjects,
+      faculty,
+    });
+    return report.conflicts;
+  }, [timetable, selectedSectionId, sections, subjects, faculty, currentSection]);
+
+  // Combined conflict list: displays newly encountered import/edit errors, or existing DB collisions
+  const displayedConflicts = useMemo(() => {
+    return detectedConflicts.length > 0 ? detectedConflicts : activeSectionConflicts;
+  }, [detectedConflicts, activeSectionConflicts]);
 
   // Draft in-memory map for Edit Mode: Key = `${day_of_week}-${period_number}`
   const [draftSlots, setDraftSlots] = useState<Map<string, DraftSlot>>(new Map());
@@ -250,6 +286,33 @@ export const TimetableManagerPage: React.FC = () => {
     setIsEditMode(false);
   };
 
+  // Atomically delete section timetable from Supabase
+  const handleDeleteSectionTimetable = async () => {
+    if (isSuperAdmin || !selectedSectionId) return;
+    setIsDeleting(true);
+    setPublishError(null);
+    setPublishSuccessMsg(null);
+    setDetectedConflicts([]);
+
+    try {
+      const ok = await deleteSectionTimetable(selectedSectionId, user?.full_name || 'HOD');
+      if (ok) {
+        setPublishSuccessMsg(`Section ${currentSection?.name} timetable deleted successfully. All periods cleared.`);
+        setDraftSlots(new Map());
+        setIsEditMode(false);
+        setShowDeleteConfirm(false);
+        await refreshData(true);
+      } else {
+        setPublishError('Failed to delete section timetable.');
+      }
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      setPublishError(err.message || 'Failed to delete section timetable.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Publish Section Timetable to Supabase (Full Section Replacement)
   const handlePublishTimetable = async () => {
     if (isSuperAdmin) return;
@@ -257,29 +320,36 @@ export const TimetableManagerPage: React.FC = () => {
     setPublishError(null);
     setPublishSuccessMsg(null);
     setCrossSectionWarnings([]);
+    setDetectedConflicts([]);
 
     try {
       const entriesToPublish = Array.from(draftSlots.values());
 
-      // Detect non-blocking cross-section faculty overlaps
-      const warnings: string[] = [];
-      for (const entry of entriesToPublish) {
-        const fac = faculty.find(f => f.id === entry.faculty_id);
-        const overlap = timetable.find(t => 
-          t.faculty_id === entry.faculty_id &&
-          t.day_of_week === entry.day_of_week &&
-          t.period_number === entry.period_number &&
-          t.section_id !== selectedSectionId &&
-          t.active
-        );
+      // Validate through TimetableConflictEngine
+      const conflictReport = TimetableConflictEngine.analyzeConflicts({
+        targetSectionId: selectedSectionId,
+        proposedEntries: entriesToPublish.map(e => ({
+          subject_id: e.subject_id,
+          faculty_id: e.faculty_id,
+          day_of_week: e.day_of_week,
+          period_number: e.period_number,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          room_number: e.room_number || currentSection?.room_number || '',
+          lecture_type: e.lecture_type,
+        })),
+        currentDbEntries: timetable,
+        sections,
+        subjects,
+        faculty,
+      });
 
-        if (overlap) {
-          const overlapSec = sections.find(s => s.id === overlap.section_id);
-          warnings.push(`Cross-section faculty overlap: ${fac?.full_name || 'Faculty'} is also scheduled in Section ${overlapSec?.name || 'other section'} on ${entry.day_of_week} Period ${entry.period_number}. This timetable will still be published because Section ${currentSection?.name} is the authoritative target.`);
-        }
+      if (conflictReport.hasBlockingConflicts) {
+        setDetectedConflicts(conflictReport.conflicts);
+        setShowConflictDetails(true);
+        setPublishError(`Cannot publish timetable: ${conflictReport.blockingCount} collision(s) detected. Please resolve them before saving.`);
+        return;
       }
-
-      setCrossSectionWarnings(warnings);
 
       // Perform atomic database replacement
       const result = await saveSectionTimetable({
@@ -291,7 +361,7 @@ export const TimetableManagerPage: React.FC = () => {
           period_number: e.period_number,
           start_time: e.start_time,
           end_time: e.end_time,
-          room_number: e.room_number,
+          room_number: e.room_number || currentSection?.room_number || '',
           lecture_type: e.lecture_type,
           active: true,
         })),
@@ -300,6 +370,7 @@ export const TimetableManagerPage: React.FC = () => {
 
       setPublishSuccessMsg(`Section ${currentSection?.name} Timetable published successfully to Supabase! (${result.count} active periods verified)`);
       setIsEditMode(false);
+      setDetectedConflicts([]);
       await refreshData(true);
     } catch (err: any) {
       console.error('Publish error:', err);
@@ -323,6 +394,7 @@ export const TimetableManagerPage: React.FC = () => {
     setCsvError(null);
     setPublishSuccessMsg(null);
     setFacultyConflicts([]);
+    setDetectedConflicts([]);
     setShowConflictDetails(false);
 
     try {
@@ -338,29 +410,39 @@ export const TimetableManagerPage: React.FC = () => {
         return;
       }
 
-      // Check for genuine faculty cross-section scheduling conflicts
-      const conflicts = await supabaseService.checkFacultyCrossSectionConflicts({
-        sectionId: selectedSectionId,
-        entries: validation.entries.map(e => ({
-          faculty_id: e.faculty_id || '',
-          day_of_week: e.day_of_week,
-          period_number: e.period_number,
-          subject_id: e.subject_id
-        }))
+      // Run TimetableConflictEngine BEFORE database mutation
+      const proposed = validation.entries.map(e => ({
+        subject_id: e.subject_id || subjects[0]?.id,
+        faculty_id: e.faculty_id || faculty[0]?.id,
+        day_of_week: e.day_of_week,
+        period_number: e.period_number,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        room_number: e.room_number || currentSection?.room_number || '',
+        lecture_type: e.lecture_type || 'Theory',
+      }));
+
+      const conflictReport = TimetableConflictEngine.analyzeConflicts({
+        targetSectionId: selectedSectionId,
+        proposedEntries: proposed,
+        currentDbEntries: timetable,
+        sections,
+        subjects,
+        faculty,
       });
+
+      if (conflictReport.hasBlockingConflicts) {
+        setDetectedConflicts(conflictReport.conflicts);
+        setShowConflictDetails(true);
+        setCsvError(`Sync halted: ${conflictReport.blockingCount} conflict(s) detected. Existing timetable was not modified.`);
+        return;
+      }
 
       // Atomically replace section timetable
       const result = await saveSectionTimetable({
         sectionId: selectedSectionId,
-        entries: validation.entries.map(e => ({
-          subject_id: e.subject_id || subjects[0]?.id,
-          faculty_id: e.faculty_id || faculty[0]?.id,
-          day_of_week: e.day_of_week,
-          period_number: e.period_number,
-          start_time: e.start_time,
-          end_time: e.end_time,
-          room_number: e.room_number || currentSection?.room_number || '',
-          lecture_type: e.lecture_type || 'Theory',
+        entries: proposed.map(e => ({
+          ...e,
           active: true,
         })),
         publishedBy: user?.full_name || 'HOD / Central Administrator',
@@ -369,9 +451,7 @@ export const TimetableManagerPage: React.FC = () => {
       });
 
       setPublishSuccessMsg(`✓ Timetable updated • ${result.count} periods synchronized`);
-      if (conflicts && conflicts.length > 0) {
-        setFacultyConflicts(conflicts);
-      }
+      setDetectedConflicts([]);
       setIsEditMode(false);
       await refreshData(true);
     } catch (err: any) {
@@ -389,6 +469,7 @@ export const TimetableManagerPage: React.FC = () => {
     setCsvError(null);
     setPublishSuccessMsg(null);
     setFacultyConflicts([]);
+    setDetectedConflicts([]);
     setShowConflictDetails(false);
     setIsPublishing(true);
 
@@ -413,27 +494,39 @@ export const TimetableManagerPage: React.FC = () => {
           return;
         }
 
-        const conflicts = await supabaseService.checkFacultyCrossSectionConflicts({
-          sectionId: selectedSectionId,
-          entries: validation.entries.map(e => ({
-            faculty_id: e.faculty_id || '',
-            day_of_week: e.day_of_week,
-            period_number: e.period_number,
-            subject_id: e.subject_id
-          }))
+        // Run TimetableConflictEngine BEFORE database mutation
+        const proposed = validation.entries.map(e => ({
+          subject_id: e.subject_id || subjects[0]?.id,
+          faculty_id: e.faculty_id || faculty[0]?.id,
+          day_of_week: e.day_of_week,
+          period_number: e.period_number,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          room_number: e.room_number || currentSection?.room_number || '',
+          lecture_type: e.lecture_type || 'Theory',
+        }));
+
+        const conflictReport = TimetableConflictEngine.analyzeConflicts({
+          targetSectionId: selectedSectionId,
+          proposedEntries: proposed,
+          currentDbEntries: timetable,
+          sections,
+          subjects,
+          faculty,
         });
+
+        if (conflictReport.hasBlockingConflicts) {
+          setDetectedConflicts(conflictReport.conflicts);
+          setShowConflictDetails(true);
+          setCsvError(`Upload halted: ${conflictReport.blockingCount} conflict(s) detected. Existing timetable was not modified.`);
+          setIsPublishing(false);
+          return;
+        }
 
         const result = await saveSectionTimetable({
           sectionId: selectedSectionId,
-          entries: validation.entries.map(e => ({
-            subject_id: e.subject_id || subjects[0]?.id,
-            faculty_id: e.faculty_id || faculty[0]?.id,
-            day_of_week: e.day_of_week,
-            period_number: e.period_number,
-            start_time: e.start_time,
-            end_time: e.end_time,
-            room_number: e.room_number || currentSection?.room_number || '',
-            lecture_type: e.lecture_type || 'Theory',
+          entries: proposed.map(e => ({
+            ...e,
             active: true,
           })),
           publishedBy: user?.full_name || 'HOD / Central Administrator',
@@ -441,9 +534,7 @@ export const TimetableManagerPage: React.FC = () => {
         });
 
         setPublishSuccessMsg(`✓ Timetable updated • ${result.count} periods synchronized`);
-        if (conflicts && conflicts.length > 0) {
-          setFacultyConflicts(conflicts);
-        }
+        setDetectedConflicts([]);
         setIsEditMode(false);
         await refreshData(true);
       } catch (err: any) {
@@ -598,6 +689,20 @@ export const TimetableManagerPage: React.FC = () => {
             </Button>
           )}
 
+          {/* HOD Operational Controls: Delete Section Timetable */}
+          {!isSuperAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
+              className="touch-target font-bold border-rose-500/40 text-rose-300 hover:bg-rose-500/10"
+              title={`Delete all timetable entries for Section ${currentSection?.name}`}
+            >
+              Delete Timetable
+            </Button>
+          )}
+
           {/* Versions History (View-Only Audit for Super Admin, Restore enabled for HOD) */}
           <Button
             variant="outline"
@@ -724,13 +829,13 @@ export const TimetableManagerPage: React.FC = () => {
             </div>
           )}
 
-          {/* Compact Non-Blocking Faculty Conflict Alert */}
-          {facultyConflicts.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2 animate-in fade-in">
+          {/* Conflict Alert Banner (Real-Time DB & Validation Collisions) */}
+          {displayedConflicts.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-300 text-xs space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-black text-amber-200">
                   <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>⚠ {facultyConflicts.length} faculty scheduling conflict{facultyConflicts.length > 1 ? 's' : ''} detected</span>
+                  <span>⚠ {displayedConflicts.length} schedule conflict{displayedConflicts.length > 1 ? 's' : ''} detected for Section {currentSection?.name}</span>
                 </div>
                 <button
                   onClick={() => setShowConflictDetails(!showConflictDetails)}
@@ -740,10 +845,10 @@ export const TimetableManagerPage: React.FC = () => {
                 </button>
               </div>
               {showConflictDetails && (
-                <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-200/90 font-mono pt-1">
-                  {facultyConflicts.map((c, i) => (
+                <ul className="list-disc pl-5 space-y-1.5 text-[11px] text-amber-200/90 font-mono pt-1">
+                  {displayedConflicts.map((c, i) => (
                     <li key={i}>
-                      {c.facultyName} has concurrent class at {c.day} Period {c.period} in Section {c.otherSectionName}{c.otherSubjectCode ? ` (${c.otherSubjectCode})` : ''}
+                      <span className="font-bold text-amber-300 uppercase">[{c.rule}]</span> {c.message}
                     </li>
                   ))}
                 </ul>
@@ -873,7 +978,11 @@ export const TimetableManagerPage: React.FC = () => {
           <div className="h-6 w-px bg-emerald-500/20" />
           <div>
             <span className="text-slate-500 block text-[10px] uppercase font-bold">Classroom</span>
-            <span className="font-bold text-[#00ff88] text-sm">{currentSection?.room_number || 'Room TBD'}</span>
+            <span className="font-bold text-[#00ff88] text-sm">
+              {currentSection?.room_number 
+                ? (currentSection.room_number.startsWith('Room') ? currentSection.room_number : `Room ${currentSection.room_number}`) 
+                : 'Room Unassigned'}
+            </span>
           </div>
           <div className="h-6 w-px bg-emerald-500/20" />
           <div>
@@ -919,6 +1028,7 @@ export const TimetableManagerPage: React.FC = () => {
             const draftEntry = isEditMode ? draftSlots.get(key) : undefined;
             const liveEntry = sectionTimetable.find(e => e.day_of_week === selectedMobileDay && e.period_number === period);
             const entry = isEditMode ? draftEntry : liveEntry;
+            const slotConflict = displayedConflicts.find(c => c.day === selectedMobileDay && c.period_number === period);
 
             const sub = entry ? (subjects.find(s => s.id === entry.subject_id) || (entry as any).subject) : undefined;
             const fac = entry ? (faculty.find(f => f.id === entry.faculty_id) || (entry as any).faculty) : undefined;
@@ -955,7 +1065,12 @@ export const TimetableManagerPage: React.FC = () => {
             return (
               <div 
                 key={period}
-                className="glass-card rounded-2xl p-4 border border-emerald-500/25 space-y-2 hover:border-emerald-500/40 transition-all"
+                className={clsx(
+                  "glass-card rounded-2xl p-4 border space-y-2 transition-all",
+                  slotConflict 
+                    ? "bg-rose-950/40 border-2 border-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.25)]" 
+                    : "border-emerald-500/25 hover:border-emerald-500/40"
+                )}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -963,6 +1078,12 @@ export const TimetableManagerPage: React.FC = () => {
                       Period {period}
                     </span>
                     <span className="text-xs font-mono text-slate-300 font-bold">{timeStr}</span>
+                    {slotConflict && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-400" />
+                        {slotConflict.rule}
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-2">
@@ -1042,6 +1163,7 @@ export const TimetableManagerPage: React.FC = () => {
                     const draftEntry = isEditMode ? draftSlots.get(key) : undefined;
                     const liveEntry = sectionTimetable.find(e => e.day_of_week === day && e.period_number === period);
                     const entry = isEditMode ? draftEntry : liveEntry;
+                    const slotConflict = displayedConflicts.find(c => c.day === day && c.period_number === period);
 
                     const sub = entry ? (subjects.find(s => s.id === entry.subject_id) || (entry as any).subject) : undefined;
                     const fac = entry ? (faculty.find(f => f.id === entry.faculty_id) || (entry as any).faculty) : undefined;
@@ -1068,9 +1190,11 @@ export const TimetableManagerPage: React.FC = () => {
                       <td key={period} className="p-2 border-r border-emerald-500/10">
                         <div className={clsx(
                           "p-2.5 rounded-xl text-left space-y-1 group relative transition-all",
-                          isEditMode 
-                            ? "bg-slate-950/90 border-2 border-emerald-500/40 hover:border-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.1)]"
-                            : "bg-slate-950/70 border border-emerald-500/20 hover:border-[#00ff88]"
+                          slotConflict
+                            ? "bg-rose-950/50 border-2 border-rose-500/80 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                            : isEditMode 
+                              ? "bg-slate-950/90 border-2 border-emerald-500/40 hover:border-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.1)]"
+                              : "bg-slate-950/70 border border-emerald-500/20 hover:border-[#00ff88]"
                         )}>
                           <div className="flex items-start justify-between gap-1">
                             <span className="font-black text-white block text-xs truncate max-w-[100px]" title={sub?.subject_name}>
@@ -1103,6 +1227,15 @@ export const TimetableManagerPage: React.FC = () => {
                           <span className="text-[11px] text-emerald-400 block truncate font-mono" title={fac?.full_name}>
                             {fac?.full_name || 'Faculty'}
                           </span>
+
+                          {slotConflict && (
+                            <div className="pt-0.5">
+                              <span className="text-[9px] font-black text-rose-300 flex items-center gap-1 bg-rose-900/60 px-1 py-0.5 rounded border border-rose-500/40 truncate" title={slotConflict.message}>
+                                <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                                <span className="truncate">{slotConflict.rule}</span>
+                              </span>
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-between text-[10px] pt-1 border-t border-emerald-500/10">
                             <span className="text-[#00ff88] font-bold">{entry.room_number || currentSection?.room_number}</span>
@@ -1264,6 +1397,47 @@ export const TimetableManagerPage: React.FC = () => {
         sectionId={selectedSectionId}
         sectionName={currentSection?.name}
       />
+
+      {/* Confirmation Modal for Timetable Deletion */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title={`Delete Section ${currentSection?.name} Timetable`}
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <p className="font-bold text-rose-200">
+                This will permanently remove all {sectionTimetable.length} scheduled periods for Section {currentSection?.name} from Supabase.
+              </p>
+              <p className="text-rose-300/80">
+                The active timetable version will be archived. Any faculty or room collisions caused by this section's schedule will clear immediately across the college.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteSectionTimetable}
+              isLoading={isDeleting}
+              leftIcon={<Trash2 className="w-4 h-4" />}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold border-rose-600"
+            >
+              {isDeleting ? 'Deleting...' : 'Confirm & Delete'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

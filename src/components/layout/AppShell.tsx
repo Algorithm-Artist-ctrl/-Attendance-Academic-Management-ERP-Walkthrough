@@ -139,6 +139,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
           { id: 'academic_oversight', label: 'Academic Oversight', icon: Award },
           { id: 'students', label: 'Students', icon: GraduationCap },
+          { id: 'import', label: 'Student Onboarding', icon: FileSpreadsheet },
           { id: 'faculty', label: 'Faculty', icon: Users },
           { id: 'timetable', label: 'Department Schedule', icon: Calendar },
           { id: 'reports', label: 'Attendance Reports', icon: FileSpreadsheet },

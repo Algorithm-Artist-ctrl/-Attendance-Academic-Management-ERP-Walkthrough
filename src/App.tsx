@@ -222,6 +222,8 @@ export const AppContent: React.FC = () => {
           );
         case 'students':
           return <StudentDirectoryPage />;
+        case 'import':
+          return <CSVImportPage />;
         case 'faculty':
           return <FacultyDirectoryPage />;
         case 'notices':

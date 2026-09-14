@@ -89,7 +89,7 @@ export interface TodayLectureItem {
 }
 
 export interface TimetableConflict {
-  type: 'faculty' | 'room' | 'section';
+  type: 'faculty' | 'room' | 'section' | 'same_section' | 'invalid_time' | 'invalid_assignment';
   severity?: 'blocking' | 'warning';
   targetSectionName?: string;
   conflictSourceName?: string;

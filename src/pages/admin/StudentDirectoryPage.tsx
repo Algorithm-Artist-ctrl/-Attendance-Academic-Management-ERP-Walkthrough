@@ -72,7 +72,11 @@ export const StudentDirectoryPage: React.FC = () => {
     try {
       const result = await studentSyncService.syncStudents(
         { url: googleSheetUrl },
-        { performedBy: user?.full_name || 'Tarun Kushwah (Super Admin)' }
+        { 
+          performedBy: user?.full_name || (isSuperAdmin ? 'Tarun Kushwah (Super Admin)' : 'HOD'),
+          userRole: role || undefined,
+          userDepartmentId: isHOD ? user?.department_id : undefined,
+        }
       );
       setSyncResult(result);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString();
@@ -99,7 +103,11 @@ export const StudentDirectoryPage: React.FC = () => {
       try {
         const result = await studentSyncService.syncStudents(
           { csvContent: content },
-          { performedBy: user?.full_name || 'Tarun Kushwah (Super Admin)' }
+          { 
+            performedBy: user?.full_name || (isSuperAdmin ? 'Tarun Kushwah (Super Admin)' : 'HOD'),
+            userRole: role || undefined,
+            userDepartmentId: isHOD ? user?.department_id : undefined,
+          }
         );
         setSyncResult(result);
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString();
@@ -263,8 +271,8 @@ export const StudentDirectoryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Student Data Source Panel for Super Admin */}
-      {isSuperAdmin && (
+      {/* Student Data Source Panel for Super Admin & HOD */}
+      {(isSuperAdmin || isHOD) && (
         <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/25 space-y-4 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -275,11 +283,13 @@ export const StudentDirectoryPage: React.FC = () => {
                 <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
                   Student Data Source
                   <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
-                    Super Admin Master Sync
+                    {isSuperAdmin ? 'Super Admin Master Sync' : `HOD Department Sync (${departments.find(d => d.id === user?.department_id)?.code || 'Dept'})`}
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Synchronize students from a published Google Sheet CSV URL or local file (Upsert by Roll No.)
+                  {isSuperAdmin 
+                    ? 'Synchronize students across all college departments from a Google Sheet CSV URL or file (Upsert by Roll No.)'
+                    : 'Synchronize students for your department from a Google Sheet CSV URL or file (Upsert by Roll No.)'}
                 </p>
               </div>
             </div>

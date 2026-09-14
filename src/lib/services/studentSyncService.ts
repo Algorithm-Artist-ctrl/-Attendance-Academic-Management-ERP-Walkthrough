@@ -20,6 +20,41 @@ export interface StudentSyncResult {
   timestamp: string;
 }
 
+export interface StudentCSVPreviewItem {
+  rowNumber: number;
+  rollNumber: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  departmentCode: string;
+  academicYear: string;
+  semesterName: string;
+  sectionName: string;
+  admissionType: string;
+  isValid: boolean;
+  errors: string[];
+  isExisting: boolean;
+}
+
+export interface StudentCSVValidationReport {
+  totalRows: number;
+  validCount: number;
+  invalidCount: number;
+  duplicatesInCSV: number;
+  newCount: number;
+  updateCount: number;
+  errors: StudentSyncRowError[];
+  previewRows: StudentCSVPreviewItem[];
+  canImport: boolean;
+}
+
+export interface StudentSyncOptions {
+  performedBy?: string;
+  defaultCohortYear?: number;
+  userRole?: string;
+  userDepartmentId?: string;
+}
+
 export class StudentSyncService {
   private static instance: StudentSyncService;
 
@@ -31,23 +66,9 @@ export class StudentSyncService {
   }
 
   /**
-   * Synchronize students from a Google Sheet CSV URL or raw CSV content
+   * Helper to load live academic hierarchy from Supabase
    */
-  public async syncStudents(
-    input: { url?: string; csvContent?: string },
-    options?: { performedBy?: string; defaultCohortYear?: number }
-  ): Promise<StudentSyncResult> {
-    let rawCsv = input.csvContent || '';
-
-    if (input.url && !rawCsv) {
-      rawCsv = await fetchCSVContent(input.url);
-    }
-
-    if (!rawCsv || rawCsv.trim().length === 0) {
-      throw new Error('CSV content is empty.');
-    }
-
-    // 1. Fetch live authoritative academic metadata from Supabase
+  private async loadAcademicHierarchy() {
     const [
       { data: depts, error: dErr },
       { data: progs, error: pErr },
@@ -78,6 +99,246 @@ export class StudentSyncService {
       throw new Error('Database is missing default institution, department, or academic session.');
     }
 
+    return {
+      depts: depts || [],
+      progs: progs || [],
+      sessions: sessions || [],
+      years: years || [],
+      semesters: semesters || [],
+      sections: sections || [],
+      existingStudents: existingStudents || [],
+      currentSession,
+      defaultDept,
+      defaultProg,
+    };
+  }
+
+  /**
+   * Validates CSV rows against the database and role restrictions without performing mutations.
+   */
+  public async validateStudentsCSV(
+    rawCsv: string,
+    options?: StudentSyncOptions
+  ): Promise<StudentCSVValidationReport> {
+    if (!rawCsv || rawCsv.trim().length === 0) {
+      throw new Error('CSV content is empty.');
+    }
+
+    const hierarchy = await this.loadAcademicHierarchy();
+    const { depts, years, semesters, sections, existingStudents, defaultDept } = hierarchy;
+
+    const parsed = Papa.parse<Record<string, string>>(rawCsv, {
+      header: true,
+      skipEmptyLines: 'greedy',
+    });
+
+    if (parsed.errors && parsed.errors.length > 0 && parsed.data.length === 0) {
+      throw new Error(`CSV Parsing Failed: ${parsed.errors[0]?.message || 'Unknown formatting error'}`);
+    }
+
+    const rows = parsed.data;
+    const errors: StudentSyncRowError[] = [];
+    const seenRollsInCSV = new Set<string>();
+    const previewRows: StudentCSVPreviewItem[] = [];
+
+    let duplicatesInCSV = 0;
+    let validCount = 0;
+    let newCount = 0;
+    let updateCount = 0;
+
+    for (let index = 0; index < rows.length; index++) {
+      const raw = rows[index];
+      const rowNum = index + 2;
+      const rowErrors: string[] = [];
+
+      // Extract roll number
+      const rawRoll = (
+        raw.roll_no ||
+        raw.roll_number ||
+        raw.rollno ||
+        raw.enrollment_no ||
+        raw.enrollment_number ||
+        raw.roll ||
+        raw['ROLL NO'] ||
+        raw['Roll No'] ||
+        raw['Roll Number'] ||
+        raw['ROLL NUMBER'] ||
+        ''
+      ).trim();
+
+      if (!rawRoll) {
+        rowErrors.push('Roll number is missing.');
+      }
+
+      const cleanRoll = rawRoll.toUpperCase();
+      if (cleanRoll) {
+        if (seenRollsInCSV.has(cleanRoll)) {
+          duplicatesInCSV++;
+          rowErrors.push(`Duplicate roll number "${cleanRoll}" in CSV.`);
+        } else {
+          seenRollsInCSV.add(cleanRoll);
+        }
+      }
+
+      // Extract name
+      const rawName = (
+        raw.name ||
+        raw.full_name ||
+        raw.student_name ||
+        raw['STUDENT NAME'] ||
+        raw['Student Name'] ||
+        raw['Full Name'] ||
+        raw['FULL NAME'] ||
+        raw['Name'] ||
+        ''
+      ).trim();
+
+      if (!rawName) {
+        rowErrors.push('Student name is missing.');
+      }
+
+      // Extract email & phone
+      const rawEmail = (raw.email || raw.student_email || raw['EMAIL'] || raw['Email'] || '').trim().toLowerCase();
+      const rawMobile = (raw.mobile || raw.phone || raw.contact || raw.mobile_no || raw['MOBILE'] || raw['Mobile'] || raw['Phone'] || '').trim();
+
+      // Resolve Department
+      const rawDept = (raw.department || raw.dept || raw.branch || raw['DEPARTMENT'] || raw['Department'] || '').trim().toUpperCase();
+      let matchedDept = defaultDept;
+      if (rawDept && depts.length > 0) {
+        const found = depts.find(d => d.code.toUpperCase() === rawDept || d.name.toUpperCase().includes(rawDept));
+        if (found) {
+          matchedDept = found;
+        } else {
+          rowErrors.push(`Department "${rawDept}" does not exist in database.`);
+        }
+      }
+
+      // HOD Department Scoping Check
+      if (options?.userRole === 'hod' && options.userDepartmentId) {
+        const userDept = depts.find(d => d.id === options.userDepartmentId);
+        const isMismatch = matchedDept.id !== options.userDepartmentId || 
+                           (rawDept && userDept && rawDept !== userDept.code.toUpperCase() && !userDept.name.toUpperCase().includes(rawDept));
+        if (isMismatch) {
+          rowErrors.push(`HOD Access Denied: Student belongs to department "${rawDept || matchedDept.code}" which is outside your administrative department boundary.`);
+        }
+      }
+
+      // Resolve Academic Year (1, 2, 3, 4)
+      const rawYear = (raw.year || raw.academic_year || raw.class_year || raw['YEAR'] || raw['Year'] || '').trim();
+      let resolvedYear = years[0];
+
+      if (rawYear) {
+        const numYear = parseInt(rawYear.replace(/\D/g, ''), 10);
+        const foundYear = years.find(y => 
+          (!isNaN(numYear) && y.year_number === numYear) ||
+          y.name.toLowerCase().includes(rawYear.toLowerCase())
+        );
+        if (foundYear) {
+          resolvedYear = foundYear;
+        } else {
+          rowErrors.push(`Academic Year "${rawYear}" does not exist.`);
+        }
+      } else if (options?.defaultCohortYear) {
+        const foundYear = years.find(y => y.year_number === options.defaultCohortYear);
+        if (foundYear) resolvedYear = foundYear;
+      }
+
+      // Resolve Semester for Year
+      const matchingSem = semesters.find(s => s.academic_year_id === resolvedYear?.id) || semesters[0];
+      if (!matchingSem && resolvedYear) {
+        rowErrors.push(`No active semester for Year ${resolvedYear.year_number}.`);
+      }
+
+      // Resolve Section
+      const rawSec = (raw.section || raw.sec || raw.class_section || raw['SECTION'] || raw['Section'] || '').trim().toUpperCase();
+      if (!rawSec) {
+        rowErrors.push('Class section is missing.');
+      }
+
+      let matchedSection = matchingSem 
+        ? sections.find(s => s.semester_id === matchingSem.id && s.name.toUpperCase() === rawSec && s.active)
+        : undefined;
+
+      if (!matchedSection) {
+        matchedSection = sections.find(s => s.name.toUpperCase() === rawSec && s.active);
+      }
+
+      if (!matchedSection && rawSec) {
+        rowErrors.push(`Section "${rawSec}" does not exist for Year ${resolvedYear?.year_number || '?'}.`);
+      }
+
+      // Admission Type
+      const rawAdm = (raw.admission_type || raw.type || raw.admission || '').trim().toLowerCase();
+      const admissionType: AdmissionType = rawAdm.includes('lateral') ? 'Lateral Entry' : 'Regular';
+
+      // Check existing status
+      const existing = existingStudents.find(s => s.roll_number.trim().toUpperCase() === cleanRoll);
+      const isExisting = !!existing;
+
+      if (rowErrors.length === 0) {
+        validCount++;
+        if (isExisting) {
+          updateCount++;
+        } else {
+          newCount++;
+        }
+      } else {
+        for (const msg of rowErrors) {
+          errors.push({ row: rowNum, rollNumber: cleanRoll, message: msg });
+        }
+      }
+
+      previewRows.push({
+        rowNumber: rowNum,
+        rollNumber: cleanRoll,
+        fullName: rawName.toUpperCase(),
+        email: rawEmail || (existing?.email || `${cleanRoll.toLowerCase()}@student.vctm.in`),
+        phone: rawMobile || existing?.phone || undefined,
+        departmentCode: matchedDept?.code || 'CSE',
+        academicYear: resolvedYear?.name || 'Year 1',
+        semesterName: matchingSem?.name || 'Sem 1',
+        sectionName: matchedSection?.name || rawSec,
+        admissionType,
+        isValid: rowErrors.length === 0,
+        errors: rowErrors,
+        isExisting,
+      });
+    }
+
+    return {
+      totalRows: rows.length,
+      validCount,
+      invalidCount: rows.length - validCount,
+      duplicatesInCSV,
+      newCount,
+      updateCount,
+      errors,
+      previewRows,
+      canImport: validCount > 0,
+    };
+  }
+
+  /**
+   * Synchronize students from a Google Sheet CSV URL or raw CSV content with atomic DB upsert
+   */
+  public async syncStudents(
+    input: { url?: string; csvContent?: string },
+    options?: StudentSyncOptions
+  ): Promise<StudentSyncResult> {
+    let rawCsv = input.csvContent || '';
+
+    if (input.url && !rawCsv) {
+      rawCsv = await fetchCSVContent(input.url);
+    }
+
+    if (!rawCsv || rawCsv.trim().length === 0) {
+      throw new Error('CSV content is empty.');
+    }
+
+    // 1. Fetch live academic hierarchy from Supabase
+    const hierarchy = await this.loadAcademicHierarchy();
+    const { depts, years, semesters, sections, existingStudents, currentSession, defaultDept, defaultProg } = hierarchy;
+
     // 2. Parse CSV rows
     const parsed = Papa.parse<Record<string, string>>(rawCsv, {
       header: true,
@@ -96,7 +357,7 @@ export class StudentSyncService {
     let updatedCount = 0;
     let unchangedCount = 0;
 
-    // 3. Process each row sequentially with live Supabase UPSERT
+    // 3. Process each row sequentially with Supabase UPSERT
     for (let index = 0; index < rows.length; index++) {
       const raw = rows[index];
       const rowNum = index + 2; // 1-based index including header
@@ -158,13 +419,25 @@ export class StudentSyncService {
         if (found) matchedDept = found;
       }
 
+      // Enforce HOD role department boundary
+      if (options?.userRole === 'hod' && options.userDepartmentId) {
+        if (matchedDept.id !== options.userDepartmentId) {
+          errors.push({
+            row: rowNum,
+            rollNumber: cleanRoll,
+            message: `HOD department boundary violation: Cannot import student for department "${matchedDept.code}" outside your assigned department.`
+          });
+          continue;
+        }
+      }
+
       // Resolve Academic Year (1, 2, 3, 4)
       const rawYear = (raw.year || raw.academic_year || raw.class_year || raw['YEAR'] || raw['Year'] || '').trim();
-      let resolvedYear = years?.[0];
+      let resolvedYear = years[0];
 
       if (rawYear) {
         const numYear = parseInt(rawYear.replace(/\D/g, ''), 10);
-        const foundYear = years?.find(y => 
+        const foundYear = years.find(y => 
           (!isNaN(numYear) && y.year_number === numYear) ||
           y.name.toLowerCase().includes(rawYear.toLowerCase())
         );
@@ -175,7 +448,7 @@ export class StudentSyncService {
           continue;
         }
       } else if (options?.defaultCohortYear) {
-        const foundYear = years?.find(y => y.year_number === options.defaultCohortYear);
+        const foundYear = years.find(y => y.year_number === options.defaultCohortYear);
         if (foundYear) resolvedYear = foundYear;
       }
 
@@ -185,7 +458,7 @@ export class StudentSyncService {
       }
 
       // Resolve Semester for this Year
-      const matchingSem = semesters?.find(s => s.academic_year_id === resolvedYear.id) || semesters?.[0];
+      const matchingSem = semesters.find(s => s.academic_year_id === resolvedYear.id) || semesters[0];
       if (!matchingSem) {
         errors.push({ row: rowNum, rollNumber: cleanRoll, message: `No active semester found for Year ${resolvedYear.year_number}.` });
         continue;
@@ -199,7 +472,7 @@ export class StudentSyncService {
       }
 
       // Match section specifically linked to this semester/year
-      let matchedSection = sections?.find(s => 
+      let matchedSection = sections.find(s => 
         s.semester_id === matchingSem.id && 
         s.name.toUpperCase() === rawSec &&
         s.active
@@ -207,7 +480,7 @@ export class StudentSyncService {
 
       // Fallback: match by name if semester_id is null
       if (!matchedSection) {
-        matchedSection = sections?.find(s => s.name.toUpperCase() === rawSec && s.active);
+        matchedSection = sections.find(s => s.name.toUpperCase() === rawSec && s.active);
       }
 
       if (!matchedSection) {
@@ -224,7 +497,7 @@ export class StudentSyncService {
       const admissionType: AdmissionType = rawAdm.includes('lateral') ? 'Lateral Entry' : 'Regular';
 
       // Check if student already exists in Supabase
-      const existing = existingStudents?.find(s => 
+      const existing = existingStudents.find(s => 
         s.roll_number.trim().toUpperCase() === cleanRoll
       );
 
@@ -272,6 +545,7 @@ export class StudentSyncService {
               .update({
                 full_name: studentData.full_name,
                 email: studentData.email,
+                department_id: studentData.department_id,
                 updated_at: new Date().toISOString()
               })
               .eq('student_id', existing.id);
@@ -325,7 +599,7 @@ export class StudentSyncService {
     await supabase.from('audit_logs').insert([{
       action: 'STUDENTS_GOOGLE_SHEET_SYNC',
       actor_name: options?.performedBy || 'Tarun Kushwah (Super Admin)',
-      actor_role: 'super_admin',
+      actor_role: options?.userRole || 'super_admin',
       entity_type: 'students',
       entity_id: currentSession.id,
       new_values: {
@@ -333,7 +607,8 @@ export class StudentSyncService {
         added: addedCount,
         updated: updatedCount,
         unchanged: unchangedCount,
-        errors_count: errors.length
+        errors_count: errors.length,
+        department_id: options?.userDepartmentId || null,
       }
     }]);
 

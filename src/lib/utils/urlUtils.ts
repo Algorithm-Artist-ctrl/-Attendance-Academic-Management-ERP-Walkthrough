@@ -134,7 +134,7 @@ export function validateSafePublicUrl(urlStr: string): { valid: boolean; error?:
 
 /**
  * Fetches remote CSV text with automatic Google Sheets normalization, timeout control,
- * multi-candidate fallbacks (direct export, gviz, CORS proxies), and actionable error diagnostics.
+ * internal serverless proxy routing to avoid CORS / 401 issues, and actionable error diagnostics.
  */
 export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000): Promise<string> {
   const cleanUrl = rawUrl.trim();
@@ -150,19 +150,53 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
     throw new Error(safety.error || 'Invalid URL');
   }
 
-  // Construct prioritized candidate URLs to attempt
-  const candidateUrls: string[] = [primaryUrl];
+  // 1. In browser environment: Route through internal backend proxy /api/proxy-sheet
+  if (typeof window !== 'undefined') {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (parsedSheet.isGoogleSheet) {
-    // 1. Google Visualization CSV endpoint (often avoids CORS redirect issues)
-    if (parsedSheet.gvizCsvUrl && parsedSheet.gvizCsvUrl !== primaryUrl) {
-      candidateUrls.push(parsedSheet.gvizCsvUrl);
+      const proxyUrl = `/api/proxy-sheet?url=${encodeURIComponent(cleanUrl)}`;
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          Accept: 'text/plain, text/csv, application/json, */*',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok || contentType.includes('application/json')) {
+        const errJson = await response.json().catch(() => null);
+        if (errJson && errJson.error) {
+          throw new Error(errJson.error);
+        }
+        throw new Error(`HTTP ${response.status}: Failed to fetch CSV via proxy`);
+      }
+
+      const text = await response.text();
+      if (!text || text.trim().length === 0) {
+        throw new Error('The retrieved CSV content is empty.');
+      }
+      return text;
+    } catch (proxyErr: any) {
+      // If explicit permissions error returned from proxy, rethrow immediately
+      if (proxyErr.message && (
+        proxyErr.message.includes('permissions are set to') ||
+        proxyErr.message.includes('not publicly accessible')
+      )) {
+        throw proxyErr;
+      }
+      console.warn('Internal proxy attempt failed, trying fallback candidates:', proxyErr.message);
     }
-    // 2. CORS Proxy fallbacks when running in a web browser environment
-    if (typeof window !== 'undefined') {
-      candidateUrls.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(primaryUrl)}`);
-      candidateUrls.push(`https://corsproxy.io/?url=${encodeURIComponent(primaryUrl)}`);
-    }
+  }
+
+  // 2. Fallback / Server-side candidate URLs (Node scripts or direct fetch)
+  const candidateUrls: string[] = [primaryUrl];
+  if (parsedSheet.isGoogleSheet && parsedSheet.gvizCsvUrl && parsedSheet.gvizCsvUrl !== primaryUrl) {
+    candidateUrls.push(parsedSheet.gvizCsvUrl);
   }
 
   let lastError: Error | null = null;
@@ -175,24 +209,27 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          Accept: 'text/csv, text/plain, application/json, */*',
+          'User-Agent': 'VCTM-ERP-System/2.0',
+          Accept: 'text/csv, text/plain, */*',
         },
         signal: controller.signal,
       });
 
       clearTimeout(timer);
 
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(
+          'Google Sheet could not be accessed. Make sure the sheet permissions are set to "Anyone with the link can view", or publish it via File > Share > Publish to web as CSV.'
+        );
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
 
       const text = await response.text();
-      if (!text || text.trim().length === 0) {
-        throw new Error('The retrieved CSV content is empty.');
-      }
-
-      // Detect HTML authorization / login pages (when a Google Sheet is private)
       const trimmed = text.trim();
+
       if (
         trimmed.startsWith('<!DOCTYPE html>') ||
         trimmed.includes('<html') ||
@@ -204,18 +241,19 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
         );
       }
 
+      if (!trimmed) {
+        throw new Error('The retrieved CSV content is empty.');
+      }
+
       return text;
     } catch (err: any) {
       lastError = err;
-      // If error is explicit permission error, don't keep trying proxies with HTML
-      if (err.message && err.message.includes('permissions are set to')) {
+      if (err.message && (err.message.includes('permissions are set to') || err.message.includes('not publicly accessible'))) {
         throw err;
       }
-      // Otherwise proceed to next candidate fallback
     }
   }
 
-  // Actionable diagnostic error message for Google Sheets
   if (parsedSheet.isGoogleSheet) {
     throw new Error(
       'Google Sheet could not be accessed. Make sure the sheet is published or accessible to the ERP.'
