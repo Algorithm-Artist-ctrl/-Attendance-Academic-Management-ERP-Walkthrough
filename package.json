@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "start": "node server.mjs",
     "lint": "oxlint",
+    "test": "tsx ./src/tests/test_mandatory_e2e_timetable_pipeline.ts",
     "preview": "vite preview --host 0.0.0.0 --port $PORT"
   },
   "dependencies": {
