@@ -28,7 +28,8 @@ import {
   MarksHistory,
   SessionalType,
   SessionalAssessment,
-  UserProfile
+  UserProfile,
+  Classroom
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -109,6 +110,7 @@ export const supabaseService = {
         { data: assignments },
         { data: students },
         { data: profilesList },
+        { data: classroomsList },
       ] = await Promise.all([
         supabase.from('sections').select('*').order('name', { ascending: true }),
         supabase.from('subjects').select('*').order('subject_code', { ascending: true }),
@@ -116,6 +118,7 @@ export const supabaseService = {
         supabase.from('faculty_subject_assignments').select('*'),
         supabase.from('students').select('*').order('roll_number', { ascending: true }),
         supabase.from('profiles').select('*'),
+        supabase.from('classrooms').select('*').order('room_number', { ascending: true }),
       ]);
 
       return {
@@ -125,11 +128,21 @@ export const supabaseService = {
         assignments: (assignments as FacultySubjectAssignment[]) || [],
         students: (students as Student[]) || [],
         profiles: (profilesList as UserProfile[]) || [],
+        classrooms: (classroomsList as Classroom[]) || [],
       };
     } catch (err) {
       console.error('Error fetching dynamic academic entities from Supabase:', err);
       return null;
     }
+  },
+
+  async fetchClassrooms(): Promise<Classroom[]> {
+    const { data, error } = await supabase.from('classrooms').select('*').order('room_number', { ascending: true });
+    if (error) {
+      console.error('Error fetching classrooms:', error.message);
+      return [];
+    }
+    return (data as Classroom[]) || [];
   },
 
   // Backward-compatible fetchMasterData combining static setup + dynamic academic entities

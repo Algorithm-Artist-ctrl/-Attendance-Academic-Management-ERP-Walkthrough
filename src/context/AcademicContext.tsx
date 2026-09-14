@@ -27,7 +27,8 @@ import {
   SessionalMark,
   MarksHistory,
   SessionalType,
-  SessionalAssessment
+  SessionalAssessment,
+  Classroom
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -85,6 +86,7 @@ interface AcademicContextType {
   years: AcademicYear[];
   semesters: Semester[];
   sections: Section[];
+  classrooms: Classroom[];
   subjects: Subject[];
   faculty: Faculty[];
   assignments: FacultySubjectAssignment[];
@@ -278,6 +280,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [years, setYears] = useState<AcademicYear[]>(() => erpStorage.getYears());
   const [semesters, setSemesters] = useState<Semester[]>(() => erpStorage.getSemesters());
   const [sections, setSections] = useState<Section[]>(() => erpStorage.getSections());
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(() => erpStorage.getSubjects());
   const [faculty, setFaculty] = useState<Faculty[]>(() => erpStorage.getFaculty());
   const [assignments, setAssignments] = useState<FacultySubjectAssignment[]>(() => erpStorage.getAssignments());
@@ -327,6 +330,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const loadedYears = data.years || [];
         const loadedSemesters = data.semesters || [];
         const loadedSections = data.sections || [];
+        const loadedClassrooms = (data as any).classrooms || [];
+        setClassrooms(loadedClassrooms);
         const loadedSubjects = data.subjects || [];
         const loadedFaculty = data.faculty || [];
         const loadedAssignments = data.assignments || [];
@@ -1861,6 +1866,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         years,
         semesters,
         sections,
+        classrooms,
         subjects,
         faculty,
         assignments,
