@@ -242,6 +242,9 @@ export interface UserProfile {
   faculty_id?: string;
   student?: Student;
   faculty?: Faculty;
+  email_confirmed_at?: string | null;
+  new_email?: string | null;
+  pending_email?: string | null;
 }
 
 export interface TimetableVersion {

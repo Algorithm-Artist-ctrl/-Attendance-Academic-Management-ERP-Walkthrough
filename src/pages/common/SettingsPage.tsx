@@ -12,7 +12,9 @@ import {
   Save, 
   Sparkles,
   RefreshCw,
-  LogOut
+  LogOut,
+  Mail,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
@@ -258,20 +260,52 @@ export const SettingsPage: React.FC = () => {
             </Button>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-[#00ff88]">
-                <Smartphone className="w-5 h-5" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-[#00ff88]">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-white block">Current Web Browser Session</span>
+                  <span className="text-slate-400 text-[11px]">macOS / Chrome • Aligarh, Uttar Pradesh</span>
+                </div>
               </div>
-              <div>
-                <span className="font-bold text-white block">Current Web Browser Session</span>
-                <span className="text-slate-400 text-[11px]">macOS / Chrome • Aligarh, Uttar Pradesh</span>
+
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                <span className="font-bold text-emerald-400 font-mono text-[11px]">Online Now</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-              <span className="font-bold text-emerald-400 font-mono text-[11px]">Online Now</span>
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-white block font-mono text-[11.5px] truncate max-w-[180px]">
+                    {user?.email || 'user@vctm.in'}
+                  </span>
+                  <span className="text-slate-400 text-[11px]">Official Supabase Auth Email</span>
+                </div>
+              </div>
+
+              <div>
+                {user?.new_email ? (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" /> Pending Verification
+                  </span>
+                ) : user?.email_confirmed_at ? (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Email Verified
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800 border border-slate-700 text-slate-300 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" /> Institutional
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

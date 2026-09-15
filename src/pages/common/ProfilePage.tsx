@@ -23,7 +23,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 
 export const ProfilePage: React.FC = () => {
-  const { user, role, changePassword, changeEmail, updateUserProfile } = useAuth();
+  const { user, role, changePassword, changeEmail, updateUserProfile, resendEmailVerification, pendingNewEmail } = useAuth();
   const { 
     institution, 
     departments, 
@@ -93,8 +93,32 @@ export const ProfilePage: React.FC = () => {
   const [newEmailInput, setNewEmailInput] = useState('');
   const [emailModalError, setEmailModalError] = useState('');
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    setResendSuccess(false);
+    try {
+      const res = await resendEmailVerification();
+      if (res.success) {
+        setResendSuccess(true);
+        setTimeout(() => setResendSuccess(false), 5000);
+      } else {
+        setSuccessBannerText(res.error || 'Failed to resend confirmation email.');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 4000);
+      }
+    } catch (err: any) {
+      setSuccessBannerText(err.message || 'Error resending verification.');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,6 +170,9 @@ export const ProfilePage: React.FC = () => {
         return;
       }
       setIsPassModalOpen(false);
+      setCurrentPassInput('');
+      setNewPassInput('');
+      setConfirmPassInput('');
       setSuccessBannerText('Authentication Password Updated Successfully in Supabase Auth!');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);
@@ -173,10 +200,13 @@ export const ProfilePage: React.FC = () => {
         return;
       }
       setIsEmailModalOpen(false);
-      setEmail(newEmailInput.trim());
-      setSuccessBannerText('Authentication Email Synchronized with Supabase Cloud!');
+      setSuccessBannerText(
+        res.pendingVerification
+          ? `Confirmation email dispatched to ${newEmailInput.trim()}! Please click the verification link in your inbox.`
+          : 'Authentication Email Synchronized with Supabase Cloud!'
+      );
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3500);
+      setTimeout(() => setSaveSuccess(false), 5000);
     } catch (err: any) {
       setEmailModalError(err.message || 'Failed to update email');
     } finally {
@@ -564,9 +594,19 @@ export const ProfilePage: React.FC = () => {
 
           {/* Security Status Badges */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Email Verified
-            </span>
+            {user?.new_email || pendingNewEmail ? (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="w-3 h-3 text-amber-400" /> Verification Pending
+              </span>
+            ) : user?.email_confirmed_at ? (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Email Verified
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800/80 border border-emerald-500/20 text-slate-300 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Institutional Account
+              </span>
+            )}
             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
               <ShieldCheck className="w-3 h-3" /> Account Active
             </span>
@@ -595,6 +635,37 @@ export const ProfilePage: React.FC = () => {
             <p className="text-[11px] text-slate-400">
               Official authorized email used to sign in to the VCTM ERP portal.
             </p>
+
+            {(user?.new_email || pendingNewEmail) && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block text-amber-300 text-[11.5px]">Email Change Awaiting Confirmation</span>
+                    <span className="text-[11px] text-slate-300">
+                      Supabase sent a confirmation link to <strong className="text-white font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/15">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResendVerification}
+                    isLoading={isResending}
+                    className="text-[10.5px] border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+                  >
+                    Resend Verification Email
+                  </Button>
+                  {resendSuccess && (
+                    <span className="text-[10.5px] text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Link resent!
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="pt-2">
               <Button
@@ -753,16 +824,19 @@ export const ProfilePage: React.FC = () => {
             />
           </div>
 
-          <p className="text-[11px] text-slate-400">
-            Changing your email updates your real Supabase authentication credential and maintains all existing academic records.
-          </p>
+          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/15 text-[11px] text-slate-300 space-y-1">
+            <p className="font-semibold text-emerald-400">Official Supabase Verification Notice:</p>
+            <p className="text-slate-400">
+              Supabase Auth will dispatch a confirmation email with a secure verification link to your new address. Your login credentials and database records will automatically update once you click the confirmation link.
+            </p>
+          </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-emerald-500/15">
             <Button variant="outline" size="sm" type="button" onClick={() => setIsEmailModalOpen(false)}>
               Cancel
             </Button>
             <Button variant="neon" size="sm" type="submit" disabled={isSubmittingEmail}>
-              {isSubmittingEmail ? 'Updating...' : 'Update Login Email'}
+              {isSubmittingEmail ? 'Dispatching Verification...' : 'Send Verification Link'}
             </Button>
           </div>
         </form>

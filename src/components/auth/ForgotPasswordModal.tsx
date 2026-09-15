@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Mail, CheckCircle2, AlertCircle, KeyRound, ArrowRight } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
-import { supabase } from '../../lib/supabase/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -10,7 +10,8 @@ interface ForgotPasswordModalProps {
 }
 
 export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClose }) => {
-  const [email, setEmail] = useState('');
+  const { resetPasswordForEmail } = useAuth();
+  const [identifier, setIdentifier] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -20,27 +21,23 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
     setErrorMessage(null);
     setStatusMessage(null);
 
-    if (!email.trim()) {
-      setErrorMessage('Please enter your registered college email or roll number.');
+    const cleanInput = identifier.trim();
+    if (!cleanInput) {
+      setErrorMessage('Please enter your registered College Roll Number, Employee ID, or Email address.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const emailToSend = email.includes('@') ? email.trim() : `${email.trim()}@student.vctm.in`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(emailToSend, {
-        redirectTo: window.location.origin,
-      });
+      const res = await resetPasswordForEmail(cleanInput);
 
-      if (error) {
-        // If unconfigured SMTP provider or rate limit, display official guidance
-        setStatusMessage(`Password recovery request recorded for ${emailToSend}. Please check your official institutional inbox.`);
+      if (!res.success) {
+        setErrorMessage(res.error || 'Failed to dispatch recovery link.');
       } else {
-        setStatusMessage(`Password reset link has been dispatched to ${emailToSend}.`);
+        setStatusMessage(`A password reset link has been dispatched to ${res.email || cleanInput}. Please check your institutional email inbox and click the link to choose a new password.`);
       }
     } catch (err: any) {
-      setStatusMessage(`Password recovery instructions have been initiated for ${email.trim()}.`);
+      setErrorMessage(err.message || 'An unexpected error occurred while requesting password recovery.');
     } finally {
       setIsSubmitting(false);
     }
@@ -92,8 +89,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
               <input
                 type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 placeholder="e.g. Roll Number / Employee ID / Email"
                 className="w-full pl-10 pr-3 py-2.5 text-sm bg-slate-900/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88] focus:ring-1 focus:ring-[#00ff88]"
               />

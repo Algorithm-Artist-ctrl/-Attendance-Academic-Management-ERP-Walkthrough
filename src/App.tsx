@@ -1,6 +1,7 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/auth/LoginPage';
+import { ResetPasswordModal } from './components/auth/ResetPasswordModal';
 import { AppShell } from './components/layout/AppShell';
 import vctmOfficialLogo from './assets/vctm-logo.png';
 
@@ -62,7 +63,7 @@ const PageSkeletonLoader: React.FC = () => (
 );
 
 export const AppContent: React.FC = () => {
-  const { isAuthenticated, role, isLoading, logout } = useAuth();
+  const { isAuthenticated, role, isLoading, logout, isPasswordRecovery } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [navigationParams, setNavigationParams] = useState<any>(null);
 
@@ -80,7 +81,12 @@ export const AppContent: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return (
+      <>
+        <LoginPage />
+        {isPasswordRecovery && <ResetPasswordModal isOpen={true} />}
+      </>
+    );
   }
 
   const handleNavigate = (tab: string, params?: any) => {
@@ -295,10 +301,13 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={handleNavigate}>
-      <Suspense fallback={<PageSkeletonLoader />}>
-        {renderContent()}
-      </Suspense>
-    </AppShell>
+    <>
+      <AppShell activeTab={activeTab} onTabChange={handleNavigate}>
+        <Suspense fallback={<PageSkeletonLoader />}>
+          {renderContent()}
+        </Suspense>
+      </AppShell>
+      {isPasswordRecovery && <ResetPasswordModal isOpen={true} />}
+    </>
   );
 };
