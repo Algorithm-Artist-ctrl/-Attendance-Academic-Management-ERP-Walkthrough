@@ -99,7 +99,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     }
 
     const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
-    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
+    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id);
     const taughtSubjectIds = new Set<string>();
     const directAssignedPairs = new Set<string>();
 
@@ -125,12 +125,10 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     for (const sub of relevantSubjects) {
       const matchSecs = sections.filter(sec => {
         if (!sec.active) return false;
-        if (directAssignedPairs.has(`${sub.id}:${sec.id}`)) return true;
-        if (sub.semester_id && sec.semester_id === sub.semester_id) return true;
-        return false;
+        return directAssignedPairs.has(`${sub.id}:${sec.id}`);
       });
 
-      for (const sec of (matchSecs.length > 0 ? matchSecs : sections.filter(s => s.active))) {
+      for (const sec of matchSecs) {
         if (!list.some(item => item.subject.id === sub.id && item.section.id === sec.id)) {
           list.push({ subject: sub, section: sec });
         }

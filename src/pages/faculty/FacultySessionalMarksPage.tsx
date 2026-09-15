@@ -65,14 +65,13 @@ export const FacultySessionalMarksPage: React.FC = () => {
         sections: sections
       }));
     }
-    const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
-    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active);
+    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id);
     const subMap = new Map<string, { subject: typeof subjects[0]; sections: typeof sections }>();
-    
-    for (const fsa of myFsa) {
-      const sub = subjects.find(s => s.id === fsa.subject_id);
-      const sec = sections.find(s => s.id === fsa.section_id);
-      if (sub && sec) {
+
+    for (const t of myTt) {
+      const sub = subjects.find(s => s.id === t.subject_id);
+      const sec = sections.find(s => s.id === t.section_id);
+      if (sub && sec && sec.active && sub.active) {
         if (!subMap.has(sub.id)) {
           subMap.set(sub.id, { subject: sub, sections: [sec] });
         } else {
@@ -84,10 +83,11 @@ export const FacultySessionalMarksPage: React.FC = () => {
       }
     }
 
-    for (const t of myTt) {
-      const sub = subjects.find(s => s.id === t.subject_id);
-      const sec = sections.find(s => s.id === t.section_id);
-      if (sub && sec) {
+    const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
+    for (const fsa of myFsa) {
+      const sub = subjects.find(s => s.id === fsa.subject_id);
+      const sec = sections.find(s => s.id === fsa.section_id);
+      if (sub && sec && sec.active && sub.active) {
         if (!subMap.has(sub.id)) {
           subMap.set(sub.id, { subject: sub, sections: [sec] });
         } else {

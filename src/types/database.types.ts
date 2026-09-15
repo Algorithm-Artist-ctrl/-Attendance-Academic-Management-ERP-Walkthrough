@@ -165,6 +165,7 @@ export interface TimetableEntry {
   classroom_id?: string | null;
   lecture_type: LectureType;
   active: boolean;
+  is_break?: boolean;
   subject?: Subject;
   faculty?: Faculty;
   section?: Section;

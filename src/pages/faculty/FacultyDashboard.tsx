@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Calendar, 
   CheckSquare, 
@@ -12,15 +12,27 @@ import {
   Sparkles,
   GraduationCap
 } from 'lucide-react';
+import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 import { getISTDayOfWeek } from '../../lib/utils/dateUtils';
+import { DayOfWeek } from '../../types/database.types';
 
 interface FacultyDashboardProps {
   onNavigate: (tab: string, params?: any) => void;
 }
+
+const DAY_FULL_NAMES: Record<DayOfWeek, string> = {
+  MON: 'Monday',
+  TUE: 'Tuesday',
+  WED: 'Wednesday',
+  THU: 'Thursday',
+  FRI: 'Friday',
+  SAT: 'Saturday',
+  SUN: 'Sunday',
+};
 
 export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -53,23 +65,54 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
   const todayDay = getISTDayOfWeek();
+  const [selectedScheduleDay, setSelectedScheduleDay] = useState<DayOfWeek>(
+    todayDay === 'SUN' ? 'MON' : todayDay
+  );
+
+  // Authoritative timetable entries for this faculty (filtering out breaks and entries without subject)
+  const myTt = useMemo(() => {
+    return getFacultyTimetable(facultyId).filter(t => !t.is_break && t.subject_id);
+  }, [getFacultyTimetable, facultyId]);
 
   // Today's classes for this faculty strictly from Supabase timetable
-  const todaySchedule = todayDay === 'SUN' 
-    ? [] 
-    : getFacultyTimetable(facultyId, todayDay)
-        .sort((a, b) => a.period_number - b.period_number);
+  const todaySchedule = useMemo(() => {
+    return todayDay === 'SUN' 
+      ? [] 
+      : myTt
+          .filter(t => t.day_of_week === todayDay)
+          .sort((a, b) => a.period_number - b.period_number);
+  }, [myTt, todayDay]);
 
-  // Assigned subjects and sections strictly from faculty_subject_assignments + timetable
-  const myAssignments = assignments.filter(fa => fa.faculty_id === facultyId && fa.active);
-  const myTt = getFacultyTimetable(facultyId);
-  const mySubjectIds = new Set([...myAssignments.map(fa => fa.subject_id), ...myTt.map(t => t.subject_id)]);
-  const mySectionIds = new Set([...myAssignments.map(fa => fa.section_id), ...myTt.map(t => t.section_id)]);
-  const mySubjects = subjects.filter(s => mySubjectIds.has(s.id));
-  const mySections = sections.filter(sec => mySectionIds.has(sec.id));
+  // Schedule for the selected day filter
+  const displayedSchedule = useMemo(() => {
+    return myTt
+      .filter(t => t.day_of_week === selectedScheduleDay)
+      .sort((a, b) => a.period_number - b.period_number);
+  }, [myTt, selectedScheduleDay]);
+
+  // Authoritative assigned sections: distinct sections where this faculty actually teaches
+  const mySectionIds = useMemo(() => {
+    return Array.from(new Set(myTt.map(t => t.section_id).filter(Boolean)));
+  }, [myTt]);
+
+  const mySections = useMemo(() => {
+    return sections.filter(sec => mySectionIds.includes(sec.id) && sec.active);
+  }, [sections, mySectionIds]);
+
+  // Authoritative assigned subjects: distinct subjects taught across these sections
+  const mySubjectIds = useMemo(() => {
+    return Array.from(new Set(myTt.map(t => t.subject_id).filter(Boolean)));
+  }, [myTt]);
+
+  const mySubjects = useMemo(() => {
+    return subjects.filter(s => mySubjectIds.includes(s.id) && s.active);
+  }, [subjects, mySubjectIds]);
 
   // Pending correction requests assigned strictly to this faculty
-  const myPendingCorrections = getFacultyCorrectionRequests(facultyId).filter(c => c.status === 'pending');
+  const myPendingCorrections = useMemo(() => {
+    return getFacultyCorrectionRequests(facultyId).filter(c => c.status === 'pending');
+  }, [getFacultyCorrectionRequests, facultyId]);
+
   const dept = departments.find(d => d.id === currentFaculty?.department_id) || departments[0];
 
   return (
@@ -190,7 +233,6 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mySections.map(sec => {
             const subjectsInSec = mySubjects.filter(sub =>
-              myAssignments.some(fa => fa.subject_id === sub.id && fa.section_id === sec.id) ||
               myTt.some(t => t.subject_id === sub.id && t.section_id === sec.id)
             );
             const secStudents = students.filter(s => s.section_id === sec.id && s.active);
@@ -350,36 +392,66 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       {/* 3. TODAY'S SCHEDULE & RECENT REQUESTS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Card: Today's Schedule with "Take Attendance" button */}
+        {/* Left Card: Dynamic Day Schedule with "Take Attendance" button */}
         <div className="lg:col-span-7 glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-white tracking-wide">
-                Today's Schedule
+                {selectedScheduleDay === todayDay 
+                  ? `Today's Schedule (${todayDay})` 
+                  : `${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} Schedule (${selectedScheduleDay})`}
               </h3>
-              <p className="text-xs text-slate-400">{todayDay} Lecture Schedule • Odd Semester</p>
+              <p className="text-xs text-slate-400">
+                {selectedScheduleDay === todayDay 
+                  ? `${todayDay} Lecture Schedule • Odd Semester` 
+                  : `Viewing ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} timetable • Odd Semester`}
+              </p>
             </div>
-            <button
-              onClick={() => onNavigate('timetable')}
-              className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
-            >
-              Full Schedule →
-            </button>
+
+            {/* Day Selector Tabs */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
+              {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setSelectedScheduleDay(d)}
+                  className={clsx(
+                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
+                    selectedScheduleDay === d
+                      ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_8px_rgba(0,255,136,0.3)]'
+                      : d === todayDay
+                        ? 'text-emerald-400 border border-emerald-500/30 hover:text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  )}
+                >
+                  {d}
+                </button>
+              ))}
+              <button
+                onClick={() => onNavigate('timetable')}
+                className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer px-2 py-1 shrink-0 ml-1"
+              >
+                Full →
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">
-            {todaySchedule.length === 0 ? (
+            {displayedSchedule.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
                 <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
                 <p className="font-bold text-white text-sm">
-                  {todayDay === 'SUN' ? 'Today is Sunday (Weekend / Holiday)' : 'No scheduled lectures for today in your timetable'}
+                  {selectedScheduleDay === todayDay && todayDay === 'SUN' 
+                    ? 'Today is Sunday (Weekend / Holiday)' 
+                    : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} in your timetable`}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {todayDay === 'SUN' ? 'College academic classes are not held on Sundays.' : 'Check your full timetable schedule for weekly lecture distribution.'}
+                  {todayDay === 'SUN' && selectedScheduleDay === 'SUN' 
+                    ? 'College academic classes are not held on Sundays.' 
+                    : 'Check your full timetable schedule for weekly lecture distribution.'}
                 </p>
               </div>
             ) : (
-              todaySchedule.map((entry) => {
+              displayedSchedule.map((entry) => {
                 const sec = sections.find(s => s.id === entry.section_id);
                 const sub = subjects.find(s => s.id === entry.subject_id);
 

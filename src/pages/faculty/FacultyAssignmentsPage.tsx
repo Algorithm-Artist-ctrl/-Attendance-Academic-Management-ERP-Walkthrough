@@ -66,14 +66,18 @@ export const FacultyAssignmentsPage: React.FC = () => {
   const myAssignedSubjects = useMemo(() => {
     // 1. Determine subjects taught by this faculty (FSA, Timetable, or Department curriculum)
     const taughtSubjectIds = new Set<string>();
+    const directAssignedPairs = new Set<string>();
+
     for (const fsa of facultySubjectAssignments) {
       if (fsa.faculty_id === currentFacultyId && fsa.active) {
         taughtSubjectIds.add(fsa.subject_id);
+        directAssignedPairs.add(`${fsa.subject_id}:${fsa.section_id}`);
       }
     }
     for (const t of timetable) {
-      if (t.faculty_id === currentFacultyId && t.active && t.subject_id) {
+      if (t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id) {
         taughtSubjectIds.add(t.subject_id);
+        directAssignedPairs.add(`${t.subject_id}:${t.section_id}`);
       }
     }
 
@@ -84,21 +88,24 @@ export const FacultyAssignmentsPage: React.FC = () => {
           : subjects.filter(s => s.active));
 
     return relevantSubjects.map(sub => {
-      // Find all active sections for this subject's semester and department
+      // Find active sections specifically taught or assigned to this faculty
       const matchingSections = sections.filter(sec => {
         if (!sec.active) return false;
-        if (sub.semester_id) return sec.semester_id === sub.semester_id;
-        return true;
+        if (isSuperAdmin) {
+          if (sub.semester_id) return sec.semester_id === sub.semester_id;
+          return true;
+        }
+        return directAssignedPairs.has(`${sub.id}:${sec.id}`);
       });
 
-      const sortedSections = (matchingSections.length > 0 ? matchingSections : sections.filter(s => s.active))
+      const sortedSections = matchingSections
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
       return {
         subject: sub,
         sections: sortedSections,
       };
-    });
+    }).filter(item => isSuperAdmin || item.sections.length > 0);
   }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId, currentFaculty]);
 
   const myAssignedSections = useMemo(() => {

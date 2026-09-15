@@ -1469,6 +1469,25 @@ export const supabaseService = {
       .maybeSingle();
     const currentSessionId = currentSessionData?.id || '';
 
+    // Deactivate assignments for this section that are no longer in the published timetable
+    const { data: existingSectionAssignments } = await supabase
+      .from('faculty_subject_assignments')
+      .select('id, faculty_id, subject_id')
+      .eq('section_id', params.sectionId)
+      .eq('active', true);
+
+    if (existingSectionAssignments) {
+      for (const curr of existingSectionAssignments) {
+        const pairKey = `${curr.faculty_id}-${curr.subject_id}`;
+        if (!distinctPairs.has(pairKey)) {
+          await supabase
+            .from('faculty_subject_assignments')
+            .update({ active: false, updated_at: new Date().toISOString() })
+            .eq('id', curr.id);
+        }
+      }
+    }
+
     for (const pair of distinctPairs.values()) {
       const { data: existingAssignment } = await supabase
         .from('faculty_subject_assignments')
@@ -1600,6 +1619,90 @@ export const supabaseService = {
       effectiveDate: targetVersion.effective_from || getISTTodayDate(),
       sourceType: 'ROLLBACK_RESTORE',
     });
+  },
+
+  /**
+   * Reconcile and synchronize faculty_subject_assignments with active published timetable entries.
+   * Deactivates orphan / obsolete assignments and ensures all active timetable pairs are recorded.
+   */
+  async syncFacultySubjectAssignmentsWithTimetable(): Promise<{ deactivated: number; activatedOrInserted: number }> {
+    // 1. Get all active timetable teaching entries
+    const { data: activeTtEntries } = await supabase
+      .from('timetable_entries')
+      .select('faculty_id, subject_id, section_id')
+      .eq('active', true);
+
+    const validPairs = new Set<string>();
+    const activeSectionIds = new Set<string>();
+
+    (activeTtEntries || []).forEach(t => {
+      if (t.faculty_id && t.subject_id && t.section_id) {
+        validPairs.add(`${t.faculty_id}-${t.subject_id}-${t.section_id}`);
+        activeSectionIds.add(t.section_id);
+      }
+    });
+
+    // 2. Fetch current assignments
+    const { data: allAssignments } = await supabase
+      .from('faculty_subject_assignments')
+      .select('id, faculty_id, subject_id, section_id, active');
+
+    let deactivated = 0;
+    let activatedOrInserted = 0;
+
+    const existingMap = new Map<string, any>();
+    (allAssignments || []).forEach(a => {
+      const key = `${a.faculty_id}-${a.subject_id}-${a.section_id}`;
+      existingMap.set(key, a);
+      // If assignment is active but pair is not in any published timetable
+      if (a.active && !validPairs.has(key)) {
+        deactivated++;
+      }
+    });
+
+    // Deactivate orphan assignments
+    for (const a of (allAssignments || [])) {
+      const key = `${a.faculty_id}-${a.subject_id}-${a.section_id}`;
+      if (a.active && !validPairs.has(key)) {
+        await supabase
+          .from('faculty_subject_assignments')
+          .update({ active: false, updated_at: new Date().toISOString() })
+          .eq('id', a.id);
+      }
+    }
+
+    // Get current academic session
+    const { data: currentSessionData } = await supabase
+      .from('academic_sessions')
+      .select('id')
+      .eq('is_current', true)
+      .maybeSingle();
+    const currentSessionId = currentSessionData?.id || '';
+
+    // Ensure all published pairs exist and are active
+    for (const pairKey of validPairs) {
+      const [facId, subId, secId] = pairKey.split('-');
+      const existing = existingMap.get(pairKey);
+      if (!existing) {
+        await supabase.from('faculty_subject_assignments').insert([{
+          faculty_id: facId,
+          subject_id: subId,
+          section_id: secId,
+          academic_session_id: currentSessionId,
+          active: true,
+        }]);
+        activatedOrInserted++;
+      } else if (!existing.active) {
+        await supabase
+          .from('faculty_subject_assignments')
+          .update({ active: true, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        activatedOrInserted++;
+      }
+    }
+
+    this.invalidateMasterCache();
+    return { deactivated, activatedOrInserted };
   },
 
   /**

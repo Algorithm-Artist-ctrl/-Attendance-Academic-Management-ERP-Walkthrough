@@ -30,6 +30,16 @@ interface TakeAttendancePageProps {
   onFinished?: () => void;
 }
 
+const DAY_FULL_NAMES: Record<string, string> = {
+  MON: 'Monday',
+  TUE: 'Tuesday',
+  WED: 'Wednesday',
+  THU: 'Thursday',
+  FRI: 'Friday',
+  SAT: 'Saturday',
+  SUN: 'Sunday',
+};
+
 export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({ 
   initialTimetableEntryId, 
   onFinished 
@@ -248,10 +258,14 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
               <CheckSquare className="w-6 h-6 text-[#00ff88]" />
-              Today's Assigned Classes
+              {selectedDayFilter === todayDay
+                ? `Today's Assigned Classes (${todayDay})`
+                : `${DAY_FULL_NAMES[selectedDayFilter] || selectedDayFilter} Assigned Classes (${selectedDayFilter})`}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Faculty: <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
+              {selectedDayFilter === todayDay
+                ? `Faculty: ${currentFaculty?.full_name} (${currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE`
+                : `Viewing schedule for ${DAY_FULL_NAMES[selectedDayFilter] || selectedDayFilter} • Faculty: ${currentFaculty?.full_name} (${currentFaculty?.faculty_code || 'Faculty'})`}
             </p>
           </div>
 
