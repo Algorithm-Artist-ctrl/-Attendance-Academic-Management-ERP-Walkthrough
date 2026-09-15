@@ -10,6 +10,6 @@ export interface AuthState {
 
 export interface LoginCredentials {
   identifier: string; // Roll Number for student, Email/Emp Code for faculty/admin
-  password?: string;
+  password: string;
   roleHint?: UserRole;
 }

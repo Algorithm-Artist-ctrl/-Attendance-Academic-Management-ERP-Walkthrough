@@ -15,8 +15,7 @@ export interface UserProfileUpdates {
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  switchUser: (profileId: string) => void;
+  logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changeEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
   updateUserProfile: (updates: UserProfileUpdates) => Promise<{ success: boolean; error?: string }>;
@@ -33,254 +32,297 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error: null,
   });
 
-  useEffect(() => {
-    // Restore session on mount
-    try {
-      const savedUser = erpStorage.getCurrentSessionUser();
-      if (savedUser) {
-        // Re-hydrate profile with latest student/faculty records from authoritative storage
-        const profiles = erpStorage.getProfiles();
-        const students = erpStorage.getStudents();
-        const faculty = erpStorage.getFaculty();
-        const sections = erpStorage.getSections();
+  // Helper to resolve official email from any identifier (Roll Number, Employee ID, Faculty Code, 'admin')
+  const resolveUserEmail = async (rawIdentifier: string): Promise<string | null> => {
+    const trimmed = rawIdentifier.trim();
+    if (!trimmed) return null;
 
-        let latestProfile = profiles.find(p => p.id === savedUser.id);
-        if (!latestProfile && savedUser.student) {
-          latestProfile = profiles.find(p => p.student?.roll_number === savedUser.student?.roll_number);
-        }
-        if (!latestProfile) {
-          latestProfile = savedUser;
-        }
-
-        // Ensure student and section are deeply hydrated
-        if (latestProfile.student || savedUser.student) {
-          const targetRoll = latestProfile.student?.roll_number || savedUser.student?.roll_number;
-          const targetId = latestProfile.student?.id || savedUser.student?.id;
-          const freshStudent = students.find(s => s.roll_number === targetRoll || s.id === targetId);
-
-          if (freshStudent) {
-            const freshSection = sections.find(sec => sec.id === freshStudent.section_id);
-            latestProfile = {
-              ...latestProfile,
-              student_id: freshStudent.id,
-              student: {
-                ...freshStudent,
-                section: freshSection,
-                section_id: freshSection?.id || freshStudent.section_id,
-              },
-            };
-          }
-        }
-
-        // Ensure faculty profile is deeply hydrated
-        if (latestProfile.role === 'faculty' || latestProfile.role === 'hod' || latestProfile.faculty || savedUser.faculty) {
-          const targetFacId = latestProfile.faculty_id || latestProfile.faculty?.id || savedUser.faculty_id || savedUser.faculty?.id || savedUser.id;
-          const targetCode = latestProfile.faculty?.employee_code || savedUser.faculty?.employee_code || latestProfile.faculty?.faculty_code || savedUser.faculty?.faculty_code;
-          const targetName = latestProfile.full_name || savedUser.full_name;
-          const targetEmail = latestProfile.email || savedUser.email;
-
-          const freshFaculty = faculty.find(
-            f => f.id === targetFacId ||
-                 (targetCode && (f.employee_code === targetCode || f.faculty_code === targetCode)) ||
-                 (targetName && f.full_name.toLowerCase().trim() === targetName.toLowerCase().trim()) ||
-                 (targetEmail && f.email.toLowerCase().trim() === targetEmail.toLowerCase().trim())
-          );
-
-          if (freshFaculty) {
-            latestProfile = {
-              ...latestProfile,
-              faculty_id: freshFaculty.id,
-              faculty: freshFaculty,
-            };
-          }
-        }
-
-        setAuthState({
-          user: latestProfile,
-          role: latestProfile.role,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-      } else {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-      }
-    } catch {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
+    // 1. Direct email provided
+    if (trimmed.includes('@')) {
+      return trimmed.toLowerCase();
     }
+
+    const clean = trimmed.toLowerCase();
+    if (clean === 'admin') {
+      return 'admin@vctm.in';
+    }
+
+    try {
+      const cleanRoll = trimmed.replace(/[\s\-_]/g, '');
+
+      // 2. Search student roll number
+      const { data: student } = await supabase
+        .from('students')
+        .select('id, email, roll_number')
+        .ilike('roll_number', cleanRoll)
+        .maybeSingle();
+
+      if (student) {
+        if (student.email) return student.email.toLowerCase().trim();
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('student_id', student.id)
+          .maybeSingle();
+        if (prof?.email) return prof.email.toLowerCase().trim();
+        return `${cleanRoll}@vctm.in`;
+      }
+
+      // 3. Search faculty by employee code or faculty code
+      const { data: facultyMember } = await supabase
+        .from('faculty')
+        .select('email, employee_code, faculty_code')
+        .or(`employee_code.ilike.${trimmed},employee_code.ilike.${cleanRoll},faculty_code.ilike.${trimmed},faculty_code.ilike.${cleanRoll}`)
+        .maybeSingle();
+
+      if (facultyMember?.email) {
+        return facultyMember.email.toLowerCase().trim();
+      }
+
+      // 4. Search profiles directly
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .or(`id.eq.${trimmed},email.ilike.${trimmed}`)
+        .maybeSingle();
+
+      if (profile?.email) {
+        return profile.email.toLowerCase().trim();
+      }
+    } catch (err) {
+      console.warn('Error resolving identifier to email:', err);
+    }
+
+    return null;
+  };
+
+  // Helper to load and deeply hydrate user profile from authenticated Supabase identity
+  const loadHydratedProfile = async (authUserId: string, authUserEmail?: string): Promise<UserProfile | null> => {
+    try {
+      // 1. Query profile by authenticated UUID or email
+      let { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUserId)
+        .maybeSingle();
+
+      if (!profile && authUserEmail) {
+        const { data: profByEmail } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', authUserEmail.toLowerCase().trim())
+          .maybeSingle();
+        profile = profByEmail;
+      }
+
+      if (!profile) return null;
+
+      // 2. Deeply hydrate student profile with section authority
+      if (profile.role === 'student' || profile.student_id) {
+        const studId = profile.student_id || profile.id;
+        const { data: student } = await supabase
+          .from('students')
+          .select('*, section:sections(*)')
+          .eq('id', studId)
+          .maybeSingle();
+
+        if (student) {
+          return {
+            ...profile,
+            student_id: student.id,
+            student: {
+              ...student,
+              section_id: (student.section as any)?.id || student.section_id,
+            },
+          };
+        }
+      }
+
+      // 3. Deeply hydrate faculty profile
+      if (profile.role === 'faculty' || profile.role === 'hod' || profile.faculty_id) {
+        const facId = profile.faculty_id || profile.id;
+        const { data: fac } = await supabase
+          .from('faculty')
+          .select('*')
+          .eq('id', facId)
+          .maybeSingle();
+
+        if (fac) {
+          return {
+            ...profile,
+            faculty_id: fac.id,
+            faculty: fac,
+          };
+        }
+      }
+
+      return profile;
+    } catch (err) {
+      console.error('Failed to load hydrated profile:', err);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Restore authenticated session directly from Supabase Auth (Single Authority)
+    const restoreSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session || !session.user) {
+          if (isMounted) {
+            erpStorage.setCurrentSessionUser(null);
+            setAuthState({
+              user: null,
+              role: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+          }
+          return;
+        }
+
+        const profile = await loadHydratedProfile(session.user.id, session.user.email);
+        if (isMounted) {
+          if (profile) {
+            erpStorage.setCurrentSessionUser(profile);
+            setAuthState({
+              user: profile,
+              role: profile.role,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+          } else {
+            erpStorage.setCurrentSessionUser(null);
+            setAuthState({
+              user: null,
+              role: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+          }
+        }
+      } catch {
+        if (isMounted) {
+          erpStorage.setCurrentSessionUser(null);
+          setAuthState({
+            user: null,
+            role: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          });
+        }
+      }
+    };
+
+    restoreSession();
+
+    // Listen to Supabase Auth state transitions
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session || !session.user) {
+        if (isMounted) {
+          erpStorage.setCurrentSessionUser(null);
+          setAuthState({
+            user: null,
+            role: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          });
+        }
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        const profile = await loadHydratedProfile(session.user.id, session.user.email);
+        if (isMounted && profile) {
+          erpStorage.setCurrentSessionUser(profile);
+          setAuthState({
+            user: profile,
+            role: profile.role,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-    const trimmedId = credentials.identifier.trim().toLowerCase();
 
-    // 1. Fetch latest profiles, students, faculty, and sections directly from Supabase
-    let profiles = erpStorage.getProfiles();
-    let students = erpStorage.getStudents();
-    let faculty = erpStorage.getFaculty();
-    let sections = erpStorage.getSections();
+    const rawId = credentials.identifier?.trim();
+    const rawPass = credentials.password;
 
-    try {
-      const [
-        { data: liveProfs },
-        { data: liveStuds },
-        { data: liveFac },
-        { data: liveSecs }
-      ] = await Promise.all([
-        supabase.from('profiles').select('*'),
-        supabase.from('students').select('*'),
-        supabase.from('faculty').select('*'),
-        supabase.from('sections').select('*')
-      ]);
-
-      if (liveStuds && liveStuds.length > 0) students = liveStuds as Student[];
-      if (liveFac && liveFac.length > 0) faculty = liveFac as Faculty[];
-      if (liveSecs && liveSecs.length > 0) sections = liveSecs as Section[];
-      if (liveProfs && liveProfs.length > 0) {
-        profiles = (liveProfs as UserProfile[]).map(p => ({
-          ...p,
-          student: students.find(s => s.id === p.student_id),
-          faculty: faculty.find(f => f.id === p.faculty_id)
-        }));
-      }
-    } catch (err) {
-      console.warn('Network auth query fallback to storage:', err);
-    }
-
-    // Clean inputs for flexible searching
-    const cleanId = trimmedId.replace(/[\s\-_]/g, '');
-    const cleanNumeric = cleanId.replace(/\D/g, '');
-
-    // Step A: Exact Roll Number, Faculty Code, Employee Code, or Email match from live database profiles
-    let matchedProfile = profiles.find(p => {
-      if (p.student) {
-        const studRoll = p.student.roll_number.toLowerCase().replace(/[\s\-_]/g, '');
-        if (studRoll === cleanId) return true;
-        if (p.student.email && p.student.email.toLowerCase() === trimmedId) return true;
-        if (p.student.full_name.toLowerCase() === trimmedId) return true;
-      }
-      if (p.faculty) {
-        if (p.faculty.employee_code.toLowerCase().replace(/[\s\-_]/g, '') === cleanId) return true;
-        if (p.faculty.faculty_code && p.faculty.faculty_code.toLowerCase() === cleanId) return true;
-        if (p.faculty.email.toLowerCase() === trimmedId) return true;
-        if (p.faculty.full_name.toLowerCase().includes(trimmedId)) return true;
-      }
-      if (p.email && p.email.toLowerCase() === trimmedId) return true;
-      return false;
-    });
-
-    // Also search direct students list from Supabase
-    if (!matchedProfile) {
-      const matchedStudent = students.find(s => {
-        const studRoll = s.roll_number.toLowerCase().replace(/[\s\-_]/g, '');
-        if (studRoll === cleanId) return true;
-        if (s.email && s.email.toLowerCase() === trimmedId) return true;
-        if (s.full_name.toLowerCase() === trimmedId) return true;
-        return false;
-      });
-
-      if (matchedStudent) {
-        const studSec = sections.find(sec => sec.id === matchedStudent.section_id);
-        const existingProf = profiles.find(p => p.student_id === matchedStudent.id || p.email === matchedStudent.email);
-        matchedProfile = existingProf || {
-          id: matchedStudent.id,
-          email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
-          role: 'student',
-          full_name: matchedStudent.full_name,
-          department_id: matchedStudent.department_id,
-          student_id: matchedStudent.id,
-          student: {
-            ...matchedStudent,
-            section: studSec,
-            section_id: studSec?.id || matchedStudent.section_id,
-          },
-        };
-      }
-    }
-
-    // Also search direct faculty list from Supabase
-    if (!matchedProfile) {
-      const matchedFaculty = faculty.find(f => {
-        if (f.employee_code.toLowerCase().replace(/[\s\-_]/g, '') === cleanId) return true;
-        if (f.faculty_code && f.faculty_code.toLowerCase() === cleanId) return true;
-        if (f.email.toLowerCase() === trimmedId) return true;
-        if (f.full_name.toLowerCase() === trimmedId || f.full_name.toLowerCase().includes(trimmedId)) return true;
-        return false;
-      });
-
-      if (matchedFaculty) {
-        const isHod = matchedFaculty.designation.toLowerCase().includes('hod');
-        const existingProf = profiles.find(p => p.faculty_id === matchedFaculty.id || p.email === matchedFaculty.email);
-        matchedProfile = existingProf || {
-          id: matchedFaculty.id,
-          email: matchedFaculty.email,
-          role: isHod ? 'hod' : 'faculty',
-          full_name: matchedFaculty.full_name,
-          department_id: matchedFaculty.department_id,
-          faculty_id: matchedFaculty.id,
-          phone: matchedFaculty.phone,
-          faculty: matchedFaculty,
-        };
-      }
-    }
-
-    // Step B: Flexible Student Roll Number suffix match (e.g. 2403400100057 <-> last digits)
-    if (!matchedProfile && cleanNumeric.length >= 4) {
-      const targetSuffix = cleanNumeric.slice(-6);
-      const matchedStudent = students.find(s => {
-        const studNumeric = s.roll_number.replace(/\D/g, '');
-        return studNumeric.endsWith(targetSuffix) || cleanNumeric.endsWith(studNumeric.slice(-6));
-      });
-
-      if (matchedStudent) {
-        const studSec = sections.find(sec => sec.id === matchedStudent.section_id);
-        const existingProf = profiles.find(p => p.student_id === matchedStudent.id || p.email === matchedStudent.email);
-        matchedProfile = existingProf || {
-          id: matchedStudent.id,
-          email: matchedStudent.email || `${matchedStudent.roll_number}@student.vctm.in`,
-          role: 'student',
-          full_name: matchedStudent.full_name,
-          department_id: matchedStudent.department_id,
-          student_id: matchedStudent.id,
-          student: {
-            ...matchedStudent,
-            section: studSec,
-            section_id: studSec?.id || matchedStudent.section_id,
-          },
-        };
-      }
-    }
-
-    // Step C: Super Admin login from database profile
-    if (!matchedProfile) {
-      const adminProfile = profiles.find(p => p.role === 'super_admin');
-      if (adminProfile && (trimmedId === 'admin' || trimmedId === adminProfile.email?.toLowerCase())) {
-        matchedProfile = adminProfile;
-      }
-    }
-
-    if (!matchedProfile) {
-      const errorMsg = `No active ERP account found for "${credentials.identifier}". Please check your Roll Number / Employee ID / Email or contact administrator.`;
+    // Reject empty identifier or password immediately
+    if (!rawId || !rawPass || !rawPass.trim()) {
+      const errorMsg = 'Invalid email or password.';
       setAuthState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
       return { success: false, error: errorMsg };
     }
 
-    // Ensure student profile has fully hydrated Section authority
-    if (matchedProfile.student) {
-      const currentSection = sections.find(sec => sec.id === matchedProfile.student?.section_id);
-      if (currentSection) {
-        matchedProfile.student.section = currentSection;
-        matchedProfile.student.section_id = currentSection.id;
-      }
+    // Resolve official registered email address
+    const email = await resolveUserEmail(rawId);
+    if (!email) {
+      // Identifier not found in institutional catalog -> generic failure
+      const errorMsg = 'Invalid email or password.';
+      setAuthState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
+      return { success: false, error: errorMsg };
     }
 
-    // Authenticate and establish persistent session
-    erpStorage.setCurrentSessionUser(matchedProfile);
-    erpStorage.addAuditLog('USER_LOGGED_IN', 'profiles', matchedProfile.id, undefined, { identifier: credentials.identifier });
+    // AUTHENTICATE WITH REAL SUPABASE AUTH (SOLE AUTHORITY)
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password: rawPass,
+    });
+
+    if (authError || !data.session || !data.user) {
+      // Authentication failed — NO SESSION, NO ACCESS
+      erpStorage.setCurrentSessionUser(null);
+      const errorMsg = 'Invalid email or password.';
+      setAuthState({
+        user: null,
+        role: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMsg,
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    // Retrieve authenticated identity & hydrate database profile
+    const hydratedProfile = await loadHydratedProfile(data.user.id, data.user.email);
+    if (!hydratedProfile) {
+      await supabase.auth.signOut();
+      erpStorage.setCurrentSessionUser(null);
+      const errorMsg = 'No active institutional profile found for this account. Please contact administrator.';
+      setAuthState({
+        user: null,
+        role: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMsg,
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    // Session successfully established
+    erpStorage.setCurrentSessionUser(hydratedProfile);
+    try {
+      erpStorage.addAuditLog('USER_LOGGED_IN', 'profiles', hydratedProfile.id, undefined, { email });
+    } catch {}
 
     setAuthState({
-      user: matchedProfile,
-      role: matchedProfile.role,
+      user: hydratedProfile,
+      role: hydratedProfile.role,
       isAuthenticated: true,
       isLoading: false,
       error: null,
@@ -289,11 +331,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const logout = () => {
+  const logout = async (): Promise<void> => {
     const user = authState.user;
     if (user) {
-      erpStorage.addAuditLog('USER_LOGGED_OUT', 'profiles', user.id);
+      try {
+        erpStorage.addAuditLog('USER_LOGGED_OUT', 'profiles', user.id);
+      } catch {}
     }
+    await supabase.auth.signOut();
     erpStorage.setCurrentSessionUser(null);
     setAuthState({
       user: null,
@@ -305,29 +350,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
-    if (!authState.user) {
+    // 1. Verify active Supabase Auth session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !authState.user) {
       return { success: false, error: 'No active session. Please log in.' };
     }
+
     if (!newPassword || newPassword.length < 6) {
       return { success: false, error: 'New password must be at least 6 characters long.' };
     }
 
     try {
-      // 1. Update password in Supabase Auth
+      // 2. Real password update via Supabase Auth
       const { error: authErr } = await supabase.auth.updateUser({ password: newPassword });
       if (authErr) {
-        console.warn('Supabase Auth updateUser notice:', authErr.message);
+        return { success: false, error: authErr.message || 'Failed to update password.' };
       }
 
-      // 2. Audit log in Supabase
-      await supabase.from('audit_logs').insert({
-        action: 'PASSWORD_CHANGED',
-        actor_name: authState.user.full_name,
-        actor_role: authState.user.role,
-        entity_type: 'profiles',
-        entity_id: authState.user.id,
-        new_values: { password_updated: true, timestamp: new Date().toISOString() }
-      });
+      // 3. Audit log
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'PASSWORD_CHANGED',
+          actor_name: authState.user.full_name,
+          actor_role: authState.user.role,
+          entity_type: 'profiles',
+          entity_id: authState.user.id,
+          new_values: { password_updated: true, timestamp: new Date().toISOString() }
+        });
+      } catch {}
 
       return { success: true };
     } catch (err: any) {
@@ -519,23 +569,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const switchUser = (profileId: string) => {
-    const profiles = erpStorage.getProfiles();
-    const profile = profiles.find(p => p.id === profileId);
-    if (profile) {
-      erpStorage.setCurrentSessionUser(profile);
-      setAuthState({
-        user: profile,
-        role: profile.role,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, switchUser, changePassword, changeEmail, updateUserProfile }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, changePassword, changeEmail, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -62,7 +62,7 @@ const PageSkeletonLoader: React.FC = () => (
 );
 
 export const AppContent: React.FC = () => {
-  const { isAuthenticated, role, isLoading } = useAuth();
+  const { isAuthenticated, role, isLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [navigationParams, setNavigationParams] = useState<any>(null);
 
@@ -277,7 +277,19 @@ export const AppContent: React.FC = () => {
       }
     }
 
-    return <StudentDashboard onNavigate={handleNavigate} />;
+    return (
+      <div className="p-8 text-center text-rose-400">
+        <p className="font-bold text-sm">Unauthorized: Unrecognized institutional role.</p>
+        <p className="text-xs text-slate-400 mt-1">Please contact your system administrator.</p>
+        <button
+          type="button"
+          onClick={() => logout()}
+          className="mt-4 px-4 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-bold hover:bg-rose-500/30"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
   };
 
   return (

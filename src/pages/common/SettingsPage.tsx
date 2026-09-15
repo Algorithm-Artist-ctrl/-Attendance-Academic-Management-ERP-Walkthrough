@@ -18,13 +18,14 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 
 export const SettingsPage: React.FC = () => {
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, changePassword } = useAuth();
 
   // Password change form
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Notification toggles
@@ -37,8 +38,10 @@ export const SettingsPage: React.FC = () => {
   const [glowEffect, setGlowEffect] = useState<'emerald' | 'cyan' | 'violet'>('emerald');
   const [saveSettingsSuccess, setSaveSettingsSuccess] = useState(false);
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordMsg(null);
+
     if (newPassword.length < 6) {
       setPasswordMsg({ text: 'New password must be at least 6 characters.', type: 'error' });
       return;
@@ -48,11 +51,23 @@ export const SettingsPage: React.FC = () => {
       return;
     }
 
-    setPasswordMsg({ text: 'Password successfully updated!', type: 'success' });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setTimeout(() => setPasswordMsg(null), 3000);
+    setIsChangingPassword(true);
+    try {
+      const res = await changePassword(currentPassword, newPassword);
+      if (res.success) {
+        setPasswordMsg({ text: 'Password successfully updated in Supabase Auth!', type: 'success' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPasswordMsg({ text: res.error || 'Failed to update password.', type: 'error' });
+      }
+    } catch (err: any) {
+      setPasswordMsg({ text: err.message || 'Failed to update password.', type: 'error' });
+    } finally {
+      setIsChangingPassword(false);
+      setTimeout(() => setPasswordMsg(null), 4000);
+    }
   };
 
   const handleSavePreferences = () => {
@@ -148,7 +163,7 @@ export const SettingsPage: React.FC = () => {
               />
             </div>
 
-            <Button type="submit" variant="neon" size="sm" className="w-full mt-2">
+            <Button type="submit" variant="neon" size="sm" isLoading={isChangingPassword} className="w-full mt-2">
               Update Password
             </Button>
           </form>
