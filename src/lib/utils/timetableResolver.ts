@@ -127,54 +127,61 @@ export class TimetableResolver {
 
     const findMatchingSubject = (codeOrName: string): Subject | undefined => {
       if (!codeOrName) return undefined;
-      const clean = codeOrName.toUpperCase().replace(/[\s\-_]/g, '');
+      const clean = codeOrName.toUpperCase().replace(/[\s\-_.]/g, '');
       const cleanLower = codeOrName.toLowerCase().trim();
 
-      return subjects.find(s => {
-        const sCode = s.subject_code.toUpperCase().replace(/[\s\-_]/g, '');
-        if (sCode === clean) return true;
-        if (clean === 'DS' && sCode === 'BCS301') return true;
-        if (clean === 'COA' && sCode === 'BCS302') return true;
-        if (clean === 'DSTL' && sCode === 'BCS303') return true;
-        if ((clean === 'M4' || clean === 'MATHS4' || clean === 'MATHSIV') && sCode === 'BAS303') return true;
-        if (clean === 'UHV' && sCode === 'BVE301') return true;
-        if (clean === 'DSLAB' && sCode === 'BCS351') return true;
-        if (clean === 'COALAB' && sCode === 'BCS352') return true;
-        if (clean === 'DSTLLAB' && sCode === 'BCS353') return true;
-        if ((clean === 'CS' || clean === 'CYBER' || clean === 'CYBERSECURITY') && sCode === 'BCC301') return true;
-        if ((clean === 'CSLAB' || clean === 'CYBERLAB') && sCode === 'BCC351') return true;
-        
-        const sNameLower = s.subject_name.toLowerCase();
-        if (sNameLower.includes(cleanLower) || cleanLower.includes(sNameLower)) return true;
+      // 1. Exact or sanitized match on subject_code
+      const byCode = subjects.find(s => {
+        const sCode = s.subject_code.toUpperCase().replace(/[\s\-_.]/g, '');
+        return sCode === clean;
+      });
+      if (byCode) return byCode;
+
+      // 2. Check parenthesized acronym in subject_name: e.g. "Data Structure (DS)" -> "DS"
+      const byParen = subjects.find(s => {
+        const matches = s.subject_name.match(/\(([^)]+)\)/g);
+        if (matches) {
+          for (const m of matches) {
+            const inner = m.replace(/[()]/g, '').trim().toUpperCase().replace(/[\s\-_.]/g, '');
+            if (inner === clean) return true;
+          }
+        }
         return false;
       });
+      if (byParen) return byParen;
+
+      // 3. Name match
+      const byName = subjects.find(s => {
+        const sNameClean = s.subject_name.toLowerCase().replace(/[\s\-_.]/g, '');
+        return sNameClean === cleanLower.replace(/[\s\-_.]/g, '') || s.subject_name.toLowerCase().includes(cleanLower);
+      });
+      if (byName) return byName;
+
+      return undefined;
     };
 
     const findMatchingFaculty = (codeOrName: string): Faculty | undefined => {
       if (!codeOrName) return undefined;
       const cleanCode = codeOrName.toUpperCase().trim();
-      const cleanName = codeOrName.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
+      const cleanCodeNoPunct = cleanCode.replace(/[\s\-_.]/g, '');
+      const cleanName = codeOrName.toLowerCase().replace(/^(?:mr\.|ms\.|mrs\.|dr\.|prof\.)\s*/i, '').trim();
 
       return faculty.find(f => {
         if (f.faculty_code && f.faculty_code.toUpperCase().trim() === cleanCode) return true;
         if (f.employee_code && f.employee_code.toUpperCase().trim() === cleanCode) return true;
-        
-        // Match standard initials
-        if (cleanCode === 'HEM' && f.full_name.toLowerCase().includes('hemlata')) return true;
-        if (cleanCode === 'NAK' && f.full_name.toLowerCase().includes('naseem')) return true;
-        if (cleanCode === 'KK' && f.full_name.toLowerCase().includes('kuldeep')) return true;
-        if (cleanCode === 'SS' && f.full_name.toLowerCase().includes('shivani')) return true;
-        if (cleanCode === 'IRK' && f.full_name.toLowerCase().includes('imran')) return true;
-        if (cleanCode === 'FA' && f.full_name.toLowerCase().includes('faizan')) return true;
-        if (cleanCode === 'PRS' && f.full_name.toLowerCase().includes('praveen')) return true;
-        if ((cleanCode === 'ALG' || cleanCode === 'AG') && f.full_name.toLowerCase().includes('alok')) return true;
-        if (cleanCode === 'ABG' && f.full_name.toLowerCase().includes('abhishek')) return true;
-        if (cleanCode === 'GDS' && f.full_name.toLowerCase().includes('gagandep')) return true;
+        if (f.employee_code && f.employee_code.toUpperCase().replace(/[\s\-_.]/g, '') === cleanCodeNoPunct) return true;
 
-        const fClean = f.full_name.toLowerCase().replace(/mr\.|ms\.|dr\.|prof\./g, '').trim();
-        if (fClean.includes(cleanName) || cleanName.includes(fClean)) return true;
-        const initials = fClean.split(/\s+/).map(w => w[0]).join('').toUpperCase();
+        const fClean = f.full_name.toLowerCase().replace(/^(?:mr\.|ms\.|mrs\.|dr\.|prof\.)\s*/i, '').trim();
+        if (fClean === cleanName || fClean.includes(cleanName) || cleanName.includes(fClean)) return true;
+
+        // Dynamic initials from full name words (e.g. "Hemlata Chaudhry" -> "HC")
+        const words = fClean.split(/\s+/).filter(Boolean);
+        const initials = words.map(w => w[0]).join('').toUpperCase();
         if (initials === cleanCode) return true;
+
+        // Dynamic code prefix (e.g. "HEM" -> "Hemlata" starts with "hem")
+        if (cleanCode.length >= 3 && words[0]?.toUpperCase().startsWith(cleanCode)) return true;
+
         return false;
       });
     };

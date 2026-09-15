@@ -109,8 +109,8 @@ export const AITimetableUploadModal: React.FC<AITimetableUploadModalProps> = ({ 
     }
 
     setIsExtracting(true);
-    setProgress(5);
-    setProgressMessage('Preparing PDF...');
+    setProgress(15);
+    setProgressMessage('Uploading PDF...');
     const context: UploadTargetContext = {
       academicSessionId: sessionId,
       academicSessionName: selectedSession?.name,

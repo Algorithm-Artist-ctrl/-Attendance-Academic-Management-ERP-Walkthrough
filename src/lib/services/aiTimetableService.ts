@@ -42,17 +42,17 @@ export class AITimetableService {
   public async extractTimetableImage(
     file: File | Blob,
     fileName: string,
-    onProgress?: (message: string) => void,
+    onProgress?: (percent: number, message: string) => void,
     uploadContext?: UploadTargetContext
   ): Promise<ExtractedTimetableDocument> {
     if (!(file.type === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf'))) {
       throw new Error('Only PDF timetable files are supported.');
     }
 
-    onProgress?.('Reading PDF document...');
+    onProgress?.(15, 'Uploading PDF...');
     const data = await fileToBase64(file);
 
-    onProgress?.('Extracting timetable with AI gateway...');
+    onProgress?.(35, 'Extracting timetable with Gemini AI...');
     let response: Response;
     try {
       response = await fetch('/api/timetable/extract', {
@@ -79,7 +79,7 @@ export class AITimetableService {
       if (typeof rawMsg !== 'string') rawMsg = JSON.stringify(rawMsg);
       const lower = rawMsg.toLowerCase();
 
-      let userMessage = 'AI timetable extraction is temporarily unavailable. Your existing timetable has not been changed. Please retry or use CSV import.';
+      let userMessage = 'AI extraction service is temporarily unavailable. Your existing timetable has NOT been changed. Please retry or use CSV import.';
       if (
         response.status === 503 ||
         lower.includes('503') ||
@@ -89,9 +89,9 @@ export class AITimetableService {
         lower.includes('ai_provider_unavailable') ||
         rawMsg.includes('{"error"')
       ) {
-        userMessage = 'AI extraction is temporarily unavailable due to high AI model demand. Your existing timetable has not been changed. Please retry or use CSV import.';
+        userMessage = 'AI extraction service is temporarily unavailable. Your existing timetable has NOT been changed. Please retry or use CSV import.';
       } else if (response.status === 429 || lower.includes('429') || lower.includes('quota') || lower.includes('rate limit')) {
-        userMessage = 'AI extraction rate limit reached. Your existing timetable has not been changed. Please retry in a few moments or use CSV import.';
+        userMessage = 'AI extraction rate limit reached. Your existing timetable has NOT been changed. Please retry in a few moments or use CSV import.';
       } else if (lower.includes('not a valid pdf') || lower.includes('invalid_pdf') || lower.includes('pdf_required')) {
         userMessage = 'Uploaded file is not a valid PDF timetable document. Please verify the file or use CSV import.';
       } else if (rawMsg && !rawMsg.includes('{') && !rawMsg.includes('}')) {
@@ -100,9 +100,15 @@ export class AITimetableService {
       throw new Error(userMessage);
     }
 
-    onProgress?.('Validating extracted timetable schedule...');
+    onProgress?.(50, 'Reading days and periods...');
+    onProgress?.(65, 'Resolving subjects from academic catalog...');
+    onProgress?.(80, 'Resolving faculty assignments...');
+    onProgress?.(95, 'Validating timetable & checking conflicts...');
+
     const parsed = body;
-    return this.normalizeAndValidateExtractedDocument({ ...parsed, source_file_name: fileName }, uploadContext);
+    const result = this.normalizeAndValidateExtractedDocument({ ...parsed, source_file_name: fileName }, uploadContext);
+    onProgress?.(100, 'Ready to publish.');
+    return result;
   }
 
   public async extractMultipleTimetables(
@@ -118,11 +124,14 @@ export class AITimetableService {
         await this.extractTimetableImage(
           file,
           file.name,
-          message => onProgress?.(Math.round((i / files.length) * 100), file.name, message),
+          (filePercent, message) => {
+            const overall = Math.round(((i + (filePercent / 100)) / files.length) * 100);
+            onProgress?.(overall, file.name, message);
+          },
           uploadContext
         )
       );
-      onProgress?.(Math.round(((i + 1) / files.length) * 100), file.name, 'PDF extracted successfully.');
+      onProgress?.(Math.round(((i + 1) / files.length) * 100), file.name, 'Ready to publish.');
     }
     return results;
   }

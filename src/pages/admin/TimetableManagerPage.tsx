@@ -37,6 +37,7 @@ import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS, CANONICAL_PERIOD_NUMBERS 
 import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
 import { TimetableConflictEngine, TimetableConflictItem } from '../../lib/services/timetableConflictEngine';
+import { classifyTimetableUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
 
 interface DraftSlot {
@@ -416,6 +417,13 @@ export const TimetableManagerPage: React.FC = () => {
       setCsvError('Please enter a valid Google Sheet CSV URL.');
       return;
     }
+
+    const classification = classifyTimetableUrl(csvUrl);
+    if (classification.isGoogleDrive) {
+      setCsvError('This is a Google Drive file link, not a Google Sheet. Please provide a Google Sheet link or a direct CSV file.');
+      return;
+    }
+
     setIsAnalyzingCSV(true);
     setCsvError(null);
     setPublishSuccessMsg(null);

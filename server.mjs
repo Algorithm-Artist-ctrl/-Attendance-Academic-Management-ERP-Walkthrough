@@ -307,13 +307,229 @@ function serveStatic(req, res) {
   fs.createReadStream(file).pipe(res);
 }
 
+/**
+ * Validates URLs against SSRF policies, restricting to Google Sheets and Drive domains
+ */
+export function validateUrlForCsv(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return { valid: false, error: 'URL is required.' };
+  }
+  let parsed;
+  try {
+    parsed = new URL(rawUrl.trim());
+  } catch (err) {
+    return { valid: false, error: 'Invalid URL format.' };
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return { valid: false, error: 'URL must begin with http:// or https://' };
+  }
+  const host = parsed.hostname.toLowerCase();
+  const isAllowedHost = host === 'docs.google.com' || host === 'drive.google.com' || host.endsWith('.google.com');
+  if (!isAllowedHost) {
+    return {
+      valid: false,
+      error: 'Only Google Sheets (docs.google.com) and Google Drive (drive.google.com) URLs are permitted.',
+    };
+  }
+  return { valid: true, parsedUrl: parsed, host };
+}
+
+/**
+ * Classifies Google URL and constructs canonical CSV export or download URL
+ */
+export function processGoogleUrl(rawUrl) {
+  const clean = rawUrl.trim();
+
+  // Match Google Sheets
+  const sheetMatch = clean.match(/https?:\/\/docs\.google\.com\/spreadsheets\/(?:u\/\d+\/)?d\/(?:e\/)?([a-zA-Z0-9-_]+)/i);
+  if (sheetMatch) {
+    const spreadsheetId = sheetMatch[1];
+    let gid = '';
+    const gidMatch = clean.match(/[#?&]gid=([0-9]+)/i);
+    if (gidMatch) gid = gidMatch[1];
+
+    if (clean.includes('/export?format=csv') || clean.includes('/pub?output=csv') || clean.includes('/pub?format=csv')) {
+      return { type: 'google_sheet', exportUrl: clean };
+    }
+    return {
+      type: 'google_sheet',
+      exportUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv${gid ? `&gid=${gid}` : ''}`
+    };
+  }
+
+  // Match Google Drive file links
+  const driveMatch = clean.match(/https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9-_]+)/i);
+  if (driveMatch) {
+    const fileId = driveMatch[1];
+    return {
+      type: 'google_drive',
+      fileId,
+      exportUrl: `https://drive.google.com/uc?export=download&id=${fileId}`
+    };
+  }
+
+  return { type: 'unknown', exportUrl: clean };
+}
+
+/**
+ * Safe server-side fetcher for Google Sheets CSV and Google Drive downloads
+ */
+export async function fetchCsvServer(rawUrl) {
+  const val = validateUrlForCsv(rawUrl);
+  if (!val.valid) {
+    return { success: false, status: 400, code: 'INVALID_URL', error: val.error };
+  }
+
+  const processed = processGoogleUrl(rawUrl);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(processed.exportUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'VCTM-ERP-System/2.0 (Academic Timetable Engine)',
+        'Accept': 'text/csv, text/plain, */*',
+      },
+      signal: controller.signal,
+      redirect: 'follow',
+    });
+    clearTimeout(timer);
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        success: false,
+        status: 403,
+        code: 'ACCESS_DENIED',
+        error: 'Google Sheet or Drive file could not be accessed. Make sure sharing is set to "Anyone with the link can view".',
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        success: false,
+        status: 502,
+        code: 'FETCH_FAILED',
+        error: `HTTP ${response.status}: Failed to fetch document from Google servers.`,
+      };
+    }
+
+    const text = await response.text();
+    const trimmed = text.trim();
+
+    // Check if HTML viewer was returned instead of CSV
+    if (
+      trimmed.startsWith('<!DOCTYPE html>') ||
+      trimmed.includes('<html') ||
+      trimmed.includes('accounts.google.com') ||
+      trimmed.includes('ServiceLogin')
+    ) {
+      if (processed.type === 'google_drive') {
+        return {
+          success: false,
+          status: 400,
+          code: 'GOOGLE_DRIVE_LINK',
+          error: 'This is a Google Drive file link, not a Google Sheet or CSV file. Please provide a Google Sheet link or a direct CSV file.',
+        };
+      }
+      return {
+        success: false,
+        status: 403,
+        code: 'ACCESS_DENIED',
+        error: 'Google Sheet could not be accessed. Make sure permissions are set to "Anyone with the link can view", or publish it via File > Share > Publish to web as CSV.',
+      };
+    }
+
+    if (!trimmed) {
+      return {
+        success: false,
+        status: 400,
+        code: 'EMPTY_CSV',
+        error: 'The retrieved CSV content is empty.',
+      };
+    }
+
+    return { success: true, csvText: text };
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      return {
+        success: false,
+        status: 504,
+        code: 'TIMEOUT',
+        error: 'Request to fetch Google Sheet timed out after 15 seconds.',
+      };
+    }
+    return {
+      success: false,
+      status: 502,
+      code: 'NETWORK_ERROR',
+      error: `Network error while fetching Google document: ${err.message}`,
+    };
+  }
+}
+
+async function handleCsvPost(req, res) {
+  let body;
+  try {
+    body = await readJson(req);
+  } catch (err) {
+    return send(res, 400, { code: 'INVALID_BODY', error: 'Invalid JSON request payload.' });
+  }
+
+  if (typeof body?.url !== 'string' || !body.url.trim()) {
+    return send(res, 400, { code: 'URL_REQUIRED', error: 'CSV URL is required.' });
+  }
+
+  const result = await fetchCsvServer(body.url);
+  if (!result.success) {
+    return send(res, result.status || 502, {
+      code: result.code || 'CSV_FETCH_FAILED',
+      error: result.error || 'Failed to retrieve CSV content.',
+    });
+  }
+
+  return send(res, 200, { success: true, csvText: result.csvText });
+}
+
+async function handleCsvProxyGet(req, res, urlObj) {
+  const targetUrl = urlObj.searchParams.get('url');
+  if (!targetUrl) {
+    return send(res, 400, { code: 'URL_REQUIRED', error: 'Query parameter "url" is required.' });
+  }
+
+  const result = await fetchCsvServer(targetUrl);
+  if (!result.success) {
+    return send(res, result.status || 502, {
+      code: result.code || 'CSV_FETCH_FAILED',
+      error: result.error || 'Failed to retrieve CSV content.',
+    });
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  res.end(result.csvText);
+}
+
 export const server = http.createServer(async (req, res) => {
   try {
-    if (req.method === 'GET' && (req.url === '/api/timetable/health' || req.url === '/api/health')) {
+    const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const pathname = urlObj.pathname;
+
+    if (req.method === 'GET' && (pathname === '/api/timetable/health' || pathname === '/api/health')) {
       return handleHealth(req, res);
     }
-    if (req.method === 'POST' && req.url === '/api/timetable/extract') {
+    if (req.method === 'POST' && pathname === '/api/timetable/extract') {
       return await handleExtract(req, res);
+    }
+    if (req.method === 'POST' && pathname === '/api/timetable/csv') {
+      return await handleCsvPost(req, res);
+    }
+    if (req.method === 'GET' && pathname === '/api/proxy-sheet') {
+      return await handleCsvProxyGet(req, res, urlObj);
     }
     if (req.method === 'GET' || req.method === 'HEAD') {
       return serveStatic(req, res);

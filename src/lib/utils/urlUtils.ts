@@ -132,9 +132,69 @@ export function validateSafePublicUrl(urlStr: string): { valid: boolean; error?:
   return { valid: true };
 }
 
+export interface UrlClassification {
+  type: 'google_sheet' | 'google_drive' | 'generic_csv' | 'invalid';
+  isGoogleSheet: boolean;
+  isGoogleDrive: boolean;
+  errorMessage?: string;
+  spreadsheetId?: string;
+  fileId?: string;
+  exportCsvUrl?: string;
+}
+
+/**
+ * Classifies a user-provided timetable URL as Google Sheets, Google Drive, or generic CSV.
+ */
+export function classifyTimetableUrl(rawUrl: string): UrlClassification {
+  const url = (rawUrl || '').trim();
+  if (!url) {
+    return { type: 'invalid', isGoogleSheet: false, isGoogleDrive: false, errorMessage: 'URL cannot be empty.' };
+  }
+
+  // Google Sheets
+  const sheetMatch = url.match(/https?:\/\/docs\.google\.com\/spreadsheets\/(?:u\/\d+\/)?d\/(?:e\/)?([a-zA-Z0-9-_]+)/i);
+  if (sheetMatch) {
+    const spreadsheetId = sheetMatch[1];
+    let gid: string | undefined;
+    const gidHashMatch = url.match(/#gid=([0-9]+)/i);
+    const gidQueryMatch = url.match(/[?&]gid=([0-9]+)/i);
+    if (gidHashMatch) gid = gidHashMatch[1];
+    else if (gidQueryMatch) gid = gidQueryMatch[1];
+
+    const exportCsvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv${gid ? `&gid=${gid}` : ''}`;
+    return {
+      type: 'google_sheet',
+      isGoogleSheet: true,
+      isGoogleDrive: false,
+      spreadsheetId,
+      exportCsvUrl,
+    };
+  }
+
+  // Google Drive
+  const driveMatch = url.match(/https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9-_]+)/i);
+  if (driveMatch) {
+    const fileId = driveMatch[1];
+    return {
+      type: 'google_drive',
+      isGoogleSheet: false,
+      isGoogleDrive: true,
+      fileId,
+      errorMessage: 'This is a Google Drive file link, not a Google Sheet. Please provide a Google Sheet link or a direct CSV file.',
+    };
+  }
+
+  return {
+    type: 'generic_csv',
+    isGoogleSheet: false,
+    isGoogleDrive: false,
+    exportCsvUrl: url,
+  };
+}
+
 /**
  * Fetches remote CSV text with automatic Google Sheets normalization, timeout control,
- * internal serverless proxy routing to avoid CORS / 401 issues, and actionable error diagnostics.
+ * internal server endpoint POST /api/timetable/csv, and actionable error diagnostics.
  */
 export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000): Promise<string> {
   const cleanUrl = rawUrl.trim();
@@ -142,6 +202,7 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
     throw new Error('CSV URL cannot be empty.');
   }
 
+  const classification = classifyTimetableUrl(cleanUrl);
   const parsedSheet = parseGoogleSheetUrl(cleanUrl);
   const primaryUrl = parsedSheet.isGoogleSheet ? (parsedSheet.exportCsvUrl || cleanUrl) : cleanUrl;
 
@@ -150,50 +211,50 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
     throw new Error(safety.error || 'Invalid URL');
   }
 
-  // 1. In browser environment: Route through internal backend proxy /api/proxy-sheet
+  // 1. In browser environment: Route through internal server endpoint POST /api/timetable/csv
   if (typeof window !== 'undefined') {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-      const proxyUrl = `/api/proxy-sheet?url=${encodeURIComponent(cleanUrl)}`;
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
+      const response = await fetch('/api/timetable/csv', {
+        method: 'POST',
         headers: {
-          Accept: 'text/plain, text/csv, application/json, */*',
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/csv, */*',
         },
+        body: JSON.stringify({ url: cleanUrl }),
         signal: controller.signal,
       });
 
       clearTimeout(timer);
 
-      const contentType = response.headers.get('content-type') || '';
-      if (!response.ok || contentType.includes('application/json')) {
-        const errJson = await response.json().catch(() => null);
-        if (errJson && errJson.error) {
-          throw new Error(errJson.error);
-        }
-        throw new Error(`HTTP ${response.status}: Failed to fetch CSV via proxy`);
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const errorMsg = data?.error || `HTTP ${response.status}: Failed to fetch CSV`;
+        throw new Error(errorMsg);
       }
 
-      const text = await response.text();
-      if (!text || text.trim().length === 0) {
-        throw new Error('The retrieved CSV content is empty.');
+      if (data && data.csvText) {
+        return data.csvText;
       }
-      return text;
-    } catch (proxyErr: any) {
-      // If explicit permissions error returned from proxy, rethrow immediately
-      if (proxyErr.message && (
-        proxyErr.message.includes('permissions are set to') ||
-        proxyErr.message.includes('not publicly accessible')
-      )) {
-        throw proxyErr;
+    } catch (serverErr: any) {
+      // If explicit permissions error or drive link diagnostic returned, rethrow immediately
+      if (
+        serverErr.message &&
+        (serverErr.message.includes('Google Drive') ||
+          serverErr.message.includes('permissions are set to') ||
+          serverErr.message.includes('not publicly accessible') ||
+          serverErr.message.includes('could not be accessed'))
+      ) {
+        throw serverErr;
       }
-      console.warn('Internal proxy attempt failed, trying fallback candidates:', proxyErr.message);
+      console.warn('Server POST /api/timetable/csv failed, trying fallback candidates:', serverErr.message);
     }
   }
 
-  // 2. Fallback / Server-side candidate URLs (Node scripts or direct fetch)
+  // 2. Direct fetch candidates (Node scripts or direct fallback)
   const candidateUrls: string[] = [primaryUrl];
   if (parsedSheet.isGoogleSheet && parsedSheet.gvizCsvUrl && parsedSheet.gvizCsvUrl !== primaryUrl) {
     candidateUrls.push(parsedSheet.gvizCsvUrl);
@@ -236,6 +297,9 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
         trimmed.includes('accounts.google.com') ||
         trimmed.includes('ServiceLogin')
       ) {
+        if (classification.isGoogleDrive) {
+          throw new Error('This is a Google Drive file link, not a Google Sheet. Please provide a Google Sheet link or a direct CSV file.');
+        }
         throw new Error(
           'Google Sheet could not be accessed. Make sure the sheet permissions are set to "Anyone with the link can view", or publish it via File > Share > Publish to web as CSV.'
         );
@@ -248,10 +312,19 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
       return text;
     } catch (err: any) {
       lastError = err;
-      if (err.message && (err.message.includes('permissions are set to') || err.message.includes('not publicly accessible'))) {
+      if (
+        err.message &&
+        (err.message.includes('Google Drive') ||
+          err.message.includes('permissions are set to') ||
+          err.message.includes('not publicly accessible'))
+      ) {
         throw err;
       }
     }
+  }
+
+  if (classification.isGoogleDrive) {
+    throw new Error('This is a Google Drive file link, not a Google Sheet. Please provide a Google Sheet link or a direct CSV file.');
   }
 
   if (parsedSheet.isGoogleSheet) {

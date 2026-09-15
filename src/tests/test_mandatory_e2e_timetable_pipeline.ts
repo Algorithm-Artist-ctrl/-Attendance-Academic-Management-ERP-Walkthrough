@@ -266,9 +266,13 @@ async function runMandatoryE2ETests() {
     '11. 09:50 touching period boundary (09:00-09:50 and 09:50-10:40) correctly evaluated as NO OVERLAP'
   );
 
+  if (previewConflictReport.blockingCount > 0) {
+    console.error('Preview conflicts detected:', JSON.stringify(previewConflictReport.conflicts, null, 2));
+  }
   assert(
     previewConflictReport.blockingCount === 0,
-    `10. Timetable preview has ZERO blocking conflicts against live college database (conflicts: ${previewConflictReport.blockingCount})`
+    `10. Timetable preview has ZERO blocking conflicts against live college database (conflicts: ${previewConflictReport.blockingCount})`,
+    previewConflictReport.conflicts
   );
 
   // STEP 12: Publish replacement

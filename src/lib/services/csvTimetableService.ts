@@ -1,5 +1,6 @@
 import { DayOfWeek, LectureType, Section, Subject, Faculty, Classroom } from '../../types/database.types';
 import { fetchCSVContent } from '../utils/urlUtils';
+import { getCanonicalPeriodTiming } from '../../config/academicConfig';
 
 export interface RawCSVRow {
   day?: string;
@@ -160,7 +161,7 @@ export class CSVTimetableService {
         valid: false,
         format: 'normalized',
         errors: [
-          'Unrecognized timetable CSV structure. Please provide a timetable in Matrix format ("DAY \\ TIME" header with period columns) or Normalized format (columns: Day, Period, Subject, Faculty).'
+          'CSV could not be recognized as a timetable. Supported formats: matrix timetable or normalized Day/Period format.'
         ],
         warnings: [],
         totalSlots: 0,
@@ -174,29 +175,50 @@ export class CSVTimetableService {
 
   /**
    * Scans all rows to detect format and header index dynamically.
+   * Supports:
+   * - FORMAT A: Normalized (Day, Period, Subject, Faculty, Room)
+   * - FORMAT B: Matrix (DAY/TIME, P1, P2, P3...)
+   * - FORMAT C: Time Matrix (DAY/TIME, 09:00-09:50, 09:50-10:40...)
+   * - FORMAT D: Subject + Faculty Cell (multiline or pipe/slash delimited)
+   * - FORMAT E: Google Sheet CSV export
    */
   public detectFormat(lines: string[][]): { format: 'matrix' | 'normalized' | 'unknown'; headerRowIndex: number } {
     for (let r = 0; r < Math.min(lines.length, 15); r++) {
       const row = lines[r];
       if (!row || row.length === 0) continue;
 
-      const firstCell = (row[0] || '').toLowerCase().replace(/[^a-z]/g, '');
-      const hasDayAndTimeInCell0 = firstCell.includes('day') && (firstCell.includes('time') || firstCell.length <= 4);
+      const firstCell = (row[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isDayCell = firstCell.includes('day') || firstCell.includes('date') || firstCell.includes('time') || firstCell.length <= 4;
 
-      // Check if subsequent columns look like period headers with time ranges
-      const hasPeriodTimeColumns = row.slice(1).some(col => {
+      // Check if subsequent columns look like period headers or time ranges
+      const hasMatrixPeriodOrTimeColumns = row.slice(1).some(col => {
         const c = col.trim();
-        return /^([IVX]+|\d+)\s*\([^\)]*\d{1,2}:\d{2}[^\)]*\)/i.test(c);
+        if (!c) return false;
+        // P1, P2, P3... or Period 1, Period 2...
+        if (/^p\s*\d+$/i.test(c) || /^period\s*\d+$/i.test(c) || /^slot\s*\d+$/i.test(c)) return true;
+        // 1, 2, 3... or Roman numerals I, II, III...
+        if (/^[1-9]\d*$/.test(c) || /^[IVX]+$/i.test(c)) return true;
+        // Roman numeral / digit with paren time: "I (09:00 - 09:50)"
+        if (/^([IVX]+|\d+)\s*\([^\)]*\d{1,2}:\d{2}[^\)]*\)/i.test(c)) return true;
+        // Time range: "09:00-09:50", "09:50 - 10:40"
+        if (/\d{1,2}:\d{2}\s*(?:-|–|—|to)\s*\d{1,2}:\d{2}/i.test(c)) return true;
+        return false;
       });
 
-      if (hasDayAndTimeInCell0 && hasPeriodTimeColumns) {
+      // Also check if subsequent rows in column 0 contain day names (Monday, Tuesday...)
+      const subsequentRowsHaveDays = lines.slice(r + 1, r + 7).some(subRow => {
+        const d = this.normalizeDay(subRow?.[0] || '');
+        return d !== null && d !== 'SUN';
+      });
+
+      if ((isDayCell || subsequentRowsHaveDays) && hasMatrixPeriodOrTimeColumns) {
         return { format: 'matrix', headerRowIndex: r };
       }
 
       // Check for normalized format header
       const normalizedKeys = row.map(h => this.normalizeColumnHeader(h));
       const hasDay = normalizedKeys.includes('day_of_week');
-      const hasPeriod = normalizedKeys.includes('period_number');
+      const hasPeriod = normalizedKeys.includes('period_number') || normalizedKeys.includes('start_time');
       const hasSubject = normalizedKeys.includes('subject_code') || normalizedKeys.includes('subject_name');
 
       if (hasDay && hasPeriod && hasSubject) {
@@ -329,17 +351,17 @@ export class CSVTimetableService {
     // ── 4. Header Row Parsing (Period Numbers & Time Ranges) ──
     const headerRow = lines[headerRowIndex];
     const periodMap: Record<number, { periodNumber: number; start: string; end: string }> = {};
+    let sequentialPeriodCounter = 1;
 
     for (let colIdx = 1; colIdx < headerRow.length; colIdx++) {
       const cell = headerRow[colIdx]?.trim();
       if (!cell) continue;
 
-      // Extract period identifier and time range
-      // E.g.: "I (9:00 - 9:50)", "VI (1:10 - 2:00)", "2 (09:50 - 10:40)"
-      const match = cell.match(/^([IVX]+|\d+)\s*\(([^\)]+)\)$/i);
-      if (match) {
-        const periodNum = this.parsePeriodNumber(match[1]);
-        const timeRangeRaw = match[2].trim();
+      // Case A: Roman numeral or digit with parenthesized time range: "I (9:00 - 9:50)", "1 (09:00-09:50)"
+      const parenMatch = cell.match(/^([IVX]+|\d+)\s*\(([^\)]+)\)$/i);
+      if (parenMatch) {
+        const periodNum = this.parsePeriodNumber(parenMatch[1]);
+        const timeRangeRaw = parenMatch[2].trim();
         const timeMatch = timeRangeRaw.match(/(\d{1,2}:\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}:\d{2})/i);
 
         if (periodNum && timeMatch) {
@@ -352,13 +374,44 @@ export class CSVTimetableService {
             errors.push(`Header column ${colIdx + 1} ("${cell}"): end time (${end}) must be after start time (${start}).`);
           } else {
             periodMap[colIdx] = { periodNumber: periodNum, start, end };
+            sequentialPeriodCounter = Math.max(sequentialPeriodCounter, periodNum + 1);
           }
-        } else {
-          warnings.push(`Column ${colIdx + 1} header "${cell}" has an unrecognized period number or time range.`);
+          continue;
         }
-      } else {
-        warnings.push(`Column ${colIdx + 1} header "${cell}" does not match period pattern.`);
       }
+
+      // Case B: Time range directly: "09:00-09:50", "09:50 - 10:40" (Format C)
+      const directTimeMatch = cell.match(/(\d{1,2}:\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}:\d{2})/i);
+      if (directTimeMatch) {
+        const rawStart = directTimeMatch[1].trim();
+        const rawEnd = directTimeMatch[2].trim();
+        const start = this.normalizeTimeTo24H(rawStart, false);
+        const end = this.normalizeTimeTo24H(rawEnd, true, start);
+        const periodNum = sequentialPeriodCounter++;
+
+        if (start >= end) {
+          errors.push(`Header column ${colIdx + 1} ("${cell}"): end time (${end}) must be after start time (${start}).`);
+        } else {
+          periodMap[colIdx] = { periodNumber: periodNum, start, end };
+        }
+        continue;
+      }
+
+      // Case C: Period code: "P1", "P2", "Period 1", "1", "I" (Format B)
+      const pMatch = cell.match(/^(?:P|Period\s*|Slot\s*)?([IVX]+|\d+)$/i);
+      if (pMatch) {
+        const periodNum = this.parsePeriodNumber(pMatch[1]) || sequentialPeriodCounter++;
+        const defaultTiming = getCanonicalPeriodTiming(periodNum);
+        periodMap[colIdx] = {
+          periodNumber: periodNum,
+          start: defaultTiming.start_time,
+          end: defaultTiming.end_time,
+        };
+        sequentialPeriodCounter = Math.max(sequentialPeriodCounter, periodNum + 1);
+        continue;
+      }
+
+      warnings.push(`Column ${colIdx + 1} header "${cell}" does not match known period pattern.`);
     }
 
     if (Object.keys(periodMap).length === 0) {
@@ -436,8 +489,8 @@ export class CSVTimetableService {
             period_number: periodInfo.periodNumber,
             start_time: periodInfo.start,
             end_time: periodInfo.end,
-            subject_code: cell.toUpperCase(),
-            subject_name: cell.toUpperCase() === 'LUNCH' ? 'Lunch Break' : cell,
+            subject_code: cell.toUpperCase().includes('LUNCH') ? 'LUNCH' : cell.toUpperCase(),
+            subject_name: cell.toUpperCase().includes('LUNCH') ? 'Lunch Break' : cell,
             subject_id: undefined,
             faculty_code: '',
             faculty_name: '',
@@ -448,16 +501,34 @@ export class CSVTimetableService {
           });
         } else {
           instructionalSlots++;
-          // Parse SubjectToken and FacultyToken: "DS (HEM)", "WD WORKSHOP (GDS)", etc.
+          // Parse cell tokens across Format B, D, and parenthesized formats:
           let subjectToken = '';
-          let facultyCode = '';
+          let facultyToken = '';
+          let roomToken = '';
 
-          const parenMatch = cell.match(/^(.+?)\s*\(([^)]+)\)$/);
-          if (parenMatch) {
-            subjectToken = parenMatch[1].trim();
-            facultyCode = parenMatch[2].trim();
+          if (cell.includes('\n') || cell.includes('\r')) {
+            // Multiline cell (Format D)
+            const parts = cell.split(/\r?\n/).map(p => p.trim()).filter(Boolean);
+            subjectToken = parts[0] || '';
+            facultyToken = parts[1] || '';
+            roomToken = parts[2] || '';
+          } else if (cell.includes('|') || cell.includes('//') || (cell.includes('/') && !cell.includes('and/or'))) {
+            // Delimited cell (Format B)
+            const delim = cell.includes('|') ? '|' : (cell.includes('//') ? '//' : '/');
+            const parts = cell.split(delim).map(p => p.trim()).filter(Boolean);
+            subjectToken = parts[0] || '';
+            facultyToken = parts[1] || '';
+            roomToken = parts[2] || '';
           } else {
-            subjectToken = cell.trim();
+            // Parenthesized or dash format: "DS (HEM)" or "Data Structure (Hemlata) - A006"
+            const parenMatch = cell.match(/^(.+?)\s*\(([^)]+)\)(?:\s*[-–—]\s*(.+))?$/);
+            if (parenMatch) {
+              subjectToken = parenMatch[1].trim();
+              facultyToken = parenMatch[2].trim();
+              roomToken = parenMatch[3]?.trim() || '';
+            } else {
+              subjectToken = cell.trim();
+            }
           }
 
           if (!subjectToken) {
@@ -468,27 +539,37 @@ export class CSVTimetableService {
           // Resolve Subject dynamically against Supabase active subjects
           const matchedSubject = this.findMatchingSubject(subjectToken, context.subjects);
           if (!matchedSubject) {
-            errors.push(
-              `Row ${rowIdx + 1}, ${day} Period ${periodInfo.periodNumber}: Subject "${subjectToken}" could not be matched to an active subject in the academic catalog.`
+            warnings.push(
+              `Row ${rowIdx + 1}, ${day} Period ${periodInfo.periodNumber}: Subject "${subjectToken}" could not be matched to an active catalog record.`
             );
-            continue;
           }
 
           // Resolve Faculty dynamically against Supabase active faculty records
           let matchedFaculty: Faculty | undefined = undefined;
-          if (facultyCode) {
-            matchedFaculty = this.findMatchingFaculty(facultyCode, context.faculty);
+          if (facultyToken) {
+            matchedFaculty = this.findMatchingFaculty(facultyToken, context.faculty);
             if (!matchedFaculty) {
-              errors.push(
-                `Row ${rowIdx + 1}, ${day} Period ${periodInfo.periodNumber}: Faculty code "${facultyCode}" could not be matched to an active faculty record.`
+              warnings.push(
+                `Row ${rowIdx + 1}, ${day} Period ${periodInfo.periodNumber}: Faculty "${facultyToken}" could not be matched to an active faculty record.`
               );
-              continue;
             }
-          } else {
-            errors.push(
-              `Row ${rowIdx + 1}, ${day} Period ${periodInfo.periodNumber}: Instructional class "${subjectToken}" is missing a designated faculty code.`
-            );
-            continue;
+          }
+
+          // Resolve Room if present in cell
+          let slotRoomNumber = canonicalRoomNumber;
+          let slotClassroomId = canonicalClassroomId;
+          if (roomToken) {
+            const cleanR = roomToken.toUpperCase().replace(/[\s\-_.]/g, '');
+            const matchedRoom = (context.classrooms || []).find(c => {
+              const cRoomClean = c.room_number.toUpperCase().replace(/[\s\-_.]/g, '');
+              return cRoomClean === cleanR || cleanR.endsWith(cRoomClean) || cRoomClean.endsWith(cleanR);
+            });
+            if (matchedRoom) {
+              slotRoomNumber = matchedRoom.room_number;
+              slotClassroomId = matchedRoom.id;
+            } else {
+              slotRoomNumber = roomToken;
+            }
           }
 
           // Determine LectureType
@@ -502,7 +583,7 @@ export class CSVTimetableService {
             lectureType = 'Project';
           } else if (lowerSub.includes('tutorial')) {
             lectureType = 'Tutorial';
-          } else if (matchedSubject.lecture_type) {
+          } else if (matchedSubject?.lecture_type) {
             lectureType = matchedSubject.lecture_type;
           }
 
@@ -512,14 +593,14 @@ export class CSVTimetableService {
             period_number: periodInfo.periodNumber,
             start_time: periodInfo.start,
             end_time: periodInfo.end,
-            subject_code: matchedSubject.subject_code,
-            subject_name: matchedSubject.subject_name,
-            subject_id: matchedSubject.id,
-            faculty_code: matchedFaculty.faculty_code || matchedFaculty.employee_code || facultyCode,
-            faculty_name: matchedFaculty.full_name,
-            faculty_id: matchedFaculty.id,
-            room_number: canonicalRoomNumber,
-            classroom_id: canonicalClassroomId,
+            subject_code: matchedSubject?.subject_code || subjectToken,
+            subject_name: matchedSubject?.subject_name || subjectToken,
+            subject_id: matchedSubject?.id,
+            faculty_code: matchedFaculty?.faculty_code || matchedFaculty?.employee_code || facultyToken,
+            faculty_name: matchedFaculty?.full_name || facultyToken,
+            faculty_id: matchedFaculty?.id,
+            room_number: slotRoomNumber,
+            classroom_id: slotClassroomId,
             lecture_type: lectureType,
           });
         }
@@ -656,14 +737,12 @@ export class CSVTimetableService {
 
       const matchedSubject = isBreak ? undefined : this.findMatchingSubject(subCode || subName, context.subjects);
       if (!isBreak && !matchedSubject) {
-        errors.push(`Row ${lineNum}: subject "${subCode || subName}" could not be matched to an active subject in the academic catalog.`);
-        continue;
+        warnings.push(`Row ${lineNum}: subject "${subCode || subName}" could not be matched to an active subject in the academic catalog.`);
       }
 
       const matchedFaculty = isBreak ? undefined : this.findMatchingFaculty(facCode || facName, context.faculty);
       if (!isBreak && !matchedFaculty) {
-        errors.push(`Row ${lineNum}: faculty "${facCode || facName}" could not be matched to an active faculty record.`);
-        continue;
+        warnings.push(`Row ${lineNum}: faculty "${facCode || facName}" could not be matched to an active faculty record.`);
       }
 
       const slotKey = `${day}-${periodNumber}`;
@@ -708,11 +787,11 @@ export class CSVTimetableService {
         period_number: periodNumber,
         start_time: start,
         end_time: end,
-        subject_code: isBreak ? (subCode || 'LUNCH') : (matchedSubject?.subject_code || subCode),
-        subject_name: isBreak ? (subName || 'Lunch Break') : (matchedSubject?.subject_name || subName),
+        subject_code: isBreak ? (subCode || 'LUNCH') : (matchedSubject?.subject_code || subCode || subName),
+        subject_name: isBreak ? (subName || 'Lunch Break') : (matchedSubject?.subject_name || subName || subCode),
         subject_id: matchedSubject?.id,
-        faculty_code: isBreak ? '' : (matchedFaculty?.faculty_code || matchedFaculty?.employee_code || facCode),
-        faculty_name: isBreak ? '' : (matchedFaculty?.full_name || facName),
+        faculty_code: isBreak ? '' : (matchedFaculty?.faculty_code || matchedFaculty?.employee_code || facCode || facName),
+        faculty_name: isBreak ? '' : (matchedFaculty?.full_name || facName || facCode),
         faculty_id: matchedFaculty?.id,
         room_number: canonicalRoom,
         classroom_id: classroomId,
