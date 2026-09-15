@@ -142,6 +142,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'import', label: 'Student Onboarding', icon: FileSpreadsheet },
           { id: 'faculty', label: 'Faculty', icon: Users },
           { id: 'timetable', label: 'Department Schedule', icon: Calendar },
+          { id: 'academic_setup', label: 'Section Management', icon: Layers },
           { id: 'reports', label: 'Attendance Reports', icon: FileSpreadsheet },
           { 
             id: 'corrections', 

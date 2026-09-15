@@ -58,6 +58,10 @@ export interface CSVValidationResult {
   dayBreakdown: Record<string, number>;
   entries: ValidatedCSVTimetableEntry[];
   metadata?: CSVTimetableMetadata;
+  detectedSectionMismatch?: {
+    csvSection: string;
+    targetSection: string;
+  };
 }
 
 export interface CSVTimetableContext {
@@ -312,10 +316,15 @@ export class CSVTimetableService {
     if (matchSession) metadata.session = matchSession[1].trim();
 
     // ── 2. Metadata Scope Validation ──
+    let detectedSectionMismatch: { csvSection: string; targetSection: string } | undefined = undefined;
     if (metadata.section) {
       const csvSecClean = metadata.section.toUpperCase().replace(/SECTION/i, '').trim();
       const targetSecClean = context.targetSection.name.toUpperCase().replace(/SECTION/i, '').trim();
       if (csvSecClean !== targetSecClean) {
+        detectedSectionMismatch = {
+          csvSection: metadata.section,
+          targetSection: context.targetSection.name,
+        };
         errors.push(
           `CSV metadata section "${metadata.section}" does not match the active selected section "${context.targetSection.name}". Import blocked to prevent accidental cross-section schedule overwrites.`
         );
@@ -427,6 +436,7 @@ export class CSVTimetableService {
         dayBreakdown,
         entries: [],
         metadata,
+        detectedSectionMismatch,
       };
     }
 
@@ -622,6 +632,7 @@ export class CSVTimetableService {
       dayBreakdown,
       entries: errors.length ? [] : entries,
       metadata,
+      detectedSectionMismatch,
     };
   }
 
@@ -668,6 +679,7 @@ export class CSVTimetableService {
     }
 
     const seen = new Set<string>();
+    let detectedSectionMismatch: { csvSection: string; targetSection: string } | undefined = undefined;
 
     for (let rowIndex = headerRowIndex + 1; rowIndex < lines.length; rowIndex++) {
       const row = lines[rowIndex];
@@ -678,6 +690,12 @@ export class CSVTimetableService {
         const rowSec = row[secIdx].trim().toUpperCase().replace(/SECTION/i, '').trim();
         const targetSec = context.targetSection.name.trim().toUpperCase().replace(/SECTION/i, '').trim();
         if (rowSec && rowSec !== targetSec) {
+          if (!detectedSectionMismatch) {
+            detectedSectionMismatch = {
+              csvSection: row[secIdx].trim(),
+              targetSection: context.targetSection.name,
+            };
+          }
           errors.push(`Row ${lineNum}: Section "${row[secIdx]}" does not match target section "${context.targetSection.name}".`);
           continue;
         }
@@ -811,6 +829,7 @@ export class CSVTimetableService {
       nonInstructionalSlots,
       dayBreakdown,
       entries: errors.length ? [] : entries,
+      detectedSectionMismatch,
     };
   }
 

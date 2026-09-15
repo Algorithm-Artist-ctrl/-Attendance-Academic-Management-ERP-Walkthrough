@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   CheckSquare, 
   Users, 
@@ -15,11 +15,17 @@ import {
   GraduationCap,
   MapPin,
   BookOpen,
-  Search
+  Search,
+  RotateCcw,
+  CheckCheck,
+  Filter,
+  Keyboard,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { AttendanceStatus } from '../../types/database.types';
 import { getISTTodayDate, getISTDayOfWeek } from '../../lib/utils/dateUtils';
@@ -29,6 +35,9 @@ interface TakeAttendancePageProps {
   initialTimetableEntryId?: string;
   onFinished?: () => void;
 }
+
+type MarkState = 'Present' | 'Absent' | 'Unmarked';
+type StatusFilter = 'ALL' | 'UNMARKED' | 'PRESENT' | 'ABSENT';
 
 const DAY_FULL_NAMES: Record<string, string> = {
   MON: 'Monday',
@@ -83,13 +92,24 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const todayISO = getISTTodayDate();
   const [sessionDate, setSessionDate] = useState<string>(todayISO);
 
-  // Attendance state: Map of student_id -> 'Present' | 'Absent'
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+  // Attendance state: Map of student_id -> 'Present' | 'Absent' | 'Unmarked'
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, MarkState>>({});
+  // Undo history stack
+  const [history, setHistory] = useState<Array<Record<string, MarkState>>>([]);
+
+  // Search & Filter
   const [studentSearch, setStudentSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [focusedIndex, setFocusedIndex] = useState<number>(0);
+
+  // Modals
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
+  const [isUnmarkedReviewOpen, setIsUnmarkedReviewOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // If initialTimetableEntryId is passed in props, open that class directly
   useEffect(() => {
@@ -106,16 +126,12 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const timeSlot = activeClass ? `${activeClass.start_time?.substring(0, 5) || '09:00'} – ${activeClass.end_time?.substring(0, 5) || '09:50'}` : '09:00 – 09:50';
 
   // 3. Load students strictly belonging to the active class's section
-  const sectionStudents = activeSection
-    ? students.filter(s => s.section_id === activeSection.id && s.active)
-    : [];
+  const sectionStudents = useMemo(() => {
+    if (!activeSection) return [];
+    return students.filter(s => s.section_id === activeSection.id && s.active);
+  }, [activeSection, students]);
 
-  const filteredStudents = sectionStudents.filter(
-    s => s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-         s.roll_number.toLowerCase().includes(studentSearch.toLowerCase())
-  );
-
-  // Initialize attendance when an active class is selected
+  // Initialize attendance when an active class or date is selected
   useEffect(() => {
     if (!activeClass || !activeSection) return;
 
@@ -126,20 +142,224 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
            s.session_date === sessionDate
     );
 
-    const initialMap: Record<string, AttendanceStatus> = {};
+    const initialMap: Record<string, MarkState> = {};
     if (existingSession) {
       const records = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
       sectionStudents.forEach(s => {
         const found = records.find(r => r.student_id === s.id);
-        initialMap[s.id] = found ? (found.status as AttendanceStatus) : 'Present';
+        initialMap[s.id] = found ? (found.status as MarkState) : 'Unmarked';
       });
     } else {
       sectionStudents.forEach(s => {
-        initialMap[s.id] = 'Present';
+        initialMap[s.id] = 'Unmarked';
       });
     }
     setAttendanceMap(initialMap);
-  }, [activeClassId, sessionDate, activeSection?.id, attendanceSessions, attendanceRecords]);
+    setHistory([]);
+    setFocusedIndex(0);
+    setStatusFilter('ALL');
+  }, [activeClassId, sessionDate, activeSection?.id, attendanceSessions, attendanceRecords, sectionStudents]);
+
+  // Undo helper
+  const pushState = useCallback((newMap: Record<string, MarkState>) => {
+    setHistory(prev => [...prev.slice(-20), attendanceMap]);
+    setAttendanceMap(newMap);
+  }, [attendanceMap]);
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    const previous = history[history.length - 1];
+    setHistory(prev => prev.slice(0, -1));
+    setAttendanceMap(previous);
+  };
+
+  // State stats
+  const { presentCount, absentCount, unmarkedCount, completionPercent } = useMemo(() => {
+    let p = 0;
+    let a = 0;
+    let u = 0;
+    sectionStudents.forEach(s => {
+      const st = attendanceMap[s.id] || 'Unmarked';
+      if (st === 'Present') p++;
+      else if (st === 'Absent') a++;
+      else u++;
+    });
+    const total = sectionStudents.length;
+    const percent = total > 0 ? Math.round(((p + a) / total) * 100) : 0;
+    return { presentCount: p, absentCount: a, unmarkedCount: u, completionPercent: percent };
+  }, [sectionStudents, attendanceMap]);
+
+  // Filtered students list
+  const filteredStudents = useMemo(() => {
+    return sectionStudents.filter(s => {
+      const matchesSearch = 
+        s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+        s.roll_number.toLowerCase().includes(studentSearch.toLowerCase());
+      if (!matchesSearch) return false;
+
+      const st = attendanceMap[s.id] || 'Unmarked';
+      if (statusFilter === 'UNMARKED' && st !== 'Unmarked') return false;
+      if (statusFilter === 'PRESENT' && st !== 'Present') return false;
+      if (statusFilter === 'ABSENT' && st !== 'Absent') return false;
+      return true;
+    });
+  }, [sectionStudents, studentSearch, statusFilter, attendanceMap]);
+
+  // Mark single student
+  const setStudentStatus = (studentId: string, status: MarkState) => {
+    const next = { ...attendanceMap, [studentId]: status };
+    pushState(next);
+  };
+
+  // Bulk actions
+  const handleMarkAllPresent = () => {
+    const updated: Record<string, MarkState> = {};
+    sectionStudents.forEach(s => { updated[s.id] = 'Present'; });
+    pushState(updated);
+  };
+
+  const handleMarkAllAbsent = () => {
+    const updated: Record<string, MarkState> = {};
+    sectionStudents.forEach(s => { updated[s.id] = 'Absent'; });
+    pushState(updated);
+  };
+
+  const handleMarkRemainingPresent = () => {
+    const updated: Record<string, MarkState> = { ...attendanceMap };
+    sectionStudents.forEach(s => {
+      if ((updated[s.id] || 'Unmarked') === 'Unmarked') {
+        updated[s.id] = 'Present';
+      }
+    });
+    pushState(updated);
+  };
+
+  const handleMarkRemainingAbsent = () => {
+    const updated: Record<string, MarkState> = { ...attendanceMap };
+    sectionStudents.forEach(s => {
+      if ((updated[s.id] || 'Unmarked') === 'Unmarked') {
+        updated[s.id] = 'Absent';
+      }
+    });
+    pushState(updated);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!activeClassId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if inside search input
+      if (document.activeElement === searchInputRef.current) {
+        if (e.key === 'Escape') {
+          searchInputRef.current?.blur();
+        }
+        return;
+      }
+
+      // Hotkey to focus search: '/'
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      // Undo: Ctrl+Z or Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      if (filteredStudents.length === 0) return;
+
+      const currStudent = filteredStudents[focusedIndex];
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedIndex(prev => Math.min(prev + 1, filteredStudents.length - 1));
+      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        if (currStudent) {
+          setStudentStatus(currStudent.id, 'Present');
+          setFocusedIndex(prev => Math.min(prev + 1, filteredStudents.length - 1));
+        }
+      } else if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        if (currStudent) {
+          setStudentStatus(currStudent.id, 'Absent');
+          setFocusedIndex(prev => Math.min(prev + 1, filteredStudents.length - 1));
+        }
+      } else if (e.key === 'u' || e.key === 'U') {
+        e.preventDefault();
+        if (currStudent) {
+          setStudentStatus(currStudent.id, 'Unmarked');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeClassId, filteredStudents, focusedIndex, attendanceMap]);
+
+  // Validate and trigger save
+  const handleInitiateSave = () => {
+    if (unmarkedCount > 0) {
+      setIsUnmarkedReviewOpen(true);
+      return;
+    }
+    setIsConfirmOpen(true);
+  };
+
+  const executeSave = async (finalMap: Record<string, MarkState>) => {
+    if (!activeClass || !activeSection || !activeSubject) {
+      setSaveError('Please select a valid assigned class to take attendance.');
+      return;
+    }
+
+    if (sessionDate > todayISO) {
+      setSaveError('Invalid attendance date. Attendance cannot be marked for future dates.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const [startTime, endTime] = timeSlot.split(' – ');
+
+      await saveAttendance({
+        timetableEntryId: activeClass.id,
+        facultyId,
+        sectionId: activeSection.id,
+        subjectId: activeSubject.id,
+        sessionDate,
+        startTime: startTime || '09:00',
+        endTime: endTime || '09:50',
+        studentRecords: sectionStudents.map(s => ({
+          studentId: s.id,
+          status: (finalMap[s.id] === 'Absent' ? 'Absent' : 'Present') as AttendanceStatus,
+        })),
+      });
+
+      setIsConfirmOpen(false);
+      setIsUnmarkedReviewOpen(false);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setActiveClassId(null);
+        if (onFinished) onFinished();
+      }, 1600);
+    } catch (err: any) {
+      console.error('Failed to save attendance', err);
+      setSaveError(err?.message || 'Failed to record attendance in database.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Access Denied for unauthorized roles
   if (!isAuthorized) {
@@ -171,80 +391,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     );
   }
 
-  const handleToggleStatus = (studentId: string) => {
-    setAttendanceMap(prev => ({
-      ...prev,
-      [studentId]: prev[studentId] === 'Present' ? 'Absent' : 'Present',
-    }));
-  };
-
-  const handleMarkAllPresent = () => {
-    const updated: Record<string, AttendanceStatus> = {};
-    sectionStudents.forEach(s => {
-      updated[s.id] = 'Present';
-    });
-    setAttendanceMap(updated);
-  };
-
-  const handleClearAll = () => {
-    const updated: Record<string, AttendanceStatus> = {};
-    sectionStudents.forEach(s => {
-      updated[s.id] = 'Absent';
-    });
-    setAttendanceMap(updated);
-  };
-
-  const presentCount = Object.values(attendanceMap).filter(st => st === 'Present').length;
-  const absentCount = sectionStudents.length - presentCount;
-
-  const handleSaveAttendance = async () => {
-    if (!activeClass || !activeSection || !activeSubject) {
-      setSaveError('Please select a valid assigned class to take attendance.');
-      return;
-    }
-
-    if (sessionDate > todayISO) {
-      setSaveError('Invalid attendance date. Attendance cannot be marked for future dates.');
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveError(null);
-
-    try {
-      const [startTime, endTime] = timeSlot.split(' – ');
-
-      await saveAttendance({
-        timetableEntryId: activeClass.id,
-        facultyId,
-        sectionId: activeSection.id,
-        subjectId: activeSubject.id,
-        sessionDate,
-        startTime: startTime || '09:00',
-        endTime: endTime || '09:50',
-        studentRecords: sectionStudents.map(s => ({
-          studentId: s.id,
-          status: attendanceMap[s.id] || ('Present' as AttendanceStatus),
-        })),
-      });
-
-      setIsConfirmOpen(false);
-      setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-        setActiveClassId(null);
-        if (onFinished) onFinished();
-      }, 1800);
-    } catch (err: any) {
-      console.error('Failed to save attendance', err);
-      setSaveError(err?.message || 'Failed to record attendance in database.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   // =========================================================================
-  // VIEW 1: TODAY'S ASSIGNED CLASSES CARD LIST
+  // VIEW 1: ASSIGNED CLASSES CARD LIST (SCHEDULE BROWSER)
   // =========================================================================
   if (!activeClassId) {
     const dayClasses = assignedClasses
@@ -269,14 +417,14 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             </p>
           </div>
 
-          {/* Day Selector Tabs (Scrollable on small phones) */}
+          {/* Day Selector Tabs */}
           <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar max-w-full">
             {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const).map(d => (
               <button
                 key={d}
                 onClick={() => setSelectedDayFilter(d)}
                 className={clsx(
-                  'px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer touch-target shrink-0 flex items-center justify-center',
+                  'px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center justify-center',
                   selectedDayFilter === d
                     ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
                     : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -393,38 +541,65 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   }
 
   // =========================================================================
-  // VIEW 2: ACTIVE LECTURE ATTENDANCE MARKING SHEET
+  // VIEW 2: ACTIVE LECTURE ATTENDANCE MARKING SHEET (REDESIGNED FAST UI)
   // =========================================================================
   return (
-    <div className="space-y-5 pb-24 md:pb-8">
-      {/* Top Navigation & Breadcrumb */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-4 pb-28">
+      {/* 1. Class Context Header Bar */}
+      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveClassId(null)}
-            className="p-2.5 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/10 transition-all shrink-0 touch-target flex items-center justify-center"
-            title="Back to Assigned Classes"
+            className="p-2.5 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/10 transition-all shrink-0 cursor-pointer flex items-center justify-center"
+            title="Back to Assigned Schedule"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-[#00ff88] shrink-0" />
-              <span className="truncate">{activeSubject?.subject_name}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 font-mono text-xs font-bold text-[#00ff88]">
+                {activeSubject?.subject_code}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-emerald-500/20 text-xs font-bold text-white">
+                Section {activeSection?.name}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-slate-700 text-xs font-mono text-slate-300">
+                {roomNumber}
+              </span>
+            </div>
+            <h1 className="text-lg sm:text-xl font-black text-white tracking-tight mt-1 truncate">
+              {activeSubject?.subject_name}
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {activeSubject?.subject_code} • Section {activeSection?.name} • Room: <span className="text-[#00ff88] font-bold">{roomNumber}</span> • {timeSlot}
-            </p>
           </div>
         </div>
 
-        {saveSuccess && (
-          <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Attendance Saved to Supabase!</span>
+        {/* Date Selector & Session Status */}
+        <div className="flex items-center gap-3 self-end md:self-auto">
+          <div className="flex items-center gap-2 bg-slate-950/90 border border-emerald-500/30 px-3 py-1.5 rounded-2xl text-xs">
+            <Calendar className="w-4 h-4 text-[#00ff88]" />
+            <input
+              type="date"
+              max={todayISO}
+              value={sessionDate}
+              onChange={(e) => setSessionDate(e.target.value)}
+              className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+            />
           </div>
-        )}
+
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 text-xs text-slate-300">
+            <Clock className="w-3.5 h-3.5 text-[#00ff88]" />
+            <span className="font-mono">{timeSlot}</span>
+          </div>
+        </div>
       </div>
+
+      {/* Notifications */}
+      {saveSuccess && (
+        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>Attendance recorded and synced to Supabase database successfully!</span>
+        </div>
+      )}
 
       {saveError && (
         <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
@@ -433,215 +608,380 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         </div>
       )}
 
-      {/* Date and Context Info Card */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400 text-[10px] block">Faculty</span>
-            <span className="font-bold text-white">{currentFaculty?.full_name}</span>
+      {/* 2. Progress & Live Summary Bar */}
+      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700/50 font-bold text-slate-300">
+              Total: <strong className="text-white text-sm ml-1">{sectionStudents.length}</strong>
+            </span>
+            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 font-bold text-emerald-400">
+              Present: <strong className="text-white text-sm ml-1">{presentCount}</strong>
+            </span>
+            <span className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/25 font-bold text-rose-400">
+              Absent: <strong className="text-white text-sm ml-1">{absentCount}</strong>
+            </span>
+            {unmarkedCount > 0 ? (
+              <span className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/35 font-bold text-amber-300 animate-pulse">
+                Not Marked: <strong className="text-white text-sm ml-1">{unmarkedCount}</strong>
+              </span>
+            ) : (
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 font-bold text-[#00ff88] flex items-center gap-1.5">
+                <CheckCheck className="w-3.5 h-3.5" />
+                All Students Marked
+              </span>
+            )}
           </div>
-          <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400 text-[10px] block">Section</span>
-            <span className="font-bold text-[#00ff88]">Sec {activeSection?.name}</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400 text-[10px] block">Room</span>
-            <span className="font-bold text-white">{roomNumber}</span>
+
+          <div className="text-xs font-mono font-bold text-slate-400">
+            Progress: <span className="text-[#00ff88] text-sm">{completionPercent}%</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-slate-300 whitespace-nowrap">Date:</label>
-          <input
-            type="date"
-            max={todayISO}
-            value={sessionDate}
-            onChange={(e) => setSessionDate(e.target.value)}
-            className="px-3 py-1.5 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] touch-target"
+        {/* Animated Progress Bar */}
+        <div className="w-full bg-slate-950/90 rounded-full h-2 overflow-hidden border border-emerald-500/20">
+          <div 
+            className="h-full bg-gradient-to-r from-emerald-500 to-[#00ff88] transition-all duration-300 shadow-[0_0_10px_rgba(0,255,136,0.5)]"
+            style={{ width: `${completionPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Attendance Stats & Quick Actions Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-card p-3 sm:p-4 rounded-2xl">
-        <div className="flex flex-wrap items-center gap-3 text-xs font-bold">
-          <span className="text-slate-300">
-            Total: <strong className="text-white">{sectionStudents.length}</strong>
-          </span>
-          <span className="text-emerald-400">
-            Present: <strong className="text-white">{presentCount}</strong>
-          </span>
-          <span className="text-rose-400">
-            Absent: <strong className="text-white">{absentCount}</strong>
-          </span>
-        </div>
-
+      {/* 3. Bulk Actions & Quick Controls Toolbar */}
+      <div className="glass-panel rounded-3xl p-3 sm:p-4 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={handleMarkAllPresent} className="touch-target">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={handleMarkAllPresent}
+            leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" />}
+            className="text-xs"
+          >
             Mark All Present
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleClearAll} className="touch-target">
-            Clear (All Absent)
           </Button>
           <Button 
             size="sm" 
-            variant="neon" 
-            leftIcon={<Save className="w-4 h-4 text-slate-950" />}
-            onClick={() => setIsConfirmOpen(true)}
-            disabled={sectionStudents.length === 0 || isSaving}
-            className="hidden sm:inline-flex touch-target font-black"
+            variant="outline" 
+            onClick={handleMarkAllAbsent}
+            leftIcon={<XCircle className="w-3.5 h-3.5 text-rose-400" />}
+            className="text-xs"
           >
-            {isSaving ? 'Saving...' : 'Save Attendance'}
+            Mark All Absent
           </Button>
+          {unmarkedCount > 0 && (
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleMarkRemainingPresent}
+              className="text-xs text-amber-300 border-amber-500/30 hover:border-amber-500/60"
+            >
+              Remaining → Present
+            </Button>
+          )}
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+            className={clsx('text-xs', history.length === 0 ? 'opacity-40' : 'text-slate-300 hover:text-white')}
+            title="Undo last change (Ctrl+Z / ⌘Z)"
+          >
+            Undo
+          </Button>
+        </div>
+
+        {/* Keyboard Shortcuts Hint */}
+        <div className="hidden xl:flex items-center gap-2 text-[11px] text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/15 font-mono">
+          <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
+          <span><strong className="text-white">P</strong> = Present</span>
+          <span>•</span>
+          <span><strong className="text-white">A</strong> = Absent</span>
+          <span>•</span>
+          <span><strong className="text-white">↑/↓</strong> = Navigate</span>
+          <span>•</span>
+          <span><strong className="text-white">/</strong> = Search</span>
         </div>
       </div>
 
-      {/* Search Input for fast student lookup */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          placeholder="Search student by Name or Roll Number..."
-          value={studentSearch}
-          onChange={(e) => setStudentSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-emerald-500/20 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] touch-target"
-        />
+      {/* 4. Search and Status Filter Pills */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Search Bar */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search student by name or roll number... (Press / to focus)"
+            value={studentSearch}
+            onChange={(e) => {
+              setStudentSearch(e.target.value);
+              setFocusedIndex(0);
+            }}
+            className="w-full pl-10 pr-4 py-2 bg-slate-950/90 border border-emerald-500/25 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+          />
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 text-xs font-bold shrink-0">
+          <button
+            onClick={() => { setStatusFilter('ALL'); setFocusedIndex(0); }}
+            className={clsx(
+              'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
+              statusFilter === 'ALL'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            )}
+          >
+            All ({sectionStudents.length})
+          </button>
+          <button
+            onClick={() => { setStatusFilter('UNMARKED'); setFocusedIndex(0); }}
+            className={clsx(
+              'px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1',
+              statusFilter === 'UNMARKED'
+                ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                : 'text-amber-400/80 hover:text-amber-300'
+            )}
+          >
+            Unmarked ({unmarkedCount})
+          </button>
+          <button
+            onClick={() => { setStatusFilter('PRESENT'); setFocusedIndex(0); }}
+            className={clsx(
+              'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
+              statusFilter === 'PRESENT'
+                ? 'bg-emerald-500/25 text-[#00ff88] border border-emerald-500/40'
+                : 'text-emerald-400/80 hover:text-emerald-300'
+            )}
+          >
+            Present ({presentCount})
+          </button>
+          <button
+            onClick={() => { setStatusFilter('ABSENT'); setFocusedIndex(0); }}
+            className={clsx(
+              'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
+              statusFilter === 'ABSENT'
+                ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40'
+                : 'text-rose-400/80 hover:text-rose-300'
+            )}
+          >
+            Absent ({absentCount})
+          </button>
+        </div>
       </div>
 
-      {/* MOBILE VIEW: High-Contrast Student Cards (Android / iPhone) */}
-      <div className="space-y-2.5 md:hidden">
+      {/* 5. Student List (Optimized Fast Dual-Pill Rows) */}
+      <div className="space-y-2">
         {filteredStudents.length === 0 ? (
-          <div className="glass-panel p-8 text-center text-xs text-slate-400 rounded-2xl">
-            No matching students found in Section {activeSection?.name}
+          <div className="glass-panel p-10 text-center text-xs text-slate-400 rounded-3xl border border-emerald-500/15 space-y-2">
+            <Users className="w-8 h-8 text-slate-600 mx-auto" />
+            <p className="font-bold text-white text-sm">No students match current filter</p>
+            <p className="text-slate-500">Try adjusting your search query or status filter above</p>
           </div>
         ) : (
           filteredStudents.map((stud, idx) => {
-            const status = attendanceMap[stud.id] || 'Present';
-            const isPresent = status === 'Present';
+            const status = attendanceMap[stud.id] || 'Unmarked';
+            const isFocused = idx === focusedIndex;
 
             return (
               <div
                 key={stud.id}
-                onClick={() => handleToggleStatus(stud.id)}
+                onClick={() => setFocusedIndex(idx)}
                 className={clsx(
-                  'p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] touch-target',
-                  isPresent
-                    ? 'bg-slate-950/80 border-emerald-500/25'
-                    : 'bg-rose-500/10 border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
+                  'p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3',
+                  isFocused 
+                    ? 'border-[#00ff88]/60 bg-slate-900/90 shadow-[0_0_15px_rgba(0,255,136,0.1)] ring-1 ring-[#00ff88]/40' 
+                    : 'border-emerald-500/15 bg-slate-950/70 hover:border-emerald-500/35 hover:bg-slate-900/50',
+                  status === 'Present' && 'border-l-4 border-l-[#00ff88]',
+                  status === 'Absent' && 'border-l-4 border-l-rose-500',
+                  status === 'Unmarked' && 'border-l-4 border-l-amber-400'
                 )}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono text-slate-500 font-bold">#{idx + 1}</span>
-                    <span className="font-mono text-xs font-black text-emerald-400">{stud.roll_number}</span>
+                {/* Left: Index, Roll, Name */}
+                <div className="min-w-0 flex-1 flex items-center gap-3">
+                  <span className="w-7 text-right font-mono text-[11px] font-bold text-slate-500 shrink-0">
+                    {idx + 1}.
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-black text-[#00ff88] tracking-wider">
+                        {stud.roll_number}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 font-mono">
+                        {stud.admission_type || 'Regular'}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white truncate mt-0.5">
+                      {stud.full_name}
+                    </h4>
                   </div>
-                  <h4 className="text-sm font-bold text-white truncate mt-0.5">{stud.full_name}</h4>
-                  <span className="text-[10px] text-slate-400">{stud.admission_type}</span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleStatus(stud.id);
-                  }}
-                  className={clsx(
-                    'px-4 py-2.5 rounded-xl font-black text-xs transition-all shadow-md touch-target flex items-center justify-center shrink-0 min-w-[105px] cursor-pointer',
-                    isPresent
-                      ? 'bg-emerald-500/20 text-[#00ff88] border border-emerald-500/50'
-                      : 'bg-rose-500/30 text-rose-300 border border-rose-500/60'
-                  )}
-                >
-                  {isPresent ? '● PRESENT' : '○ ABSENT'}
-                </button>
+                {/* Right: Dual-Pill Toggle [P] [A] */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* PRESENT PILL */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStudentStatus(stud.id, status === 'Present' ? 'Unmarked' : 'Present');
+                      setFocusedIndex(idx);
+                    }}
+                    className={clsx(
+                      'px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
+                      status === 'Present'
+                        ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.4)] scale-105'
+                        : 'bg-slate-900 text-slate-400 border border-emerald-500/20 hover:border-[#00ff88]/50 hover:text-emerald-300'
+                    )}
+                    title="Mark Present (P)"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>P</span>
+                    <span className="hidden sm:inline text-[11px]">RESENT</span>
+                  </button>
+
+                  {/* ABSENT PILL */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStudentStatus(stud.id, status === 'Absent' ? 'Unmarked' : 'Absent');
+                      setFocusedIndex(idx);
+                    }}
+                    className={clsx(
+                      'px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
+                      status === 'Absent'
+                        ? 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)] scale-105'
+                        : 'bg-slate-900 text-slate-400 border border-rose-500/20 hover:border-rose-500/50 hover:text-rose-300'
+                    )}
+                    title="Mark Absent (A)"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>A</span>
+                    <span className="hidden sm:inline text-[11px]">BSENT</span>
+                  </button>
+                </div>
               </div>
             );
           })
         )}
       </div>
 
-      {/* DESKTOP VIEW: Full Data Table (Tablets / Laptops / Desktop) */}
-      <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/90 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
-              <tr>
-                <th className="px-5 py-3.5 w-16">#</th>
-                <th className="px-5 py-3.5">Roll Number</th>
-                <th className="px-5 py-3.5">Student Name</th>
-                <th className="px-5 py-3.5">Admission Type</th>
-                <th className="px-5 py-3.5 text-center">Status Toggle</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-500/10 font-medium">
-              {filteredStudents.map((stud, idx) => {
-                const status = attendanceMap[stud.id] || 'Present';
-                const isPresent = status === 'Present';
+      {/* 6. Sticky Floating Bottom Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 border-t border-emerald-500/30 backdrop-blur-2xl p-3.5 px-4 sm:px-8 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-xs font-bold">
+            <span className="text-emerald-400 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+              {presentCount} Present
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="text-rose-400 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              {absentCount} Absent
+            </span>
+            {unmarkedCount > 0 && (
+              <>
+                <span className="text-slate-600">•</span>
+                <span className="text-amber-300 flex items-center gap-1 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  {unmarkedCount} Unmarked
+                </span>
+              </>
+            )}
+          </div>
 
-                return (
-                  <tr 
-                    key={stud.id}
-                    onClick={() => handleToggleStatus(stud.id)}
-                    className={clsx(
-                      'cursor-pointer transition-colors',
-                      isPresent ? 'hover:bg-emerald-500/5' : 'bg-rose-500/5 hover:bg-rose-500/10'
-                    )}
-                  >
-                    <td className="px-5 py-3.5 font-mono text-slate-500 text-[11px]">{idx + 1}</td>
-                    <td className="px-5 py-3.5 font-mono font-bold text-white">{stud.roll_number}</td>
-                    <td className="px-5 py-3.5 font-bold text-white">{stud.full_name}</td>
-                    <td className="px-5 py-3.5 text-slate-400">{stud.admission_type}</td>
-                    <td className="px-5 py-3.5 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleStatus(stud.id);
-                        }}
-                        className={clsx(
-                          'px-4 py-2 rounded-xl font-black text-xs transition-all shadow-sm cursor-pointer touch-target',
-                          isPresent
-                            ? 'bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40 hover:bg-emerald-500/30'
-                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30'
-                        )}
-                      >
-                        {isPresent ? '● PRESENT' : '○ ABSENT'}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="flex items-center gap-3">
+            <Button
+              size="md"
+              variant="neon"
+              leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+              onClick={handleInitiateSave}
+              disabled={sectionStudents.length === 0 || isSaving}
+              className="font-black shadow-[0_0_20px_rgba(0,255,136,0.3)]"
+            >
+              {isSaving ? 'Saving...' : `Save Attendance (${completionPercent}%)`}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Fixed Sticky Save Attendance Bar */}
-      <div className="md:hidden fixed bottom-14 left-0 right-0 z-20 bg-[#07111e]/95 border-t border-emerald-500/30 backdrop-blur-2xl p-3 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.7)] flex items-center justify-between gap-3">
-        <div className="text-xs">
-          <span className="text-emerald-400 font-black">{presentCount} Present</span>
-          <span className="text-slate-500 mx-1.5">•</span>
-          <span className="text-rose-400 font-black">{absentCount} Absent</span>
-        </div>
-        <Button
-          size="sm"
-          variant="neon"
-          leftIcon={<Save className="w-4 h-4 text-slate-950" />}
-          onClick={() => setIsConfirmOpen(true)}
-          disabled={sectionStudents.length === 0 || isSaving}
-          className="touch-target font-black"
-        >
-          {isSaving ? 'Saving...' : 'Save Attendance'}
-        </Button>
-      </div>
+      {/* 7. Unmarked Students Review Modal */}
+      <Modal
+        isOpen={isUnmarkedReviewOpen}
+        onClose={() => setIsUnmarkedReviewOpen(false)}
+        title="Unmarked Students Remaining"
+        description={`There are still ${unmarkedCount} student(s) in Section ${activeSection?.name} without an explicit Present or Absent status.`}
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-2">
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Explicit Attendance Review</p>
+              <p className="text-slate-400 mt-0.5">
+                Every enrolled student must be explicitly registered as Present or Absent before final submission to Supabase.
+              </p>
+            </div>
+          </div>
 
-      {/* Confirmation Dialog */}
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs border-rose-500/30 hover:border-rose-500 text-rose-300"
+              leftIcon={<XCircle className="w-4 h-4 text-rose-400" />}
+              onClick={() => {
+                const final = { ...attendanceMap };
+                sectionStudents.forEach(s => {
+                  if ((final[s.id] || 'Unmarked') === 'Unmarked') final[s.id] = 'Absent';
+                });
+                executeSave(final);
+              }}
+            >
+              Mark Remaining {unmarkedCount} as Absent & Save Now
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs border-emerald-500/30 hover:border-emerald-500 text-emerald-300"
+              leftIcon={<CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
+              onClick={() => {
+                const final = { ...attendanceMap };
+                sectionStudents.forEach(s => {
+                  if ((final[s.id] || 'Unmarked') === 'Unmarked') final[s.id] = 'Present';
+                });
+                executeSave(final);
+              }}
+            >
+              Mark Remaining {unmarkedCount} as Present & Save Now
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-slate-400 hover:text-white"
+              onClick={() => {
+                setIsUnmarkedReviewOpen(false);
+                setStatusFilter('UNMARKED');
+                setFocusedIndex(0);
+              }}
+            >
+              Cancel & Review Unmarked Students
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 8. Standard Confirmation Dialog */}
       <ConfirmDialog
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={handleSaveAttendance}
+        onConfirm={() => executeSave(attendanceMap)}
         title="Confirm Attendance Submission"
-        message={`Are you sure you want to record attendance for Section ${activeSection?.name} (${activeSubject?.subject_name}) on ${sessionDate}? Total Students: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}).`}
+        message={`Save attendance for Section ${activeSection?.name} (${activeSubject?.subject_name}) on ${sessionDate}? Total: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}).`}
         confirmText={isSaving ? 'Submitting...' : 'Confirm & Save to Supabase'}
         variant="neon"
         isLoading={isSaving}

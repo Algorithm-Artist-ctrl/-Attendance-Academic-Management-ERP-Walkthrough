@@ -116,6 +116,12 @@ export const TimetableManagerPage: React.FC = () => {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [csvSourceType, setCsvSourceType] = useState<'CSV_FILE_UPLOAD' | 'GOOGLE_SHEET_CSV_SYNC'>('CSV_FILE_UPLOAD');
   const [isAnalyzingCSV, setIsAnalyzingCSV] = useState(false);
+  const [sectionMismatch, setSectionMismatch] = useState<{
+    csvSection: string;
+    targetSection: string;
+    matchingSectionId?: string;
+    pendingCsvContent: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Publishing & Deletion state
@@ -442,11 +448,24 @@ export const TimetableManagerPage: React.FC = () => {
       });
 
       if (!validation.valid) {
+        if (validation.detectedSectionMismatch) {
+          const rawMismatchSec = validation.detectedSectionMismatch.csvSection.toUpperCase().replace(/SECTION/i, '').trim();
+          const matchingSec = sections.find(s => s.name.toUpperCase().replace(/SECTION/i, '').trim() === rawMismatchSec);
+          setSectionMismatch({
+            csvSection: validation.detectedSectionMismatch.csvSection,
+            targetSection: validation.detectedSectionMismatch.targetSection,
+            matchingSectionId: matchingSec?.id,
+            pendingCsvContent: csvText,
+          });
+        } else {
+          setSectionMismatch(null);
+        }
         setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
         setCsvPreview(null);
         return;
       }
 
+      setSectionMismatch(null);
       setCsvSourceType('GOOGLE_SHEET_CSV_SYNC');
       setSelectedFileName('Google Sheet (CSV)');
       setCsvPreview(validation);
@@ -466,6 +485,7 @@ export const TimetableManagerPage: React.FC = () => {
     setSelectedFileName(file.name);
     setCsvSourceType('CSV_FILE_UPLOAD');
     setCsvError(null);
+    setSectionMismatch(null);
     setPublishSuccessMsg(null);
     setFacultyConflicts([]);
     setDetectedConflicts([]);
@@ -489,11 +509,24 @@ export const TimetableManagerPage: React.FC = () => {
         });
 
         if (!validation.valid) {
+          if (validation.detectedSectionMismatch) {
+            const rawMismatchSec = validation.detectedSectionMismatch.csvSection.toUpperCase().replace(/SECTION/i, '').trim();
+            const matchingSec = sections.find(s => s.name.toUpperCase().replace(/SECTION/i, '').trim() === rawMismatchSec);
+            setSectionMismatch({
+              csvSection: validation.detectedSectionMismatch.csvSection,
+              targetSection: validation.detectedSectionMismatch.targetSection,
+              matchingSectionId: matchingSec?.id,
+              pendingCsvContent: content,
+            });
+          } else {
+            setSectionMismatch(null);
+          }
           setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
           setCsvPreview(null);
           return;
         }
 
+        setSectionMismatch(null);
         // CSV parsed successfully -> present preview for HOD review BEFORE replacement
         setCsvPreview(validation);
       } catch (err: any) {
@@ -509,6 +542,35 @@ export const TimetableManagerPage: React.FC = () => {
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleSwitchSectionAndRevalidate = (targetSecId: string, content: string) => {
+    setSelectedSectionId(targetSecId);
+    setSectionMismatch(null);
+    setCsvError(null);
+
+    const targetSec = sections.find(s => s.id === targetSecId);
+    if (!targetSec) return;
+
+    try {
+      const validation = csvTimetableService.parseAndValidateCSV(content, {
+        targetSection: targetSec,
+        subjects,
+        faculty,
+        classrooms,
+      });
+
+      if (!validation.valid) {
+        setCsvError(`Validation failed (${validation.errors.length} issue${validation.errors.length > 1 ? 's' : ''}):\n• ${validation.errors.join('\n• ')}`);
+        setCsvPreview(null);
+        return;
+      }
+
+      setCsvPreview(validation);
+    } catch (err: any) {
+      setCsvError(err.message || 'Failed to re-validate CSV for selected section.');
+      setCsvPreview(null);
+    }
   };
 
   const handleConfirmPublishCsv = async () => {
@@ -1036,8 +1098,59 @@ export const TimetableManagerPage: React.FC = () => {
             </div>
           )}
 
+          {/* Section Mismatch Resolution Banner */}
+          {sectionMismatch && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/50 text-white space-y-3 animate-in fade-in">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-black text-amber-200">
+                    Timetable Section Mismatch Warning
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    The uploaded CSV specifies schedule entries for <strong className="text-amber-300 font-bold">Section {sectionMismatch.csvSection}</strong>, but you are currently configuring <strong className="text-white font-bold">Section {sectionMismatch.targetSection}</strong>.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Import was blocked to prevent accidentally replacing Section {sectionMismatch.targetSection}'s schedule with Section {sectionMismatch.csvSection}'s data.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-amber-500/30">
+                {sectionMismatch.matchingSectionId ? (
+                  <Button
+                    size="sm"
+                    variant="neon"
+                    onClick={() => handleSwitchSectionAndRevalidate(sectionMismatch.matchingSectionId!, sectionMismatch.pendingCsvContent)}
+                    leftIcon={<ArrowRight className="w-4 h-4 text-slate-950" />}
+                    className="font-black"
+                  >
+                    Switch Target to Section {sectionMismatch.csvSection} & Re-Validate
+                  </Button>
+                ) : (
+                  <span className="text-xs text-amber-300 font-semibold">
+                    Section {sectionMismatch.csvSection} does not exist in the database. Please add it first in Section Management.
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSectionMismatch(null);
+                    setCsvError(null);
+                  }}
+                  className="text-slate-300 border-slate-700 hover:border-slate-500"
+                >
+                  Cancel Import
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* CSV Validation Error Display */}
-          {csvError && (
+          {csvError && !sectionMismatch && (
             <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-black text-rose-200">

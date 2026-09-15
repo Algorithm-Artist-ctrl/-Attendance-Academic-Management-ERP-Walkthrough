@@ -36,6 +36,17 @@ export interface StudentCSVPreviewItem {
   isExisting: boolean;
 }
 
+export interface DetectedNewSection {
+  sectionName: string;
+  semesterId: string;
+  semesterName: string;
+  academicYearId: string;
+  academicYearName: string;
+  yearNumber: number;
+  departmentCode: string;
+  studentCount: number;
+}
+
 export interface StudentCSVValidationReport {
   totalRows: number;
   validCount: number;
@@ -45,6 +56,7 @@ export interface StudentCSVValidationReport {
   updateCount: number;
   errors: StudentSyncRowError[];
   previewRows: StudentCSVPreviewItem[];
+  detectedNewSections: DetectedNewSection[];
   canImport: boolean;
 }
 
@@ -53,6 +65,7 @@ export interface StudentSyncOptions {
   defaultCohortYear?: number;
   userRole?: string;
   userDepartmentId?: string;
+  createMissingSections?: boolean;
 }
 
 export class StudentSyncService {
@@ -140,6 +153,7 @@ export class StudentSyncService {
     const errors: StudentSyncRowError[] = [];
     const seenRollsInCSV = new Set<string>();
     const previewRows: StudentCSVPreviewItem[] = [];
+    const detectedNewSectionsMap = new Map<string, DetectedNewSection>();
 
     let duplicatesInCSV = 0;
     let validCount = 0;
@@ -264,7 +278,27 @@ export class StudentSyncService {
       }
 
       if (!matchedSection && rawSec) {
-        rowErrors.push(`Section "${rawSec}" does not exist for Year ${resolvedYear?.year_number || '?'}.`);
+        if (matchingSem) {
+          const secKey = `${matchingSem.id}_${rawSec}`;
+          if (!detectedNewSectionsMap.has(secKey)) {
+            detectedNewSectionsMap.set(secKey, {
+              sectionName: rawSec,
+              semesterId: matchingSem.id,
+              semesterName: matchingSem.name,
+              academicYearId: resolvedYear?.id || '',
+              academicYearName: resolvedYear?.name || '',
+              yearNumber: resolvedYear?.year_number || 1,
+              departmentCode: matchedDept?.code || 'CSE',
+              studentCount: 1,
+            });
+          } else {
+            detectedNewSectionsMap.get(secKey)!.studentCount++;
+          }
+        }
+
+        if (!options?.createMissingSections) {
+          rowErrors.push(`Section "${rawSec}" does not exist for Year ${resolvedYear?.year_number || '?'}.`);
+        }
       }
 
       // Admission Type
@@ -314,6 +348,7 @@ export class StudentSyncService {
       updateCount,
       errors,
       previewRows,
+      detectedNewSections: Array.from(detectedNewSectionsMap.values()),
       canImport: validCount > 0,
     };
   }
@@ -481,6 +516,41 @@ export class StudentSyncService {
       // Fallback: match by name if semester_id is null
       if (!matchedSection) {
         matchedSection = sections.find(s => s.name.toUpperCase() === rawSec && s.active);
+      }
+
+      if (!matchedSection && options?.createMissingSections && rawSec && matchingSem) {
+        // Check if section already exists in DB (even if inactive)
+        const { data: existingSec } = await supabase
+          .from('sections')
+          .select('*')
+          .eq('semester_id', matchingSem.id)
+          .ilike('name', rawSec)
+          .maybeSingle();
+
+        if (existingSec) {
+          if (!existingSec.active) {
+            await supabase.from('sections').update({ active: true }).eq('id', existingSec.id);
+            matchedSection = { ...existingSec, active: true };
+          } else {
+            matchedSection = existingSec;
+          }
+        } else {
+          const { data: newSec, error: newSecErr } = await supabase
+            .from('sections')
+            .insert({
+              semester_id: matchingSem.id,
+              name: rawSec,
+              room_number: `Room ${rawSec}`,
+              active: true,
+            })
+            .select()
+            .single();
+
+          if (!newSecErr && newSec) {
+            matchedSection = newSec;
+            sections.push(newSec);
+          }
+        }
       }
 
       if (!matchedSection) {

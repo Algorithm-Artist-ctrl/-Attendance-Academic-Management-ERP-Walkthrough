@@ -158,7 +158,7 @@ interface AcademicContextType {
   deleteProgram: (id: string) => Promise<boolean>;
   addSection: (sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) => Promise<Section>;
   updateSection: (id: string, updates: Partial<Section>) => Promise<Section>;
-  deleteSection: (id: string) => Promise<boolean>;
+  deleteSection: (id: string) => Promise<{ success: boolean; archived: boolean } | boolean>;
   addAcademicYear: (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => Promise<AcademicYear>;
   updateAcademicYear: (id: string, updates: Partial<AcademicYear>) => Promise<AcademicYear>;
   deleteAcademicYear: (id: string) => Promise<boolean>;

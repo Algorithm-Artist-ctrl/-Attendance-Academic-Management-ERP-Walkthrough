@@ -5,17 +5,18 @@ import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { AddSectionModal } from '../../components/academic/AddSectionModal';
 import { Section } from '../../types/database.types';
 import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { 
     institution, 
     departments, 
     programs, 
     years,
-    semesters,
+    semesters, 
     sections, 
     faculty, 
     addDepartment,
@@ -31,19 +32,24 @@ export const AcademicSetupPage: React.FC = () => {
     setClaimWindowDays
   } = useAcademic();
 
-  if (user?.role !== 'super_admin') {
+  const isSuperAdmin = role === 'super_admin' || user?.role === 'super_admin';
+  const isHod = role === 'hod' || user?.role === 'hod';
+
+  if (!isSuperAdmin && !isHod) {
     return (
       <div className="p-8 text-center glass-panel rounded-3xl border border-rose-500/20 max-w-xl mx-auto my-12">
         <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto mb-4" />
         <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
         <p className="text-slate-400 text-sm">
-          Only institutional Super Administrators have permission to configure institutional departments, programs, and policy settings.
+          Only institutional Super Administrators and Heads of Department (HOD) have permission to configure academic sections and structure.
         </p>
       </div>
     );
   }
 
-  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>('departments');
+  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>(
+    isHod ? 'sections' : 'departments'
+  );
   const [tempClaimDays, setTempClaimDays] = useState(claimWindowDays);
   const [policySaved, setPolicySaved] = useState(false);
 
@@ -72,11 +78,6 @@ export const AcademicSetupPage: React.FC = () => {
 
   // New Section Modal state
   const [isSecModalOpen, setIsSecModalOpen] = useState(false);
-  const [newSecYearId, setNewSecYearId] = useState<string>('');
-  const [newSecSemesterId, setNewSecSemesterId] = useState<string>('');
-  const [newSecName, setNewSecName] = useState('');
-  const [newSecRoom, setNewSecRoom] = useState('');
-  const [newSecCoordinatorId, setNewSecCoordinatorId] = useState('');
 
   // Edit Section Modal state
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -106,11 +107,14 @@ export const AcademicSetupPage: React.FC = () => {
   };
 
   const handleDeleteSec = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete section "${name}"?`)) {
+    if (window.confirm(`Are you sure you want to remove or archive section "${name}"?\nIf it has historical student attendance or timetable records, it will be safely archived without data loss.`)) {
       try {
-        await deleteSection(id);
+        const result = await deleteSection(id);
+        if (result && (result as any).archived) {
+          alert(`Section "${name}" has historical records (students, timetables, or attendance) and was safely archived (deactivated) to preserve all historical data.`);
+        }
       } catch (err: any) {
-        alert(err.message || 'Failed to delete section');
+        alert(err.message || 'Failed to delete or archive section');
       }
     }
   };
@@ -158,7 +162,18 @@ export const AcademicSetupPage: React.FC = () => {
   };
 
   const filteredSections = useMemo(() => {
+    // If HOD, find allowed semester IDs for their department
+    let allowedSemesterIds: Set<string> | null = null;
+    if (isHod && user?.department_id) {
+      const deptProgIds = new Set(programs.filter(p => p.department_id === user.department_id).map(p => p.id));
+      const deptYearIds = new Set(years.filter(y => deptProgIds.has(y.program_id)).map(y => y.id));
+      allowedSemesterIds = new Set(semesters.filter(s => deptYearIds.has(s.academic_year_id)).map(s => s.id));
+    }
+
     return sections.filter(sec => {
+      if (allowedSemesterIds && allowedSemesterIds.size > 0 && !allowedSemesterIds.has(sec.semester_id)) {
+        return false;
+      }
       const sem = semesters.find(s => s.id === sec.semester_id);
       if (filterYearId !== 'ALL' && sem?.academic_year_id !== filterYearId) {
         return false;
@@ -168,57 +183,14 @@ export const AcademicSetupPage: React.FC = () => {
       }
       return true;
     });
-  }, [sections, semesters, filterYearId, filterSemesterId]);
+  }, [sections, semesters, programs, years, filterYearId, filterSemesterId, isHod, user?.department_id]);
 
   const availableSemestersForFilter = useMemo(() => {
     if (filterYearId === 'ALL') return semesters;
     return semesters.filter(s => s.academic_year_id === filterYearId);
   }, [semesters, filterYearId]);
 
-  const availableSemestersForAdd = useMemo(() => {
-    if (!newSecYearId) return semesters;
-    return semesters.filter(s => s.academic_year_id === newSecYearId);
-  }, [semesters, newSecYearId]);
 
-  const openAddSectionModal = () => {
-    const defaultYear = filterYearId !== 'ALL' ? filterYearId : (years[0]?.id || '');
-    setNewSecYearId(defaultYear);
-    const sems = semesters.filter(s => s.academic_year_id === defaultYear);
-    setNewSecSemesterId(sems[0]?.id || semesters[0]?.id || '');
-    setNewSecName('');
-    setNewSecRoom('');
-    setNewSecCoordinatorId('');
-    setIsSecModalOpen(true);
-  };
-
-  const handleCreateSec = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSecName.trim()) return;
-
-    const targetSemesterId = newSecSemesterId || availableSemestersForAdd[0]?.id || semesters[0]?.id;
-    if (!targetSemesterId) {
-      alert('Please select or configure an academic semester first.');
-      return;
-    }
-
-    try {
-      await addSection({
-        semester_id: targetSemesterId,
-        name: newSecName.trim().toUpperCase(),
-        room_number: newSecRoom.trim() || 'TBD',
-        class_coordinator_id: newSecCoordinatorId || undefined,
-        active: true,
-      });
-
-      setNewSecName('');
-      setNewSecRoom('');
-      setNewSecCoordinatorId('');
-      setIsSecModalOpen(false);
-    } catch (err: any) {
-      console.error('Failed to add section:', err);
-      alert(err.message || 'Failed to add section');
-    }
-  };
 
   const handleUpdateSec = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,52 +224,65 @@ export const AcademicSetupPage: React.FC = () => {
         </div>
 
         {/* Tab switcher pills */}
-        <div className="flex items-center bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 text-xs font-bold">
-          <button
-            onClick={() => setActiveTab('departments')}
-            className={clsx(
-              'px-3.5 py-1.5 rounded-xl transition-all',
-              activeTab === 'departments'
-                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                : 'text-slate-400 hover:text-white'
-            )}
-          >
-            Departments ({departments.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('programs')}
-            className={clsx(
-              'px-3.5 py-1.5 rounded-xl transition-all',
-              activeTab === 'programs'
-                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                : 'text-slate-400 hover:text-white'
-            )}
-          >
-            Programs ({programs.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('sections')}
-            className={clsx(
-              'px-3.5 py-1.5 rounded-xl transition-all',
-              activeTab === 'sections'
-                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                : 'text-slate-400 hover:text-white'
-            )}
-          >
-            Class Sections ({sections.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('policy')}
-            className={clsx(
-              'px-3.5 py-1.5 rounded-xl transition-all',
-              activeTab === 'policy'
-                ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                : 'text-slate-400 hover:text-white'
-            )}
-          >
-            Claim Policy & Settings
-          </button>
-        </div>
+        {isSuperAdmin ? (
+          <div className="flex items-center bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 text-xs font-bold">
+            <button
+              onClick={() => setActiveTab('departments')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all',
+                activeTab === 'departments'
+                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                  : 'text-slate-400 hover:text-white'
+              )}
+            >
+              Departments ({departments.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('programs')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all',
+                activeTab === 'programs'
+                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                  : 'text-slate-400 hover:text-white'
+              )}
+            >
+              Programs ({programs.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('sections')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all',
+                activeTab === 'sections'
+                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                  : 'text-slate-400 hover:text-white'
+              )}
+            >
+              Class Sections ({sections.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('policy')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all',
+                activeTab === 'policy'
+                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                  : 'text-slate-400 hover:text-white'
+              )}
+            >
+              Claim Policy & Settings
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 bg-slate-950/80 px-4 py-2 rounded-2xl border border-emerald-500/20 text-xs font-bold text-slate-300">
+            <Building2 className="w-4 h-4 text-[#00ff88]" />
+            <span>Department:</span>
+            <span className="text-[#00ff88]">
+              {departments.find(d => d.id === user?.department_id)?.name || 'Computer Science & Engineering'}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] text-emerald-400 border border-emerald-500/20">
+              HOD Access
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Departments Tab */}
@@ -492,7 +477,7 @@ export const AcademicSetupPage: React.FC = () => {
                 size="sm"
                 variant="neon"
                 leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
-                onClick={openAddSectionModal}
+                onClick={() => setIsSecModalOpen(true)}
               >
                 Add Section
               </Button>
@@ -718,85 +703,13 @@ export const AcademicSetupPage: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Add Section Modal */}
-      <Modal
+      {/* Add Section Modal (Dynamic Department / Program / Year / Semester) */}
+      <AddSectionModal
         isOpen={isSecModalOpen}
         onClose={() => setIsSecModalOpen(false)}
-        title="Add Class Section"
-        maxWidth="md"
-      >
-        <form onSubmit={handleCreateSec} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Academic Year</label>
-            <select
-              value={newSecYearId}
-              onChange={(e) => {
-                setNewSecYearId(e.target.value);
-                const sems = semesters.filter(s => s.academic_year_id === e.target.value);
-                setNewSecSemesterId(sems[0]?.id || '');
-              }}
-              required
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
-            >
-              {years.map(y => (
-                <option key={y.id} value={y.id}>{y.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Semester</label>
-            <select
-              value={newSecSemesterId}
-              onChange={(e) => setNewSecSemesterId(e.target.value)}
-              required
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
-            >
-              {availableSemestersForAdd.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Section Identifier (e.g. C)</label>
-            <input
-              type="text"
-              required
-              maxLength={2}
-              value={newSecName}
-              onChange={(e) => setNewSecName(e.target.value)}
-              placeholder="e.g. C"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Classroom Number</label>
-            <input
-              type="text"
-              value={newSecRoom}
-              onChange={(e) => setNewSecRoom(e.target.value)}
-              placeholder="e.g. Room A-008"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Class Coordinator</label>
-            <select
-              value={newSecCoordinatorId}
-              onChange={(e) => setNewSecCoordinatorId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
-            >
-              <option value="">None (Unassigned)</option>
-              {faculty.map(f => (
-                <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.employee_code})</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsSecModalOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="neon" size="sm">Save Section</Button>
-          </div>
-        </form>
-      </Modal>
+        initialDepartmentId={isHod ? user?.department_id : undefined}
+        initialYearId={filterYearId !== 'ALL' ? filterYearId : undefined}
+      />
 
       {/* Edit Section & Class Coordinator Modal */}
       <Modal

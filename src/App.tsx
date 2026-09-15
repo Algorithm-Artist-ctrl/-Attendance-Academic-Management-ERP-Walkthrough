@@ -194,6 +194,8 @@ export const AppContent: React.FC = () => {
           );
         case 'timetable':
           return <TimetableManagerPage />;
+        case 'academic_setup':
+          return <AcademicSetupPage />;
         case 'subjects':
           return <SubjectsPage />;
         case 'faculty_assignments':

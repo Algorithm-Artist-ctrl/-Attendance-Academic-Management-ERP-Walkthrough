@@ -14,7 +14,8 @@ import {
   Users,
   RefreshCw,
   AlertTriangle,
-  X
+  X,
+  Plus
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -110,8 +111,9 @@ export const CSVImportPage: React.FC = () => {
     }
   };
 
-  const handleExecuteImport = async () => {
-    if (!csvContent || !validationReport || validationReport.validCount === 0) return;
+  const handleExecuteImport = async (createMissingSections: boolean = false) => {
+    if (!csvContent || !validationReport) return;
+    if (!createMissingSections && validationReport.validCount === 0) return;
 
     setIsImporting(true);
     setValidationError(null);
@@ -125,6 +127,7 @@ export const CSVImportPage: React.FC = () => {
           defaultCohortYear: selectedYearObj?.year_number,
           userRole: role || undefined,
           userDepartmentId: isHOD ? user?.department_id : undefined,
+          createMissingSections,
         }
       );
 
@@ -408,6 +411,44 @@ export const CSVImportPage: React.FC = () => {
       {/* Pre-Import Summary Card & Row Preview */}
       {validationReport && (
         <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-6 animate-in fade-in">
+          {/* New Sections Detected Banner */}
+          {validationReport.detectedNewSections && validationReport.detectedNewSections.length > 0 && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-3">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-white text-sm">
+                    New Class Section(s) Detected in CSV ({validationReport.detectedNewSections.length})
+                  </h4>
+                  <p className="text-slate-300 mt-0.5">
+                    The following sections are referenced by incoming students but do not yet exist in the database:
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {validationReport.detectedNewSections.map(sec => (
+                      <span key={`${sec.semesterId}_${sec.sectionName}`} className="px-3 py-1 rounded-xl bg-slate-950 border border-amber-500/40 text-amber-300 font-mono font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        Section {sec.sectionName} ({sec.semesterName} • {sec.studentCount} students)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-500/20">
+                <Button
+                  variant="neon"
+                  size="sm"
+                  disabled={isImporting}
+                  isLoading={isImporting}
+                  onClick={() => handleExecuteImport(true)}
+                  leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+                  className="font-black"
+                >
+                  Create Detected Section(s) & Import All Students
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Summary Metrics */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-emerald-500/15">
             <div>
@@ -425,7 +466,7 @@ export const CSVImportPage: React.FC = () => {
               size="md"
               disabled={!validationReport.canImport || isImporting}
               isLoading={isImporting}
-              onClick={handleExecuteImport}
+              onClick={() => handleExecuteImport(false)}
               rightIcon={<ArrowRight className="w-4 h-4 text-slate-950" />}
               className="font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]"
             >

@@ -1049,7 +1049,40 @@ export const supabaseService = {
   },
 
   async addSection(sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) {
-    const { data, error } = await supabase.from('sections').insert(sec).select().single();
+    // Check if matching section already exists (case-insensitive name within same semester)
+    const { data: existing } = await supabase
+      .from('sections')
+      .select('*')
+      .eq('semester_id', sec.semester_id)
+      .ilike('name', sec.name.trim())
+      .maybeSingle();
+
+    if (existing) {
+      if (!existing.active) {
+        // Reactivate archived section
+        const { data: reactivated, error } = await supabase
+          .from('sections')
+          .update({ 
+            active: true, 
+            room_number: sec.room_number || existing.room_number,
+            classroom_id: sec.classroom_id || existing.classroom_id,
+            class_coordinator_id: sec.class_coordinator_id || existing.class_coordinator_id
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) throw new Error(error.message);
+        this.invalidateMasterCache();
+        return reactivated as Section;
+      }
+      return existing as Section;
+    }
+
+    const { data, error } = await supabase.from('sections').insert({
+      ...sec,
+      name: sec.name.trim().toUpperCase(),
+      active: sec.active !== false,
+    }).select().single();
     if (error) throw new Error(error.message);
     this.invalidateMasterCache();
     return data as Section;
@@ -1063,10 +1096,30 @@ export const supabaseService = {
   },
 
   async deleteSection(id: string) {
-    const { error } = await supabase.from('sections').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    // Check if section has associated historical records
+    const [{ count: studentCount }, { count: timetableCount }, { count: attendanceCount }] = await Promise.all([
+      supabase.from('students').select('id', { count: 'exact', head: true }).eq('section_id', id),
+      supabase.from('timetable_entries').select('id', { count: 'exact', head: true }).eq('section_id', id),
+      supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }).eq('section_id', id),
+    ]);
+
+    let isArchived = false;
+    // If historical data exists, soft-archive by setting active = false to safeguard relational integrity
+    if ((studentCount || 0) > 0 || (timetableCount || 0) > 0 || (attendanceCount || 0) > 0) {
+      const { error } = await supabase.from('sections').update({ active: false }).eq('id', id);
+      if (error) throw new Error(error.message);
+      isArchived = true;
+    } else {
+      const { error } = await supabase.from('sections').delete().eq('id', id);
+      if (error) {
+        // Fallback to soft-archive if any foreign key constraint blocks deletion
+        const { error: archiveErr } = await supabase.from('sections').update({ active: false }).eq('id', id);
+        if (archiveErr) throw new Error(archiveErr.message);
+        isArchived = true;
+      }
+    }
     this.invalidateMasterCache();
-    return true;
+    return { success: true, archived: isArchived };
   },
 
   // ── Academic Year CRUD ──
