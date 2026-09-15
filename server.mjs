@@ -23,16 +23,19 @@ export function isModelAllowed(modelName) {
   return version >= 3.6;
 }
 
-const rawPrimary = process.env.GEMINI_MODEL_PRIMARY || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-const rawFallback = process.env.GEMINI_MODEL_FALLBACK || 'gemini-3.6-flash';
+const rawPrimary = (process.env.GEMINI_MODEL_PRIMARY || process.env.GEMINI_MODEL || '').trim();
+const rawFallback = (process.env.GEMINI_MODEL_FALLBACK || '').trim();
 
 // Validate that configured models are strictly >= 3.6 (forbidden: 3.5, 2.5, 2.x, 1.x)
 export const PRIMARY_MODEL = isModelAllowed(rawPrimary) ? rawPrimary : 'gemini-3.8-flash';
 export const FALLBACK_MODEL = isModelAllowed(rawFallback) ? rawFallback : 'gemini-3.6-flash';
-export const TERTIARY_MODEL = 'gemini-3.7-flash';
+export const TERTIARY_MODEL = PRIMARY_MODEL === 'gemini-3.7-flash' ? 'gemini-3.8-flash' : 'gemini-3.7-flash';
+
+// All verified stable Gemini >= 3.6 models in order of capability
+const ALL_ALLOWED_STABLE_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
 
 export const MODEL_CHAIN = Array.from(
-  new Set([PRIMARY_MODEL, TERTIARY_MODEL, FALLBACK_MODEL].filter(m => m && isModelAllowed(m)))
+  new Set([PRIMARY_MODEL, TERTIARY_MODEL, FALLBACK_MODEL, ...ALL_ALLOWED_STABLE_MODELS].filter(m => m && isModelAllowed(m)))
 );
 
 const prompt = `Extract the uploaded college timetable into JSON. Never invent institution-specific values. Read values from the PDF. Extract every visible timetable cell, including lunch/break/activity cells. Preserve exact start/end times. For merged labs spanning multiple periods, emit one entry per actual period. Blank cells produce no entry. Return ONLY JSON with institution_name, program_name, branch_name, academic_year, semester, section_name, effective_from, room_number, class_incharges, subject_mappings, faculty_mappings, schedule, overall_confidence, confidence_breakdown, warnings. Schedule days use MON,TUE,WED,THU,FRI,SAT. Each period contains period_number,start_time,end_time,subject_code,subject_name,faculty_code,faculty_name,room_number,lecture_type,is_break,confidence. Do not invent missing values.`;
@@ -156,7 +159,7 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
 
   for (let modelIdx = 0; modelIdx < MODEL_CHAIN.length; modelIdx++) {
     const model = MODEL_CHAIN[modelIdx];
-    const maxRetries = 2; // Up to 3 attempts per model: initial, +1s backoff, +2s backoff
+    const maxRetries = 1; // 2 attempts per model (initial + 1 retry) to prevent prolonged hangs
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const reqId = crypto.randomUUID().slice(0, 8);
@@ -209,7 +212,7 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
             status: 400,
             code: 'INVALID_REQUEST',
             error: 'Unable to process timetable PDF. Please check the document format or use CSV import.',
-            details: err.message,
+            details: 'The document format could not be parsed as a structured timetable.',
           };
         }
 
@@ -221,7 +224,7 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
         }
       }
     }
-    console.warn(`[AI Gateway] Model ${model} exhausted all attempts. Trying next fallback model...`);
+    console.warn(`[AI Gateway] Model ${model} exhausted all attempts. Trying next fallback model in chain...`);
   }
 
   // All models and retries exhausted
@@ -230,7 +233,7 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
     status: 503,
     code: 'AI_PROVIDER_UNAVAILABLE',
     error: 'AI timetable extraction is temporarily unavailable. Your existing timetable has not been changed. Please retry or use CSV import.',
-    details: lastError?.message,
+    details: 'All verified Gemini >= 3.6 model endpoints are temporarily experiencing high demand.',
   };
 }
 

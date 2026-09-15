@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRight, Building2, FileText, RotateCcw, Sparkles, Trash2, UploadCloud } from 'lucide-react';
+import { AlertCircle, ArrowRight, Building2, FileSpreadsheet, FileText, RotateCcw, Sparkles, Trash2, UploadCloud } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useAcademic } from '../../context/AcademicContext';
@@ -12,9 +12,10 @@ interface AITimetableUploadModalProps {
   onClose: () => void;
   initialSectionId?: string;
   onExtractionComplete: (extractedDocs: ExtractedTimetableDocument[]) => void;
+  onSwitchToCsv?: () => void;
 }
 
-export const AITimetableUploadModal: React.FC<AITimetableUploadModalProps> = ({ isOpen, onClose, initialSectionId, onExtractionComplete }) => {
+export const AITimetableUploadModal: React.FC<AITimetableUploadModalProps> = ({ isOpen, onClose, initialSectionId, onExtractionComplete, onSwitchToCsv }) => {
   const { departments, programs, sessions, years, semesters, sections } = useAcademic();
   const [files, setFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -184,26 +185,51 @@ export const AITimetableUploadModal: React.FC<AITimetableUploadModalProps> = ({ 
         )}
 
         {errorMessage && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start justify-between gap-3 animate-in fade-in">
+          <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs space-y-3 animate-in fade-in">
             <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-              <div>
-                <p className="font-semibold text-rose-200">Extraction Unsuccessful</p>
-                <p className="mt-0.5 text-rose-300/90 leading-relaxed">{errorMessage}</p>
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-400" />
+              <div className="space-y-1">
+                <p className="font-bold text-rose-200 text-sm">AI Timetable Import Notice</p>
+                <p className="text-rose-300/90 leading-relaxed">{errorMessage}</p>
+                <p className="text-[11px] text-slate-400">
+                  Existing database records for this section remain completely safe and untouched.
+                </p>
               </div>
             </div>
-            {files.length > 0 && !isExtracting && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rose-500/20">
+              {files.length > 0 && !isExtracting && (
+                <Button
+                  type="button"
+                  variant="neon"
+                  size="sm"
+                  onClick={handleStartExtraction}
+                  className="text-xs"
+                  leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                >
+                  Retry Extraction
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleStartExtraction}
-                className="shrink-0 text-xs border-rose-500/40 text-rose-200 hover:bg-rose-500/20"
-                leftIcon={<RotateCcw className="w-3.5 h-3.5 text-rose-300" />}
+                onClick={() => {
+                  if (onSwitchToCsv) {
+                    onSwitchToCsv();
+                  } else {
+                    onClose();
+                    setTimeout(() => {
+                      const el = document.getElementById('csv-sync-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                  }
+                }}
+                className="text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+                leftIcon={<FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />}
               >
-                Retry Extraction
+                Switch to CSV Import Instead
               </Button>
-            )}
+            </div>
           </div>
         )}
         <div className="flex justify-end gap-3 pt-2">

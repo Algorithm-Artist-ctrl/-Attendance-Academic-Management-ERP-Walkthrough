@@ -75,12 +75,28 @@ export class AITimetableService {
     }
 
     if (!response.ok) {
-      const userMessage =
-        body?.error ||
-        body?.message ||
-        (response.status === 503
-          ? 'AI timetable extraction is temporarily unavailable. Your existing timetable has not been changed. Please retry or use CSV import.'
-          : `PDF extraction failed (${response.status}). Please retry or use CSV import.`);
+      let rawMsg = body?.error || body?.message || '';
+      if (typeof rawMsg !== 'string') rawMsg = JSON.stringify(rawMsg);
+      const lower = rawMsg.toLowerCase();
+
+      let userMessage = 'AI timetable extraction is temporarily unavailable. Your existing timetable has not been changed. Please retry or use CSV import.';
+      if (
+        response.status === 503 ||
+        lower.includes('503') ||
+        lower.includes('unavailable') ||
+        lower.includes('high demand') ||
+        lower.includes('spikes in demand') ||
+        lower.includes('ai_provider_unavailable') ||
+        rawMsg.includes('{"error"')
+      ) {
+        userMessage = 'AI extraction is temporarily unavailable due to high AI model demand. Your existing timetable has not been changed. Please retry or use CSV import.';
+      } else if (response.status === 429 || lower.includes('429') || lower.includes('quota') || lower.includes('rate limit')) {
+        userMessage = 'AI extraction rate limit reached. Your existing timetable has not been changed. Please retry in a few moments or use CSV import.';
+      } else if (lower.includes('not a valid pdf') || lower.includes('invalid_pdf') || lower.includes('pdf_required')) {
+        userMessage = 'Uploaded file is not a valid PDF timetable document. Please verify the file or use CSV import.';
+      } else if (rawMsg && !rawMsg.includes('{') && !rawMsg.includes('}')) {
+        userMessage = rawMsg;
+      }
       throw new Error(userMessage);
     }
 

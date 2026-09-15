@@ -774,7 +774,7 @@ export const TimetableManagerPage: React.FC = () => {
 
       {/* HOD OPERATIONAL TIMETABLE CSV SOURCE PANEL */}
       {!isSuperAdmin && (
-        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 space-y-4">
+        <div id="csv-sync-section" className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
@@ -1612,6 +1612,13 @@ export const TimetableManagerPage: React.FC = () => {
         isOpen={isAIUploadOpen}
         onClose={() => setIsAIUploadOpen(false)}
         initialSectionId={selectedSectionId}
+        onSwitchToCsv={() => {
+          setIsAIUploadOpen(false);
+          setTimeout(() => {
+            const el = document.getElementById('csv-sync-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 150);
+        }}
         onExtractionComplete={(extracted) => {
           setExtractedDocs(extracted);
           setIsAIPreviewOpen(true);
