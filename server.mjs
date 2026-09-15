@@ -10,11 +10,30 @@ const dist = path.join(root, 'dist');
 const port = Number(process.env.PORT || 10000);
 const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
-// Configurable Model Chain with official Google Gemini models
-export const PRIMARY_MODEL = process.env.GEMINI_MODEL_PRIMARY || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-export const FALLBACK_MODEL = process.env.GEMINI_MODEL_FALLBACK || 'gemini-2.5-flash-lite';
-export const TERTIARY_MODEL = 'gemini-2.0-flash';
-export const MODEL_CHAIN = Array.from(new Set([PRIMARY_MODEL, FALLBACK_MODEL, TERTIARY_MODEL].filter(Boolean)));
+// Gemini >= 3.6 Model Policy Enforcement
+export function getGeminiModelVersion(modelName) {
+  if (!modelName || typeof modelName !== 'string') return 0;
+  const match = modelName.match(/gemini-(\d+(?:\.\d+)?)/i);
+  if (!match) return 0;
+  return parseFloat(match[1]);
+}
+
+export function isModelAllowed(modelName) {
+  const version = getGeminiModelVersion(modelName);
+  return version >= 3.6;
+}
+
+const rawPrimary = process.env.GEMINI_MODEL_PRIMARY || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const rawFallback = process.env.GEMINI_MODEL_FALLBACK || 'gemini-3.6-flash';
+
+// Validate that configured models are strictly >= 3.6 (forbidden: 3.5, 2.5, 2.x, 1.x)
+export const PRIMARY_MODEL = isModelAllowed(rawPrimary) ? rawPrimary : 'gemini-3.8-flash';
+export const FALLBACK_MODEL = isModelAllowed(rawFallback) ? rawFallback : 'gemini-3.6-flash';
+export const TERTIARY_MODEL = 'gemini-3.7-flash';
+
+export const MODEL_CHAIN = Array.from(
+  new Set([PRIMARY_MODEL, TERTIARY_MODEL, FALLBACK_MODEL].filter(m => m && isModelAllowed(m)))
+);
 
 const prompt = `Extract the uploaded college timetable into JSON. Never invent institution-specific values. Read values from the PDF. Extract every visible timetable cell, including lunch/break/activity cells. Preserve exact start/end times. For merged labs spanning multiple periods, emit one entry per actual period. Blank cells produce no entry. Return ONLY JSON with institution_name, program_name, branch_name, academic_year, semester, section_name, effective_from, room_number, class_incharges, subject_mappings, faculty_mappings, schedule, overall_confidence, confidence_breakdown, warnings. Schedule days use MON,TUE,WED,THU,FRI,SAT. Each period contains period_number,start_time,end_time,subject_code,subject_name,faculty_code,faculty_name,room_number,lecture_type,is_break,confidence. Do not invent missing values.`;
 
@@ -143,7 +162,7 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
       const reqId = crypto.randomUUID().slice(0, 8);
       const startTime = Date.now();
       try {
-        console.log(`[AI Gateway] [${reqId}] Attempt ${attempt + 1}/${maxRetries + 1} using model: ${model}`);
+        console.log(`[AI Gateway] [${reqId}] Attempt ${attempt + 1}/${maxRetries + 1} using verified Gemini >= 3.6 model: ${model}`);
 
         // Set bounded timeout (30 seconds per attempt)
         const responsePromise = ai.models.generateContent({
@@ -210,7 +229,7 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
     success: false,
     status: 503,
     code: 'AI_PROVIDER_UNAVAILABLE',
-    error: 'AI timetable extraction is temporarily busy or unavailable. Your existing timetable was not changed. Please retry in a moment or use CSV import.',
+    error: 'AI timetable extraction is temporarily unavailable. Your existing timetable has not been changed. Please retry or use CSV import.',
     details: lastError?.message,
   };
 }
@@ -264,6 +283,7 @@ function handleHealth(req, res) {
       primaryModel: PRIMARY_MODEL,
       fallbackModel: FALLBACK_MODEL,
       availableModels: MODEL_CHAIN,
+      minRequiredVersion: '3.6',
     },
     serverTime: new Date().toISOString(),
   });

@@ -79,7 +79,7 @@ export class AITimetableService {
         body?.error ||
         body?.message ||
         (response.status === 503
-          ? 'AI timetable extraction is temporarily busy or unavailable. Your existing timetable was not changed. Please retry in a moment or use CSV import.'
+          ? 'AI timetable extraction is temporarily unavailable. Your existing timetable has not been changed. Please retry or use CSV import.'
           : `PDF extraction failed (${response.status}). Please retry or use CSV import.`);
       throw new Error(userMessage);
     }
