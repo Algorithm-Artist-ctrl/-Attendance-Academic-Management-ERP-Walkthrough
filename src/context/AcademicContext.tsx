@@ -35,7 +35,8 @@ import {
   TodayLectureItem,
   TimetableConflict,
   SubjectAttendanceStat,
-  StudentSubjectAcademicReport
+  StudentSubjectAcademicReport,
+  TimetableQueryFilter
 } from '../types/academic.types';
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
@@ -243,7 +244,9 @@ interface AcademicContextType {
     notRecordedCount: number;
     pendingClaimsCount: number;
   };
+  getPublishedTimetable: (filter?: TimetableQueryFilter) => TimetableEntry[];
   getStudentTimetable: (studentId: string) => TimetableEntry[];
+  getFacultyTimetable: (facultyId: string, dayOfWeek?: DayOfWeek) => TimetableEntry[];
   getTodayLecturesForStudent: (studentId: string, customDateStr?: string) => TodayAttendanceLecture[];
   getDateLecturesForStudent: (studentId: string, dateStr: string) => DateWiseAttendanceSummary;
   getFacultyCorrectionRequests: (facultyId: string) => AttendanceCorrection[];
@@ -768,11 +771,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const channel = supabase
       .channel('vctm-erp-realtime-channel')
+      .on('broadcast', { event: 'timetable_updated' }, (payload: any) => {
+        const secId = payload?.payload?.section_id;
+        refreshTimetable(secId);
+      })
+      .on('broadcast', { event: 'attendance_updated' }, () => {
+        refreshAttendance();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         debounceTableSync('students', () => refreshStudents());
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, () => {
-        debounceTableSync('timetable_entries', () => refreshTimetable());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
+        const secId = payload?.new?.section_id || payload?.old?.section_id;
+        debounceTableSync('timetable_entries', () => refreshTimetable(secId));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
         debounceTableSync('attendance', () => refreshAttendance());
@@ -1338,20 +1349,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const assignedFac = faculty.find(f => f.id === assignment?.faculty_id) ||
                           faculty.find(f => timetable.some(t => t.subject_id === sub.id && t.section_id === studSectionId && t.faculty_id === f.id));
 
-      // Sessions conducted for this subject and this student's section
-      const subSessions = attendanceSessions.filter(
-        sess => sess.subject_id === sub.id && (studSectionId ? sess.section_id === studSectionId : true)
-      );
-
-      // Student's individual records for this subject
+      // Student's individual actual attendance records for this subject
       const subRecords = studentRecords.filter(r => {
         const sess = attendanceSessions.find(s => s.id === r.attendance_session_id);
         return sess && sess.subject_id === sub.id && (studSectionId ? sess.section_id === studSectionId : true);
       });
 
-      const totalConducted = subSessions.length;
       const attended = subRecords.filter(r => r.status === 'Present').length;
-      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : 0;
+      const absent = subRecords.filter(r => r.status === 'Absent').length;
+      const totalConducted = attended + absent;
+      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : null;
 
       return {
         subjectId: sub.id,
@@ -1368,7 +1375,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const totalLectures = subjectStats.reduce((acc, curr) => acc + curr.totalConducted, 0);
     const presentLectures = subjectStats.reduce((acc, curr) => acc + curr.attended, 0);
-    const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : 0;
+    const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : null;
 
     // Student claims count
     const studentClaims = corrections.filter(c => c.student_id === studentId);
@@ -1386,32 +1393,61 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       totalLectures,
       presentLectures,
       percentage: overallPercentage,
-      isDefaulter: totalLectures > 0 && overallPercentage < 75,
+      isDefaulter: totalLectures > 0 && overallPercentage !== null && overallPercentage < 75,
       subjectStats,
       notRecordedCount,
       pendingClaimsCount,
     };
   };
 
-  // 8. Authoritative Master Timetable Query for Student (Single Source of Truth)
-  const getStudentTimetable = (studentId: string): TimetableEntry[] => {
+  // 8. Authoritative Master Timetable Query (Single Source of Truth for HOD, Faculty, Student, Attendance)
+  const getPublishedTimetable = useCallback((filter?: TimetableQueryFilter): TimetableEntry[] => {
+    let result = timetable;
+
+    if (filter?.activeOnly !== false) {
+      result = result.filter(t => t.active !== false);
+    }
+
+    if (filter?.sectionId) {
+      result = result.filter(t => t.section_id === filter.sectionId || t.section?.id === filter.sectionId);
+    }
+
+    if (filter?.facultyId) {
+      result = result.filter(t => t.faculty_id === filter.facultyId || t.faculty?.id === filter.facultyId);
+    }
+
+    if (filter?.dayOfWeek) {
+      result = result.filter(t => t.day_of_week === filter.dayOfWeek);
+    }
+
+    if (filter?.subjectId) {
+      result = result.filter(t => t.subject_id === filter.subjectId || t.subject?.id === filter.subjectId);
+    }
+
+    const daysOrder: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    return [...result].sort((a, b) => {
+      const dA = daysOrder.indexOf(a.day_of_week);
+      const dB = daysOrder.indexOf(b.day_of_week);
+      if (dA !== dB) return dA - dB;
+      return a.period_number - b.period_number;
+    });
+  }, [timetable]);
+
+  const getStudentTimetable = useCallback((studentId: string): TimetableEntry[] => {
     const student = students.find(s => s.id === studentId || s.roll_number === studentId);
     if (!student) return [];
 
     const sectionId = student.section_id || student.section?.id;
     if (!sectionId) return [];
 
-    const daysOrder: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return getPublishedTimetable({ sectionId });
+  }, [students, getPublishedTimetable]);
 
-    return timetable
-      .filter(t => (t.section_id === sectionId || t.section?.id === sectionId) && t.active)
-      .sort((a, b) => {
-        const dA = daysOrder.indexOf(a.day_of_week);
-        const dB = daysOrder.indexOf(b.day_of_week);
-        if (dA !== dB) return dA - dB;
-        return a.period_number - b.period_number;
-      });
-  };
+  const getFacultyTimetable = useCallback((facultyId: string, dayOfWeek?: DayOfWeek): TimetableEntry[] => {
+    if (!facultyId) return [];
+    return getPublishedTimetable({ facultyId, dayOfWeek });
+  }, [getPublishedTimetable]);
 
   // 9. Get Today's Live Attendance Lectures for Student (Consumes Same Authoritative Timetable)
   const getTodayLecturesForStudent = (studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
@@ -1949,6 +1985,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         reviewCorrectionRequest,
         canSubmitClaim,
         getStudentAttendance,
+        getPublishedTimetable,
+        getFacultyTimetable,
         getStudentTimetable,
         getTodayLecturesForStudent,
         getDateLecturesForStudent,

@@ -31,7 +31,9 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
     departments, 
     programs, 
     years, 
-    faculty 
+    faculty,
+    getFacultyTimetable,
+    getPublishedTimetable
   } = useAcademic();
 
   // 1. Authoritative faculty identification
@@ -51,9 +53,9 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
   const [activeScheduleTab, setActiveScheduleTab] = useState<'my_teaching' | 'coordinator'>('my_teaching');
 
   // 2. Query all published timetable records
-  const facultyEntries = timetable.filter(t => t.faculty_id === facultyId && t.active);
+  const facultyEntries = getFacultyTimetable(facultyId);
   const coordinatorEntries = coordinatedSection 
-    ? timetable.filter(t => t.section_id === coordinatedSection.id && t.active)
+    ? getPublishedTimetable({ sectionId: coordinatedSection.id })
     : [];
 
   const currentActiveEntries = (activeScheduleTab === 'coordinator' && coordinatedSection)

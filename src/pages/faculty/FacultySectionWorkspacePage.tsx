@@ -235,12 +235,16 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
   const avgAttendance = useMemo(() => {
     if (sectionStudents.length === 0) return 0;
     let totalPct = 0;
+    let countWithAttendance = 0;
     for (const stud of sectionStudents) {
       const stats = getStudentAttendance(stud.id);
       const subStat = stats.subjectStats.find(st => st.subjectId === selectedSubjectId);
-      totalPct += subStat ? subStat.percentage : 0;
+      if (subStat && subStat.percentage !== null) {
+        totalPct += subStat.percentage;
+        countWithAttendance++;
+      }
     }
-    return Math.round(totalPct / sectionStudents.length);
+    return countWithAttendance > 0 ? Math.round(totalPct / countWithAttendance) : 0;
   }, [sectionStudents, getStudentAttendance, selectedSubjectId]);
 
   // -------------------------------------------------------------
@@ -740,7 +744,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
               .map((stud, idx) => {
                 const attStats = getStudentAttendance(stud.id);
                 const subStat = attStats.subjectStats.find(st => st.subjectId === selectedSubjectId);
-                const pct = subStat ? subStat.percentage : 0;
+                const pct = (subStat && subStat.percentage !== null) ? subStat.percentage : null;
 
                 return (
                   <div key={stud.id} className="glass-card rounded-2xl p-4 border border-emerald-500/15 space-y-2">
@@ -751,9 +755,13 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                       </div>
                       <span className={clsx(
                         'px-2 py-0.5 rounded-full text-[10px] font-bold font-mono',
-                        pct >= 75 ? 'bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30' : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                        pct === null
+                          ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                          : pct >= 75
+                            ? 'bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30'
+                            : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                       )}>
-                        {pct}% Att.
+                        {pct === null ? 'No data' : `${pct}% Att.`}
                       </span>
                     </div>
 

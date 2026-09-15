@@ -90,7 +90,7 @@ export const HODDashboard: React.FC = () => {
   }, [studentStats, selectedSectionFilter]);
 
   const defaulters = useMemo(() => {
-    return studentStats.filter(s => s.isDefaulter || s.percentage < ATTENDANCE_ELIGIBILITY_THRESHOLD);
+    return studentStats.filter(s => s.totalLectures > 0 && s.percentage !== null && (s.isDefaulter || s.percentage < ATTENDANCE_ELIGIBILITY_THRESHOLD));
   }, [studentStats]);
 
   // Strictly department-scoped active faculty
@@ -116,29 +116,28 @@ export const HODDashboard: React.FC = () => {
 
   const handleExportDefaultersCSV = () => {
     const data = defaulters.map(d => ({
-      Roll_Number: d.rollNumber,
-      Full_Name: d.fullName,
-      Section: d.sectionName,
-      Total_Lectures: d.totalLectures,
-      Present_Lectures: d.presentLectures,
-      Attendance_Percentage: `${d.percentage}%`,
+      'Roll Number': d.rollNumber,
+      'Student Name': d.fullName,
+      'Section': d.sectionName,
+      'Total Held': d.totalLectures,
+      'Attended': d.presentLectures,
+      'Attendance %': `${d.percentage ?? 0}%`,
       Status: 'Defaulter (<75%)',
     }));
     exportToCSV(data, `VCTM_${dept?.code || 'CSE'}_Defaulters_Report_${getISTTodayDate()}`);
   };
 
   const handleExportDefaultersPDF = () => {
-    const headers = ['Roll No.', 'Student Name', 'Section', 'Held', 'Present', 'Percentage', 'Status'];
+    const headers = ['Roll Number', 'Student Name', 'Section', 'Total Held', 'Attended', 'Attendance %', 'Status'];
     const rows = defaulters.map(d => [
       d.rollNumber,
       d.fullName,
       d.sectionName,
       d.totalLectures,
       d.presentLectures,
-      `${d.percentage}%`,
+      `${d.percentage ?? 0}%`,
       'Defaulter (<75%)'
     ]);
-
     exportAttendanceReportPDF({
       title: `DEPARTMENT OF ${dept?.code || 'ACADEMIC'} — ATTENDANCE DEFAULTER REPORT (<75%)`,
       subtitle: 'Official Academic Audit Report — VCTM Aligarh',
@@ -152,10 +151,11 @@ export const HODDashboard: React.FC = () => {
   };
 
   const avgAttendance = useMemo(() => {
-    if (studentStats.length === 0) return null;
+    const studentsWithAttendance = studentStats.filter(s => s.totalLectures > 0 && s.percentage !== null);
+    if (studentsWithAttendance.length === 0) return null;
     return Math.round(
-      studentStats.reduce((acc, s) => acc + s.percentage, 0) /
-      studentStats.length
+      studentsWithAttendance.reduce((acc, s) => acc + (s.percentage || 0), 0) /
+      studentsWithAttendance.length
     );
   }, [studentStats]);
 
@@ -332,7 +332,8 @@ export const HODDashboard: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-emerald-500/10">
               {filteredStats.map((s) => {
-                const isDefaulter = s.percentage < 75;
+                const hasData = s.totalLectures > 0 && s.percentage !== null;
+                const isDefaulter = hasData && s.percentage !== null && s.percentage < 75;
                 return (
                   <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
                     <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
@@ -352,17 +353,19 @@ export const HODDashboard: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <span className="font-mono font-black text-sm text-[#00ff88]">
-                        {s.percentage}%
+                        {hasData ? `${s.percentage}%` : 'No data'}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <span className={clsx(
                         'px-2.5 py-1 rounded-full text-[10px] font-bold border',
-                        isDefaulter
-                          ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                          : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                        !hasData
+                          ? 'bg-slate-800 border-slate-700 text-slate-400'
+                          : isDefaulter
+                            ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                            : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
                       )}>
-                        {isDefaulter ? 'Defaulter (<75%)' : 'Eligible'}
+                        {!hasData ? 'No attendance recorded' : isDefaulter ? 'Defaulter (<75%)' : 'Eligible'}
                       </span>
                     </td>
                   </tr>

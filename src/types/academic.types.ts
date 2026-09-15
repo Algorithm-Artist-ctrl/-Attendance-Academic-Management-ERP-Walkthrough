@@ -8,7 +8,7 @@ export interface SubjectAttendanceStat {
   facultyName: string;
   totalConducted: number;
   attended: number;
-  percentage: number;
+  percentage: number | null;
   credits: number;
 }
 
@@ -19,7 +19,7 @@ export interface StudentOverallAttendance {
   sectionName: string;
   totalLectures: number;
   presentLectures: number;
-  percentage: number;
+  percentage: number | null;
   isDefaulter: boolean; // Below 75%
   subjectStats: SubjectAttendanceStat[];
 }
@@ -29,7 +29,7 @@ export interface StudentSubjectAcademicReport {
   subjectCode: string;
   subjectName: string;
   facultyName: string;
-  attendancePercentage: number;
+  attendancePercentage: number | null;
   sessionalMarks: {
     sessional1?: { obtained?: number; max: number };
     sessional2?: { obtained?: number; max: number };
@@ -211,3 +211,11 @@ export interface NoticeItem {
   createdAt?: string;
 }
 
+export interface TimetableQueryFilter {
+  academicSessionId?: string;
+  sectionId?: string;
+  facultyId?: string;
+  dayOfWeek?: DayOfWeek;
+  subjectId?: string;
+  activeOnly?: boolean;
+}

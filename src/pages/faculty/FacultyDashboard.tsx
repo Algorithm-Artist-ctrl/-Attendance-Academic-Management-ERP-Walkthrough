@@ -36,7 +36,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     quizzes,
     sessionalAssessments,
     faculty: facultyList,
-    getFacultyCorrectionRequests
+    getFacultyCorrectionRequests,
+    getPublishedTimetable,
+    getFacultyTimetable
   } = useAcademic();
 
   const currentFaculty = facultyList.find(
@@ -55,13 +57,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   // Today's classes for this faculty strictly from Supabase timetable
   const todaySchedule = todayDay === 'SUN' 
     ? [] 
-    : timetable
-        .filter(t => t.faculty_id === facultyId && t.day_of_week === todayDay)
+    : getFacultyTimetable(facultyId, todayDay)
         .sort((a, b) => a.period_number - b.period_number);
 
   // Assigned subjects and sections strictly from faculty_subject_assignments + timetable
   const myAssignments = assignments.filter(fa => fa.faculty_id === facultyId && fa.active);
-  const myTt = timetable.filter(t => t.faculty_id === facultyId && t.active);
+  const myTt = getFacultyTimetable(facultyId);
   const mySubjectIds = new Set([...myAssignments.map(fa => fa.subject_id), ...myTt.map(t => t.subject_id)]);
   const mySectionIds = new Set([...myAssignments.map(fa => fa.section_id), ...myTt.map(t => t.section_id)]);
   const mySubjects = subjects.filter(s => mySubjectIds.has(s.id));
@@ -277,7 +278,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         if (!coordinatedSection) return null;
 
         const secStudents = students.filter(s => s.section_id === coordinatedSection.id && s.active);
-        const secTotalLectures = timetable.filter(t => t.section_id === coordinatedSection.id && t.active);
+        const secTotalLectures = getPublishedTimetable({ sectionId: coordinatedSection.id });
 
         return (
           <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">

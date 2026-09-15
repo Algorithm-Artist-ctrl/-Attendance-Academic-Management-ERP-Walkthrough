@@ -45,13 +45,43 @@ interface StaticSetupCache {
   };
 }
 
+export interface FullERPData {
+  institutions: Institution[];
+  departments: Department[];
+  programs: Program[];
+  sessions: AcademicSession[];
+  years: AcademicYear[];
+  semesters: Semester[];
+  classrooms: Classroom[];
+  sections: Section[];
+  subjects: Subject[];
+  faculty: Faculty[];
+  assignments: FacultySubjectAssignment[];
+  students: Student[];
+  timetable: TimetableEntry[];
+  attendanceSessions: AttendanceSession[];
+  attendanceRecords: AttendanceRecord[];
+  corrections: AttendanceCorrection[];
+  auditLogs: AuditLog[];
+  timetableVersions: TimetableVersion[];
+  courseAssignments: Assignment[];
+  assignmentSubmissions: AssignmentSubmission[];
+  quizzes: Quiz[];
+  quizResults: QuizResult[];
+  sessionalMarks: SessionalMark[];
+  marksHistory: MarksHistory[];
+  sessionalAssessments: SessionalAssessment[];
+}
+
 let _staticCache: StaticSetupCache | null = null;
 const STATIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static institutional structure only
+let _inFlightFetchAll: Promise<FullERPData | null> | null = null;
 
 export const supabaseService = {
   // Clear in-memory static cache when structural entities change
   invalidateMasterCache() {
     _staticCache = null;
+    _inFlightFetchAll = null;
   },
 
   // 1A. Fetch Static Academic Master Entities (Institutions, Depts, Programs, Sessions, Years, Semesters)
@@ -227,6 +257,49 @@ export const supabaseService = {
     return (data as TimetableEntry[]) || [];
   },
 
+  // Authoritative Timetable Query (Single Source of Truth)
+  async getPublishedTimetable(filter?: {
+    academicSessionId?: string;
+    sectionId?: string;
+    facultyId?: string;
+    dayOfWeek?: DayOfWeek;
+    subjectId?: string;
+    activeOnly?: boolean;
+  }): Promise<TimetableEntry[]> {
+    let q = supabase.from('timetable_entries').select('*');
+    if (filter?.activeOnly !== false) {
+      q = q.eq('active', true);
+    }
+    if (filter?.sectionId) {
+      q = q.eq('section_id', filter.sectionId);
+    }
+    if (filter?.facultyId) {
+      q = q.eq('faculty_id', filter.facultyId);
+    }
+    if (filter?.dayOfWeek) {
+      q = q.eq('day_of_week', filter.dayOfWeek);
+    }
+    if (filter?.subjectId) {
+      q = q.eq('subject_id', filter.subjectId);
+    }
+    q = q.order('period_number', { ascending: true });
+
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error in getPublishedTimetable:', error.message);
+      return [];
+    }
+
+    const daysOrder: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const entries = (data as TimetableEntry[]) || [];
+    return entries.sort((a, b) => {
+      const dA = daysOrder.indexOf(a.day_of_week);
+      const dB = daysOrder.indexOf(b.day_of_week);
+      if (dA !== dB) return dA - dB;
+      return a.period_number - b.period_number;
+    });
+  },
+
   async fetchAttendance(): Promise<{ attendanceSessions: AttendanceSession[]; attendanceRecords: AttendanceRecord[] }> {
     const [sessRes, recRes] = await Promise.all([
       supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
@@ -298,12 +371,12 @@ export const supabaseService = {
         { data: marksHistoryList },
         { data: sessionalAssessmentsList },
       ] = await Promise.all([
-        supabase.from('timetable_entries').select('*'),
+        supabase.from('timetable_entries').select('*').order('period_number', { ascending: true }),
         supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
         supabase.from('attendance_records').select('*'),
         supabase.from('attendance_corrections').select('*').order('created_at', { ascending: false }),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }),
-        supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }),
+        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('assignments').select('*').order('created_at', { ascending: false }),
         supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
         supabase.from('quizzes').select('*').order('created_at', { ascending: false }),
@@ -334,28 +407,39 @@ export const supabaseService = {
     }
   },
 
-  // 1E. Fetch All Master & Operational Data (Composed in parallel)
-  async fetchAllData(forceRefreshMaster = false) {
-    try {
-      const [staticSetup, academicEntities, operationalData] = await Promise.all([
-        this.fetchStaticSetup(forceRefreshMaster),
-        this.fetchAcademicEntities(),
-        this.fetchOperationalData(),
-      ]);
-
-      if (!staticSetup || !academicEntities || !operationalData) {
-        return null;
-      }
-
-      return {
-        ...staticSetup,
-        ...academicEntities,
-        ...operationalData,
-      };
-    } catch (err) {
-      console.error('Error fetching combined data from Supabase:', err);
-      return null;
+  // 1E. Fetch All Master & Operational Data (Composed in parallel with Promise deduplication)
+  async fetchAllData(forceRefreshMaster = false): Promise<FullERPData | null> {
+    if (!forceRefreshMaster && _inFlightFetchAll) {
+      return _inFlightFetchAll;
     }
+
+    const fetchPromise = (async () => {
+      try {
+        const [staticSetup, academicEntities, operationalData] = await Promise.all([
+          this.fetchStaticSetup(forceRefreshMaster),
+          this.fetchAcademicEntities(),
+          this.fetchOperationalData(),
+        ]);
+
+        if (!staticSetup || !academicEntities || !operationalData) {
+          return null;
+        }
+
+        return {
+          ...staticSetup,
+          ...academicEntities,
+          ...operationalData,
+        };
+      } catch (err) {
+        console.error('Error fetching combined data from Supabase:', err);
+        return null;
+      } finally {
+        _inFlightFetchAll = null;
+      }
+    })();
+
+    _inFlightFetchAll = fetchPromise;
+    return fetchPromise;
   },
 
   // 2. Save Live Attendance Session & Student Records
@@ -469,6 +553,22 @@ export const supabaseService = {
         absentCount,
       },
     });
+
+    // Broadcast Realtime Attendance Update
+    try {
+      const channel = supabase.channel('vctm-erp-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'attendance_updated',
+        payload: {
+          session_id: session.id,
+          section_id: params.sectionId,
+          subject_id: params.subjectId,
+          session_date: params.sessionDate,
+          timestamp: new Date().toISOString(),
+        }
+      });
+    } catch {}
 
     return { session, records: insertedRecords as AttendanceRecord[] };
   },

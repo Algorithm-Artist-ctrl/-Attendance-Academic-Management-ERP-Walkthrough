@@ -154,8 +154,8 @@ export const StudentAttendancePage: React.FC = () => {
       s.totalConducted,
       s.attended,
       s.totalConducted - s.attended,
-      `${s.percentage}%`,
-      s.percentage >= 75 ? 'Eligible' : 'Defaulter'
+      s.totalConducted > 0 && s.percentage !== null ? `${s.percentage}%` : 'No data',
+      s.totalConducted === 0 || s.percentage === null ? 'No attendance recorded' : s.percentage >= 75 ? 'Eligible' : 'Defaulter'
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -198,7 +198,9 @@ export const StudentAttendancePage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
           <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/25">
             <span className="text-slate-400">Overall Attendance: </span>
-            <span className="text-[#00ff88] font-black text-sm ml-1">{stats.percentage}%</span>
+            <span className="text-[#00ff88] font-black text-sm ml-1">
+              {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No data'}
+            </span>
           </div>
 
           <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
@@ -668,7 +670,7 @@ export const StudentAttendancePage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-emerald-500/10">
                   {filteredSubjectBreakdown.map((item) => {
-                    const isEligible = item.percentage >= 75;
+                    const isEligible = item.totalConducted > 0 && item.percentage !== null && item.percentage >= 75;
                     const itemAbsent = item.totalConducted - item.attended;
                     return (
                       <tr key={item.subjectId} className="hover:bg-emerald-500/5 transition-colors">
@@ -692,19 +694,19 @@ export const StudentAttendancePage: React.FC = () => {
                         </td>
                         <td className="px-5 py-4 text-center">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                            {item.totalConducted > 0 ? `${item.percentage}%` : 'No Data'}
+                            {item.totalConducted > 0 && item.percentage !== null ? `${item.percentage}%` : 'No Data'}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
                           <span className={clsx(
                             'px-2.5 py-1 rounded-full text-[10px] font-bold border',
-                            item.totalConducted === 0
+                            item.totalConducted === 0 || item.percentage === null
                               ? 'bg-slate-800 border-slate-700 text-slate-400'
                               : isEligible 
                                 ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
                                 : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
                           )}>
-                            {item.totalConducted === 0 ? 'No Data' : isEligible ? 'Eligible' : 'Defaulter (<75%)'}
+                            {item.totalConducted === 0 || item.percentage === null ? 'No attendance recorded' : isEligible ? 'Eligible' : 'Defaulter (<75%)'}
                           </span>
                         </td>
                       </tr>

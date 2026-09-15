@@ -43,7 +43,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     faculty,
     attendanceSessions,
     attendanceRecords,
-    saveAttendance 
+    saveAttendance,
+    getFacultyTimetable 
   } = useAcademic();
 
   // 1. Authorize: Only teaching faculty or HOD
@@ -60,7 +61,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
   // 2. Filter classes assigned STRICTLY to this faculty member
-  const assignedClasses = timetable.filter(t => t.faculty_id === facultyId && t.active);
+  const assignedClasses = getFacultyTimetable(facultyId);
 
   const todayDay = getISTDayOfWeek();
   const [selectedDayFilter, setSelectedDayFilter] = useState<string>(todayDay);

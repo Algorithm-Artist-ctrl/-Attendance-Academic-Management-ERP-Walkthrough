@@ -174,7 +174,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
           <div>
             <p className="text-xs font-semibold text-slate-400">Average Attendance</p>
             <h3 className="text-xl sm:text-2xl font-black text-[#00ff88] mt-1">
-              {attendanceRecords.length > 0 ? `${attendanceRate}%` : '0%'}
+              {attendanceRecords.length > 0 ? `${attendanceRate}%` : 'No data'}
             </h3>
             <span className="text-[10px] text-emerald-400 font-semibold">Institute Average</span>
           </div>

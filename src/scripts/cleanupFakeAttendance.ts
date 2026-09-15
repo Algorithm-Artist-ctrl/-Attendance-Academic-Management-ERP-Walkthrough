@@ -5,21 +5,25 @@ import { supabase } from '../lib/supabase/supabaseClient';
  * Adjust `cutoffDate` if you need to preserve any historical real data.
  */
 const cleanup = async () => {
-  const cutoffDate = '1970-01-01'; // earliest possible date
-  const tables = ['attendance_sessions', 'attendance_records', 'attendance_corrections'];
+  // All demo attendance records were generated during testing prior to DATE OF EFFECT: 15 September 2026
+  const cutoffDate = '2026-09-15T00:00:00.000Z';
+  const tables = ['attendance_corrections', 'attendance_records', 'attendance_sessions'];
+  
   for (const table of tables) {
     const { error, count } = await supabase
       .from(table)
       .delete({ count: 'exact' })
       .lt('created_at', cutoffDate);
+      
     if (error) {
       console.error(`Failed to delete from ${table}:`, error);
       process.exit(1);
     }
-    console.log(`Deleted ${count} rows from ${table}`);
+    console.log(`Deleted ${count} demo rows from ${table}`);
   }
-  console.log('Fake attendance cleanup complete.');
+  console.log('Fake attendance cleanup complete. ERP database reset to clean production state.');
   process.exit(0);
 };
 
 cleanup();
+

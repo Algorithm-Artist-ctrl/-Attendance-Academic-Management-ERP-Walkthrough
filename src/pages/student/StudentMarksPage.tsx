@@ -89,9 +89,11 @@ export const StudentMarksPage: React.FC = () => {
                     <div className="text-[11px] text-slate-400">Attendance</div>
                     <div className={clsx(
                       "text-sm font-bold font-mono",
-                      item.attendancePercentage >= 75 ? "text-emerald-400" : "text-rose-400"
+                      item.attendancePercentage === null
+                        ? "text-slate-400"
+                        : item.attendancePercentage >= 75 ? "text-emerald-400" : "text-rose-400"
                     )}>
-                      {item.attendancePercentage}%
+                      {item.attendancePercentage === null ? 'No data' : `${item.attendancePercentage}%`}
                     </div>
                   </div>
                   <div className="text-right pl-4 border-l border-slate-800">

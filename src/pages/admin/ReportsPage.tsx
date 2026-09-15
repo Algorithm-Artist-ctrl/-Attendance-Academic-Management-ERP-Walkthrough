@@ -41,10 +41,11 @@ export const ReportsPage: React.FC = () => {
   const filteredStats = useMemo(() => {
     return allStats.filter(s => {
       const matchesSection = selectedSection === 'ALL' || s.sectionName === selectedSection;
+      const hasData = s.totalLectures > 0 && s.percentage !== null;
       const matchesStatus = 
         selectedStatusFilter === 'ALL' ? true :
-        selectedStatusFilter === 'DEFAULTER' ? s.isDefaulter || s.percentage < ATTENDANCE_ELIGIBILITY_THRESHOLD :
-        s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD;
+        selectedStatusFilter === 'DEFAULTER' ? (hasData && (s.isDefaulter || (s.percentage !== null && s.percentage < ATTENDANCE_ELIGIBILITY_THRESHOLD))) :
+        (hasData && s.percentage !== null && s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD);
       const matchesSearch = 
         s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -61,8 +62,8 @@ export const ReportsPage: React.FC = () => {
       Total_Lectures_Held: s.totalLectures,
       Present_Count: s.presentLectures,
       Absent_Count: s.totalLectures - s.presentLectures,
-      Attendance_Percentage: `${s.percentage}%`,
-      Audit_Status: s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD ? 'Eligible for Exams' : 'Defaulter (<75%)',
+      Attendance_Percentage: s.totalLectures > 0 && s.percentage !== null ? `${s.percentage}%` : 'No data',
+      Audit_Status: s.totalLectures === 0 || s.percentage === null ? 'No attendance recorded' : s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD ? 'Eligible for Exams' : 'Defaulter (<75%)',
     }));
     exportToCSV(data, `VCTM_College_Attendance_Audit_${getISTTodayDate()}`);
   };
@@ -75,8 +76,8 @@ export const ReportsPage: React.FC = () => {
       s.sectionName,
       s.totalLectures,
       s.presentLectures,
-      `${s.percentage}%`,
-      s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD ? 'Eligible' : 'Defaulter'
+      s.totalLectures > 0 && s.percentage !== null ? `${s.percentage}%` : 'No data',
+      s.totalLectures === 0 || s.percentage === null ? 'No attendance recorded' : s.percentage >= ATTENDANCE_ELIGIBILITY_THRESHOLD ? 'Eligible' : 'Defaulter'
     ]);
 
     const activeSession = sessions.find(s => s.is_current);
@@ -186,7 +187,8 @@ export const ReportsPage: React.FC = () => {
             {/* MOBILE VIEW: Student Attendance Report Cards */}
             <div className="space-y-3 md:hidden">
               {filteredStats.map((s) => {
-                const isDefaulter = s.percentage < 75;
+                const hasData = s.totalLectures > 0 && s.percentage !== null;
+                const isDefaulter = hasData && s.percentage !== null && s.percentage < 75;
                 return (
                   <div
                     key={s.studentId}
@@ -199,11 +201,13 @@ export const ReportsPage: React.FC = () => {
                       </div>
                       <span className={clsx(
                         'px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0',
-                        isDefaulter
-                          ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                          : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                        !hasData
+                          ? 'bg-slate-800 border-slate-700 text-slate-400'
+                          : isDefaulter
+                            ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                            : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
                       )}>
-                        {isDefaulter ? '<75% Defaulter' : 'Eligible'}
+                        {!hasData ? 'No attendance recorded' : isDefaulter ? '<75% Defaulter' : 'Eligible'}
                       </span>
                     </div>
 
@@ -218,7 +222,9 @@ export const ReportsPage: React.FC = () => {
                       </div>
                       <div className="p-2 rounded-xl bg-slate-950/60">
                         <span className="text-[10px] text-slate-400 block">Percentage</span>
-                        <span className="font-black font-mono text-[#00ff88]">{s.percentage}%</span>
+                        <span className="font-black font-mono text-[#00ff88]">
+                          {hasData ? `${s.percentage}%` : 'No data'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -243,7 +249,8 @@ export const ReportsPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-emerald-500/10">
                     {filteredStats.map((s) => {
-                      const isDefaulter = s.percentage < 75;
+                      const hasData = s.totalLectures > 0 && s.percentage !== null;
+                      const isDefaulter = hasData && s.percentage !== null && s.percentage < 75;
                       return (
                         <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
                           <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
@@ -262,16 +269,18 @@ export const ReportsPage: React.FC = () => {
                             {s.presentLectures}
                           </td>
                           <td className="px-5 py-3.5 text-center font-mono font-black text-sm text-[#00ff88]">
-                            {s.percentage}%
+                            {hasData ? `${s.percentage}%` : 'No data'}
                           </td>
                           <td className="px-5 py-3.5 text-right">
                             <span className={clsx(
                               'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
-                              isDefaulter
-                                ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                                : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                              !hasData
+                                ? 'bg-slate-800 border-slate-700 text-slate-400'
+                                : isDefaulter
+                                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                                  : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
                             )}>
-                              {isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
+                              {!hasData ? 'No attendance recorded' : isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
                             </span>
                           </td>
                         </tr>
