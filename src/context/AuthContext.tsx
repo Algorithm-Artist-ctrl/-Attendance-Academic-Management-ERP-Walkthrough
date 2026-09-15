@@ -285,7 +285,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (authError || !data.session || !data.user) {
-      // Authentication failed — NO SESSION, NO ACCESS
+      // Authentication failed — Ensure any residual session/token is completely destroyed
+      await supabase.auth.signOut().catch(() => {});
       erpStorage.setCurrentSessionUser(null);
       const errorMsg = 'Invalid email or password.';
       setAuthState({
@@ -356,18 +357,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'No active session. Please log in.' };
     }
 
+    const userEmail = session.user.email;
+    if (!userEmail) {
+      return { success: false, error: 'User email not found in active session.' };
+    }
+
+    if (!currentPassword || !currentPassword.trim()) {
+      return { success: false, error: 'Please provide your current password.' };
+    }
+
     if (!newPassword || newPassword.length < 6) {
       return { success: false, error: 'New password must be at least 6 characters long.' };
     }
 
+    if (currentPassword === newPassword) {
+      return { success: false, error: 'New password must be different from current password.' };
+    }
+
+    // 2. Authoritative verification of current credentials against Supabase Auth
+    const { error: verifyErr } = await supabase.auth.signInWithPassword({
+      email: userEmail,
+      password: currentPassword,
+    });
+    if (verifyErr) {
+      return { success: false, error: 'Current password is incorrect.' };
+    }
+
     try {
-      // 2. Real password update via Supabase Auth
+      // 3. Real password update via Supabase Auth
       const { error: authErr } = await supabase.auth.updateUser({ password: newPassword });
       if (authErr) {
         return { success: false, error: authErr.message || 'Failed to update password.' };
       }
 
-      // 3. Audit log
+      // 4. Audit log
       try {
         await supabase.from('audit_logs').insert({
           action: 'PASSWORD_CHANGED',
@@ -378,6 +401,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           new_values: { password_updated: true, timestamp: new Date().toISOString() }
         });
       } catch {}
+
+      // 5. Terminate active session to enforce immediate re-authentication with new credentials
+      await supabase.auth.signOut();
+      erpStorage.setCurrentSessionUser(null);
+      setAuthState({
+        user: null,
+        role: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
 
       return { success: true };
     } catch (err: any) {

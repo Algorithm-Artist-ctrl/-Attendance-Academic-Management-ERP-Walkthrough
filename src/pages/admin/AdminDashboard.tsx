@@ -42,11 +42,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const totalDepts = departments.filter(d => d.active !== false).length;
   const totalPrograms = programs.filter(p => p.active !== false).length;
 
-  // Calculate overall attendance rate
+  // Calculate overall attendance rate: Present / (Present + Absent) * 100
   const totalPresent = attendanceRecords.filter(r => r.status === 'Present').length;
-  const attendanceRate = attendanceRecords.length > 0
-    ? Math.round((totalPresent / attendanceRecords.length) * 100)
-    : 0;
+  const totalEvaluated = attendanceRecords.filter(r => r.status === 'Present' || r.status === 'Absent').length;
+  const attendanceRate = totalEvaluated > 0
+    ? Math.round((totalPresent / totalEvaluated) * 100)
+    : null;
 
   // Real-time date-wise attendance stats from Supabase
   const dateWiseStats = React.useMemo(() => {
@@ -54,12 +55,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     for (const sess of attendanceSessions) {
       const date = sess.session_date;
       const recs = attendanceRecords.filter(r => r.attendance_session_id === sess.id);
+      const evaluated = recs.filter(r => r.status === 'Present' || r.status === 'Absent').length;
       const pres = recs.filter(r => r.status === 'Present').length;
       if (!map.has(date)) {
-        map.set(date, { total: recs.length, present: pres });
+        map.set(date, { total: evaluated, present: pres });
       } else {
         const curr = map.get(date)!;
-        curr.total += recs.length;
+        curr.total += evaluated;
         curr.present += pres;
       }
     }
@@ -174,9 +176,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
           <div>
             <p className="text-xs font-semibold text-slate-400">Average Attendance</p>
             <h3 className="text-xl sm:text-2xl font-black text-[#00ff88] mt-1">
-              {attendanceRecords.length > 0 ? `${attendanceRate}%` : 'No data'}
+              {attendanceRate !== null ? `${attendanceRate}%` : 'No attendance recorded yet'}
             </h3>
-            <span className="text-[10px] text-emerald-400 font-semibold">Institute Average</span>
+            <span className="text-[10px] text-emerald-400 font-semibold">
+              {attendanceRate !== null ? 'Institute Average' : 'No records yet'}
+            </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
             <TrendingUp className="w-5 h-5" />

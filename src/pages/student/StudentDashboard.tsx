@@ -393,10 +393,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Overall Attendance</p>
             <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No Class Yet'}
+              {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No attendance recorded yet'}
             </h3>
             <span className="text-[10px] text-emerald-400 font-medium">
-              {stats.totalLectures === 0 || stats.percentage === null ? 'No attendance recorded' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
+              {stats.totalLectures === 0 || stats.percentage === null ? 'No attendance recorded yet' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
             </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
@@ -425,7 +425,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             <h3 className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">
               {stats.presentLectures}
             </h3>
-            <span className="text-[10px] text-emerald-400 font-medium">Verified in Database</span>
+            <span className="text-[10px] text-emerald-400 font-medium">
+              {stats.totalLectures > 0 ? 'Verified in Database' : 'No records yet'}
+            </span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
             <CheckCircle2 className="w-6 h-6" />
@@ -609,7 +611,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                     {sb.facultyName}
                   </div>
                   <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                    {sb.totalConducted > 0 && sb.percentage !== null ? `${sb.percentage}%` : 'No Class Yet'}
+                    {sb.totalConducted > 0 && sb.percentage !== null ? `${sb.percentage}%` : 'No records yet'}
                   </div>
                 </div>
               ))}

@@ -463,14 +463,21 @@ export const supabaseService = {
       throw new Error(`Invalid attendance date: ${params.sessionDate}. Attendance cannot be recorded for future dates.`);
     }
 
-    // Check if session already exists for this date, section, and subject
-    const { data: existingSessions } = await supabase
+    // Check if session already exists for this date, section, subject, and timetable period
+    let sessionQuery = supabase
       .from('attendance_sessions')
       .select('*')
       .eq('section_id', params.sectionId)
       .eq('subject_id', params.subjectId)
-      .eq('session_date', params.sessionDate)
-      .limit(1);
+      .eq('session_date', params.sessionDate);
+
+    if (params.timetableEntryId) {
+      sessionQuery = sessionQuery.eq('timetable_entry_id', params.timetableEntryId);
+    } else if (params.startTime) {
+      sessionQuery = sessionQuery.eq('start_time', params.startTime);
+    }
+
+    const { data: existingSessions } = await sessionQuery.limit(1);
 
     let session: AttendanceSession;
 

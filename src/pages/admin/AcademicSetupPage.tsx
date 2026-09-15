@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3, Calendar } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -8,6 +9,7 @@ import { Section } from '../../types/database.types';
 import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
+  const { user } = useAuth();
   const { 
     institution, 
     departments, 
@@ -28,6 +30,18 @@ export const AcademicSetupPage: React.FC = () => {
     claimWindowDays,
     setClaimWindowDays
   } = useAcademic();
+
+  if (user?.role !== 'super_admin') {
+    return (
+      <div className="p-8 text-center glass-panel rounded-3xl border border-rose-500/20 max-w-xl mx-auto my-12">
+        <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
+        <p className="text-slate-400 text-sm">
+          Only institutional Super Administrators have permission to configure institutional departments, programs, and policy settings.
+        </p>
+      </div>
+    );
+  }
 
   const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>('departments');
   const [tempClaimDays, setTempClaimDays] = useState(claimWindowDays);

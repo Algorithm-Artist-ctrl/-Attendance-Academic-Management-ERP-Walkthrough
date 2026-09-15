@@ -159,6 +159,10 @@ export const HODDashboard: React.FC = () => {
     );
   }, [studentStats]);
 
+  const hasAnyAttendance = useMemo(() => {
+    return studentStats.some(s => s.totalLectures > 0);
+  }, [studentStats]);
+
   return (
     <div className="space-y-6">
       {/* Department Header */}
@@ -260,12 +264,14 @@ export const HODDashboard: React.FC = () => {
         <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-400">Defaulters (&lt;75%)</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-rose-400 mt-1">
+            <h3 className={`text-2xl sm:text-3xl font-black mt-1 ${!hasAnyAttendance ? 'text-slate-300' : defaulters.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
               {defaulters.length}
             </h3>
-            <span className="text-[10px] text-rose-400 font-bold">Action Recommended</span>
+            <span className={`text-[10px] font-bold ${!hasAnyAttendance ? 'text-slate-400 font-normal' : defaulters.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {!hasAnyAttendance ? 'No attendance data yet' : defaulters.length > 0 ? 'Action Recommended' : 'All Students Eligible'}
+            </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!hasAnyAttendance ? 'bg-slate-800/80 border border-slate-700 text-slate-400' : defaulters.length > 0 ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'}`}>
             <AlertTriangle className="w-5 h-5" />
           </div>
         </div>
@@ -274,13 +280,15 @@ export const HODDashboard: React.FC = () => {
           <div>
             <p className="text-xs font-semibold text-slate-400">Avg Attendance</p>
             {avgAttendance === null ? (
-              <p className="text-sm text-slate-400">No attendance records</p>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-300 mt-1">No records yet</h3>
             ) : (
               <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
                 {avgAttendance}%
               </h3>
             )}
-            <span className="text-[10px] text-emerald-400 font-semibold">Across All Subjects</span>
+            <span className="text-[10px] text-emerald-400 font-semibold">
+              {avgAttendance === null ? 'No attendance recorded yet' : 'Across All Subjects'}
+            </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
             <CheckCircle2 className="w-5 h-5" />

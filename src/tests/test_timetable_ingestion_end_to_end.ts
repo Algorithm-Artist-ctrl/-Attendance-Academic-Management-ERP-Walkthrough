@@ -334,7 +334,7 @@ Friday,2,09:50,10:40,BCS302,Computer Organization,Mr. Kuldeep Kumar,A006,Theory`
         start_time: timing.start,
         end_time: timing.end,
         subject_id: isLunch ? null : (subjectsAll?.find(s => s.subject_code === 'BCS301')?.id || null),
-        faculty_id: isLunch ? null : (facultyAll?.find(f => f.full_name.includes('Hemlata'))?.id || null),
+        faculty_id: isLunch ? null : (p === 3 ? (facultyAll?.find(f => f.full_name.includes('Alok'))?.id || null) : (facultyAll?.find(f => f.full_name.includes('Hemlata'))?.id || null)),
         room_number: secB.room_number || 'A006',
         lecture_type: isLunch ? 'Lunch' : 'Theory',
         active: true,

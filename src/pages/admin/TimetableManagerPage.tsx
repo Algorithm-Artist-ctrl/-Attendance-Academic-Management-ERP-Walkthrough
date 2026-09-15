@@ -66,7 +66,8 @@ export const TimetableManagerPage: React.FC = () => {
     assignments,
     saveSectionTimetable, 
     deleteSectionTimetable,
-    refreshData 
+    refreshData,
+    isLoading 
   } = useAcademic();
 
   const isSuperAdmin = user?.role === 'super_admin';
@@ -1171,8 +1172,22 @@ export const TimetableManagerPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-          <span>Live Supabase Synchronized</span>
+          {isLoading || isAnalyzingCSV ? (
+            <>
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span>Synchronizing Database...</span>
+            </>
+          ) : sections.length === 0 ? (
+            <>
+              <span className="inline-block w-2 h-2 rounded-full bg-slate-500" />
+              <span>No Database Records</span>
+            </>
+          ) : (
+            <>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+              <span>Live Supabase Synchronized</span>
+            </>
+          )}
         </div>
       </div>
 
