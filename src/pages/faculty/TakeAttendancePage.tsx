@@ -96,6 +96,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const todayISO = getISTTodayDate();
   const [sessionDate, setSessionDate] = useState<string>(todayISO);
 
+  // Formatted date for human-readable display (e.g. "16 Sep 2026")
+  const formattedSessionDate = useMemo(() => {
+    try {
+      const d = new Date(`${sessionDate}T00:00:00`);
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return sessionDate;
+    }
+  }, [sessionDate]);
+
   // Attendance state: Map of student_id -> 'Present' | 'Absent' | 'Unmarked'
   const [attendanceMap, setAttendanceMap] = useState<Record<string, MarkState>>({});
   // Baseline saved attendance map from Supabase for dirty checking
@@ -401,15 +411,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     if (hasUnsavedChanges) {
       return {
         label: `Save Attendance (${changedCount || sectionStudents.length})`,
-        icon: <Save className="w-4 h-4 text-slate-950" />,
+        icon: <CheckCircle2 className="w-4 h-4 text-slate-950" />,
         variant: 'neon' as const,
         disabled: false,
         className: 'font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]',
       };
     }
     return {
-      label: sectionStudents.length > 0 ? `Save Attendance (${sectionStudents.length})` : 'Save Attendance',
-      icon: <Save className="w-4 h-4 text-slate-950" />,
+      label: 'Save Attendance',
+      icon: <CheckCircle2 className="w-4 h-4 text-slate-950" />,
       variant: 'neon' as const,
       disabled: false,
       className: 'font-black shadow-[0_0_15px_rgba(0,255,136,0.25)]',
@@ -1452,7 +1462,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs font-mono">
             <div className="flex justify-between py-1 border-b border-slate-800/60">
               <span className="text-slate-400">Date:</span>
-              <span className="text-white font-bold">{sessionDate}</span>
+              <span className="text-white font-bold">{formattedSessionDate}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-800/60">
               <span className="text-slate-400">Subject:</span>
