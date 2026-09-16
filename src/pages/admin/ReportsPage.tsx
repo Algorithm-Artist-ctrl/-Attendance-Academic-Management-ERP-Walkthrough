@@ -3,14 +3,9 @@ import {
   FileSpreadsheet, 
   Download, 
   Printer, 
-  Filter, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Search,
-  BookOpen
+  Search
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
@@ -22,9 +17,7 @@ export const ReportsPage: React.FC = () => {
   const { 
     departments, 
     sections, 
-    subjects, 
     students, 
-    faculty,
     sessions,
     getStudentAttendance 
   } = useAcademic();

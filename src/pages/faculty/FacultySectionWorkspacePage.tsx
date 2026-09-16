@@ -58,18 +58,13 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     quizResults, 
     sessionalAssessments, 
     sessionalMarks, 
-    marksHistory,
-    attendanceSessions,
-    attendanceRecords,
     assignments: facultySubjectAssignments,
     createAssignment,
     deleteCourseAssignment,
-    gradeAssignmentSubmission,
     createQuiz,
     deleteQuiz,
     saveQuizMarks,
     createSessionalAssessment,
-    deleteSessionalAssessment,
     saveSessionalMarks,
     getStudentAttendance
   } = useAcademic();
@@ -266,8 +261,6 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
   const [quizGoogleFormUrl, setQuizGoogleFormUrl] = useState('');
   const [quizMaxMarks, setQuizMaxMarks] = useState(20);
   const [quizStartTime, setQuizStartTime] = useState('');
-  const [quizEndTime, setQuizEndTime] = useState('');
-  const [quizInstructions, setQuizInstructions] = useState('');
   const [quizSubmitting, setQuizSubmitting] = useState(false);
   const [quizError, setQuizError] = useState('');
 
@@ -383,8 +376,8 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
         max_marks: quizMaxMarks || 20,
         quiz_date: getISTTodayDate(),
         start_time: quizStartTime ? new Date(quizStartTime).toISOString() : new Date().toISOString(),
-        end_time: quizEndTime ? new Date(quizEndTime).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        instructions: quizInstructions.trim() || undefined,
+        end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        instructions: quizDesc.trim() || undefined,
         status: 'published',
         active: true,
       });

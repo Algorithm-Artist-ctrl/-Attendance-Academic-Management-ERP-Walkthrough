@@ -75,6 +75,7 @@ export interface FullERPData {
 }
 
 let _staticCache: StaticSetupCache | null = null;
+let _masterCache: { timestamp: number; data: any } | null = null;
 const STATIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static institutional structure only
 let _inFlightFetchAll: Promise<FullERPData | null> | null = null;
 
@@ -82,6 +83,7 @@ export const supabaseService = {
   // Clear in-memory static cache when structural entities change
   invalidateMasterCache() {
     _staticCache = null;
+    _masterCache = null;
     _inFlightFetchAll = null;
   },
 
@@ -178,6 +180,11 @@ export const supabaseService = {
 
   // Backward-compatible fetchMasterData combining static setup + dynamic academic entities
   async fetchMasterData(forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && _masterCache && (now - _masterCache.timestamp) < STATIC_CACHE_TTL_MS) {
+      return _masterCache.data;
+    }
+
     const [staticSetup, academicEntities] = await Promise.all([
       this.fetchStaticSetup(forceRefresh),
       this.fetchAcademicEntities(),
@@ -185,10 +192,12 @@ export const supabaseService = {
 
     if (!staticSetup || !academicEntities) return null;
 
-    return {
+    const result = {
       ...staticSetup,
       ...academicEntities,
     };
+    _masterCache = { timestamp: now, data: result };
+    return result;
   },
 
   // 1C. Granular Table Fetchers for Target Realtime Invalidation (< 50ms)

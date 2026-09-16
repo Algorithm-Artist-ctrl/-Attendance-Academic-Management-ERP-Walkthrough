@@ -67,8 +67,9 @@ async function runPerformanceAndRealtimeVerification() {
 
   // --- SUITE 3: Section B Timetable Live Propagation & Fast Lookup ---
   console.log('\n--- SUITE 3: Section B Timetable Live Propagation & Fast Lookup ---');
-  const secB = fullData!.sections.find(s => s.name === 'B')!;
-  const secA = fullData!.sections.find(s => s.name === 'A')!;
+  const sem3 = fullData!.semesters.find(s => s.name?.includes('3rd') || s.semester_number === 3);
+  const secB = fullData!.sections.find(s => s.name === 'B' && s.semester_id === sem3?.id)!;
+  const secA = fullData!.sections.find(s => s.name === 'A' && s.semester_id === sem3?.id)!;
   assert(Boolean(secB && secA), 'Resolved Section A and Section B records');
 
   const secBEntries = fullData!.timetable.filter(t => t.section_id === secB.id && t.active);

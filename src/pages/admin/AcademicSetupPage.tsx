@@ -37,18 +37,6 @@ export const AcademicSetupPage: React.FC = () => {
   const isSuperAdmin = role === 'super_admin' || user?.role === 'super_admin';
   const isHod = role === 'hod' || user?.role === 'hod';
 
-  if (!isSuperAdmin && !isHod) {
-    return (
-      <div className="p-8 text-center glass-panel rounded-3xl border border-rose-500/20 max-w-xl mx-auto my-12">
-        <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
-        <p className="text-slate-400 text-sm">
-          Only institutional Super Administrators and Heads of Department (HOD) have permission to configure academic sections and structure.
-        </p>
-      </div>
-    );
-  }
-
   const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>(
     isHod ? 'sections' : 'departments'
   );
@@ -220,6 +208,18 @@ export const AcademicSetupPage: React.FC = () => {
       alert(err.message || 'Failed to update section');
     }
   };
+
+  if (!isSuperAdmin && !isHod) {
+    return (
+      <div className="p-8 text-center glass-panel rounded-3xl border border-rose-500/20 max-w-xl mx-auto my-12">
+        <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
+        <p className="text-slate-400 text-sm">
+          Only institutional Super Administrators and Heads of Department (HOD) have permission to configure academic sections and structure.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

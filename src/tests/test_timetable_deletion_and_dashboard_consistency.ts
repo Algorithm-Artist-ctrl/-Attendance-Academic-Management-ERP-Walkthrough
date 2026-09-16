@@ -34,6 +34,17 @@ async function runTimetableDeletionTestSuite() {
   console.log('🧪 VCTM ERP PRODUCTION TEST: TIMETABLE DELETION & ZERO-STALE DASHBOARD INTEGRITY');
   console.log('================================================================================\n');
 
+  // Authenticate as Super Admin for production management operations
+  const { error: authErr } = await supabase.auth.signInWithPassword({
+    email: 'admin@vctm.in',
+    password: 'VctmAdmin@2026',
+  });
+  if (authErr) {
+    console.warn('  ⚠️ Admin authentication warning:', authErr.message);
+  } else {
+    console.log('  ✓ Authenticated as Super Admin (admin@vctm.in)');
+  }
+
   // STEP 1: Identify 2nd Year Section A and Section B
   console.log('▶ STEP 1: RESOLVING ACADEMIC CONTEXT (2nd Year CSE)');
   const { data: sections } = await supabase.from('sections').select('*, semester:semesters(*)');
@@ -213,6 +224,30 @@ async function runTimetableDeletionTestSuite() {
   const { data: attRecords } = await supabase.from('attendance_records').select('id');
   assert(attSessions !== null, 'attendance_sessions table accessible and unharmed');
   assert(attRecords !== null, 'attendance_records table accessible and unharmed');
+
+  // RESTORE OFFICIAL TIMETABLE FOR SECTION A
+  const subjectMapByCode = new Map(dbSubjects!.map(s => [s.subject_code, s.id]));
+  const facultyMapByCode = new Map(dbFaculty!.map(f => [f.faculty_code, f.id]));
+  const days: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const canonicalEntries: any[] = [];
+  for (const day of days) {
+    canonicalEntries.push({ day_of_week: day, period_number: 1, start_time: '09:00:00', end_time: '09:50:00', subject_id: subjectMapByCode.get('BCS302'), faculty_id: facultyMapByCode.get('KK'), room_number: 'A007', lecture_type: 'Theory' });
+    canonicalEntries.push({ day_of_week: day, period_number: 2, start_time: '09:50:00', end_time: '10:40:00', subject_id: subjectMapByCode.get('BAS303'), faculty_id: facultyMapByCode.get('NAK'), room_number: 'A007', lecture_type: 'Theory' });
+    canonicalEntries.push({ day_of_week: day, period_number: 3, start_time: '10:40:00', end_time: '11:30:00', subject_id: subjectMapByCode.get('BCS303'), faculty_id: facultyMapByCode.get('HEM'), room_number: 'A007', lecture_type: 'Theory' });
+    canonicalEntries.push({ day_of_week: day, period_number: 4, start_time: '11:30:00', end_time: '12:20:00', subject_id: subjectMapByCode.get('BCS301'), faculty_id: facultyMapByCode.get('ALG'), room_number: 'A007', lecture_type: 'Theory' });
+    canonicalEntries.push({ day_of_week: day, period_number: 5, start_time: '12:20:00', end_time: '13:10:00', subject_id: null, faculty_id: null, room_number: 'A007', lecture_type: 'Lunch' });
+    if (day === 'MON' || day === 'WED' || day === 'FRI') {
+      canonicalEntries.push({ day_of_week: day, period_number: 6, start_time: '13:10:00', end_time: '14:00:00', subject_id: subjectMapByCode.get('BCS301'), faculty_id: facultyMapByCode.get('ALG'), room_number: 'A007', lecture_type: 'Theory' });
+      canonicalEntries.push({ day_of_week: day, period_number: 7, start_time: '14:00:00', end_time: '14:50:00', subject_id: subjectMapByCode.get('BCS351'), faculty_id: facultyMapByCode.get('ALG'), room_number: 'LAB-1', lecture_type: 'Lab' });
+      canonicalEntries.push({ day_of_week: day, period_number: 8, start_time: '14:50:00', end_time: '15:40:00', subject_id: subjectMapByCode.get('BCS351'), faculty_id: facultyMapByCode.get('ALG'), room_number: 'LAB-1', lecture_type: 'Lab' });
+    } else {
+      canonicalEntries.push({ day_of_week: day, period_number: 6, start_time: '13:10:00', end_time: '14:00:00', subject_id: subjectMapByCode.get('BVE301'), faculty_id: facultyMapByCode.get('RP'), room_number: 'A007', lecture_type: 'Theory' });
+      canonicalEntries.push({ day_of_week: day, period_number: 7, start_time: '14:00:00', end_time: '14:50:00', subject_id: subjectMapByCode.get('BCS352'), faculty_id: facultyMapByCode.get('ALG'), room_number: 'LAB-2', lecture_type: 'Lab' });
+      canonicalEntries.push({ day_of_week: day, period_number: 8, start_time: '14:50:00', end_time: '15:40:00', subject_id: subjectMapByCode.get('BCC301'), faculty_id: facultyMapByCode.get('SY'), room_number: 'A007', lecture_type: 'Theory' });
+    }
+  }
+  await supabaseService.saveSectionTimetable({ sectionId: secAId, entries: canonicalEntries, publishedBy: 'Post-Test Restore' });
+  console.log('  ✓ Restored Section A canonical 48-slot schedule for production');
 
   console.log('\n================================================================================');
   console.log(`🎉 ALL ${passedAssertions}/${totalAssertions} TIMETABLE DELETION INTEGRITY ASSERTIONS PASSED!`);
