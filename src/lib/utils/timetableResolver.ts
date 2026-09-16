@@ -104,17 +104,41 @@ export class TimetableResolver {
       (semClean.includes('odd') && s.semester_number % 2 !== 0)
     ) || semesters[0];
 
-    // 5. Resolve Section
+    // 5. Resolve Section (Strictly hierarchically scoped by semester and year)
     let section: Section | undefined;
     if (doc.target_section_id) {
       section = sections.find(s => s.id === doc.target_section_id);
     }
     if (!section && doc.section_name) {
       const secClean = doc.section_name.toUpperCase().replace(/SECTION/g, '').trim();
-      section = sections.find(s => 
-        s.name.toUpperCase().trim() === secClean ||
-        (s.semester_id === semester?.id && s.name.toUpperCase().trim() === secClean)
-      );
+      // Primary match: within the resolved semester and active
+      if (semester?.id) {
+        section = sections.find(s => 
+          s.semester_id === semester.id &&
+          s.name.toUpperCase().trim() === secClean &&
+          s.active !== false
+        ) || sections.find(s => 
+          s.semester_id === semester.id &&
+          s.name.toUpperCase().trim() === secClean
+        );
+      }
+      // Secondary match: within the resolved academic year's semesters
+      if (!section && academicYear?.id) {
+        const semIdsInYear = new Set(semesters.filter(sem => sem.academic_year_id === academicYear.id).map(sem => sem.id));
+        section = sections.find(s => 
+          semIdsInYear.has(s.semester_id) &&
+          s.name.toUpperCase().trim() === secClean &&
+          s.active !== false
+        ) || sections.find(s => 
+          semIdsInYear.has(s.semester_id) &&
+          s.name.toUpperCase().trim() === secClean
+        );
+      }
+      // Tertiary fallback only if no semester or year matches exist
+      if (!section) {
+        section = sections.find(s => s.name.toUpperCase().trim() === secClean && s.active !== false) ||
+                  sections.find(s => s.name.toUpperCase().trim() === secClean);
+      }
     }
     const isNewSection = !section;
 

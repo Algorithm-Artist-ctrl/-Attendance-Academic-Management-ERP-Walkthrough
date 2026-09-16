@@ -247,7 +247,7 @@ export const supabaseService = {
   },
 
   async fetchTimetable(sectionId?: string): Promise<TimetableEntry[]> {
-    let q = supabase.from('timetable_entries').select('*').order('period_number', { ascending: true });
+    let q = supabase.from('timetable_entries').select('*').eq('active', true).order('period_number', { ascending: true });
     if (sectionId) q = q.eq('section_id', sectionId);
     const { data, error } = await q;
     if (error) {
@@ -1234,6 +1234,16 @@ export const supabaseService = {
       });
 
       if (!rpcErr && rpcResult && rpcResult.success) {
+        // Deactivate faculty subject assignments associated with this cleared section
+        try {
+          await supabase
+            .from('faculty_subject_assignments')
+            .update({ active: false, updated_at: new Date().toISOString() })
+            .eq('section_id', sectionId);
+        } catch (asgnErr) {
+          console.warn('Deactivating section assignments warning:', asgnErr);
+        }
+
         this.invalidateMasterCache();
         try {
           const channel = supabase.channel('vctm-erp-realtime-channel');
@@ -1275,6 +1285,16 @@ export const supabaseService = {
       .update({ status: 'archived', updated_at: new Date().toISOString() })
       .eq('section_id', sectionId)
       .eq('status', 'active');
+
+    // Deactivate faculty subject assignments associated with this cleared section
+    try {
+      await supabase
+        .from('faculty_subject_assignments')
+        .update({ active: false, updated_at: new Date().toISOString() })
+        .eq('section_id', sectionId);
+    } catch (asgnErr) {
+      console.warn('Deactivating section assignments warning:', asgnErr);
+    }
 
     await supabase.from('audit_logs').insert([{
       action: 'TIMETABLE_SECTION_DELETED',

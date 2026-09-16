@@ -773,7 +773,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .channel('vctm-erp-realtime-channel')
       .on('broadcast', { event: 'timetable_updated' }, (payload: any) => {
         const secId = payload?.payload?.section_id;
+        const action = payload?.payload?.action;
         refreshTimetable(secId);
+        if (action === 'DELETED') {
+          refreshAssignments();
+        }
       })
       .on('broadcast', { event: 'attendance_updated' }, () => {
         refreshAttendance();
@@ -1212,7 +1216,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       erpStorage.setTimetable(remaining);
       return remaining;
     });
+    setAssignments(prev => {
+      const updated = prev.map(a => a.section_id === sectionId ? { ...a, active: false } : a);
+      erpStorage.setAssignments(updated);
+      return updated;
+    });
     await refreshTimetable();
+    await refreshAssignments();
     return res.success;
   };
 

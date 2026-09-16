@@ -93,6 +93,21 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
     });
   }, [currentDoc, departments, programs, years, semesters, sections, subjects, faculty, existingTimetable]);
 
+  const targetSemesterId = report.semester?.id || currentDoc?.semester_id;
+  const targetYearId = report.academicYear?.id || currentDoc?.academic_year_id;
+  const relevantSections = useMemo(() => {
+    if (targetSemesterId) {
+      const semSecs = sections.filter(s => s.semester_id === targetSemesterId && s.active !== false);
+      if (semSecs.length > 0) return semSecs;
+    }
+    if (targetYearId) {
+      const yearSemIds = new Set(semesters.filter(sem => sem.academic_year_id === targetYearId).map(sem => sem.id));
+      const yearSecs = sections.filter(s => yearSemIds.has(s.semester_id) && s.active !== false);
+      if (yearSecs.length > 0) return yearSecs;
+    }
+    return sections.filter(s => s.active !== false);
+  }, [sections, semesters, targetSemesterId, targetYearId]);
+
   // Cell Editing Modal State
   const [editingSlot, setEditingSlot] = useState<{
     day: DayOfWeek;
@@ -279,7 +294,7 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
             <span className="text-slate-500 font-semibold block text-[10px] uppercase tracking-wider">Target Section & Room</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <select
-                value={currentDoc.target_section_id || (currentDoc.semester_id ? sections.find(s => s.semester_id === currentDoc.semester_id && s.name === currentDoc.section_name)?.id : '') || ''}
+                value={currentDoc.target_section_id || report.section?.id || ''}
                 onChange={(e) => {
                   const newSecId = e.target.value;
                   const newSec = sections.find(s => s.id === newSecId);
@@ -298,11 +313,14 @@ export const AITimetablePreviewModal: React.FC<AITimetablePreviewModalProps> = (
                 }}
                 className="bg-slate-900 border-2 border-emerald-500/60 rounded-lg px-2 py-0.5 text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88]"
               >
-                {sections.map(s => (
-                  <option key={s.id} value={s.id}>
-                    Section {s.name} ({s.room_number || `Room ${s.name}`})
-                  </option>
-                ))}
+                {relevantSections.map(s => {
+                  const sem = semesters.find(sm => sm.id === s.semester_id);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      Section {s.name} {sem ? `(${sem.name.split('(')[0].trim()})` : ''} • {s.room_number || `Room ${s.name}`}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>

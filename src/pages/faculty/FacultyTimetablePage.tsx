@@ -194,12 +194,34 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
 
         <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/15">
           <span className="text-[10px] text-slate-400 block font-semibold">Timetable Status</span>
-          <span className="text-xs font-bold text-emerald-400 block mt-1.5 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-            Published & Active
-          </span>
+          {currentActiveEntries.length > 0 ? (
+            <span className="text-xs font-bold text-emerald-400 block mt-1.5 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+              Published & Active
+            </span>
+          ) : (
+            <span className="text-xs font-bold text-slate-400 block mt-1.5 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-slate-500" />
+              No Timetable Published
+            </span>
+          )}
         </div>
       </div>
+
+      {/* EMPTY STATE BANNER WHEN NO TIMETABLE IS PUBLISHED */}
+      {currentActiveEntries.length === 0 && (
+        <div className="p-8 text-center bg-slate-950/60 rounded-3xl border border-emerald-500/15 space-y-3">
+          <Calendar className="w-10 h-10 text-emerald-500/50 mx-auto" />
+          <h3 className="text-base font-bold text-white">
+            No published timetable is available for your teaching assignments
+          </h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            {activeScheduleTab === 'coordinator' 
+              ? `No weekly schedule has been published yet for Section ${coordinatedSection?.name}.`
+              : 'When the department HOD publishes your timetable schedule, your teaching periods, classrooms, and weekly grid will appear here automatically.'}
+          </p>
+        </div>
+      )}
 
       {/* MOBILE VIEW: Day Selector Tab Bar & Vertical Period Cards */}
       <div className="block lg:hidden space-y-4">

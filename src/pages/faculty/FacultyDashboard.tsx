@@ -230,12 +230,21 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {mySections.map(sec => {
-            const subjectsInSec = mySubjects.filter(sub =>
-              myTt.some(t => t.subject_id === sub.id && t.section_id === sec.id)
-            );
-            const secStudents = students.filter(s => s.section_id === sec.id && s.active);
+        {mySections.length === 0 ? (
+          <div className="p-8 text-center bg-slate-950/60 rounded-2xl border border-emerald-500/15 space-y-2">
+            <BookOpen className="w-8 h-8 text-slate-500 mx-auto" />
+            <h4 className="text-sm font-bold text-white">No published timetable is available for your teaching assignments</h4>
+            <p className="text-xs text-slate-400">
+              When the department HOD publishes your timetable schedule, your assigned classes, sections, and subjects will appear here automatically.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {mySections.map(sec => {
+              const subjectsInSec = mySubjects.filter(sub =>
+                myTt.some(t => t.subject_id === sub.id && t.section_id === sec.id)
+              );
+              const secStudents = students.filter(s => s.section_id === sec.id && s.active);
 
               return (
                 <div
@@ -311,7 +320,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                 </div>
               );
             })}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 2.6 CLASS COORDINATOR PORTAL (IF DESIGNATED) */}
@@ -440,14 +450,18 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
                 <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
                 <p className="font-bold text-white text-sm">
-                  {selectedScheduleDay === todayDay && todayDay === 'SUN' 
-                    ? 'Today is Sunday (Weekend / Holiday)' 
-                    : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} in your timetable`}
+                  {myTt.length === 0
+                    ? 'No published timetable is available for your teaching assignments'
+                    : selectedScheduleDay === todayDay && todayDay === 'SUN' 
+                      ? 'Today is Sunday (Weekend / Holiday)' 
+                      : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} in your timetable`}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {todayDay === 'SUN' && selectedScheduleDay === 'SUN' 
-                    ? 'College academic classes are not held on Sundays.' 
-                    : 'Check your full timetable schedule for weekly lecture distribution.'}
+                  {myTt.length === 0
+                    ? 'When the department HOD publishes your timetable schedule, your lectures will appear here automatically.'
+                    : todayDay === 'SUN' && selectedScheduleDay === 'SUN' 
+                      ? 'College academic classes are not held on Sundays.' 
+                      : 'Check your full timetable schedule for weekly lecture distribution.'}
                 </p>
               </div>
             ) : (
