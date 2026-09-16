@@ -9,21 +9,22 @@ import {
   Download, 
   Calendar,
   Layers,
-  BookOpen,
-  Sparkles
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { getISTTodayDate, formatDateDisplay } from '../../lib/utils/dateUtils';
-import { StudentOverallAttendance, ExtractedTimetableDocument } from '../../types/academic.types';
-import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
-import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
+import { StudentOverallAttendance } from '../../types/academic.types';
 import { ATTENDANCE_ELIGIBILITY_THRESHOLD } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
-export const HODDashboard: React.FC = () => {
+interface HODDashboardProps {
+  onNavigate?: (tab: string, params?: any) => void;
+}
+
+export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const { 
     departments, 
@@ -54,9 +55,6 @@ export const HODDashboard: React.FC = () => {
 
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
-  const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
-  const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
-  const [extractedDocs, setExtractedDocs] = useState<ExtractedTimetableDocument[]>([]);
 
   // Dynamic sections based on selectedYearFilter
   const dynamicSections = useMemo(() => {
@@ -206,11 +204,17 @@ export const HODDashboard: React.FC = () => {
           <Button
             variant="neon"
             size="sm"
-            leftIcon={<Sparkles className="w-4 h-4 text-slate-950" />}
-            onClick={() => setIsAIUploadOpen(true)}
+            leftIcon={<Calendar className="w-4 h-4 text-slate-950" />}
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('timetable');
+              } else {
+                window.location.hash = '#timetable';
+              }
+            }}
             className="shadow-[0_0_15px_rgba(0,255,136,0.3)] font-black"
           >
-            AI Ingest Timetable
+            Manage Timetable
           </Button>
           <Button
             variant="outline"
@@ -384,28 +388,6 @@ export const HODDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Timetable Upload Modal */}
-      <AITimetableUploadModal
-        isOpen={isAIUploadOpen}
-        onClose={() => setIsAIUploadOpen(false)}
-        initialSectionId={selectedSectionFilter !== 'ALL' ? selectedSectionFilter : undefined}
-        onExtractionComplete={(extracted) => {
-          setExtractedDocs(extracted);
-          setIsAIPreviewOpen(true);
-        }}
-      />
-
-      {/* AI Timetable Preview & Diff Review Modal */}
-      {isAIPreviewOpen && (
-        <AITimetablePreviewModal
-          isOpen={isAIPreviewOpen}
-          onClose={() => setIsAIPreviewOpen(false)}
-          extractedDocs={extractedDocs}
-          onPublishedSuccessfully={() => {
-            refreshData();
-          }}
-        />
-      )}
     </div>
   );
 };

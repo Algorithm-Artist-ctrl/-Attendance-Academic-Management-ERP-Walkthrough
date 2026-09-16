@@ -244,7 +244,7 @@ export const AppContent: React.FC = () => {
           return <SettingsPage />;
         case 'dashboard':
         default:
-          return <HODDashboard />;
+          return <HODDashboard onNavigate={handleNavigate} />;
       }
     }
 

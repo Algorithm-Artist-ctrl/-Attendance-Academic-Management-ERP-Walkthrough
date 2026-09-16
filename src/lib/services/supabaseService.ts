@@ -29,7 +29,8 @@ import {
   SessionalType,
   SessionalAssessment,
   UserProfile,
-  Classroom
+  Classroom,
+  AdmissionType
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -795,6 +796,243 @@ export const supabaseService = {
 
     this.invalidateMasterCache();
     return updated;
+  },
+
+  async fetchStudentsBySection(sectionId: string, activeOnly = false): Promise<Student[]> {
+    let q = supabase
+      .from('students')
+      .select('*, mentor:faculty(id, full_name, faculty_code)')
+      .eq('section_id', sectionId)
+      .order('roll_number', { ascending: true });
+    if (activeOnly) q = q.eq('active', true);
+    const { data, error } = await q;
+    if (error) {
+      console.error('Error fetching students by section:', error.message);
+      return [];
+    }
+    return (data as Student[]) || [];
+  },
+
+  async transferStudentSection(params: {
+    studentId: string;
+    newSectionId: string;
+    transferredBy?: string;
+  }): Promise<{ success: boolean; student: Student }> {
+    const { studentId, newSectionId, transferredBy = 'Administrator' } = params;
+
+    // 1. Fetch current student
+    const { data: currentStudent, error: studErr } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', studentId)
+      .single();
+    if (studErr || !currentStudent) {
+      throw new Error(`Student not found: ${studErr?.message || 'Unknown'}`);
+    }
+
+    // 2. Fetch new section metadata
+    const { data: targetSection, error: secErr } = await supabase
+      .from('sections')
+      .select('*, semester:semesters(*, academic_year:academic_years(*))')
+      .eq('id', newSectionId)
+      .single();
+    if (secErr || !targetSection) {
+      throw new Error(`Target section not found: ${secErr?.message || 'Unknown'}`);
+    }
+
+    const previousSectionId = currentStudent.section_id;
+
+    // 3. Update student's section (and matching semester/year if applicable)
+    const updates: Partial<Student> = {
+      section_id: newSectionId,
+      semester_id: targetSection.semester_id || currentStudent.semester_id,
+      academic_year_id: targetSection.semester?.academic_year_id || currentStudent.academic_year_id,
+    };
+
+    const { data: updatedData, error: updateErr } = await supabase
+      .from('students')
+      .update(updates)
+      .eq('id', studentId)
+      .select()
+      .single();
+
+    if (updateErr) {
+      throw new Error(`Failed to transfer student section: ${updateErr.message}`);
+    }
+
+    // 4. Audit Log
+    try {
+      await supabase.from('audit_logs').insert([{
+        action: 'STUDENT_SECTION_TRANSFERRED',
+        actor_name: transferredBy,
+        actor_role: 'admin',
+        entity_type: 'students',
+        entity_id: studentId,
+        old_values: { section_id: previousSectionId },
+        new_values: { section_id: newSectionId, student_name: currentStudent.full_name, roll_number: currentStudent.roll_number }
+      }]);
+    } catch (auditErr) {
+      console.warn('Transfer audit log error:', auditErr);
+    }
+
+    this.invalidateMasterCache();
+    return { success: true, student: updatedData as Student };
+  },
+
+  async batchImportSectionStudents(params: {
+    sectionId: string;
+    students: Array<{
+      roll_number: string;
+      full_name: string;
+      email?: string;
+      phone?: string;
+      admission_type?: AdmissionType;
+      mentor_faculty_id?: string;
+    }>;
+    importedBy?: string;
+  }): Promise<{ added: number; updated: number; skipped: number; errors: string[] }> {
+    const { sectionId, students: studentList, importedBy = 'Administrator' } = params;
+    const errors: string[] = [];
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    // 1. Resolve section & academic hierarchy
+    const { data: sec, error: secErr } = await supabase
+      .from('sections')
+      .select('*, semester:semesters(*, academic_year:academic_years(*, program:programs(*)))')
+      .eq('id', sectionId)
+      .single();
+
+    if (secErr || !sec) {
+      throw new Error(`Target section not found: ${secErr?.message || 'Unknown'}`);
+    }
+
+    const semester = sec.semester;
+    const academicYear = semester?.academic_year;
+    const program = academicYear?.program;
+    const departmentId = program?.department_id || 'fe5bc365-7a68-4290-b05e-acfa274f748a';
+
+    // Get current active session
+    const { data: session } = await supabase
+      .from('academic_sessions')
+      .select('id')
+      .eq('is_current', true)
+      .maybeSingle();
+    const sessionId = session?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e';
+
+    // Fetch existing students to check duplicates
+    const { data: existingStudents } = await supabase
+      .from('students')
+      .select('id, roll_number, email, section_id');
+
+    const rollMap = new Map((existingStudents || []).map(s => [s.roll_number.toLowerCase().trim(), s]));
+    const emailMap = new Map((existingStudents || []).filter(s => s.email).map(s => [s.email!.toLowerCase().trim(), s]));
+
+    for (const item of studentList) {
+      const cleanRoll = item.roll_number.trim();
+      const cleanName = item.full_name.trim();
+      const cleanEmail = item.email?.trim() || `${cleanRoll}@vctm.in`;
+      const cleanPhone = item.phone?.trim() || null;
+      const admissionType: AdmissionType = item.admission_type || 'Regular';
+
+      if (!cleanRoll || !cleanName) {
+        skipped++;
+        errors.push(`Row skipped: Roll number and Full Name are required.`);
+        continue;
+      }
+
+      const existingByRoll = rollMap.get(cleanRoll.toLowerCase());
+
+      if (existingByRoll) {
+        // Update existing student with section_id and details
+        const { error: updErr } = await supabase
+          .from('students')
+          .update({
+            full_name: cleanName,
+            email: cleanEmail,
+            phone: cleanPhone,
+            admission_type: admissionType,
+            section_id: sectionId,
+            semester_id: sec.semester_id,
+            academic_year_id: academicYear?.id,
+            active: true,
+          })
+          .eq('id', existingByRoll.id);
+
+        if (updErr) {
+          errors.push(`Error updating ${cleanRoll}: ${updErr.message}`);
+          skipped++;
+        } else {
+          updated++;
+          // Update profile
+          try {
+            await supabase.from('profiles').update({
+              full_name: cleanName,
+              email: cleanEmail,
+              phone: cleanPhone,
+            }).eq('id', existingByRoll.id);
+          } catch {}
+        }
+      } else {
+        // Insert new student strictly scoped to this section
+        const newStudentId = crypto.randomUUID();
+        const { error: insErr } = await supabase
+          .from('students')
+          .insert({
+            id: newStudentId,
+            institution_id: '22398afa-8679-4d2c-87fc-312152a276e2',
+            department_id: departmentId,
+            program_id: program?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
+            academic_session_id: sessionId,
+            academic_year_id: academicYear?.id || 'ecdc0ed0-e0b7-4ebc-9db5-1db612317334',
+            semester_id: sec.semester_id,
+            section_id: sectionId,
+            roll_number: cleanRoll,
+            full_name: cleanName,
+            admission_type: admissionType,
+            email: cleanEmail,
+            phone: cleanPhone,
+            mentor_faculty_id: item.mentor_faculty_id || null,
+            active: true,
+          });
+
+        if (insErr) {
+          errors.push(`Error inserting ${cleanRoll}: ${insErr.message}`);
+          skipped++;
+        } else {
+          added++;
+          rollMap.set(cleanRoll.toLowerCase(), { id: newStudentId, roll_number: cleanRoll, email: cleanEmail, section_id: sectionId } as any);
+          // Create profile
+          try {
+            await supabase.from('profiles').upsert({
+              id: newStudentId,
+              email: cleanEmail,
+              full_name: cleanName,
+              role: 'student',
+              department_id: departmentId,
+              student_id: newStudentId,
+              faculty_id: null,
+              phone: cleanPhone,
+            }, { onConflict: 'id' });
+          } catch {}
+        }
+      }
+    }
+
+    try {
+      await supabase.from('audit_logs').insert([{
+        action: 'SECTION_STUDENTS_BATCH_IMPORTED',
+        actor_name: importedBy,
+        actor_role: 'admin',
+        entity_type: 'sections',
+        entity_id: sectionId,
+        new_values: { section_id: sectionId, added, updated, skipped, errorsCount: errors.length }
+      }]);
+    } catch {}
+
+    this.invalidateMasterCache();
+    return { added, updated, skipped, errors };
   },
 
   async deleteStudent(id: string) {

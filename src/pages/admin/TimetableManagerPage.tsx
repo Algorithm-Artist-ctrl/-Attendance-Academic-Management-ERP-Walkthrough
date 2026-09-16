@@ -29,12 +29,11 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { DayOfWeek, LectureType, TimetableEntry } from '../../types/database.types';
 import { formatTime12H, getISTDayOfWeek } from '../../lib/utils/dateUtils';
-import { TimetableConflict, ExtractedTimetableDocument } from '../../types/academic.types';
+import { TimetableConflict } from '../../types/academic.types';
 import { csvTimetableService, CSVValidationResult } from '../../lib/services/csvTimetableService';
+import { pdfTimetableService } from '../../lib/services/pdfTimetableService';
 import { supabaseService } from '../../lib/services/supabaseService';
-import { AITimetableUploadModal } from '../../components/timetable/AITimetableUploadModal';
 import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS, CANONICAL_PERIOD_NUMBERS } from '../../config/academicConfig';
-import { AITimetablePreviewModal } from '../../components/timetable/AITimetablePreviewModal';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
 import { TimetableConflictEngine, TimetableConflictItem } from '../../lib/services/timetableConflictEngine';
 import { classifyTimetableUrl } from '../../lib/utils/urlUtils';
@@ -103,18 +102,15 @@ export const TimetableManagerPage: React.FC = () => {
   }, [years]);
 
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isAIUploadOpen, setIsAIUploadOpen] = useState(false);
-  const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
-  const [extractedDocs, setExtractedDocs] = useState<ExtractedTimetableDocument[]>([]);
 
-  // CSV URL and File Ingestion State
+  // CSV/PDF URL and File Ingestion State
   const [csvUrl, setCsvUrl] = useState('');
   const [isFetchingCSV, setIsFetchingCSV] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [csvPreview, setCsvPreview] = useState<CSVValidationResult | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [csvSourceType, setCsvSourceType] = useState<'CSV_FILE_UPLOAD' | 'GOOGLE_SHEET_CSV_SYNC'>('CSV_FILE_UPLOAD');
+  const [csvSourceType, setCsvSourceType] = useState<'CSV_FILE_UPLOAD' | 'PDF_FILE_UPLOAD' | 'GOOGLE_SHEET_CSV_SYNC'>('CSV_FILE_UPLOAD');
   const [isAnalyzingCSV, setIsAnalyzingCSV] = useState(false);
   const [sectionMismatch, setSectionMismatch] = useState<{
     csvSection: string;
@@ -482,8 +478,9 @@ export const TimetableManagerPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
     setSelectedFileName(file.name);
-    setCsvSourceType('CSV_FILE_UPLOAD');
+    setCsvSourceType(isPdf ? 'PDF_FILE_UPLOAD' : 'CSV_FILE_UPLOAD');
     setCsvError(null);
     setSectionMismatch(null);
     setPublishSuccessMsg(null);
@@ -492,14 +489,7 @@ export const TimetableManagerPage: React.FC = () => {
     setShowConflictDetails(false);
     setIsAnalyzingCSV(true);
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target?.result as string;
-      if (!content) {
-        setCsvError('Uploaded CSV file is empty.');
-        setIsAnalyzingCSV(false);
-        return;
-      }
+    const handleParsedContent = (content: string) => {
       try {
         const validation = csvTimetableService.parseAndValidateCSV(content, {
           targetSection: currentSection,
@@ -527,20 +517,47 @@ export const TimetableManagerPage: React.FC = () => {
         }
 
         setSectionMismatch(null);
-        // CSV parsed successfully -> present preview for HOD review BEFORE replacement
+        // Parsed successfully -> present preview for HOD review BEFORE replacement
         setCsvPreview(validation);
       } catch (err: any) {
-        setCsvError(err.message || 'Failed to parse uploaded CSV file.');
+        setCsvError(err.message || 'Failed to parse uploaded timetable file.');
         setCsvPreview(null);
       } finally {
         setIsAnalyzingCSV(false);
       }
     };
-    reader.onerror = () => {
-      setCsvError('Failed to read uploaded CSV file.');
-      setIsAnalyzingCSV(false);
-    };
-    reader.readAsText(file);
+
+    if (isPdf) {
+      pdfTimetableService.extractTextFromPDF(file)
+        .then((content) => {
+          if (!content || !content.trim()) {
+            setCsvError('Uploaded PDF file did not contain any readable timetable text.');
+            setIsAnalyzingCSV(false);
+            return;
+          }
+          handleParsedContent(content);
+        })
+        .catch((err: any) => {
+          setCsvError(err.message || 'Failed to parse uploaded PDF file.');
+          setIsAnalyzingCSV(false);
+        });
+    } else {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const content = event.target?.result as string;
+        if (!content) {
+          setCsvError('Uploaded CSV file is empty.');
+          setIsAnalyzingCSV(false);
+          return;
+        }
+        handleParsedContent(content);
+      };
+      reader.onerror = () => {
+        setCsvError('Failed to read uploaded CSV file.');
+        setIsAnalyzingCSV(false);
+      };
+      reader.readAsText(file);
+    }
     e.target.value = '';
   };
 
@@ -770,18 +787,7 @@ export const TimetableManagerPage: React.FC = () => {
             </Button>
           ))}
 
-          {/* HOD Operational Controls: AI Timetable Ingestion */}
-          {!isSuperAdmin && (
-            <Button
-              variant="neon"
-              size="sm"
-              onClick={() => setIsAIUploadOpen(true)}
-              leftIcon={<Sparkles className="w-4 h-4 text-slate-950" />}
-              className="touch-target font-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
-            >
-              AI Timetable Ingestion
-            </Button>
-          )}
+
 
           {/* HOD Operational Controls: Delete Section Timetable */}
           {!isSuperAdmin && (
@@ -853,13 +859,13 @@ export const TimetableManagerPage: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
-                  Timetable CSV Source
+                  Timetable Import & Synchronization (CSV / PDF / Google Sheet)
                   <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
                     Target: Section {currentSection?.name}
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Paste a Google Sheet CSV URL or upload a CSV file to atomically synchronize Section {currentSection?.name}'s schedule
+                  Upload a CSV file, PDF timetable, or paste a Google Sheet CSV URL to atomically synchronize Section {currentSection?.name}'s schedule
                 </p>
               </div>
             </div>
@@ -868,7 +874,7 @@ export const TimetableManagerPage: React.FC = () => {
               <input
                 type="file"
                 ref={fileInputRef}
-                accept=".csv,text/csv"
+                accept=".csv,.pdf,text/csv,application/pdf"
                 onChange={handleFileUpload}
                 className="hidden"
               />
@@ -879,7 +885,7 @@ export const TimetableManagerPage: React.FC = () => {
                 leftIcon={<UploadCloud className="w-4 h-4 text-emerald-400" />}
                 className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
               >
-                Upload CSV File
+                Upload CSV / PDF
               </Button>
             </div>
           </div>
@@ -1743,35 +1749,7 @@ export const TimetableManagerPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* AI Timetable Upload Modal */}
-      <AITimetableUploadModal
-        isOpen={isAIUploadOpen}
-        onClose={() => setIsAIUploadOpen(false)}
-        initialSectionId={selectedSectionId}
-        onSwitchToCsv={() => {
-          setIsAIUploadOpen(false);
-          setTimeout(() => {
-            const el = document.getElementById('csv-sync-section');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }, 150);
-        }}
-        onExtractionComplete={(extracted) => {
-          setExtractedDocs(extracted);
-          setIsAIPreviewOpen(true);
-        }}
-      />
 
-      {/* AI Timetable Preview & Diff Review Modal */}
-      {isAIPreviewOpen && (
-        <AITimetablePreviewModal
-          isOpen={isAIPreviewOpen}
-          onClose={() => setIsAIPreviewOpen(false)}
-          extractedDocs={extractedDocs}
-          onPublishedSuccessfully={() => {
-            refreshData(true);
-          }}
-        />
-      )}
 
       {/* Timetable Version History Modal */}
       <TimetableVersionHistoryModal

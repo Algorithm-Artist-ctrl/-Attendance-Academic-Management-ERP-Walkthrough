@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3, Calendar } from 'lucide-react';
+import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3, Calendar, Users } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AddSectionModal } from '../../components/academic/AddSectionModal';
+import { SectionStudentManagementModal } from '../../components/academic/SectionStudentManagementModal';
 import { Section } from '../../types/database.types';
 import { clsx } from 'clsx';
 
@@ -18,6 +19,7 @@ export const AcademicSetupPage: React.FC = () => {
     years,
     semesters, 
     sections, 
+    students,
     faculty, 
     addDepartment,
     deleteDepartment, 
@@ -56,6 +58,8 @@ export const AcademicSetupPage: React.FC = () => {
   // Section filtering states
   const [filterYearId, setFilterYearId] = useState<string>('ALL');
   const [filterSemesterId, setFilterSemesterId] = useState<string>('ALL');
+  const [filterSectionName, setFilterSectionName] = useState<string>('ALL');
+  const [managingStudentsSection, setManagingStudentsSection] = useState<Section | null>(null);
 
   // New Department Modal state
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -181,14 +185,22 @@ export const AcademicSetupPage: React.FC = () => {
       if (filterSemesterId !== 'ALL' && sec.semester_id !== filterSemesterId) {
         return false;
       }
+      if (filterSectionName !== 'ALL' && sec.name.toUpperCase().trim() !== filterSectionName.toUpperCase().trim()) {
+        return false;
+      }
       return true;
     });
-  }, [sections, semesters, programs, years, filterYearId, filterSemesterId, isHod, user?.department_id]);
+  }, [sections, semesters, programs, years, filterYearId, filterSemesterId, filterSectionName, isHod, user?.department_id]);
 
   const availableSemestersForFilter = useMemo(() => {
     if (filterYearId === 'ALL') return semesters;
     return semesters.filter(s => s.academic_year_id === filterYearId);
   }, [semesters, filterYearId]);
+
+  const availableSectionNamesForFilter = useMemo(() => {
+    const names = Array.from(new Set(sections.map(s => s.name)));
+    return ['ALL', ...names.sort()];
+  }, [sections]);
 
 
 
@@ -473,6 +485,21 @@ export const AcademicSetupPage: React.FC = () => {
                 </select>
               </div>
 
+              {/* Section Filter */}
+              <div className="flex items-center gap-1 bg-slate-900/80 border border-emerald-500/20 rounded-xl px-2.5 py-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Section:</span>
+                <select
+                  value={filterSectionName}
+                  onChange={(e) => setFilterSectionName(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-blue-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL" className="bg-slate-950 text-white">All Sections</option>
+                  {availableSectionNamesForFilter.filter(n => n !== 'ALL').map(name => (
+                    <option key={name} value={name} className="bg-slate-950 text-white">Section {name}</option>
+                  ))}
+                </select>
+              </div>
+
               <Button
                 size="sm"
                 variant="neon"
@@ -499,6 +526,7 @@ export const AcademicSetupPage: React.FC = () => {
                     <th className="px-5 py-3.5">Academic Year</th>
                     <th className="px-5 py-3.5">Semester</th>
                     <th className="px-5 py-3.5">Assigned Classroom</th>
+                    <th className="px-5 py-3.5">Enrolled Students</th>
                     <th className="px-5 py-3.5">Class Coordinator / Incharge</th>
                     <th className="px-5 py-3.5 text-center">Status</th>
                     <th className="px-5 py-3.5 text-right">Actions</th>
@@ -509,6 +537,9 @@ export const AcademicSetupPage: React.FC = () => {
                     const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
                     const sem = semesters.find(s => s.id === sec.semester_id);
                     const yr = years.find(y => y.id === sem?.academic_year_id);
+                    const secStudents = students.filter(s => s.section_id === sec.id);
+                    const studentCount = secStudents.length;
+
                     return (
                       <tr key={sec.id} className="hover:bg-emerald-500/5 transition-colors">
                         <td className="px-5 py-4 font-bold text-white text-sm">
@@ -519,6 +550,16 @@ export const AcademicSetupPage: React.FC = () => {
                         <td className="px-5 py-4 font-semibold text-slate-200">{yr?.name || '—'}</td>
                         <td className="px-5 py-4 text-slate-300">{sem?.name || '—'}</td>
                         <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'TBD'}</td>
+                        <td className="px-5 py-4">
+                          <button
+                            onClick={() => setManagingStudentsSection(sec)}
+                            className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer text-xs"
+                            title={`Manage ${studentCount} students in Section ${sec.name}`}
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>{studentCount} Students</span>
+                          </button>
+                        </td>
                         <td className="px-5 py-4 text-slate-300 font-medium">
                           {coordinator ? `${coordinator.full_name} (${coordinator.faculty_code || 'Faculty'})` : '—'}
                         </td>
@@ -529,6 +570,13 @@ export const AcademicSetupPage: React.FC = () => {
                         </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setManagingStudentsSection(sec)}
+                              className="p-1.5 text-slate-500 hover:text-blue-400 rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
+                              title="Manage Section Students"
+                            >
+                              <Users className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => {
                                 setEditingSection(sec);
@@ -777,6 +825,13 @@ export const AcademicSetupPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Section Student Management Modal */}
+      <SectionStudentManagementModal
+        section={managingStudentsSection}
+        isOpen={!!managingStudentsSection}
+        onClose={() => setManagingStudentsSection(null)}
+      />
     </div>
   );
 };

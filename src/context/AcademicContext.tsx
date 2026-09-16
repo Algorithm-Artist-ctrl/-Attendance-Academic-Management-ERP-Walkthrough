@@ -28,7 +28,8 @@ import {
   MarksHistory,
   SessionalType,
   SessionalAssessment,
-  Classroom
+  Classroom,
+  AdmissionType
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -177,6 +178,23 @@ interface AcademicContextType {
   addStudent: (student: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => Promise<Student>;
   updateStudent: (id: string, updates: Partial<Student>) => Promise<Student>;
   deleteStudent: (id: string) => Promise<boolean>;
+  transferStudentSection: (params: {
+    studentId: string;
+    newSectionId: string;
+    transferredBy?: string;
+  }) => Promise<{ success: boolean; student: Student }>;
+  batchImportSectionStudents: (params: {
+    sectionId: string;
+    students: Array<{
+      roll_number: string;
+      full_name: string;
+      email?: string;
+      phone?: string;
+      admission_type?: AdmissionType;
+      mentor_faculty_id?: string;
+    }>;
+    importedBy?: string;
+  }) => Promise<{ added: number; updated: number; skipped: number; errors: string[] }>;
   addTimetableEntry: (entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) => Promise<TimetableEntry>;
   updateTimetableEntry: (id: string, updates: Partial<TimetableEntry>) => Promise<TimetableEntry>;
   deleteTimetableEntry: (id: string) => Promise<boolean>;
@@ -1151,6 +1169,33 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const transferStudentSection = async (params: {
+    studentId: string;
+    newSectionId: string;
+    transferredBy?: string;
+  }) => {
+    const res = await supabaseService.transferStudentSection(params);
+    await refreshStudents();
+    return res;
+  };
+
+  const batchImportSectionStudents = async (params: {
+    sectionId: string;
+    students: Array<{
+      roll_number: string;
+      full_name: string;
+      email?: string;
+      phone?: string;
+      admission_type?: AdmissionType;
+      mentor_faculty_id?: string;
+    }>;
+    importedBy?: string;
+  }) => {
+    const res = await supabaseService.batchImportSectionStudents(params);
+    await refreshStudents();
+    return res;
+  };
+
   const addTimetableEntry = async (entry: Omit<TimetableEntry, 'id' | 'created_at' | 'updated_at'>) => {
     const conflict = checkTimetableConflict(entry);
     if (conflict) {
@@ -1983,6 +2028,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addStudent,
         updateStudent,
         deleteStudent,
+        transferStudentSection,
+        batchImportSectionStudents,
         addTimetableEntry,
         updateTimetableEntry,
         deleteTimetableEntry,
