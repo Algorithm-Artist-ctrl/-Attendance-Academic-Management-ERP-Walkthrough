@@ -229,11 +229,11 @@ export const AppShell: React.FC<AppShellProps> = ({
   const bottomNavItems = getBottomNavItems();
 
   return (
-    <div className="min-h-screen bg-[#050b14] text-slate-100 flex flex-col md:flex-row max-w-full overflow-x-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-[#050b14] text-slate-100 flex flex-col md:flex-row max-w-full overflow-x-hidden">
       {/* ======================================================== */}
       {/* DESKTOP LEFT CYBER SIDEBAR */}
       {/* ======================================================== */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#081220]/90 border-r border-emerald-500/15 backdrop-blur-xl shrink-0 z-30 min-h-screen">
+      <aside className="hidden md:flex flex-col w-64 bg-[#081220]/90 border-r border-emerald-500/15 backdrop-blur-xl shrink-0 z-30 min-h-screen min-h-[100dvh]">
         {/* VCTM Brand Logo */}
         <div className="p-5 border-b border-emerald-500/15 flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-slate-950/90 border border-emerald-500/30 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.2)] shrink-0 overflow-hidden">
@@ -458,7 +458,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </main>
 
         {/* Mobile Bottom Navigation Bar (Thumb Friendly) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#07111e]/95 border-t border-emerald-500/20 backdrop-blur-2xl px-2 py-1.5 pb-safe flex items-center justify-around shadow-[0_-4px_25px_rgba(0,0,0,0.5)]">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#07111e]/95 border-t border-emerald-500/20 backdrop-blur-2xl px-2 py-1.5 pb-safe flex items-center justify-around shadow-[0_-4px_25px_rgba(0,0,0,0.5)] h-[var(--app-bottom-nav-height)]">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;

@@ -734,7 +734,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // VIEW 2: ACTIVE LECTURE ATTENDANCE MARKING SHEET (REDESIGNED FAST UI)
   // =========================================================================
   return (
-    <div className="space-y-4 pb-64 md:pb-32">
+    <div className="space-y-4 pb-80 md:pb-36">
       {/* 1. Class Context Header Bar */}
       <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -1168,49 +1168,182 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         )}
       </div>
 
-      {/* 6. Sticky Floating Bottom Action Bar (Lifted above mobile nav on mobile devices) */}
-      <div className="fixed bottom-[calc(3.75rem+max(env(safe-area-inset-bottom,0px),16px))] md:bottom-0 left-0 right-0 z-40 bg-slate-950/95 border-t border-emerald-500/30 backdrop-blur-2xl p-2.5 sm:p-3.5 px-3 sm:px-8 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold">
-            <span className="text-emerald-400 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
-              <span>{presentCount}</span>
-              <span className="hidden xs:inline text-[11px]">Present</span>
-            </span>
-            <span className="text-slate-600">•</span>
-            <span className="text-rose-400 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span>{absentCount}</span>
-              <span className="hidden xs:inline text-[11px]">Absent</span>
-            </span>
-            {unmarkedCount > 0 ? (
-              <>
-                <span className="text-slate-600">•</span>
-                <span className="text-amber-300 flex items-center gap-1 font-mono">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  <span>{unmarkedCount}</span>
-                  <span className="hidden xs:inline text-[11px]">Unmarked</span>
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-slate-600 hidden sm:inline">•</span>
-                <span className="text-[#00ff88] hidden sm:flex items-center gap-1 text-[11px]">
-                  <CheckCheck className="w-3.5 h-3.5" />
-                  <span>All Marked</span>
-                </span>
-              </>
+      {/* 5b. Mobile & Tablet In-Flow Attendance Action Bar (Architecture Component 6) */}
+      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/25 bg-slate-900/90 shadow-xl space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00ff88] animate-pulse" />
+            <h4 className="text-xs font-black uppercase tracking-wider text-white font-mono">
+              Attendance Action Bar • End of Roster
+            </h4>
+          </div>
+          <span className="text-xs font-mono text-emerald-400 font-bold">
+            {sectionStudents.length} Students ({hasUnsavedChanges ? `${changedCount} Pending` : 'All Synced'})
+          </span>
+        </div>
+
+        {/* Responsive 3-Row Stacked Grid (Section 3 of Specification) */}
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5">
+          {/* Row 1: Bulk Marking */}
+          <Button
+            size="md"
+            variant="outline"
+            onClick={handleMarkAllPresent}
+            leftIcon={<CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
+            className="w-full sm:w-auto min-h-[48px] text-xs font-bold border-emerald-500/30 hover:border-[#00ff88] hover:bg-emerald-500/10 text-white"
+          >
+            Mark All Present
+          </Button>
+          <Button
+            size="md"
+            variant="outline"
+            onClick={handleMarkAllAbsent}
+            leftIcon={<XCircle className="w-4 h-4 text-rose-400" />}
+            className="w-full sm:w-auto min-h-[48px] text-xs font-bold border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10 text-white"
+          >
+            Mark All Absent
+          </Button>
+
+          {/* Row 2: Clear & Save */}
+          <Button
+            size="md"
+            variant="outline"
+            onClick={() => setIsClearModalOpen(true)}
+            leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
+            className="w-full sm:w-auto min-h-[48px] text-xs font-bold text-rose-300 border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10"
+          >
+            Clear Attendance
+          </Button>
+          <Button
+            size="md"
+            variant={saveButtonConfig.variant}
+            leftIcon={saveButtonConfig.icon}
+            onClick={handleInitiateSave}
+            disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
+            className={clsx(
+              'w-full sm:w-auto min-h-[48px] px-6 text-xs sm:text-sm font-black tracking-wide shadow-lg',
+              saveButtonConfig.className
             )}
+          >
+            {saveButtonConfig.label}
+          </Button>
+
+          {/* Row 3: Remaining & Undo / Reset */}
+          {unmarkedCount > 0 ? (
+            <Button
+              size="md"
+              variant="outline"
+              onClick={handleMarkRemainingPresent}
+              className="w-full sm:w-auto min-h-[48px] text-xs font-bold text-amber-300 border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/10"
+            >
+              Remaining → Present ({unmarkedCount})
+            </Button>
+          ) : (
+            <Button
+              size="md"
+              variant="outline"
+              onClick={handleResetToSaved}
+              disabled={!hasUnsavedChanges}
+              leftIcon={<RotateCcw className="w-4 h-4 text-amber-400" />}
+              className={clsx(
+                'w-full sm:w-auto min-h-[48px] text-xs font-bold border-amber-500/30 text-amber-300',
+                !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500'
+              )}
+            >
+              Reset Unsaved Marks
+            </Button>
+          )}
+          <Button
+            size="md"
+            variant="ghost"
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            leftIcon={<RotateCcw className="w-4 h-4" />}
+            className={clsx(
+              'w-full sm:w-auto min-h-[48px] text-xs font-bold border border-slate-700/50 hover:bg-slate-800',
+              history.length === 0 ? 'opacity-40 cursor-not-allowed text-slate-500' : 'text-slate-300 hover:text-white'
+            )}
+            title="Undo last change (Ctrl+Z / ⌘Z)"
+          >
+            Undo {history.length > 0 ? `(${history.length})` : ''}
+          </Button>
+        </div>
+      </div>
+
+      {/* 6. Sticky Floating Bottom Action Bar (Positioned strictly ABOVE mobile bottom nav) */}
+      <div className="fixed bottom-[var(--app-bottom-nav-height,calc(4.25rem+max(env(safe-area-inset-bottom,0px),16px)))] md:bottom-0 left-0 right-0 md:left-64 z-40 bg-slate-950/95 border-t border-emerald-500/30 backdrop-blur-2xl p-2.5 sm:p-3.5 px-3 sm:px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
+          {/* Top Line on Mobile / Left on Desktop: Realtime Attendance Metrics & Controls */}
+          <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 text-xs font-bold">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-emerald-400 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+                <span>{presentCount}</span>
+                <span className="text-[10px] sm:text-[11px]">P</span>
+              </span>
+              <span className="text-slate-600">•</span>
+              <span className="text-rose-400 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span>{absentCount}</span>
+                <span className="text-[10px] sm:text-[11px]">A</span>
+              </span>
+              {unmarkedCount > 0 ? (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-amber-300 flex items-center gap-1 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    <span>{unmarkedCount}</span>
+                    <span className="text-[10px] sm:text-[11px]">Unmarked</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-slate-600 hidden xs:inline">•</span>
+                  <span className="text-[#00ff88] hidden xs:flex items-center gap-1 text-[11px]">
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>All Marked</span>
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Quick Action Buttons (Undo & Clear) */}
+            <div className="flex items-center gap-1.5 sm:hidden">
+              {history.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center gap-1 min-h-[36px]"
+                  title="Undo last mark"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Undo</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsClearModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 text-[11px] font-bold flex items-center gap-1 min-h-[36px]"
+                title="Clear attendance"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Bottom Line on Mobile (Full Width) / Right on Desktop: Primary Save Action */}
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               size="md"
               variant={saveButtonConfig.variant}
               leftIcon={saveButtonConfig.icon}
               onClick={handleInitiateSave}
               disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
-              className={clsx('font-black text-xs sm:text-sm py-2 sm:py-2.5 px-3 sm:px-5 min-h-[44px]', saveButtonConfig.className)}
+              className={clsx(
+                'font-black text-xs sm:text-sm py-2 sm:py-2.5 px-4 sm:px-6 min-h-[48px] sm:min-h-[44px] w-full sm:w-auto justify-center shadow-lg',
+                saveButtonConfig.className
+              )}
             >
               {saveButtonConfig.label}
             </Button>

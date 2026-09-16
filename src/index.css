@@ -112,6 +112,21 @@ body {
   }
 }
 
+/* Dynamic App Bottom Nav Height & Mobile Viewport Units */
+:root {
+  --app-bottom-nav-height: calc(4.25rem + max(env(safe-area-inset-bottom, 0px), 16px));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --app-bottom-nav-height: 0px;
+  }
+}
+
+html, body {
+  min-height: 100dvh;
+}
+
 /* iOS Safe Area & Mobile Touch Utilities */
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
