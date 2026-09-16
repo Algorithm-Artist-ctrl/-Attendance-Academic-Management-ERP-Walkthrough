@@ -204,6 +204,44 @@ interface AcademicContextType {
   updateTimetableEntry: (id: string, updates: Partial<TimetableEntry>) => Promise<TimetableEntry>;
   deleteTimetableEntry: (id: string) => Promise<boolean>;
   deleteSectionTimetable: (sectionId: string, deletedBy?: string) => Promise<boolean>;
+  findOrCreateFaculty: (params: {
+    fullName: string;
+    facultyCode?: string;
+    employeeCode?: string;
+    designation?: string;
+    email?: string;
+    phone?: string;
+    departmentId: string;
+  }) => Promise<Faculty>;
+  findOrCreateSubject: (params: {
+    subjectName: string;
+    subjectCode: string;
+    departmentId: string;
+    semesterId: string;
+    programId?: string;
+    lectureType?: LectureType;
+    credits?: number;
+  }) => Promise<Subject>;
+  findOrCreateClassroom: (params: {
+    roomNumber: string;
+    building?: string;
+    roomType?: string;
+    capacity?: number;
+  }) => Promise<Classroom>;
+  saveSingleTimetableSlot: (params: {
+    slotId?: string;
+    sectionId: string;
+    dayOfWeek: DayOfWeek;
+    periodNumber: number;
+    startTime: string;
+    endTime: string;
+    subjectId?: string | null;
+    facultyId?: string | null;
+    classroomId?: string | null;
+    roomNumber?: string;
+    lectureType?: LectureType;
+    updatedBy?: string;
+  }) => Promise<{ success: boolean; entry: TimetableEntry }>;
   saveSectionTimetable: (params: {
     sectionId: string;
     entries: Array<{
@@ -357,15 +395,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const loadedDepts = data.departments || [];
         const loadedProgs = data.programs || [];
         const loadedSessions = data.sessions || [];
-        const loadedYears = data.years || [];
-        const loadedSemesters = data.semesters || [];
-        const loadedSections = data.sections || [];
-        const loadedClassrooms = (data as any).classrooms || [];
+        const loadedYears = (data.years || []).filter(y => y.active && y.year_number !== 1);
+        const loadedSemesters = (data.semesters || []).filter(s => s.active && loadedYears.some(y => y.id === s.academic_year_id));
+        const loadedSections = (data.sections || []).filter(sec => sec.active && loadedSemesters.some(sem => sem.id === sec.semester_id));
+        const loadedClassrooms = ((data as any).classrooms || []).filter((c: any) => c.active !== false);
         setClassrooms(loadedClassrooms);
-        const loadedSubjects = data.subjects || [];
-        const loadedFaculty = data.faculty || [];
+        const loadedSubjects = (data.subjects || []).filter(s => s.active !== false);
+        const loadedFaculty = (data.faculty || []).filter(f => f.active !== false);
         const loadedAssignments = (data.assignments || []).filter(a => a.active !== false);
-        const loadedStudents = data.students || [];
+        const loadedStudents = (data.students || []).filter(s => s.active && loadedYears.some(y => y.id === s.academic_year_id));
         const rawTimetable = (data.timetable || []).filter(t => t.active !== false);
 
         // Enriched Timetable entries with joined references
@@ -1351,9 +1389,100 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res.success;
   };
 
+  const findOrCreateFaculty = async (params: {
+    fullName: string;
+    facultyCode?: string;
+    employeeCode?: string;
+    designation?: string;
+    email?: string;
+    phone?: string;
+    departmentId: string;
+  }) => {
+    const res = await supabaseService.findOrCreateFaculty(params);
+    setFaculty(prev => {
+      const exists = prev.some(f => f.id === res.id);
+      return exists ? prev.map(f => f.id === res.id ? res : f) : [...prev, res];
+    });
+    return res;
+  };
+
+  const findOrCreateSubject = async (params: {
+    subjectName: string;
+    subjectCode: string;
+    departmentId: string;
+    semesterId: string;
+    programId?: string;
+    lectureType?: LectureType;
+    credits?: number;
+  }) => {
+    const res = await supabaseService.findOrCreateSubject(params);
+    setSubjects(prev => {
+      const exists = prev.some(s => s.id === res.id);
+      return exists ? prev.map(s => s.id === res.id ? res : s) : [...prev, res];
+    });
+    return res;
+  };
+
+  const findOrCreateClassroom = async (params: {
+    roomNumber: string;
+    building?: string;
+    roomType?: string;
+    capacity?: number;
+  }) => {
+    const res = await supabaseService.findOrCreateClassroom(params);
+    setClassrooms(prev => {
+      const exists = prev.some(c => c.id === res.id);
+      return exists ? prev.map(c => c.id === res.id ? res : c) : [...prev, res];
+    });
+    return res;
+  };
+
+  const saveSingleTimetableSlot = async (params: {
+    slotId?: string;
+    sectionId: string;
+    dayOfWeek: DayOfWeek;
+    periodNumber: number;
+    startTime: string;
+    endTime: string;
+    subjectId?: string | null;
+    facultyId?: string | null;
+    classroomId?: string | null;
+    roomNumber?: string;
+    lectureType?: LectureType;
+    updatedBy?: string;
+  }) => {
+    const res = await supabaseService.saveSingleTimetableSlot(params);
+    setTimetable(prev => {
+      const filtered = prev.filter(t => 
+        t.id !== res.entry.id && 
+        !(t.section_id === params.sectionId && t.day_of_week === params.dayOfWeek && t.period_number === params.periodNumber)
+      );
+      const enriched: TimetableEntry = {
+        ...res.entry,
+        subject: subjects.find(s => s.id === res.entry.subject_id),
+        faculty: faculty.find(f => f.id === res.entry.faculty_id),
+        section: sections.find(sec => sec.id === res.entry.section_id),
+      };
+      const updated = [...filtered, enriched];
+      erpStorage.setTimetable(updated);
+      return updated;
+    });
+    await refreshTimetable(params.sectionId);
+    await refreshAssignments();
+    return res;
+  };
+
   // 6. Timetable Conflict Engine
   const checkTimetableConflict = (entry: Omit<TimetableEntry, 'id'>, excludeId?: string): TimetableConflict | null => {
-    const activeEntries = timetable.filter(t => t.active && t.id !== excludeId);
+    const activeEntries = timetable.filter(t => {
+      if (!t.active) return false;
+      if (excludeId && t.id === excludeId) return false;
+      // Exclude the same slot being edited
+      if (entry.section_id && t.section_id === entry.section_id && t.day_of_week === entry.day_of_week && t.period_number === entry.period_number) {
+        return false;
+      }
+      return true;
+    });
 
     const toMins = (t?: string) => {
       if (!t) return 0;
@@ -1368,7 +1497,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const sB = toMins(e2.start_time);
         const eB = toMins(e2.end_time);
         if (eA > sA && eB > sB) {
-          return sA < eB && eA > sB;
+          return sA < eB && sB < eA;
         }
       }
       return e1.period_number === e2.period_number;
@@ -2118,6 +2247,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateTimetableEntry,
         deleteTimetableEntry,
         deleteSectionTimetable,
+        findOrCreateFaculty,
+        findOrCreateSubject,
+        findOrCreateClassroom,
+        saveSingleTimetableSlot,
         saveSectionTimetable,
         rollbackToVersion,
         checkTimetableConflict,

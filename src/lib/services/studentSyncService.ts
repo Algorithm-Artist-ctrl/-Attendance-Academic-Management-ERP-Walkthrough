@@ -94,7 +94,7 @@ export class StudentSyncService {
       supabase.from('departments').select('*'),
       supabase.from('programs').select('*'),
       supabase.from('academic_sessions').select('*'),
-      supabase.from('academic_years').select('*').order('year_number'),
+      supabase.from('academic_years').select('*').eq('active', true).neq('year_number', 1).order('year_number'),
       supabase.from('semesters').select('*').order('semester_number'),
       supabase.from('sections').select('*').order('name'),
       supabase.from('students').select('*')
@@ -237,20 +237,24 @@ export class StudentSyncService {
         }
       }
 
-      // Resolve Academic Year (1, 2, 3, 4)
+      // Resolve Academic Year (2, 3, 4)
       const rawYear = (raw.year || raw.academic_year || raw.class_year || raw['YEAR'] || raw['Year'] || '').trim();
-      let resolvedYear = years[0];
+      let resolvedYear = years.find(y => y.year_number === 2) || years[0];
 
       if (rawYear) {
         const numYear = parseInt(rawYear.replace(/\D/g, ''), 10);
-        const foundYear = years.find(y => 
-          (!isNaN(numYear) && y.year_number === numYear) ||
-          y.name.toLowerCase().includes(rawYear.toLowerCase())
-        );
-        if (foundYear) {
-          resolvedYear = foundYear;
+        if (numYear === 1 || rawYear.toLowerCase().includes('1st') || rawYear.toLowerCase().includes('first')) {
+          rowErrors.push('1st Year is not an active academic cohort in VCTM ERP.');
         } else {
-          rowErrors.push(`Academic Year "${rawYear}" does not exist.`);
+          const foundYear = years.find(y => 
+            (!isNaN(numYear) && y.year_number === numYear) ||
+            y.name.toLowerCase().includes(rawYear.toLowerCase())
+          );
+          if (foundYear) {
+            resolvedYear = foundYear;
+          } else {
+            rowErrors.push(`Academic Year "${rawYear}" does not exist.`);
+          }
         }
       } else if (options?.defaultCohortYear) {
         const foundYear = years.find(y => y.year_number === options.defaultCohortYear);
@@ -287,7 +291,7 @@ export class StudentSyncService {
               semesterName: matchingSem.name,
               academicYearId: resolvedYear?.id || '',
               academicYearName: resolvedYear?.name || '',
-              yearNumber: resolvedYear?.year_number || 1,
+              yearNumber: resolvedYear?.year_number || 2,
               departmentCode: matchedDept?.code || 'CSE',
               studentCount: 1,
             });
@@ -329,8 +333,8 @@ export class StudentSyncService {
         email: rawEmail || (existing?.email || `${cleanRoll.toLowerCase()}@student.vctm.in`),
         phone: rawMobile || existing?.phone || undefined,
         departmentCode: matchedDept?.code || 'CSE',
-        academicYear: resolvedYear?.name || 'Year 1',
-        semesterName: matchingSem?.name || 'Sem 1',
+        academicYear: resolvedYear?.name || '2nd Year',
+        semesterName: matchingSem?.name || '3rd Semester',
         sectionName: matchedSection?.name || rawSec,
         admissionType,
         isValid: rowErrors.length === 0,

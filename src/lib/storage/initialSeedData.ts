@@ -124,7 +124,7 @@ export const INITIAL_SESSIONS: AcademicSession[] = [
 ];
 
 export const INITIAL_YEARS: AcademicYear[] = [
-  { id: 'year-1st-btech-01', program_id: PROG_BTECH_CSE_ID, year_number: 1, name: '1st Year', active: true },
+  { id: 'year-1st-btech-01', program_id: PROG_BTECH_CSE_ID, year_number: 1, name: '1st Year', active: false },
   { id: YEAR_2ND_ID, program_id: PROG_BTECH_CSE_ID, year_number: 2, name: '2nd Year', active: true },
   { id: 'year-3rd-btech-01', program_id: PROG_BTECH_CSE_ID, year_number: 3, name: '3rd Year', active: true },
   { id: 'year-4th-btech-01', program_id: PROG_BTECH_CSE_ID, year_number: 4, name: '4th Year', active: true },

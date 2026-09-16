@@ -21,7 +21,10 @@ import {
   FileSpreadsheet,
   Download,
   UploadCloud,
-  FileText
+  FileText,
+  Search,
+  BookOpen,
+  Loader2
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -55,6 +58,7 @@ export const TimetableManagerPage: React.FC = () => {
   const { user } = useAuth();
   const { 
     departments,
+    programs,
     sections, 
     classrooms,
     subjects, 
@@ -65,33 +69,66 @@ export const TimetableManagerPage: React.FC = () => {
     assignments,
     saveSectionTimetable, 
     deleteSectionTimetable,
+    findOrCreateFaculty,
+    findOrCreateSubject,
+    findOrCreateClassroom,
+    saveSingleTimetableSlot,
+    checkTimetableConflict,
     refreshData,
     isLoading 
   } = useAcademic();
 
   const isSuperAdmin = user?.role === 'super_admin';
   const isHOD = user?.role === 'hod';
-  const [selectedDeptId, setSelectedDeptId] = useState<string>('ALL');
+
+  // Lock HOD strictly to their authorized department
+  const currentDept = useMemo(() => {
+    if (isHOD) {
+      return departments.find(
+        d => d.id === user?.faculty?.department_id || 
+             d.id === user?.department_id ||
+             d.hod_faculty_id === user?.faculty_id || 
+             d.hod_faculty_id === user?.faculty?.id
+      ) || departments[0];
+    }
+    return departments[0];
+  }, [departments, isHOD, user]);
+
+  const currentDeptId = currentDept?.id || '';
+
+  const [selectedDeptId, setSelectedDeptId] = useState<string>(() => isHOD ? currentDeptId : 'ALL');
+
+  // Active academic years strictly excluding archived 1st Year
+  const activeYears = useMemo(() => {
+    return years.filter(y => y.active && y.year_number !== 1);
+  }, [years]);
+
   const [selectedYearId, setSelectedYearId] = useState<string>(() => {
-    const y2 = years.find(y => y.year_number === 2);
-    return y2 ? y2.id : 'ALL';
-  });
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
-    const y2 = years.find(y => y.year_number === 2);
-    const targetYearId = y2 ? y2.id : 'ALL';
-    const matchingSemIds = targetYearId === 'ALL' ? [] : semesters.filter(s => s.academic_year_id === targetYearId).map(s => s.id);
-    const validSecs = targetYearId === 'ALL' ? sections.filter(s => s.active) : sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
-    return validSecs[0]?.id || sections[0]?.id || '';
+    const y2 = activeYears.find(y => y.year_number === 2);
+    return y2 ? y2.id : (activeYears[0]?.id || 'ALL');
   });
 
-  // Dynamic sections filtered by selected academic year
+  // Dynamic sections filtered strictly by department and selected academic year
   const filteredSections = useMemo(() => {
-    if (selectedYearId === 'ALL') return sections.filter(s => s.active);
-    const matchingSemIds = semesters.filter(s => s.academic_year_id === selectedYearId).map(s => s.id);
-    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
-  }, [sections, semesters, selectedYearId]);
-  
-  // Ensure selectedSectionId updates when sections or year filter changes
+    let secs = sections.filter(s => s.active);
+    if (isHOD && currentDeptId) {
+      const deptProgs = new Set(programs.filter(p => p.department_id === currentDeptId).map(p => p.id));
+      const deptYears = new Set(years.filter(y => deptProgs.has(y.program_id)).map(y => y.id));
+      const deptSems = new Set(semesters.filter(s => deptYears.has(s.academic_year_id)).map(s => s.id));
+      secs = secs.filter(s => deptSems.has(s.semester_id));
+    }
+    if (selectedYearId !== 'ALL') {
+      const matchingSemIds = semesters.filter(s => s.academic_year_id === selectedYearId).map(s => s.id);
+      secs = secs.filter(s => matchingSemIds.includes(s.semester_id));
+    }
+    return secs;
+  }, [sections, semesters, years, programs, selectedYearId, isHOD, currentDeptId]);
+
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
+    return filteredSections[0]?.id || sections[0]?.id || '';
+  });
+
+  // Ensure selectedSectionId updates whenever filteredSections change
   useEffect(() => {
     if (filteredSections.length > 0 && !filteredSections.some(s => s.id === selectedSectionId)) {
       setSelectedSectionId(filteredSections[0].id);
@@ -99,11 +136,62 @@ export const TimetableManagerPage: React.FC = () => {
   }, [filteredSections, selectedSectionId]);
 
   useEffect(() => {
-    if (years.length > 0 && selectedYearId === 'ALL') {
-      const y2 = years.find(y => y.year_number === 2);
-      if (y2) setSelectedYearId(y2.id);
+    if (activeYears.length > 0 && (selectedYearId === 'ALL' || !activeYears.some(y => y.id === selectedYearId))) {
+      const y2 = activeYears.find(y => y.year_number === 2);
+      setSelectedYearId(y2 ? y2.id : activeYears[0].id);
     }
-  }, [years]);
+  }, [activeYears, selectedYearId]);
+
+  // Current Section and Year objects
+  const currentSection = useMemo(() => {
+    return filteredSections.find(s => s.id === selectedSectionId) || filteredSections[0] || sections[0];
+  }, [filteredSections, selectedSectionId, sections]);
+
+  const currentYear = useMemo(() => {
+    const sem = semesters.find(s => s.id === currentSection?.semester_id);
+    return activeYears.find(y => y.id === sem?.academic_year_id) || activeYears.find(y => y.id === selectedYearId);
+  }, [activeYears, currentSection, semesters, selectedYearId]);
+
+  // Authoritative subjects scoped ONLY to current section's semester (NO cross-year leakage)
+  const scopedSubjects = useMemo(() => {
+    if (!currentSection?.semester_id) return [];
+    return subjects.filter(s => s.semester_id === currentSection.semester_id && s.active !== false);
+  }, [subjects, currentSection?.semester_id]);
+
+  // Authoritative faculty scoped to department
+  const scopedFaculty = useMemo(() => {
+    if (!currentDeptId) return faculty.filter(f => f.active !== false);
+    return faculty.filter(f => (f.department_id === currentDeptId || !f.department_id) && f.active !== false);
+  }, [faculty, currentDeptId]);
+
+  // Manual entry modal states
+  const [isManualFaculty, setIsManualFaculty] = useState(false);
+  const [isManualSubject, setIsManualSubject] = useState(false);
+  const [isManualRoom, setIsManualRoom] = useState(false);
+  const [facultySearchTerm, setFacultySearchTerm] = useState('');
+  const [manualFacultyName, setManualFacultyName] = useState('');
+  const [manualFacultyCode, setManualFacultyCode] = useState('');
+  const [manualFacultyEmpCode, setManualFacultyEmpCode] = useState('');
+  const [manualFacultyDesignation, setManualFacultyDesignation] = useState('Assistant Professor');
+  const [manualFacultyEmail, setManualFacultyEmail] = useState('');
+  const [manualFacultyPhone, setManualFacultyPhone] = useState('');
+  const [manualSubjectName, setManualSubjectName] = useState('');
+  const [manualSubjectCode, setManualSubjectCode] = useState('');
+  const [manualRoomNumber, setManualRoomNumber] = useState('');
+  const [slotModalError, setSlotModalError] = useState<string | null>(null);
+  const [isSavingSlot, setIsSavingSlot] = useState(false);
+
+  // Search filter for faculty dropdown inside modal
+  const filteredModalFaculty = useMemo(() => {
+    if (!facultySearchTerm.trim()) return scopedFaculty;
+    const term = facultySearchTerm.toLowerCase().trim();
+    return scopedFaculty.filter(f => 
+      f.full_name.toLowerCase().includes(term) ||
+      (f.employee_code && f.employee_code.toLowerCase().includes(term)) ||
+      (f.faculty_code && f.faculty_code.toLowerCase().includes(term)) ||
+      (f.email && f.email.toLowerCase().includes(term))
+    );
+  }, [scopedFaculty, facultySearchTerm]);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
@@ -145,10 +233,6 @@ export const TimetableManagerPage: React.FC = () => {
     SAT: 'Saturday',
     SUN: 'Sunday',
   };
-
-  const currentSection = useMemo(() => {
-    return sections.find(s => s.id === selectedSectionId) || sections[0];
-  }, [sections, selectedSectionId]);
 
   // Live Database Timetable strictly for selected section
   const sectionTimetable = useMemo(() => {
@@ -241,6 +325,22 @@ export const TimetableManagerPage: React.FC = () => {
     const existing = draftSlots.get(key);
     const time = getStandardTimeForPeriod(period);
 
+    // Reset manual entry states and errors
+    setIsManualFaculty(false);
+    setIsManualSubject(false);
+    setIsManualRoom(false);
+    setFacultySearchTerm('');
+    setManualFacultyName('');
+    setManualFacultyCode('');
+    setManualFacultyEmpCode('');
+    setManualFacultyDesignation('Assistant Professor');
+    setManualFacultyEmail('');
+    setManualFacultyPhone('');
+    setManualSubjectName('');
+    setManualSubjectCode('');
+    setManualRoomNumber('');
+    setSlotModalError(null);
+
     if (existing) {
       setEditingSlot({ ...existing });
     } else {
@@ -250,32 +350,179 @@ export const TimetableManagerPage: React.FC = () => {
         period_number: period,
         start_time: time.start,
         end_time: time.end,
-        subject_id: isLunch ? null : (subjects[0]?.id || ''),
-        faculty_id: isLunch ? null : (faculty[0]?.id || ''),
+        subject_id: isLunch ? null : (scopedSubjects[0]?.id || null),
+        faculty_id: isLunch ? null : (scopedFaculty[0]?.id || null),
         room_number: isLunch ? 'Refectory / Break' : (currentSection?.room_number || ''),
         lecture_type: isLunch ? 'Lunch' : 'Theory',
       });
     }
   };
 
-  // Save slot into draft map
-  const handleSaveSlotModal = (e: React.FormEvent) => {
+  // Save slot into draft map and persist directly to Supabase
+  const handleSaveSlotModal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingSlot) return;
+    if (!editingSlot || !currentSection) return;
 
-    const isLunch = editingSlot.lecture_type === 'Lunch';
-    const key = `${editingSlot.day_of_week}-${editingSlot.period_number}`;
-    setDraftSlots(prev => {
-      const next = new Map(prev);
-      next.set(key, {
-        ...editingSlot,
-        subject_id: isLunch ? null : (editingSlot.subject_id || null),
-        faculty_id: isLunch ? null : (editingSlot.faculty_id || null),
+    setSlotModalError(null);
+    setIsSavingSlot(true);
+
+    try {
+      const isNonInstructional = ['Lunch', 'Sports', 'Other'].includes(editingSlot.lecture_type);
+
+      // Validate Time
+      if (!editingSlot.start_time || !editingSlot.end_time) {
+        setSlotModalError('Start and end times are required.');
+        setIsSavingSlot(false);
+        return;
+      }
+      if (editingSlot.end_time <= editingSlot.start_time) {
+        setSlotModalError('End time must be after start time.');
+        setIsSavingSlot(false);
+        return;
+      }
+
+      const sem = semesters.find(s => s.id === currentSection.semester_id);
+      const yr = years.find(y => y.id === sem?.academic_year_id);
+      const resolvedProgramId = yr?.program_id || programs[0]?.id || '';
+      const resolvedDeptId = currentDeptId || programs.find(p => p.id === resolvedProgramId)?.department_id || departments[0]?.id || '';
+
+      // 1. Resolve Subject
+      let resolvedSubjectId: string | null = editingSlot.subject_id || null;
+      if (!isNonInstructional) {
+        if (isManualSubject) {
+          if (!manualSubjectName.trim() || !manualSubjectCode.trim()) {
+            setSlotModalError('Subject Name and Subject Code are required for manual subject entry.');
+            setIsSavingSlot(false);
+            return;
+          }
+          const createdSubject = await findOrCreateSubject({
+            subjectName: manualSubjectName.trim(),
+            subjectCode: manualSubjectCode.trim(),
+            departmentId: resolvedDeptId,
+            semesterId: currentSection.semester_id,
+            programId: resolvedProgramId,
+            lectureType: editingSlot.lecture_type,
+          });
+          resolvedSubjectId = createdSubject.id;
+        } else if (!resolvedSubjectId && scopedSubjects.length > 0) {
+          resolvedSubjectId = scopedSubjects[0].id;
+        }
+      } else {
+        resolvedSubjectId = null;
+      }
+
+      // 2. Resolve Faculty
+      let resolvedFacultyId: string | null = editingSlot.faculty_id || null;
+      if (!isNonInstructional) {
+        if (isManualFaculty) {
+          if (!manualFacultyName.trim()) {
+            setSlotModalError('Faculty Name is required for manual faculty entry.');
+            setIsSavingSlot(false);
+            return;
+          }
+          const createdFaculty = await findOrCreateFaculty({
+            fullName: manualFacultyName.trim(),
+            facultyCode: manualFacultyCode.trim() || undefined,
+            employeeCode: manualFacultyEmpCode.trim() || undefined,
+            designation: manualFacultyDesignation,
+            email: manualFacultyEmail.trim() || undefined,
+            phone: manualFacultyPhone.trim() || undefined,
+            departmentId: resolvedDeptId,
+          });
+          resolvedFacultyId = createdFaculty.id;
+        }
+      } else {
+        resolvedFacultyId = null;
+      }
+
+      // 3. Resolve Classroom / Room Number
+      let resolvedRoomNumber = editingSlot.room_number?.trim() || currentSection.room_number || '';
+      let resolvedClassroomId: string | null = null;
+      if (isManualRoom && manualRoomNumber.trim()) {
+        resolvedRoomNumber = manualRoomNumber.trim();
+        const createdRoom = await findOrCreateClassroom({
+          roomNumber: resolvedRoomNumber,
+        });
+        resolvedClassroomId = createdRoom.id;
+      } else if (resolvedRoomNumber) {
+        const matchedRoom = classrooms.find(c => c.room_number.toLowerCase() === resolvedRoomNumber.toLowerCase());
+        if (matchedRoom) {
+          resolvedClassroomId = matchedRoom.id;
+        }
+      }
+
+      // 4. Strict Conflict Detection
+      const proposedEntry = {
+        section_id: currentSection.id,
+        day_of_week: editingSlot.day_of_week,
+        period_number: editingSlot.period_number,
+        start_time: editingSlot.start_time,
+        end_time: editingSlot.end_time,
+        subject_id: resolvedSubjectId || undefined,
+        faculty_id: resolvedFacultyId || undefined,
+        room_number: resolvedRoomNumber,
+        lecture_type: editingSlot.lecture_type,
+        active: true,
+        created_at: '',
+        updated_at: '',
+      };
+
+      const conflict = checkTimetableConflict(proposedEntry, editingSlot.id);
+      if (conflict) {
+        setSlotModalError(`Schedule Conflict: ${conflict.message}`);
+        setIsSavingSlot(false);
+        return;
+      }
+
+      // 5. Direct Supabase Database Persistence
+      const saveRes = await saveSingleTimetableSlot({
+        slotId: editingSlot.id,
+        sectionId: currentSection.id,
+        dayOfWeek: editingSlot.day_of_week,
+        periodNumber: editingSlot.period_number,
+        startTime: editingSlot.start_time,
+        endTime: editingSlot.end_time,
+        subjectId: resolvedSubjectId,
+        facultyId: resolvedFacultyId,
+        classroomId: resolvedClassroomId,
+        roomNumber: resolvedRoomNumber,
+        lectureType: editingSlot.lecture_type,
+        updatedBy: user?.full_name || 'HOD',
       });
-      return next;
-    });
 
-    setEditingSlot(null);
+      if (!saveRes.success) {
+        setSlotModalError('Failed to save slot to database. Please try again.');
+        setIsSavingSlot(false);
+        return;
+      }
+
+      // 6. Update draftSlots in memory
+      const key = `${editingSlot.day_of_week}-${editingSlot.period_number}`;
+      setDraftSlots(prev => {
+        const next = new Map(prev);
+        next.set(key, {
+          id: saveRes.entry.id,
+          day_of_week: editingSlot.day_of_week,
+          period_number: editingSlot.period_number,
+          start_time: editingSlot.start_time,
+          end_time: editingSlot.end_time,
+          subject_id: resolvedSubjectId,
+          faculty_id: resolvedFacultyId,
+          room_number: resolvedRoomNumber,
+          lecture_type: editingSlot.lecture_type,
+        });
+        return next;
+      });
+
+      setPublishSuccessMsg(`Slot for ${editingSlot.day_of_week} Period ${editingSlot.period_number} saved to live database successfully.`);
+      setEditingSlot(null);
+      await refreshData();
+    } catch (err: any) {
+      console.error('Error saving timetable slot:', err);
+      setSlotModalError(err.message || 'An error occurred while saving the slot.');
+    } finally {
+      setIsSavingSlot(false);
+    }
   };
 
   // Delete / Clear a slot from draft map
@@ -731,13 +978,14 @@ export const TimetableManagerPage: React.FC = () => {
                   setSelectedSectionId(nextSecs[0].id);
                 }
                 setIsEditMode(false);
+                setEditingSlot(null);
                 setCsvPreview(null);
                 setCsvError(null);
               }}
               className="px-3 py-2 bg-slate-950/90 border-2 border-emerald-500/40 rounded-xl text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88] touch-target cursor-pointer"
             >
               <option value="ALL">All Years</option>
-              {years.map(y => (
+              {activeYears.map(y => (
                 <option key={y.id} value={y.id}>{y.name}</option>
               ))}
             </select>
@@ -751,6 +999,7 @@ export const TimetableManagerPage: React.FC = () => {
               onChange={(e) => {
                 setSelectedSectionId(e.target.value);
                 setIsEditMode(false);
+                setEditingSlot(null);
                 setCsvPreview(null);
                 setCsvError(null);
               }}
@@ -1622,15 +1871,50 @@ export const TimetableManagerPage: React.FC = () => {
       {editingSlot && (
         <Modal
           isOpen={true}
-          onClose={() => setEditingSlot(null)}
-          title={`Edit Timetable Slot — ${editingSlot.day_of_week} Period ${editingSlot.period_number}`}
-          description={`Target: Section ${currentSection?.name} (${currentSection?.room_number})`}
-          maxWidth="md"
+          onClose={() => {
+            setEditingSlot(null);
+            setSlotModalError(null);
+          }}
+          title={`Edit Timetable Slot — ${dayLabels[editingSlot.day_of_week] || editingSlot.day_of_week} Period ${editingSlot.period_number}`}
+          maxWidth="lg"
         >
           <form onSubmit={handleSaveSlotModal} className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-3">
+            {/* Scope / Target Context Banner */}
+            <div className="p-3 bg-slate-900/90 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Day of Week</label>
+                <div className="text-white font-black text-sm flex items-center gap-1.5">
+                  <span className="text-[#00ff88]">{currentYear?.name || 'Academic Cohort'}</span>
+                  <span className="text-slate-500">•</span>
+                  <span>Section {currentSection?.name}</span>
+                </div>
+                <div className="text-slate-400 text-[11px] mt-0.5 flex flex-wrap items-center gap-2">
+                  <span>Room: <strong className="text-emerald-400">{currentSection?.room_number || 'Default Room'}</strong></span>
+                  <span>•</span>
+                  <span>Semester: <strong className="text-slate-200">{semesters.find(s => s.id === currentSection?.semester_id)?.name || 'Current'}</strong></span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-center">
+                <span className="px-2.5 py-1 bg-[#00ff88]/15 border border-[#00ff88]/40 rounded-xl text-[#00ff88] font-black text-[11px] tracking-wide">
+                  {editingSlot.day_of_week} • Period {editingSlot.period_number}
+                </span>
+                <span className="px-2.5 py-1 bg-slate-800/80 border border-slate-700 rounded-xl text-slate-300 font-bold text-[11px]">
+                  {editingSlot.start_time} – {editingSlot.end_time}
+                </span>
+              </div>
+            </div>
+
+            {/* Error / Conflict Alert Banner */}
+            {slotModalError && (
+              <div className="p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-2xl text-rose-200 text-xs flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="font-semibold leading-relaxed">{slotModalError}</div>
+              </div>
+            )}
+
+            {/* Timetable Slot Timing and Class Format */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Day of Week</label>
                 <select
                   value={editingSlot.day_of_week}
                   onChange={(e) => setEditingSlot({ ...editingSlot, day_of_week: e.target.value as DayOfWeek })}
@@ -1646,7 +1930,7 @@ export const TimetableManagerPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Period Number</label>
+                <label className="block text-slate-400 font-bold mb-1">Period Number</label>
                 <select
                   value={editingSlot.period_number}
                   onChange={(e) => {
@@ -1666,49 +1950,9 @@ export const TimetableManagerPage: React.FC = () => {
                   ))}
                 </select>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-400 font-semibold mb-1">Subject</label>
-              <select
-                value={editingSlot.subject_id || ''}
-                onChange={(e) => setEditingSlot({ ...editingSlot, subject_id: e.target.value || null })}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-              >
-                <option value="">— None / Non-Instructional Break —</option>
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-slate-400 font-semibold mb-1">Faculty Professor</label>
-              <select
-                value={editingSlot.faculty_id || ''}
-                onChange={(e) => setEditingSlot({ ...editingSlot, faculty_id: e.target.value || null })}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-              >
-                <option value="">— None / Non-Instructional Break —</option>
-                {faculty.map(f => (
-                  <option key={f.id} value={f.id}>{f.full_name} ({f.faculty_code || f.designation})</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Classroom / Room Number</label>
-                <input
-                  type="text"
-                  value={editingSlot.room_number}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, room_number: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
-                />
-              </div>
 
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Class Format / Lecture Type</label>
+                <label className="block text-slate-400 font-bold mb-1">Class Format / Lecture Type</label>
                 <select
                   value={editingSlot.lecture_type}
                   onChange={(e) => {
@@ -1741,12 +1985,337 @@ export const TimetableManagerPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-emerald-500/15">
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditingSlot(null)}>
+            {/* Period Custom Times */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={editingSlot.start_time}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, start_time: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={editingSlot.end_time}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, end_time: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Non-instructional note */}
+            {editingSlot.lecture_type === 'Lunch' ? (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs">
+                Lunch Break is a non-instructional period. Subject and faculty professor assignments are not required.
+              </div>
+            ) : (
+              <>
+                {/* 1. Subject Course Selection (Scoped strictly to current section's semester) */}
+                <div className="space-y-2 pt-1 border-t border-emerald-500/10">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-300 font-bold flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-[#00ff88]" />
+                      Subject Course
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        ({currentYear?.name || 'Cohort'} • {scopedSubjects.length} available)
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManualSubject(!isManualSubject);
+                        setSlotModalError(null);
+                      }}
+                      className="text-xs text-[#00ff88] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      {isManualSubject ? '← Select Existing Subject' : '+ Add Subject Manually'}
+                    </button>
+                  </div>
+
+                  {!isManualSubject ? (
+                    scopedSubjects.length > 0 ? (
+                      <select
+                        value={editingSlot.subject_id || ''}
+                        onChange={(e) => setEditingSlot({ ...editingSlot, subject_id: e.target.value || null })}
+                        className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                      >
+                        <option value="">— Select Subject for this Semester —</option>
+                        {scopedSubjects.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.subject_name} ({s.subject_code})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-3 bg-slate-900 border border-amber-500/30 rounded-xl flex items-center justify-between gap-2">
+                        <span className="text-amber-300 text-xs font-medium">
+                          No subjects configured for this semester yet.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsManualSubject(true)}
+                          className="px-2.5 py-1 bg-[#00ff88]/20 border border-[#00ff88]/50 rounded-lg text-[#00ff88] font-black text-xs hover:bg-[#00ff88]/30 cursor-pointer"
+                        >
+                          + Enter Subject Now
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="p-3.5 bg-slate-900/95 border border-[#00ff88]/40 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between text-[11px] font-black text-[#00ff88]">
+                        <span>Manual Subject Entry (Persists to Supabase for this Semester)</span>
+                        <span className="text-slate-400 font-normal">Semester {semesters.find(s => s.id === currentSection?.semester_id)?.semester_number || ''}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Subject Name *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Design and Analysis of Algorithms"
+                            value={manualSubjectName}
+                            onChange={(e) => setManualSubjectName(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                            required={isManualSubject && !['Lunch', 'Sports', 'Other'].includes(editingSlot.lecture_type)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Subject Code *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. KCS-501"
+                            value={manualSubjectCode}
+                            onChange={(e) => setManualSubjectCode(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                            required={isManualSubject && !['Lunch', 'Sports', 'Other'].includes(editingSlot.lecture_type)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Faculty Professor Selection (Searchable + Manual Entry) */}
+                <div className="space-y-2 pt-1 border-t border-emerald-500/10">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-300 font-bold flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-[#00ff88]" />
+                      Faculty Professor
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        ({scopedFaculty.length} in department)
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManualFaculty(!isManualFaculty);
+                        setSlotModalError(null);
+                      }}
+                      className="text-xs text-[#00ff88] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      {isManualFaculty ? '← Select Existing Faculty' : '+ Add Faculty Manually'}
+                    </button>
+                  </div>
+
+                  {!isManualFaculty ? (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Search faculty by name, code, emp ID, or email..."
+                          value={facultySearchTerm}
+                          onChange={(e) => setFacultySearchTerm(e.target.value)}
+                          className="w-full pl-9 pr-3 py-1.5 bg-slate-950/90 border border-slate-700/70 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                        />
+                      </div>
+                      <select
+                        value={editingSlot.faculty_id || ''}
+                        onChange={(e) => setEditingSlot({ ...editingSlot, faculty_id: e.target.value || null })}
+                        className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                      >
+                        <option value="">— Select Faculty Professor —</option>
+                        {filteredModalFaculty.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-slate-900/95 border border-[#00ff88]/40 rounded-2xl space-y-3">
+                      <div className="text-[11px] font-black text-[#00ff88]">
+                        Manual Faculty Entry (Persists to Department Faculty in Supabase)
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Full Name *</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Dr. Rajesh Kumar"
+                            value={manualFacultyName}
+                            onChange={(e) => setManualFacultyName(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                            required={isManualFaculty && !['Lunch', 'Sports', 'Other'].includes(editingSlot.lecture_type)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Designation</label>
+                          <select
+                            value={manualFacultyDesignation}
+                            onChange={(e) => setManualFacultyDesignation(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                          >
+                            <option value="Professor">Professor</option>
+                            <option value="Associate Professor">Associate Professor</option>
+                            <option value="Assistant Professor">Assistant Professor</option>
+                            <option value="Guest Lecturer">Guest Lecturer</option>
+                            <option value="Lab Instructor">Lab Instructor</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Faculty Code (Short)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. RK"
+                            value={manualFacultyCode}
+                            onChange={(e) => setManualFacultyCode(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Employee Code / ID</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. FAC-089"
+                            value={manualFacultyEmpCode}
+                            onChange={(e) => setManualFacultyEmpCode(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Email (Optional)</label>
+                          <input
+                            type="email"
+                            placeholder="faculty@vctm.in"
+                            value={manualFacultyEmail}
+                            onChange={(e) => setManualFacultyEmail(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 font-bold mb-1">Phone (Optional)</label>
+                          <input
+                            type="tel"
+                            placeholder="+91 9876543210"
+                            value={manualFacultyPhone}
+                            onChange={(e) => setManualFacultyPhone(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-semibold focus:outline-none focus:border-[#00ff88]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* 3. Classroom / Room Number */}
+            <div className="space-y-2 pt-1 border-t border-emerald-500/10">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 font-bold flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#00ff88]" />
+                  Classroom / Room Number
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsManualRoom(!isManualRoom);
+                    if (!isManualRoom && !manualRoomNumber) {
+                      setManualRoomNumber(editingSlot.room_number || currentSection?.room_number || '');
+                    }
+                  }}
+                  className="text-xs text-[#00ff88] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  {isManualRoom ? '← Select Standard Room' : '+ Enter Custom Room'}
+                </button>
+              </div>
+
+              {isManualRoom ? (
+                <input
+                  type="text"
+                  placeholder="e.g. Lab 4, Audi-2, Room 305"
+                  value={manualRoomNumber}
+                  onChange={(e) => {
+                    setManualRoomNumber(e.target.value);
+                    setEditingSlot({ ...editingSlot, room_number: e.target.value });
+                  }}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                />
+              ) : (
+                <div className="flex gap-2">
+                  <select
+                    value={editingSlot.room_number}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, room_number: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  >
+                    {currentSection?.room_number && (
+                      <option value={currentSection.room_number}>Section Default ({currentSection.room_number})</option>
+                    )}
+                    {classrooms.map(c => (
+                      <option key={c.id} value={c.room_number}>
+                        {c.room_number} {c.building ? `(${c.building})` : ''} {c.room_type ? `[${c.room_type}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Or room name..."
+                    value={editingSlot.room_number}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, room_number: e.target.value })}
+                    className="w-36 px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-emerald-500/15">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingSlot(null);
+                  setSlotModalError(null);
+                }}
+                disabled={isSavingSlot}
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="neon" size="sm">
-                Save Slot
+              <Button
+                type="submit"
+                variant="neon"
+                size="sm"
+                disabled={isSavingSlot}
+                className="flex items-center gap-1.5"
+              >
+                {isSavingSlot ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                    <span>Saving to Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5 text-slate-950" />
+                    <span>Save Slot to Database</span>
+                  </>
+                )}
               </Button>
             </div>
           </form>

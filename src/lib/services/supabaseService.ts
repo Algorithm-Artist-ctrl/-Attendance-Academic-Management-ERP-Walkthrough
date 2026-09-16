@@ -107,8 +107,8 @@ export const supabaseService = {
         supabase.from('departments').select('*'),
         supabase.from('programs').select('*'),
         supabase.from('academic_sessions').select('*'),
-        supabase.from('academic_years').select('*'),
-        supabase.from('semesters').select('*'),
+        supabase.from('academic_years').select('*').eq('active', true).neq('year_number', 1).order('year_number'),
+        supabase.from('semesters').select('*').eq('active', true).order('semester_number'),
       ]);
 
       const staticResult = {
@@ -116,8 +116,8 @@ export const supabaseService = {
         departments: (departments as Department[]) || [],
         programs: (programs as Program[]) || [],
         sessions: (sessions as AcademicSession[]) || [],
-        years: (years as AcademicYear[]) || [],
-        semesters: (semesters as Semester[]) || [],
+        years: ((years as AcademicYear[]) || []).filter(y => y.active && y.year_number !== 1),
+        semesters: ((semesters as Semester[]) || []).filter(s => s.active),
       };
 
       _staticCache = {
@@ -145,13 +145,13 @@ export const supabaseService = {
         { data: profilesList },
         { data: classroomsList },
       ] = await Promise.all([
-        supabase.from('sections').select('*').order('name', { ascending: true }),
-        supabase.from('subjects').select('*').order('subject_code', { ascending: true }),
-        supabase.from('faculty').select('*').order('full_name', { ascending: true }),
+        supabase.from('sections').select('*').eq('active', true).order('name', { ascending: true }),
+        supabase.from('subjects').select('*').eq('active', true).order('subject_code', { ascending: true }),
+        supabase.from('faculty').select('*').eq('active', true).order('full_name', { ascending: true }),
         supabase.from('faculty_subject_assignments').select('*').eq('active', true),
-        supabase.from('students').select('*').order('roll_number', { ascending: true }),
+        supabase.from('students').select('*').eq('active', true).order('roll_number', { ascending: true }),
         supabase.from('profiles').select('*'),
-        supabase.from('classrooms').select('*').order('room_number', { ascending: true }),
+        supabase.from('classrooms').select('*').eq('active', true).order('room_number', { ascending: true }),
       ]);
 
       return {
@@ -1610,6 +1610,306 @@ export const supabaseService = {
     if (error) throw new Error(error.message);
     this.invalidateMasterCache();
     return true;
+  },
+
+  /**
+   * Search existing faculty by employee_code, email, or normalized name within department.
+   * If not found, insert a new record in public.faculty with auth_user_id = null (NO auth account).
+   */
+  async findOrCreateFaculty(params: {
+    fullName: string;
+    facultyCode?: string;
+    employeeCode?: string;
+    designation?: string;
+    email?: string;
+    phone?: string;
+    departmentId: string;
+  }): Promise<Faculty> {
+    const cleanName = params.fullName.trim();
+    const cleanEmpCode = params.employeeCode?.trim();
+    const cleanEmail = params.email?.trim().toLowerCase();
+
+    // 1. Search by employee_code if supplied
+    if (cleanEmpCode) {
+      const { data: matchCode } = await supabase
+        .from('faculty')
+        .select('*')
+        .eq('employee_code', cleanEmpCode)
+        .maybeSingle();
+      if (matchCode) return matchCode as Faculty;
+    }
+
+    // 2. Search by email if supplied
+    if (cleanEmail) {
+      const { data: matchEmail } = await supabase
+        .from('faculty')
+        .select('*')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+      if (matchEmail) return matchEmail as Faculty;
+    }
+
+    // 3. Search by normalized name within same department
+    const { data: matchName } = await supabase
+      .from('faculty')
+      .select('*')
+      .ilike('full_name', cleanName)
+      .eq('department_id', params.departmentId)
+      .maybeSingle();
+    if (matchName) return matchName as Faculty;
+
+    // 4. Create new faculty record (with auth_user_id = null; NO auth account created)
+    const empCode = cleanEmpCode || `FAC_${cleanName.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase()}_${Date.now().toString().slice(-4)}`;
+    const facCode = params.facultyCode?.trim().toUpperCase() || cleanName.split(' ').map(w => w[0]).join('').slice(0, 4).toUpperCase();
+    const email = cleanEmail || `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '.')}@faculty.vctm.in`;
+
+    const { data: created, error } = await supabase
+      .from('faculty')
+      .insert([{
+        full_name: cleanName,
+        department_id: params.departmentId,
+        employee_code: empCode,
+        faculty_code: facCode,
+        designation: params.designation?.trim() || 'Assistant Professor',
+        email,
+        phone: params.phone?.trim() || null,
+        active: true,
+        auth_user_id: null
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      const { data: existing } = await supabase
+        .from('faculty')
+        .select('*')
+        .or(`employee_code.eq.${empCode},email.eq.${email}`)
+        .maybeSingle();
+      if (existing) return existing as Faculty;
+      throw new Error(`Failed to create faculty: ${error.message}`);
+    }
+
+    this.invalidateMasterCache();
+    return created as Faculty;
+  },
+
+  /**
+   * Search existing subject by subject_code within semester.
+   * If not found, insert a new record in public.subjects.
+   */
+  async findOrCreateSubject(params: {
+    subjectName: string;
+    subjectCode: string;
+    departmentId: string;
+    semesterId: string;
+    programId?: string;
+    lectureType?: LectureType;
+    credits?: number;
+  }): Promise<Subject> {
+    const cleanName = params.subjectName.trim();
+    const cleanCode = params.subjectCode.trim().toUpperCase();
+
+    // 1. Search by subject_code within semester
+    const { data: matchCode } = await supabase
+      .from('subjects')
+      .select('*')
+      .ilike('subject_code', cleanCode)
+      .eq('semester_id', params.semesterId)
+      .maybeSingle();
+    if (matchCode) return matchCode as Subject;
+
+    // 2. Resolve program_id if not supplied
+    let progId = params.programId;
+    if (!progId) {
+      const { data: sem } = await supabase
+        .from('semesters')
+        .select('academic_years(program_id)')
+        .eq('id', params.semesterId)
+        .maybeSingle();
+      progId = (sem as any)?.academic_years?.program_id;
+    }
+    if (!progId) {
+      const { data: prog } = await supabase
+        .from('programs')
+        .select('id')
+        .eq('department_id', params.departmentId)
+        .limit(1)
+        .maybeSingle();
+      progId = prog?.id || '';
+    }
+
+    const { data: created, error } = await supabase
+      .from('subjects')
+      .insert([{
+        subject_name: cleanName,
+        subject_code: cleanCode,
+        department_id: params.departmentId,
+        semester_id: params.semesterId,
+        program_id: progId,
+        lecture_type: params.lectureType || 'Theory',
+        credits: params.credits || 4.0,
+        active: true
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      const { data: existing } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('subject_code', cleanCode)
+        .eq('semester_id', params.semesterId)
+        .maybeSingle();
+      if (existing) return existing as Subject;
+      throw new Error(`Failed to create subject: ${error.message}`);
+    }
+
+    this.invalidateMasterCache();
+    return created as Subject;
+  },
+
+  /**
+   * Search existing classroom by room_number.
+   * If not found, insert a new record in public.classrooms.
+   */
+  async findOrCreateClassroom(params: {
+    roomNumber: string;
+    building?: string;
+    roomType?: string;
+    capacity?: number;
+  }): Promise<Classroom> {
+    const cleanRoom = params.roomNumber.trim();
+
+    // 1. Search existing by room_number
+    const { data: matchRoom } = await supabase
+      .from('classrooms')
+      .select('*')
+      .ilike('room_number', cleanRoom)
+      .maybeSingle();
+    if (matchRoom) return matchRoom as Classroom;
+
+    // 2. Insert new classroom
+    const { data: created, error } = await supabase
+      .from('classrooms')
+      .insert([{
+        room_number: cleanRoom,
+        building: params.building || 'Main Academic Block',
+        floor: 'Ground Floor',
+        room_type: params.roomType || 'Classroom',
+        capacity: params.capacity || 60,
+        active: true
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      const { data: existing } = await supabase
+        .from('classrooms')
+        .select('*')
+        .ilike('room_number', cleanRoom)
+        .maybeSingle();
+      if (existing) return existing as Classroom;
+      throw new Error(`Failed to create classroom: ${error.message}`);
+    }
+
+    this.invalidateMasterCache();
+    return created as Classroom;
+  },
+
+  /**
+   * Authoritative saving of a single timetable slot into Supabase with automatic assignment sync
+   */
+  async saveSingleTimetableSlot(params: {
+    slotId?: string;
+    sectionId: string;
+    dayOfWeek: DayOfWeek;
+    periodNumber: number;
+    startTime: string;
+    endTime: string;
+    subjectId?: string | null;
+    facultyId?: string | null;
+    classroomId?: string | null;
+    roomNumber?: string;
+    lectureType?: LectureType;
+    updatedBy?: string;
+  }): Promise<{ success: boolean; entry: TimetableEntry }> {
+    const payload = {
+      section_id: params.sectionId,
+      day_of_week: params.dayOfWeek,
+      period_number: params.periodNumber,
+      start_time: params.startTime,
+      end_time: params.endTime,
+      subject_id: params.subjectId || null,
+      faculty_id: params.facultyId || null,
+      classroom_id: params.classroomId || null,
+      room_number: params.roomNumber || 'Room',
+      lecture_type: params.lectureType || 'Theory',
+      active: true,
+      updated_at: new Date().toISOString()
+    };
+
+    let savedEntry: TimetableEntry;
+
+    if (params.slotId) {
+      const { data, error } = await supabase
+        .from('timetable_entries')
+        .update(payload)
+        .eq('id', params.slotId)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      savedEntry = data as TimetableEntry;
+    } else {
+      const { data, error } = await supabase
+        .from('timetable_entries')
+        .upsert([payload], { onConflict: 'section_id,day_of_week,period_number' })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      savedEntry = data as TimetableEntry;
+    }
+
+    // Sync faculty_subject_assignments if instructional
+    if (params.facultyId && params.subjectId) {
+      try {
+        const { data: currentSessionData } = await supabase
+          .from('academic_sessions')
+          .select('id')
+          .eq('is_current', true)
+          .maybeSingle();
+        const currentSessionId = currentSessionData?.id;
+
+        if (currentSessionId) {
+          const { data: existingAssignment } = await supabase
+            .from('faculty_subject_assignments')
+            .select('id, active')
+            .eq('faculty_id', params.facultyId)
+            .eq('subject_id', params.subjectId)
+            .eq('section_id', params.sectionId)
+            .maybeSingle();
+
+          if (!existingAssignment) {
+            await supabase.from('faculty_subject_assignments').insert([{
+              faculty_id: params.facultyId,
+              subject_id: params.subjectId,
+              section_id: params.sectionId,
+              academic_session_id: currentSessionId,
+              active: true
+            }]);
+          } else if (!existingAssignment.active) {
+            await supabase
+              .from('faculty_subject_assignments')
+              .update({ active: true, updated_at: new Date().toISOString() })
+              .eq('id', existingAssignment.id);
+          }
+        }
+      } catch (err) {
+        console.warn('Syncing assignment warning:', err);
+      }
+    }
+
+    this.invalidateMasterCache();
+    return { success: true, entry: savedEntry };
   },
 
   /**

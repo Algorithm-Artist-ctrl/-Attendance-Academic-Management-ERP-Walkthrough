@@ -207,7 +207,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
             leftIcon={<Calendar className="w-4 h-4 text-slate-950" />}
             onClick={() => {
               if (onNavigate) {
-                onNavigate('timetable');
+                onNavigate('timetable', { yearId: selectedYearFilter !== 'ALL' ? selectedYearFilter : undefined });
               } else {
                 window.location.hash = '#timetable';
               }
@@ -310,23 +310,26 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
             </h3>
           </div>
 
-          {/* Section Filter Pills */}
-          <div className="bg-slate-950/80 p-1 rounded-xl border border-emerald-500/20 flex items-center text-xs font-bold">
-            {availableSectionNames.map((sec) => (
-              <button
-                key={sec}
-                onClick={() => setSelectedSectionFilter(sec)}
-                className={clsx(
-                  'px-3 py-1 rounded-lg transition-all',
-                  selectedSectionFilter === sec
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                    : 'text-slate-400 hover:text-white'
-                )}
-              >
-                {sec === 'ALL' ? 'All Sections' : `Section ${sec}`}
-              </button>
-            ))}
-          </div>
+          {/* Section Filter Pills — Only displayed after a specific academic year is selected */}
+          {selectedYearFilter !== 'ALL' && availableSectionNames.length > 1 && (
+            <div className="bg-slate-950/80 p-1 rounded-xl border border-emerald-500/20 flex items-center text-xs font-bold">
+              <span className="text-slate-400 font-bold uppercase text-[10px] px-2 hidden sm:inline">Section:</span>
+              {availableSectionNames.map((sec) => (
+                <button
+                  key={sec}
+                  onClick={() => setSelectedSectionFilter(sec)}
+                  className={clsx(
+                    'px-3 py-1 rounded-lg transition-all',
+                    selectedSectionFilter === sec
+                      ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_10px_rgba(0,255,136,0.3)]'
+                      : 'text-slate-400 hover:text-white'
+                  )}
+                >
+                  {sec === 'ALL' ? 'All Sections' : `Section ${sec}`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">

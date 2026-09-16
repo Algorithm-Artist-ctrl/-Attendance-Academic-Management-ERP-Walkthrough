@@ -83,17 +83,17 @@ export class TimetableResolver {
       progClean.includes(p.name.toLowerCase())
     ) || programs[0];
 
-    // 3. Resolve Academic Year
+    // 3. Resolve Academic Year (Active: 2nd, 3rd, 4th Year)
     const yearClean = (doc.academic_year || '').toLowerCase();
-    const academicYear = years.find(y => 
+    const activeYears = years.filter(y => y.active !== false && y.year_number !== 1);
+    const academicYear = activeYears.find(y => 
       yearClean.includes(y.name.toLowerCase()) ||
       (yearClean.includes('2') && y.year_number === 2) ||
       (yearClean.includes('second') && y.year_number === 2) ||
       (yearClean.includes('3') && y.year_number === 3) ||
       (yearClean.includes('third') && y.year_number === 3) ||
-      (yearClean.includes('4') && y.year_number === 4) ||
-      (yearClean.includes('1') && y.year_number === 1)
-    ) || years.find(y => y.year_number === 2) || years[0];
+      (yearClean.includes('4') && y.year_number === 4)
+    ) || activeYears.find(y => y.year_number === 2) || activeYears[0];
 
     // 4. Resolve Semester
     const semClean = (doc.semester || '').toLowerCase();
