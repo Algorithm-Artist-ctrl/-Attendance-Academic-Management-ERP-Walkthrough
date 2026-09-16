@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
@@ -64,25 +65,44 @@ export const LoginPage: React.FC = () => {
         {/* Left Column: 3D Futuristic Cyber Campus */}
         <div className="hidden lg:flex lg:col-span-6 flex-col items-center justify-center text-center p-6">
           <CyberCollegeCampus3D />
-          <div className="mt-4 space-y-1">
+          <div className="mt-4 space-y-1 w-full max-w-md">
             <h3 className="text-xl font-black tracking-tight text-white">
               VIVEKANANDA COLLEGE
             </h3>
             <p className="text-xs text-emerald-400/90 font-semibold tracking-wide">
               OF TECHNOLOGY & MANAGEMENT, ALIGARH
             </p>
-            <p className="text-[11px] text-slate-400 max-w-sm pt-2">
+            <p className="text-[11px] text-slate-400 max-w-sm mx-auto pt-2">
               Next-Generation Academic Attendance & Institutional Governance Platform • College Code: 340
             </p>
 
-            {/* Subtle Copyright & Software Ownership Notice */}
-            <div className="pt-4 text-center space-y-0.5 select-none">
-              <p className="text-[10.5px] text-slate-400 font-medium">
-                © 2026 All Rights Reserved | <span className="text-[#00ff88] font-bold">Tarun Kushwah</span>
-              </p>
-              <p className="text-[9px] text-slate-500 leading-tight">
-                Unauthorized copying, distribution, or modification of this software is strictly prohibited.
-              </p>
+            {/* Bottom Branding Section: "Know Us" on Bottom-Left */}
+            <div className="pt-6 w-full space-y-3">
+              <div className="flex items-center justify-between px-2">
+                <a
+                  href="https://vctm.in/pages/About%20College"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-[#00ff88] transition-all duration-200 group px-2.5 py-1.5 rounded-xl hover:bg-emerald-500/10 border border-emerald-500/15 hover:border-emerald-500/30"
+                  title="About Vivekananda College of Technology & Management"
+                >
+                  <span>Know Us</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#00ff88] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200" />
+                </a>
+                <span className="text-[10px] font-mono text-emerald-400/80 bg-slate-950/80 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-semibold">
+                  AKTU Code: 340
+                </span>
+              </div>
+
+              {/* Subtle Copyright & Software Ownership Notice */}
+              <div className="pt-1 text-center space-y-0.5 select-none border-t border-emerald-500/10">
+                <p className="text-[10.5px] text-slate-400 font-medium pt-2">
+                  © 2026 All Rights Reserved | <span className="text-[#00ff88] font-bold">Tarun Kushwah</span>
+                </p>
+                <p className="text-[9px] text-slate-500 leading-tight">
+                  Unauthorized copying, distribution, or modification of this software is strictly prohibited.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -248,6 +268,20 @@ export const LoginPage: React.FC = () => {
               <p className="text-[9px] text-slate-500 leading-tight max-w-xs mx-auto">
                 Unauthorized copying, distribution, or modification of this software is strictly prohibited.
               </p>
+            </div>
+
+            {/* Mobile "Know Us" Link (Visible only on mobile/tablet where left branding column is hidden) */}
+            <div className="mt-3 text-center lg:hidden">
+              <a
+                href="https://vctm.in/pages/About%20College"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-[#00ff88] transition-all duration-200 group px-3 py-1.5 rounded-xl hover:bg-emerald-500/10 border border-emerald-500/15"
+                title="About Vivekananda College of Technology & Management"
+              >
+                <span>Know Us</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#00ff88] transition-all duration-200" />
+              </a>
             </div>
 
           </div>
