@@ -282,7 +282,7 @@ interface AcademicContextType {
     endTime?: string;
     studentRecords: Array<{
       studentId: string;
-      status: AttendanceStatus;
+      status: AttendanceStatus | 'Unmarked';
       remarks?: string;
     }>;
   }) => Promise<{ session: AttendanceSession; records: AttendanceRecord[] }>;
@@ -360,8 +360,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [assignments, setAssignments] = useState<FacultySubjectAssignment[]>(() => erpStorage.getAssignments());
   const [students, setStudents] = useState<Student[]>(() => erpStorage.getStudents());
   const [timetable, setTimetable] = useState<TimetableEntry[]>(() => erpStorage.getTimetable());
-  const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>(() => erpStorage.getAttendanceSessions());
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => erpStorage.getAttendanceRecords());
+  const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [corrections, setCorrections] = useState<AttendanceCorrection[]>(() => erpStorage.getCorrections());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => erpStorage.getAuditLogs());
   const [courseAssignments, setCourseAssignments] = useState<Assignment[]>([]);
@@ -940,12 +940,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     endTime?: string;
     studentRecords: Array<{
       studentId: string;
-      status: AttendanceStatus;
+      status: AttendanceStatus | 'Unmarked';
       remarks?: string;
     }>;
   }) => {
     const result = await supabaseService.saveAttendance(params);
-    erpStorage.saveAttendanceSession(params);
     await refreshAttendance();
     return result;
   };

@@ -177,30 +177,46 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     );
   }, [activeClass, activeSection, attendanceSessions, sessionDate]);
 
+  // Track selection to prevent resetting in-progress marking on background updates
+  const currentSelectionKey = `${activeClassId || ''}_${sessionDate}`;
+  const prevSelectionKeyRef = useRef<string>('');
+  const hasUnsavedChangesRef = useRef<boolean>(false);
+
   // Initialize attendance when an active class or date is selected
   useEffect(() => {
     if (!activeClass || !activeSection) return;
 
-    const initialMap: Record<string, MarkState> = {};
-    if (existingSession) {
-      const records = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
-      sectionStudents.forEach(s => {
-        const found = records.find(r => r.student_id === s.id);
-        initialMap[s.id] = found ? (found.status as MarkState) : 'Unmarked';
-      });
-    } else {
-      sectionStudents.forEach(s => {
-        initialMap[s.id] = 'Unmarked';
-      });
+    const isNewSelection = currentSelectionKey !== prevSelectionKeyRef.current;
+
+    // If it's not a new selection and user has unsaved changes, do not overwrite in-progress marks
+    if (!isNewSelection && hasUnsavedChangesRef.current) {
+      return;
     }
+
+    const records = existingSession
+      ? attendanceRecords.filter(r => r.attendance_session_id === existingSession.id)
+      : [];
+    const hasAnySavedRecords = records.length > 0;
+
+    const initialMap: Record<string, MarkState> = {};
+    sectionStudents.forEach(s => {
+      const found = records.find(r => r.student_id === s.id);
+      initialMap[s.id] = found ? (found.status as MarkState) : 'Unmarked';
+    });
+
     setAttendanceMap(initialMap);
     setSavedAttendanceMap(initialMap);
-    setHistory([]);
-    setFocusedIndex(0);
-    setStatusFilter('ALL');
-    setSaveStatus(existingSession ? 'saved' : 'idle');
-    setSaveError(null);
-  }, [activeClassId, sessionDate, activeSection?.id, existingSession, attendanceRecords, sectionStudents]);
+
+    if (isNewSelection) {
+      prevSelectionKeyRef.current = currentSelectionKey;
+      setHistory([]);
+      setFocusedIndex(0);
+      setStatusFilter('ALL');
+      setSaveError(null);
+    }
+
+    setSaveStatus(hasAnySavedRecords ? 'saved' : 'idle');
+  }, [activeClassId, sessionDate, activeSection?.id, existingSession, attendanceRecords, sectionStudents, currentSelectionKey]);
 
   // Undo helper
   const pushState = useCallback((newMap: Record<string, MarkState>) => {
@@ -305,10 +321,12 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       if (curr !== base) diff++;
     });
     return {
-      hasUnsavedChanges: diff > 0 || (!existingSession && (presentCount > 0 || absentCount > 0)),
-      changedCount: diff > 0 ? diff : (presentCount + absentCount),
+      hasUnsavedChanges: diff > 0,
+      changedCount: diff,
     };
-  }, [sectionStudents, attendanceMap, savedAttendanceMap, existingSession, presentCount, absentCount]);
+  }, [sectionStudents, attendanceMap, savedAttendanceMap]);
+
+  hasUnsavedChangesRef.current = hasUnsavedChanges;
 
   // Safe navigation interceptor
   const safelyNavigate = useCallback((action: () => void) => {
@@ -412,7 +430,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         className: 'font-black text-rose-300 border-rose-500 bg-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.4)] hover:bg-rose-500/30',
       };
     }
-    if (saveStatus === 'saved' && !hasUnsavedChanges) {
+    if (saveStatus === 'saved' && !hasUnsavedChanges && (presentCount > 0 || absentCount > 0)) {
       return {
         label: 'Attendance Saved',
         icon: <CheckCheck className="w-4 h-4 text-[#00ff88]" />,
@@ -423,7 +441,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     }
     if (hasUnsavedChanges) {
       return {
-        label: `Save Attendance (${changedCount || sectionStudents.length})`,
+        label: `Save Attendance (${changedCount})`,
         icon: <CheckCircle2 className="w-4 h-4 text-slate-950" />,
         variant: 'neon' as const,
         disabled: false,
@@ -437,7 +455,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       disabled: false,
       className: 'font-black shadow-[0_0_15px_rgba(0,255,136,0.25)]',
     };
-  }, [saveStatus, hasUnsavedChanges, changedCount, sectionStudents.length]);
+  }, [saveStatus, hasUnsavedChanges, changedCount, presentCount, absentCount]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -539,18 +557,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         endTime: endTime || '09:50',
         studentRecords: sectionStudents.map(s => ({
           studentId: s.id,
-          status: (finalMap[s.id] === 'Absent' ? 'Absent' : 'Present') as AttendanceStatus,
+          status: (finalMap[s.id] || 'Unmarked') as (AttendanceStatus | 'Unmarked'),
         })),
       });
 
-      // Strict Verification: Database must return records matching full section roster
-      if (!result?.session?.id || !result?.records || result.records.length !== sectionStudents.length) {
-        throw new Error(`Database verification mismatch: Expected ${sectionStudents.length} saved records, but received ${result?.records?.length || 0}.`);
+      const expectedRecordCount = Object.values(finalMap).filter(st => st === 'Present' || st === 'Absent').length;
+      // Strict Verification: Database must return valid session and records matching all Present/Absent marks
+      if (!result?.session?.id || (result?.records?.length ?? 0) !== expectedRecordCount) {
+        throw new Error(`Database verification mismatch: Expected ${expectedRecordCount} saved records, but received ${result?.records?.length || 0}.`);
       }
 
       setSavedAttendanceMap({ ...finalMap });
       setAttendanceMap({ ...finalMap });
-      setSaveStatus('saved');
+      setSaveStatus(expectedRecordCount > 0 ? 'saved' : 'idle');
       setIsConfirmOpen(false);
       setIsUnmarkedReviewOpen(false);
       setSaveSuccess(true);
@@ -1031,7 +1050,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             </h3>
             <span className="text-slate-500 text-xs hidden sm:inline">•</span>
             <span className="text-xs font-mono text-emerald-400 font-semibold">
-              {sectionStudents.length} Enrolled ({hasUnsavedChanges ? `${changedCount} Pending` : (existingSession ? 'Saved' : 'Ready')})
+              {sectionStudents.length} Enrolled ({hasUnsavedChanges ? `${changedCount} Pending` : (existingSession && (presentCount > 0 || absentCount > 0) ? 'Saved' : 'Ready')})
             </span>
           </div>
 
@@ -1144,7 +1163,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                   <AlertTriangle className="w-3.5 h-3.5" />
                   {changedCount} unsaved mark(s) ready to commit to Supabase
                 </span>
-              ) : existingSession ? (
+              ) : existingSession && (presentCount > 0 || absentCount > 0) && !hasUnsavedChanges ? (
                 <span className="text-[#00ff88] flex items-center gap-1.5 font-medium">
                   <CheckCheck className="w-3.5 h-3.5" />
                   Attendance synchronized with Supabase
@@ -1344,7 +1363,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             </h4>
           </div>
           <span className="text-xs font-mono text-emerald-400 font-bold">
-            {sectionStudents.length} Students ({hasUnsavedChanges ? `${changedCount} Pending` : 'All Synced'})
+            {sectionStudents.length} Students ({hasUnsavedChanges ? `${changedCount} Pending` : (existingSession && (presentCount > 0 || absentCount > 0) ? 'All Synced' : 'Ready')})
           </span>
         </div>
 
@@ -1522,21 +1541,33 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         isOpen={isUnmarkedReviewOpen}
         onClose={() => setIsUnmarkedReviewOpen(false)}
         title="Unmarked Students Remaining"
-        description={`There are still ${unmarkedCount} student(s) in Section ${activeSection?.name} without an explicit Present or Absent status.`}
+        description={`There are ${unmarkedCount} student(s) in Section ${activeSection?.name} currently unmarked.`}
         maxWidth="md"
       >
         <div className="space-y-4 pt-2">
           <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">Explicit Attendance Review</p>
+              <p className="font-bold">Attendance Submission Options</p>
               <p className="text-slate-400 mt-0.5">
-                Every enrolled student must be explicitly registered as Present or Absent before final submission to Supabase.
+                You can save partial attendance now, mark all remaining students before submitting, or return to the sheet.
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
+            <Button
+              variant="neon"
+              size="sm"
+              className="w-full justify-start text-xs font-bold"
+              leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+              onClick={() => {
+                executeSave(attendanceMap);
+              }}
+            >
+              Save Partial Attendance ({presentCount} Present, {absentCount} Absent, {unmarkedCount} Unmarked)
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
@@ -1591,7 +1622,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={() => executeSave(attendanceMap)}
         title="Confirm Attendance Submission"
-        message={`Save attendance for Section ${activeSection?.name} (${activeSubject?.subject_name}) on ${sessionDate}? Total: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}).`}
+        message={`Save attendance for Section ${activeSection?.name} (${activeSubject?.subject_name}) on ${sessionDate}? Total: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}${unmarkedCount > 0 ? `, Unmarked: ${unmarkedCount}` : ''}).`}
         confirmText={isSaving ? 'Submitting...' : 'Confirm & Save to Supabase'}
         variant="neon"
         isLoading={isSaving}

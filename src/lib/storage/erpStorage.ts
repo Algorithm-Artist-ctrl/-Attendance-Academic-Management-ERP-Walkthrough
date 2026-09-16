@@ -111,11 +111,11 @@ class ERPStorageService {
       saveToStorage(STORAGE_KEYS.TIMETABLE, []);
       saveToStorage(STORAGE_KEYS.STUDENTS, []);
       saveToStorage(STORAGE_KEYS.PROFILES, []);
-      saveToStorage(STORAGE_KEYS.ATT_SESSIONS, []);
-      saveToStorage(STORAGE_KEYS.ATT_RECORDS, []);
-      saveToStorage(STORAGE_KEYS.CORRECTIONS, []);
-      saveToStorage(STORAGE_KEYS.AUDIT_LOGS, []);
     }
+    // Production college ERP: Attendance sessions & records must NEVER come from localStorage.
+    // Unconditionally purge any legacy or stale attendance stored in localStorage.
+    saveToStorage(STORAGE_KEYS.ATT_SESSIONS, []);
+    saveToStorage(STORAGE_KEYS.ATT_RECORDS, []);
   }
 
   public syncFromSupabase(data: {

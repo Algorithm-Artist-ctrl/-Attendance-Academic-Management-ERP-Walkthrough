@@ -465,7 +465,7 @@ export const supabaseService = {
     endTime?: string;
     studentRecords: Array<{
       studentId: string;
-      status: AttendanceStatus;
+      status: AttendanceStatus | 'Unmarked';
       remarks?: string;
     }>;
   }) {
@@ -494,11 +494,11 @@ export const supabaseService = {
       throw new Error('Cannot submit empty attendance roster.');
     }
 
-    // Check for any unassigned/invalid status
+    // Check for any invalid status
     for (const sr of params.studentRecords) {
-      if (!sr.studentId || (sr.status !== 'Present' && sr.status !== 'Absent')) {
+      if (!sr.studentId || (sr.status !== 'Present' && sr.status !== 'Absent' && sr.status !== 'Unmarked')) {
         console.error('ATTENDANCE_SAVE_FAILED', `Invalid status for student ${sr.studentId}: ${sr.status}`);
-        throw new Error(`Every student must be explicitly marked as Present or Absent.`);
+        throw new Error(`Invalid status for student ${sr.studentId}: ${sr.status}. Status must be Present, Absent, or Unmarked.`);
       }
     }
 
@@ -571,9 +571,12 @@ export const supabaseService = {
       throw new Error(`Failed to load active student roster for section ${params.sectionId}.`);
     }
 
-    if (params.studentRecords.length !== liveStudents.length) {
-      console.error('ATTENDANCE_SAVE_FAILED', `Roster count mismatch: section has ${liveStudents.length} active students, got ${params.studentRecords.length}`);
-      throw new Error(`Incomplete attendance submission: Section has ${liveStudents.length} active students, but ${params.studentRecords.length} were submitted.`);
+    const liveStudentIds = new Set(liveStudents.map(s => s.id));
+    for (const sr of params.studentRecords) {
+      if (!liveStudentIds.has(sr.studentId)) {
+        console.error('ATTENDANCE_SAVE_FAILED', `Student ${sr.studentId} not enrolled in section ${params.sectionId}`);
+        throw new Error(`Student ${sr.studentId} is not an active student enrolled in this section.`);
+      }
     }
 
     // 5. Atomic PostgreSQL RPC Save
@@ -607,7 +610,7 @@ export const supabaseService = {
       supabase.from('attendance_records').select('*').eq('attendance_session_id', sessionId),
     ]);
 
-    if (sessVerify.error || !sessVerify.data || recsVerify.error || !recsVerify.data || recsVerify.data.length !== liveStudents.length) {
+    if (sessVerify.error || !sessVerify.data || recsVerify.error || !recsVerify.data || recsVerify.data.length !== rpcRes.record_count) {
       console.error('ATTENDANCE_SAVE_FAILED', 'Database verification mismatch after save');
       throw new Error('Database verification mismatch: Saved records could not be verified in live Supabase.');
     }
