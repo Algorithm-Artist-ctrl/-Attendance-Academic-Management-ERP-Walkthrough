@@ -114,6 +114,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const [isNavConfirmOpen, setIsNavConfirmOpen] = useState<boolean>(false);
   const [pendingNavAction, setPendingNavAction] = useState<(() => void) | null>(null);
   const [isClearModalOpen, setIsClearModalOpen] = useState<boolean>(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
   const [isDeletingSession, setIsDeletingSession] = useState<boolean>(false);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -324,6 +325,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         setSaveStatus('idle');
         setSaveSuccess(false);
         setIsClearModalOpen(false);
+        setIsDeleteConfirmOpen(false);
       } else {
         setSaveError('Failed to delete saved attendance session from Supabase.');
       }
@@ -406,7 +408,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       };
     }
     return {
-      label: 'Save Attendance',
+      label: sectionStudents.length > 0 ? `Save Attendance (${sectionStudents.length})` : 'Save Attendance',
       icon: <Save className="w-4 h-4 text-slate-950" />,
       variant: 'neon' as const,
       disabled: false,
@@ -842,70 +844,153 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         </div>
       </div>
 
-      {/* 3. Bulk Actions & Quick Controls Toolbar */}
-      <div className="glass-panel rounded-3xl p-3 sm:p-4 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={handleMarkAllPresent}
-            leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" />}
-            className="text-xs"
-          >
-            Mark All Present
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={handleMarkAllAbsent}
-            leftIcon={<XCircle className="w-3.5 h-3.5 text-rose-400" />}
-            className="text-xs"
-          >
-            Mark All Absent
-          </Button>
-          {unmarkedCount > 0 && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={handleMarkRemainingPresent}
-              className="text-xs text-amber-300 border-amber-500/30 hover:border-amber-500/60"
-            >
-              Remaining → Present
-            </Button>
-          )}
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={handleUndo}
-            disabled={history.length === 0}
-            leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-            className={clsx('text-xs', history.length === 0 ? 'opacity-40' : 'text-slate-300 hover:text-white')}
-            title="Undo last change (Ctrl+Z / ⌘Z)"
-          >
-            Undo
-          </Button>
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => setIsClearModalOpen(true)}
-            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-400" />}
-            className="text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 border border-rose-500/20"
-            title="Clear or reset attendance marks"
-          >
-            Clear Marks
-          </Button>
+      {/* 3. Dedicated Attendance Actions Section */}
+      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/25 bg-slate-900/90 shadow-xl space-y-4">
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,0.6)]" />
+            <h3 className="text-sm font-black text-white tracking-wide uppercase font-mono">
+              Attendance Actions
+            </h3>
+            <span className="text-slate-500 text-xs hidden sm:inline">•</span>
+            <span className="text-xs font-mono text-emerald-400 font-semibold">
+              {sectionStudents.length} Enrolled ({hasUnsavedChanges ? `${changedCount} Pending` : (existingSession ? 'Saved' : 'Ready')})
+            </span>
+          </div>
+
+          {/* Desktop Keyboard Shortcuts Hint */}
+          <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/15 font-mono">
+            <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
+            <span><strong className="text-white">P</strong> = Present</span>
+            <span>•</span>
+            <span><strong className="text-white">A</strong> = Absent</span>
+            <span>•</span>
+            <span><strong className="text-white">↑/↓</strong> = Navigate</span>
+            <span>•</span>
+            <span><strong className="text-white">/</strong> = Search</span>
+            <span>•</span>
+            <span><strong className="text-white">Ctrl+Z</strong> = Undo</span>
+          </div>
         </div>
 
-        {/* Keyboard Shortcuts Hint */}
-        <div className="hidden xl:flex items-center gap-2 text-[11px] text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/15 font-mono">
-          <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
-          <span><strong className="text-white">P</strong> = Present</span>
-          <span>•</span>
-          <span><strong className="text-white">A</strong> = Absent</span>
-          <span>•</span>
-          <span><strong className="text-white">↑/↓</strong> = Navigate</span>
-          <span>•</span>
-          <span><strong className="text-white">/</strong> = Search</span>
+        {/* Action Rows Container */}
+        <div className="space-y-3">
+          {/* ROW / GROUP 1: Bulk Marking & History */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block sm:hidden">
+              Bulk Marking
+            </span>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+              <Button 
+                size="md" 
+                variant="outline" 
+                onClick={handleMarkAllPresent}
+                leftIcon={<CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
+                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold border-emerald-500/30 hover:border-[#00ff88] hover:bg-emerald-500/10 text-white"
+              >
+                Mark All Present
+              </Button>
+              <Button 
+                size="md" 
+                variant="outline" 
+                onClick={handleMarkAllAbsent}
+                leftIcon={<XCircle className="w-4 h-4 text-rose-400" />}
+                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10 text-white"
+              >
+                Mark All Absent
+              </Button>
+              {unmarkedCount > 0 && (
+                <Button 
+                  size="md" 
+                  variant="outline" 
+                  onClick={handleMarkRemainingPresent}
+                  className="col-span-2 sm:col-span-1 min-h-[48px] sm:min-h-[40px] text-xs font-bold text-amber-300 border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/10"
+                >
+                  Remaining → Present ({unmarkedCount})
+                </Button>
+              )}
+              <Button 
+                size="md" 
+                variant="ghost" 
+                onClick={handleUndo}
+                disabled={history.length === 0}
+                leftIcon={<RotateCcw className="w-4 h-4" />}
+                className={clsx(
+                  'col-span-2 sm:col-span-1 min-h-[48px] sm:min-h-[40px] text-xs font-bold border border-slate-700/50 hover:bg-slate-800',
+                  history.length === 0 ? 'opacity-40 cursor-not-allowed text-slate-500' : 'text-slate-300 hover:text-white'
+                )}
+                title="Undo last change (Ctrl+Z / ⌘Z)"
+              >
+                Undo {history.length > 0 ? `(${history.length})` : ''}
+              </Button>
+            </div>
+          </div>
+
+          {/* ROW / GROUP 2: Reset & Clear Controls */}
+          <div className="space-y-1.5 pt-1">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block sm:hidden">
+              Reset & Clear
+            </span>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+              <Button 
+                size="md" 
+                variant="outline" 
+                onClick={handleResetToSaved}
+                disabled={!hasUnsavedChanges}
+                leftIcon={<RotateCcw className="w-4 h-4 text-amber-400" />}
+                className={clsx(
+                  'w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/10 text-amber-300',
+                  !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500 hover:bg-transparent'
+                )}
+                title="Revert modified marks to database baseline"
+              >
+                Reset Unsaved Marks
+              </Button>
+              <Button 
+                size="md" 
+                variant="outline" 
+                onClick={() => setIsClearModalOpen(true)}
+                leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
+                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold text-rose-300 border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10"
+                title="Open Clear Attendance dialog"
+              >
+                Clear Attendance
+              </Button>
+            </div>
+          </div>
+
+          {/* ROW / GROUP 3: Primary Save Attendance */}
+          <div className="pt-2 border-t border-emerald-500/15 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="text-xs text-slate-400 hidden sm:block">
+              {hasUnsavedChanges ? (
+                <span className="text-amber-300 flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {changedCount} unsaved mark(s) ready to commit to Supabase
+                </span>
+              ) : existingSession ? (
+                <span className="text-[#00ff88] flex items-center gap-1.5 font-medium">
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Attendance synchronized with Supabase
+                </span>
+              ) : (
+                <span>Mark attendance above and click Save Attendance to commit.</span>
+              )}
+            </div>
+            <Button
+              size="lg"
+              variant={saveButtonConfig.variant}
+              leftIcon={saveButtonConfig.icon}
+              onClick={handleInitiateSave}
+              disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
+              className={clsx(
+                'w-full sm:w-auto min-h-[48px] px-6 text-sm font-black tracking-wide shadow-lg cursor-pointer',
+                saveButtonConfig.className
+              )}
+            >
+              {saveButtonConfig.label}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1258,70 +1343,158 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         </div>
       </Modal>
 
-      {/* 10. Clear Attendance & Reset Modal */}
+      {/* 10. Clear Attendance Modal */}
       <Modal
         isOpen={isClearModalOpen}
         onClose={() => setIsClearModalOpen(false)}
-        title="Clear Attendance Marks"
-        description="Choose how you want to reset the attendance marks for this lecture session."
+        title="Clear Attendance"
+        description="Select how you wish to clear or reset the attendance marks for this lecture session."
         maxWidth="md"
       >
         <div className="space-y-4 pt-2">
-          {hasUnsavedChanges && (
-            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-700 space-y-2">
+          {/* Option 1: Reset Unsaved Marks */}
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700/80 space-y-2">
+            <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-amber-400" />
-                Revert Unsaved Edits
+                Reset Unsaved Marks
               </h4>
-              <p className="text-xs text-slate-400">
-                Reset all modified marks back to the state stored in Supabase ({existingSession ? 'previously saved session' : 'all unmarked'}).
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResetToSaved}
-                className="w-full text-xs text-amber-300 border-amber-500/30 hover:border-amber-500/60"
-              >
-                Revert to Database Baseline
-              </Button>
+              {hasUnsavedChanges && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold">
+                  {changedCount} unsaved
+                </span>
+              )}
             </div>
-          )}
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Reverts all marks on screen back to the last saved database state ({existingSession ? 'previously saved session' : 'all unmarked'}) without altering database history.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasUnsavedChanges}
+              onClick={handleResetToSaved}
+              className={clsx(
+                'w-full min-h-[44px] text-xs font-bold border-amber-500/40 text-amber-300 hover:bg-amber-500/10',
+                !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500'
+              )}
+            >
+              Revert to Database Baseline
+            </Button>
+          </div>
 
-          {existingSession && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+          {/* Option 2: Delete Saved Attendance */}
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+            <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
                 <Trash2 className="w-4 h-4 text-rose-400" />
-                Delete Saved Lecture Session
+                Delete Saved Attendance
               </h4>
-              <p className="text-xs text-slate-400">
-                Permanently delete this saved lecture session and all student attendance records from Supabase.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteSavedSession}
-                isLoading={isDeletingSession}
-                className="w-full text-xs text-rose-400 border-rose-500/40 hover:bg-rose-500/20"
-              >
-                {isDeletingSession ? 'Deleting from Supabase...' : 'Delete Saved Session from Database'}
-              </Button>
+              {existingSession && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 font-bold">
+                  Active in DB
+                </span>
+              )}
             </div>
-          )}
-
-          {!existingSession && !hasUnsavedChanges && (
-            <p className="text-xs text-slate-400 text-center py-2">
-              No attendance marks or saved sessions to reset.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Permanently delete this saved lecture session and all student attendance records from Supabase. Requires explicit confirmation.
             </p>
-          )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!existingSession}
+              onClick={() => {
+                setIsClearModalOpen(false);
+                setIsDeleteConfirmOpen(true);
+              }}
+              className={clsx(
+                'w-full min-h-[44px] text-xs font-bold text-rose-300 border-rose-500/40 hover:bg-rose-500/20 hover:border-rose-500',
+                !existingSession && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500'
+              )}
+            >
+              {existingSession ? 'Delete Saved Attendance Session...' : 'No Saved Session in Database'}
+            </Button>
+          </div>
 
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-xs text-slate-400"
+            className="w-full text-xs text-slate-400 hover:text-white"
             onClick={() => setIsClearModalOpen(false)}
           >
             Cancel
           </Button>
+        </div>
+      </Modal>
+
+      {/* 11. Delete Saved Attendance Session Confirmation Dialog */}
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          if (!isDeletingSession) setIsDeleteConfirmOpen(false);
+        }}
+        title="Delete Saved Attendance?"
+        description="This action will permanently delete this lecture session and all associated attendance marks from Supabase."
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-2">
+          {/* Warning Banner */}
+          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-rose-300">Permanent Database Deletion</p>
+              <p className="text-slate-300 mt-0.5">
+                This will remove the lecture record for all {sectionStudents.length} students. HOD and student dashboards will no longer reflect this session.
+              </p>
+            </div>
+          </div>
+
+          {/* Session Details Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs font-mono">
+            <div className="flex justify-between py-1 border-b border-slate-800/60">
+              <span className="text-slate-400">Date:</span>
+              <span className="text-white font-bold">{sessionDate}</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-slate-800/60">
+              <span className="text-slate-400">Subject:</span>
+              <span className="text-emerald-400 font-bold text-right truncate max-w-[200px]">
+                {activeSubject?.subject_code} — {activeSubject?.subject_name}
+              </span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-slate-800/60">
+              <span className="text-slate-400">Section:</span>
+              <span className="text-white font-bold">Section {activeSection?.name}</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-slate-800/60">
+              <span className="text-slate-400">Lecture Time:</span>
+              <span className="text-amber-300 font-bold">{timeSlot}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-slate-400">Faculty:</span>
+              <span className="text-white font-bold">{currentFaculty?.full_name || user?.full_name || 'Assigned Faculty'}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isDeletingSession}
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="w-full sm:w-auto min-h-[44px] text-xs text-slate-300 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteSavedSession}
+              isLoading={isDeletingSession}
+              className="w-full sm:w-auto min-h-[44px] text-xs font-bold border-rose-500 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 hover:border-rose-400"
+            >
+              {isDeletingSession ? 'Deleting from Supabase...' : '🗑 Delete Attendance'}
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
