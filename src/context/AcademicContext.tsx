@@ -29,7 +29,9 @@ import {
   SessionalType,
   SessionalAssessment,
   Classroom,
-  AdmissionType
+  AdmissionType,
+  AccountStatus,
+  AdminAccountDirectoryEntry
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -110,10 +112,14 @@ interface AcademicContextType {
   sessionalAssessments: SessionalAssessment[];
   sessionalMarks: SessionalMark[];
   marksHistory: MarksHistory[];
+  adminAccounts: AdminAccountDirectoryEntry[];
   isLoading: boolean;
   claimWindowDays: number;
   setClaimWindowDays: (days: number) => void;
   refreshData: (forceRefreshMaster?: boolean) => Promise<void>;
+  refreshAdminAccounts: () => Promise<void>;
+  updateAccountStatus: (userId: string, status: AccountStatus, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  requestPasswordReset: (email: string, targetUserId?: string) => Promise<{ success: boolean; error?: string }>;
 
   // Real Database Actions
   createAssignment: (data: Omit<Assignment, 'id' | 'created_at' | 'updated_at'>) => Promise<Assignment>;
@@ -365,6 +371,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [sessionalAssessments, setSessionalAssessments] = useState<SessionalAssessment[]>([]);
   const [sessionalMarks, setSessionalMarks] = useState<SessionalMark[]>([]);
   const [marksHistory, setMarksHistory] = useState<MarksHistory[]>([]);
+  const [adminAccounts, setAdminAccounts] = useState<AdminAccountDirectoryEntry[]>([]);
 
   // Stable refs for cross-table joins to eliminate stale closures in granular callbacks
   const sectionsRef = useRef(sections);
@@ -572,6 +579,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSessionalAssessments(enrichedAssessments);
         setSessionalMarks(enrichedSessionalMarks);
         setMarksHistory(enrichedMarksHistory);
+
+        // Fetch unified Admin Account Directory
+        supabaseService.fetchAdminAccounts().then(accs => setAdminAccounts(accs)).catch(() => {});
       }
     } catch (err) {
       console.error('Failed to sync from Supabase, using local cache:', err);
@@ -2155,6 +2165,61 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return result;
   };
 
+  const refreshAdminAccounts = useCallback(async () => {
+    try {
+      const accounts = await supabaseService.fetchAdminAccounts();
+      setAdminAccounts(accounts);
+    } catch (err) {
+      console.error('Error refreshing admin accounts:', err);
+    }
+  }, []);
+
+  const updateAccountStatus = useCallback(async (
+    userId: string,
+    status: AccountStatus,
+    reason?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const actor = erpStorage.getCurrentSessionUser();
+    const res = await supabaseService.updateAccountStatus(
+      userId,
+      status,
+      actor?.id,
+      actor?.full_name,
+      actor?.role,
+      reason
+    );
+    if (res.success) {
+      await Promise.all([
+        refreshAdminAccounts(),
+        supabaseService.fetchStudents(false).then(s => setStudents(s)),
+        supabaseService.fetchFaculty(false).then(f => setFaculty(f)),
+        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50).then(resp => {
+          if (resp.data) setAuditLogs(resp.data as AuditLog[]);
+        })
+      ]);
+    }
+    return res;
+  }, [refreshAdminAccounts]);
+
+  const requestPasswordReset = useCallback(async (
+    email: string,
+    targetUserId?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const actor = erpStorage.getCurrentSessionUser();
+    const res = await supabaseService.requestPasswordReset(
+      email,
+      targetUserId,
+      actor?.full_name,
+      actor?.role
+    );
+    if (res.success) {
+      supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50).then(resp => {
+        if (resp.data) setAuditLogs(resp.data as AuditLog[]);
+      });
+    }
+    return res;
+  }, []);
+
   const resetToInitialSeed = () => {
     erpStorage.init(true);
     refreshData();
@@ -2187,6 +2252,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sessionalAssessments,
         sessionalMarks,
         marksHistory,
+        adminAccounts,
         isLoading,
         claimWindowDays,
         setClaimWindowDays,
@@ -2200,6 +2266,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         refreshSubjects,
         refreshAssignments,
         refreshAssessments,
+        refreshAdminAccounts,
+        updateAccountStatus,
+        requestPasswordReset,
         createAssignment,
         updateAssignment,
         deleteCourseAssignment,

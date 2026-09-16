@@ -241,6 +241,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user);
         if (isMounted) {
           if (profile) {
+            if (profile.status === 'BLOCKED' || profile.status === 'ARCHIVED') {
+              await supabase.auth.signOut().catch(() => {});
+              erpStorage.setCurrentSessionUser(null);
+              setAuthState({
+                user: null,
+                role: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: profile.status === 'BLOCKED'
+                  ? 'Your account has been blocked by the administrator. Access is restricted.'
+                  : 'Your account has been archived. Access is restricted.',
+                isPasswordRecovery: false,
+                pendingNewEmail: null,
+              });
+              return;
+            }
+
             erpStorage.setCurrentSessionUser(profile);
             setAuthState({
               user: profile,
@@ -322,6 +339,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user);
         if (isMounted && profile) {
+          if (profile.status === 'BLOCKED' || profile.status === 'ARCHIVED') {
+            await supabase.auth.signOut().catch(() => {});
+            erpStorage.setCurrentSessionUser(null);
+            setAuthState({
+              user: null,
+              role: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: profile.status === 'BLOCKED'
+                ? 'Your account has been blocked by the administrator. Access is restricted.'
+                : 'Your account has been archived. Access is restricted.',
+              isPasswordRecovery: false,
+              pendingNewEmail: null,
+            });
+            return;
+          }
+
           erpStorage.setCurrentSessionUser(profile);
           setAuthState(prev => ({
             ...prev,
@@ -405,10 +439,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: errorMsg };
     }
 
+    // Verify account status (BLOCKED / ARCHIVED check)
+    if (hydratedProfile.status === 'BLOCKED' || hydratedProfile.status === 'ARCHIVED') {
+      await supabase.auth.signOut().catch(() => {});
+      erpStorage.setCurrentSessionUser(null);
+      const errorMsg = hydratedProfile.status === 'BLOCKED'
+        ? 'Your account has been blocked by the administrator. Access is restricted.'
+        : 'Your account has been archived. Access is restricted.';
+      setAuthState({
+        user: null,
+        role: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMsg,
+        isPasswordRecovery: false,
+        pendingNewEmail: null,
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    // Update last_sign_in_at timestamp in profiles
+    try {
+      await supabase.from('profiles').update({
+        last_sign_in_at: new Date().toISOString()
+      }).eq('id', hydratedProfile.id);
+    } catch (e) {
+      console.warn('Could not update last_sign_in_at:', e);
+    }
+
     // Session successfully established
     erpStorage.setCurrentSessionUser(hydratedProfile);
     try {
-      erpStorage.addAuditLog('USER_LOGGED_IN', 'profiles', hydratedProfile.id, undefined, { email });
+      await supabase.from('audit_logs').insert([{
+        actor_id: hydratedProfile.id,
+        actor_name: hydratedProfile.full_name,
+        actor_role: hydratedProfile.role,
+        action: 'USER_LOGGED_IN',
+        entity_type: 'USER_SESSION',
+        entity_id: hydratedProfile.id,
+        new_values: { email: hydratedProfile.email, timestamp: new Date().toISOString() },
+        created_at: new Date().toISOString(),
+      }]);
     } catch {}
 
     setAuthState({
@@ -428,7 +499,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const user = authState.user;
     if (user) {
       try {
-        erpStorage.addAuditLog('USER_LOGGED_OUT', 'profiles', user.id);
+        await supabase.from('audit_logs').insert([{
+          actor_id: user.id,
+          actor_name: user.full_name,
+          actor_role: user.role,
+          action: 'USER_LOGGED_OUT',
+          entity_type: 'USER_SESSION',
+          entity_id: user.id,
+          new_values: { email: user.email, timestamp: new Date().toISOString() },
+          created_at: new Date().toISOString(),
+        }]);
       } catch {}
     }
     await supabase.auth.signOut();
@@ -584,16 +664,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: authErr.message || 'Failed to update password.' };
       }
 
-      // 4. Audit log
+      // 4. Audit log (strictly no plaintext or hashed password data in logs)
       try {
-        await supabase.from('audit_logs').insert({
-          action: 'PASSWORD_CHANGED',
+        await supabase.from('audit_logs').insert([{
+          actor_id: authState.user.id,
           actor_name: authState.user.full_name,
           actor_role: authState.user.role,
-          entity_type: 'profiles',
+          action: 'PASSWORD_CHANGED',
+          entity_type: 'USER_ACCOUNT',
           entity_id: authState.user.id,
-          new_values: { password_updated: true, timestamp: new Date().toISOString() }
-        });
+          new_values: { password_updated: true, timestamp: new Date().toISOString() },
+          created_at: new Date().toISOString(),
+        }]);
       } catch {}
 
       // Keep active session valid with updated credentials
@@ -642,14 +724,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }));
 
       try {
-        await supabase.from('audit_logs').insert({
-          action: 'EMAIL_CHANGE_INITIATED',
+        await supabase.from('audit_logs').insert([{
+          actor_id: authState.user.id,
           actor_name: authState.user.full_name,
           actor_role: authState.user.role,
-          entity_type: 'profiles',
+          action: 'EMAIL_CHANGED',
+          entity_type: 'USER_ACCOUNT',
           entity_id: authState.user.id,
-          new_values: { current_email: authState.user.email, requested_new_email: cleanEmail }
-        });
+          old_values: { email: authState.user.email },
+          new_values: { email: cleanEmail, requested_at: new Date().toISOString() },
+          created_at: new Date().toISOString(),
+        }]);
       } catch {}
 
       return { success: true, pendingVerification: isPending };

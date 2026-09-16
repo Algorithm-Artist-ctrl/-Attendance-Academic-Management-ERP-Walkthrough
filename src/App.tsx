@@ -47,6 +47,8 @@ const TimetableManagerPage = lazy(() => import('./pages/admin/TimetableManagerPa
 const CSVImportPage = lazy(() => import('./pages/admin/CSVImportPage').then(m => ({ default: m.CSVImportPage })));
 const ReportsPage = lazy(() => import('./pages/admin/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const AuditLogsPage = lazy(() => import('./pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+const FacultyAccountsPage = lazy(() => import('./pages/admin/FacultyAccountsPage').then(m => ({ default: m.FacultyAccountsPage })));
+const StudentAccountsPage = lazy(() => import('./pages/admin/StudentAccountsPage').then(m => ({ default: m.StudentAccountsPage })));
 
 // Lightweight Cyber Skeleton Loader for Fast Transitions
 const PageSkeletonLoader: React.FC = () => (
@@ -257,14 +259,16 @@ export const AppContent: React.FC = () => {
       switch (activeTab) {
         case 'profile':
           return <ProfilePage />;
-        case 'academic_oversight':
-          return <HODAcademicOversightPage />;
+        case 'faculty_accounts':
+          return <FacultyAccountsPage />;
+        case 'student_accounts':
+          return <StudentAccountsPage />;
         case 'academic_setup':
           return <AcademicSetupPage />;
         case 'students':
-          return <StudentDirectoryPage />;
+          return <StudentAccountsPage />;
         case 'faculty':
-          return <FacultyDirectoryPage />;
+          return <FacultyAccountsPage />;
         case 'subjects':
           return <SubjectsPage />;
         case 'faculty_assignments':

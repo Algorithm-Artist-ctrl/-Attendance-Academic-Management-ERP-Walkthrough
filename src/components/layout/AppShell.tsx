@@ -157,14 +157,12 @@ export const AppShell: React.FC<AppShellProps> = ({
       default:
         return [
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-          { id: 'academic_oversight', label: 'Academic Oversight', icon: Award },
-          { id: 'students', label: 'Students', icon: GraduationCap },
-          { id: 'faculty', label: 'Faculty', icon: Users },
+          { id: 'faculty_accounts', label: 'Faculty Accounts', icon: Users },
+          { id: 'student_accounts', label: 'Student Accounts', icon: GraduationCap },
           { id: 'academic_setup', label: 'Academic Structure', icon: Layers },
           { id: 'subjects', label: 'Subject Master', icon: BookOpen },
           { id: 'faculty_assignments', label: 'Faculty Assignments', icon: CheckSquare },
           { id: 'import', label: 'Student Data / CSV Import', icon: FileSpreadsheet },
-          { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
           { id: 'timetable', label: 'Timetable Overview', icon: Calendar },
           { id: 'notices', label: 'Notices', icon: Bell },
           { id: 'audit_logs', label: 'Audit Logs', icon: ShieldCheck },

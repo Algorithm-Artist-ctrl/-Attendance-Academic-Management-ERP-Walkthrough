@@ -30,7 +30,9 @@ import {
   SessionalAssessment,
   UserProfile,
   Classroom,
-  AdmissionType
+  AdmissionType,
+  AccountStatus,
+  AdminAccountDirectoryEntry
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
 
@@ -147,9 +149,9 @@ export const supabaseService = {
       ] = await Promise.all([
         supabase.from('sections').select('*').eq('active', true).order('name', { ascending: true }),
         supabase.from('subjects').select('*').eq('active', true).order('subject_code', { ascending: true }),
-        supabase.from('faculty').select('*').eq('active', true).order('full_name', { ascending: true }),
+        supabase.from('faculty').select('*').order('full_name', { ascending: true }),
         supabase.from('faculty_subject_assignments').select('*').eq('active', true),
-        supabase.from('students').select('*').eq('active', true).order('roll_number', { ascending: true }),
+        supabase.from('students').select('*').order('roll_number', { ascending: true }),
         supabase.from('profiles').select('*'),
         supabase.from('classrooms').select('*').eq('active', true).order('room_number', { ascending: true }),
       ]);
@@ -2974,6 +2976,172 @@ export const supabaseService = {
       totalSections: sectionsRes.count || 0,
       totalTimetableEntries: timetableRes.count || 0,
     };
+  },
+
+  // 12. Super Admin Account Directory & Management
+  async fetchAdminAccounts(): Promise<AdminAccountDirectoryEntry[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_admin_account_directory');
+      if (error) {
+        console.warn('RPC get_admin_account_directory failed, falling back to manual join:', error.message);
+        const [profilesRes, facultyRes, studentsRes, deptsRes, sectionsRes, yearsRes] = await Promise.all([
+          supabase.from('profiles').select('*').order('full_name', { ascending: true }),
+          supabase.from('faculty').select('*'),
+          supabase.from('students').select('*'),
+          supabase.from('departments').select('*'),
+          supabase.from('sections').select('*'),
+          supabase.from('academic_years').select('*'),
+        ]);
+
+        const facultyMap = new Map((facultyRes.data || []).map(f => [f.auth_user_id || f.id, f]));
+        const studentMap = new Map((studentsRes.data || []).map(s => [s.auth_user_id || s.id, s]));
+        const deptMap = new Map((deptsRes.data || []).map(d => [d.id, d]));
+        const sectionMap = new Map((sectionsRes.data || []).map(s => [s.id, s]));
+        const yearMap = new Map((yearsRes.data || []).map(y => [y.id, y]));
+
+        return (profilesRes.data || []).map(p => {
+          const fac = facultyMap.get(p.id) || (p.faculty_id ? (facultyRes.data || []).find(f => f.id === p.faculty_id) : undefined);
+          const stu = studentMap.get(p.id) || (p.student_id ? (studentsRes.data || []).find(s => s.id === p.student_id) : undefined);
+          const dept = fac?.department_id ? deptMap.get(fac.department_id) : (stu?.department_id ? deptMap.get(stu.department_id) : undefined);
+          const sec = stu?.section_id ? sectionMap.get(stu.section_id) : undefined;
+          const yr = stu?.academic_year_id ? yearMap.get(stu.academic_year_id) : undefined;
+
+          return {
+            user_id: p.id,
+            email: p.email,
+            role: p.role,
+            full_name: p.full_name,
+            status: (p.status || 'ACTIVE') as AccountStatus,
+            last_sign_in_at: p.last_sign_in_at || null,
+            department_id: dept?.id || null,
+            department_name: dept?.name || null,
+            department_code: dept?.code || null,
+            employee_code: fac?.employee_code || fac?.faculty_code || null,
+            designation: fac?.designation || null,
+            roll_number: stu?.roll_number || null,
+            year_number: yr?.year_number || null,
+            academic_year_name: yr?.name || null,
+            section_name: sec?.name || null,
+            section_id: sec?.id || null,
+            created_at: p.created_at || new Date().toISOString(),
+          };
+        });
+      }
+
+      return ((data as any[]) || []).map(r => ({
+        ...r,
+        user_id: r.auth_user_id || r.id,
+      })) as AdminAccountDirectoryEntry[];
+    } catch (err) {
+      console.error('Error in fetchAdminAccounts:', err);
+      return [];
+    }
+  },
+
+  async updateAccountStatus(
+    targetUserId: string,
+    targetStatus: AccountStatus,
+    actorId?: string,
+    actorName?: string,
+    actorRole?: string,
+    reason?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.rpc('update_account_status', {
+        p_target_user_id: targetUserId,
+        p_target_status: targetStatus,
+        p_actor_id: actorId || null,
+        p_actor_name: actorName || 'Super Admin',
+        p_actor_role: actorRole || 'super_admin',
+        p_reason: reason || null,
+      });
+
+      if (error) {
+        console.warn('RPC update_account_status returned error, using fallback updates:', error.message);
+        const isActive = targetStatus === 'ACTIVE';
+        await Promise.all([
+          supabase.from('profiles').update({ status: targetStatus }).eq('id', targetUserId),
+          supabase.from('faculty').update({ status: targetStatus, active: isActive }).eq('auth_user_id', targetUserId),
+          supabase.from('students').update({ status: targetStatus, active: isActive }).eq('auth_user_id', targetUserId),
+        ]);
+
+        const actionName = targetStatus === 'BLOCKED' ? 'ACCOUNT_BLOCKED' : targetStatus === 'ARCHIVED' ? 'ACCOUNT_ARCHIVED' : 'ACCOUNT_UNBLOCKED';
+        await supabase.from('audit_logs').insert([{
+          actor_id: actorId || null,
+          actor_name: actorName || 'Super Admin',
+          actor_role: actorRole || 'super_admin',
+          action: actionName,
+          entity_type: 'USER_ACCOUNT',
+          entity_id: targetUserId,
+          new_values: { status: targetStatus, reason: reason || null },
+          created_at: new Date().toISOString(),
+        }]);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error updating account status:', err);
+      return { success: false, error: err?.message || 'Failed to update account status' };
+    }
+  },
+
+  async requestPasswordReset(
+    email: string,
+    targetUserId?: string,
+    actorName?: string,
+    actorRole?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
+      });
+
+      // Record audit log for password reset request (never store or log any passwords)
+      await supabase.from('audit_logs').insert([{
+        actor_name: actorName || 'Super Admin',
+        actor_role: actorRole || 'super_admin',
+        action: 'PASSWORD_RESET_REQUESTED',
+        entity_type: 'USER_ACCOUNT',
+        entity_id: targetUserId || null,
+        new_values: { email, requested_at: new Date().toISOString() },
+        created_at: new Date().toISOString(),
+      }]);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error requesting password reset:', err);
+      return { success: false, error: err?.message || 'Failed to send password reset instructions' };
+    }
+  },
+
+  async recordAuditLog(entry: {
+    actor_id?: string;
+    actor_name?: string;
+    actor_role?: string;
+    action: string;
+    entity_type: string;
+    entity_id?: string;
+    old_values?: Record<string, any>;
+    new_values?: Record<string, any>;
+    created_at?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from('audit_logs').insert([{
+        ...entry,
+        created_at: entry.created_at || new Date().toISOString(),
+      }]);
+      if (error) {
+        console.warn('Could not record audit log:', error.message);
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.warn('Exception recording audit log:', err);
+      return { success: false, error: err?.message };
+    }
   }
 };
 

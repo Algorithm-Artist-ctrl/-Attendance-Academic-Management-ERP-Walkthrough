@@ -1,5 +1,7 @@
 export type UserRole = 'super_admin' | 'hod' | 'faculty' | 'student';
 
+export type AccountStatus = 'ACTIVE' | 'BLOCKED' | 'ARCHIVED' | 'PENDING' | 'SUSPENDED';
+
 export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports' | 'Lunch' | 'Other' | 'Break';
 
 export type AdmissionType = 'Regular' | 'Lateral Entry';
@@ -114,6 +116,7 @@ export interface Faculty {
   email: string;
   phone?: string;
   active: boolean;
+  status?: AccountStatus;
   department?: Department;
 }
 
@@ -146,6 +149,7 @@ export interface Student {
   email?: string;
   phone?: string;
   active: boolean;
+  status?: AccountStatus;
   created_at: string;
   section?: Section;
   mentor?: Faculty;
@@ -243,9 +247,31 @@ export interface UserProfile {
   faculty_id?: string;
   student?: Student;
   faculty?: Faculty;
+  status?: AccountStatus;
+  last_sign_in_at?: string | null;
   email_confirmed_at?: string | null;
   new_email?: string | null;
   pending_email?: string | null;
+}
+
+export interface AdminAccountDirectoryEntry {
+  user_id: string;
+  email: string;
+  role: UserRole;
+  full_name: string;
+  status: AccountStatus;
+  last_sign_in_at: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
+  department_code?: string | null;
+  employee_code?: string | null;
+  designation?: string | null;
+  roll_number?: string | null;
+  year_number?: number | null;
+  academic_year_name?: string | null;
+  section_name?: string | null;
+  section_id?: string | null;
+  created_at: string;
 }
 
 export interface TimetableVersion {
