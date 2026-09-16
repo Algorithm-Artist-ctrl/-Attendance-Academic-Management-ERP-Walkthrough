@@ -178,7 +178,40 @@ interface AcademicContextType {
   updateSemester: (id: string, updates: Partial<Semester>) => Promise<Semester>;
   deleteSemester: (id: string) => Promise<boolean>;
   addFaculty: (fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) => Promise<Faculty>;
+  createFacultyWithAssignments: (params: {
+    faculty: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>;
+    assignments: Array<{
+      academic_year_id: string;
+      semester_id: string;
+      section_id: string;
+      subject_id: string;
+    }>;
+    actorName?: string;
+  }) => Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }>;
   updateFaculty: (id: string, updates: Partial<Faculty>) => Promise<Faculty>;
+  updateFacultyWithAssignments: (params: {
+    facultyId: string;
+    updates: Partial<Faculty>;
+    assignments?: Array<{
+      academic_year_id: string;
+      semester_id: string;
+      section_id: string;
+      subject_id: string;
+    }>;
+    actorName?: string;
+  }) => Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }>;
+  setFacultyStatus: (facultyId: string, status: 'ACTIVE' | 'BLOCKED', reason?: string, actorName?: string) => Promise<Faculty>;
+  checkFacultyHistoricalRecords: (facultyId: string) => Promise<{
+    hasHistoricalData: boolean;
+    attendanceCount: number;
+    timetableCount: number;
+    assignmentCount: number;
+  }>;
+  safeDeleteFaculty: (facultyId: string, actorName?: string) => Promise<{
+    archived: boolean;
+    deleted: boolean;
+    message: string;
+  }>;
   deleteFaculty: (id: string) => Promise<boolean>;
   addSubject: (sub: Omit<Subject, 'id' | 'created_at' | 'updated_at'>) => Promise<Subject>;
   updateSubject: (id: string, updates: Partial<Subject>) => Promise<Subject>;
@@ -392,6 +425,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   courseAssignmentsRef.current = courseAssignments;
   const sessionalAssessmentsRef = useRef(sessionalAssessments);
   sessionalAssessmentsRef.current = sessionalAssessments;
+  const semestersRef = useRef(semesters);
+  semestersRef.current = semesters;
+  const yearsRef = useRef(years);
+  yearsRef.current = years;
 
   // Function to load and enrich latest records from Supabase
   const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
@@ -455,12 +492,21 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
 
         // Enriched Assignments
-        const enrichedAssignments: FacultySubjectAssignment[] = loadedAssignments.map(a => ({
-          ...a,
-          faculty: loadedFaculty.find(f => f.id === a.faculty_id),
-          subject: loadedSubjects.find(s => s.id === a.subject_id),
-          section: loadedSections.find(sec => sec.id === a.section_id),
-        }));
+        const enrichedAssignments: FacultySubjectAssignment[] = loadedAssignments.map(a => {
+          const sec = loadedSections.find(s => s.id === a.section_id);
+          const sem = loadedSemesters.find(s => s.id === (a.semester_id || sec?.semester_id));
+          const yr = loadedYears.find(y => y.id === (a.academic_year_id || sem?.academic_year_id));
+          return {
+            ...a,
+            faculty: loadedFaculty.find(f => f.id === a.faculty_id),
+            subject: loadedSubjects.find(s => s.id === a.subject_id),
+            section: sec,
+            semester: sem,
+            academic_year: yr,
+            semester_id: a.semester_id || sem?.id,
+            academic_year_id: a.academic_year_id || yr?.id,
+          };
+        });
 
         // Enriched Attendance Sessions
         const enrichedSessions: AttendanceSession[] = data.attendanceSessions.map(sess => ({
@@ -739,15 +785,26 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const curFaculty = facultyRef.current;
       const curSubjects = subjectsRef.current;
       const curSections = sectionsRef.current;
+      const curSemesters = semestersRef.current;
+      const curYears = yearsRef.current;
 
       const enrichedAssignments: FacultySubjectAssignment[] = (rawAssignments || [])
         .filter(a => a.active !== false)
-        .map(a => ({
-          ...a,
-          faculty: curFaculty.find(f => f.id === a.faculty_id),
-          subject: curSubjects.find(s => s.id === a.subject_id),
-          section: curSections.find(sec => sec.id === a.section_id),
-        }));
+        .map(a => {
+          const sec = curSections.find(s => s.id === a.section_id);
+          const sem = curSemesters.find(s => s.id === (a.semester_id || sec?.semester_id));
+          const yr = curYears.find(y => y.id === (a.academic_year_id || sem?.academic_year_id));
+          return {
+            ...a,
+            faculty: curFaculty.find(f => f.id === a.faculty_id),
+            subject: curSubjects.find(s => s.id === a.subject_id),
+            section: sec,
+            semester: sem,
+            academic_year: yr,
+            semester_id: a.semester_id || sem?.id,
+            academic_year_id: a.academic_year_id || yr?.id,
+          };
+        });
 
       setAssignments(enrichedAssignments);
       erpStorage.setAssignments(enrichedAssignments);
@@ -1213,22 +1270,66 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addFaculty = async (fac: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addFaculty(fac);
-    erpStorage.addFaculty(fac);
     await refreshFaculty();
+    return res;
+  };
+
+  const createFacultyWithAssignments = async (params: {
+    faculty: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>;
+    assignments: Array<{
+      academic_year_id: string;
+      semester_id: string;
+      section_id: string;
+      subject_id: string;
+    }>;
+    actorName?: string;
+  }) => {
+    const res = await supabaseService.createFacultyWithAssignments(params);
+    await Promise.all([refreshFaculty(), refreshAssignments()]);
     return res;
   };
 
   const updateFaculty = async (id: string, updates: Partial<Faculty>) => {
     const res = await supabaseService.updateFaculty(id, updates);
-    erpStorage.updateFaculty(id, updates);
     await refreshFaculty();
+    return res;
+  };
+
+  const updateFacultyWithAssignments = async (params: {
+    facultyId: string;
+    updates: Partial<Faculty>;
+    assignments?: Array<{
+      academic_year_id: string;
+      semester_id: string;
+      section_id: string;
+      subject_id: string;
+    }>;
+    actorName?: string;
+  }) => {
+    const res = await supabaseService.updateFacultyWithAssignments(params);
+    await Promise.all([refreshFaculty(), refreshAssignments()]);
+    return res;
+  };
+
+  const setFacultyStatus = async (facultyId: string, status: 'ACTIVE' | 'BLOCKED', reason?: string, actorName?: string) => {
+    const res = await supabaseService.setFacultyStatus(facultyId, status, reason, actorName);
+    await Promise.all([refreshFaculty(), refreshAssignments()]);
+    return res;
+  };
+
+  const checkFacultyHistoricalRecords = async (facultyId: string) => {
+    return await supabaseService.checkFacultyHistoricalRecords(facultyId);
+  };
+
+  const safeDeleteFaculty = async (facultyId: string, actorName?: string) => {
+    const res = await supabaseService.safeDeleteFaculty(facultyId, actorName);
+    await Promise.all([refreshFaculty(), refreshAssignments(), refreshTimetable()]);
     return res;
   };
 
   const deleteFaculty = async (id: string) => {
     const res = await supabaseService.deleteFaculty(id);
-    erpStorage.deleteFaculty(id);
-    await refreshFaculty();
+    await Promise.all([refreshFaculty(), refreshAssignments(), refreshTimetable()]);
     return res;
   };
 
@@ -2296,7 +2397,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateSemester,
         deleteSemester,
         addFaculty,
+        createFacultyWithAssignments,
         updateFaculty,
+        updateFacultyWithAssignments,
+        setFacultyStatus,
+        checkFacultyHistoricalRecords,
+        safeDeleteFaculty,
         deleteFaculty,
         addSubject,
         updateSubject,

@@ -195,7 +195,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
               className="bg-transparent text-xs font-black text-[#00ff88] focus:outline-none cursor-pointer"
             >
               <option value="ALL" className="bg-slate-950 text-white">All Years</option>
-              {years.map(y => (
+              {years.filter(y => y.active && y.year_number !== 1).map(y => (
                 <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
               ))}
             </select>

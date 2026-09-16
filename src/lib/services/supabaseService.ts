@@ -489,6 +489,18 @@ export const supabaseService = {
       throw new Error('Missing section, subject, or faculty information.');
     }
 
+    // Verify target faculty account is active and not blocked
+    const { data: facStatusCheck } = await supabase
+      .from('faculty')
+      .select('id, status, active')
+      .eq('id', params.facultyId)
+      .maybeSingle();
+
+    if (facStatusCheck && (facStatusCheck.status === 'BLOCKED' || facStatusCheck.active === false)) {
+      console.error('ATTENDANCE_SAVE_FAILED', `Faculty ${params.facultyId} account is blocked or inactive`);
+      throw new Error('Unauthorized: Faculty account is blocked or inactive. Attendance marking is disabled.');
+    }
+
     if (!params.studentRecords || params.studentRecords.length === 0) {
       console.error('ATTENDANCE_SAVE_FAILED', 'No student records provided');
       throw new Error('Cannot submit empty attendance roster.');
@@ -523,6 +535,30 @@ export const supabaseService = {
         if (callerFacultyId && callerFacultyId !== params.facultyId) {
           console.error('ATTENDANCE_SAVE_FAILED', `Caller faculty ${callerFacultyId} does not match requested ${params.facultyId}`);
           throw new Error('You are not authorized to record attendance for this class.');
+        }
+
+        // Verify faculty is assigned to this section and subject via assignments or timetable
+        const { data: directAssign } = await supabase
+          .from('faculty_subject_assignments')
+          .select('id')
+          .eq('faculty_id', params.facultyId)
+          .eq('section_id', params.sectionId)
+          .eq('subject_id', params.subjectId)
+          .eq('active', true)
+          .maybeSingle();
+
+        const { data: ttSlot } = await supabase
+          .from('timetable_entries')
+          .select('id')
+          .eq('faculty_id', params.facultyId)
+          .eq('section_id', params.sectionId)
+          .eq('subject_id', params.subjectId)
+          .eq('active', true)
+          .maybeSingle();
+
+        if (!directAssign && !ttSlot) {
+          console.error('ATTENDANCE_SAVE_FAILED', `Faculty ${params.facultyId} not assigned to section ${params.sectionId} and subject ${params.subjectId}`);
+          throw new Error('You are not authorized or assigned to mark attendance for this subject and section.');
         }
       }
     }
@@ -1328,14 +1364,430 @@ export const supabaseService = {
     return facData as Faculty;
   },
 
-  async deleteFaculty(id: string) {
-    const { error } = await supabase.from('faculty').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+  async createFacultyWithAssignments(params: {
+    faculty: Omit<Faculty, 'id' | 'created_at' | 'updated_at'>;
+    assignments: Array<{
+      academic_year_id: string;
+      semester_id: string;
+      section_id: string;
+      subject_id: string;
+    }>;
+    actorName?: string;
+  }): Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }> {
+    const { faculty: facData, assignments: assignList, actorName = 'Administrator' } = params;
+
+    // 1. Validate employee code uniqueness
+    const { data: existingCode } = await supabase
+      .from('faculty')
+      .select('id, full_name')
+      .ilike('employee_code', facData.employee_code.trim())
+      .maybeSingle();
+    if (existingCode) {
+      throw new Error(`Employee Code "${facData.employee_code}" is already assigned to "${existingCode.full_name}".`);
+    }
+
+    // 2. Validate email uniqueness
+    const { data: existingEmail } = await supabase
+      .from('faculty')
+      .select('id, full_name')
+      .ilike('email', facData.email.trim())
+      .maybeSingle();
+    if (existingEmail) {
+      throw new Error(`Official Email "${facData.email}" is already in use by "${existingEmail.full_name}".`);
+    }
+
+    // 3. Insert Faculty
+    const newFacultyId = crypto.randomUUID();
+    const { data: createdFac, error: facErr } = await supabase
+      .from('faculty')
+      .insert({
+        id: newFacultyId,
+        department_id: facData.department_id,
+        employee_code: facData.employee_code.trim().toUpperCase(),
+        faculty_code: facData.faculty_code?.trim().toUpperCase() || null,
+        full_name: facData.full_name.trim(),
+        designation: facData.designation.trim(),
+        email: facData.email.trim().toLowerCase(),
+        phone: facData.phone?.trim() || null,
+        active: true,
+        status: 'ACTIVE',
+      })
+      .select()
+      .single();
+
+    if (facErr || !createdFac) {
+      throw new Error(`Failed to create faculty member: ${facErr?.message || 'Unknown error'}`);
+    }
+
+    // 4. Create Profile
+    const isHOD = createdFac.designation.toLowerCase().includes('hod');
     try {
-      await supabase.from('profiles').delete().or(`id.eq.${id},faculty_id.eq.${id}`);
+      await supabase.from('profiles').upsert({
+        id: createdFac.id,
+        email: createdFac.email,
+        full_name: createdFac.full_name,
+        role: isHOD ? 'hod' : 'faculty',
+        department_id: createdFac.department_id,
+        faculty_id: createdFac.id,
+        phone: createdFac.phone,
+        status: 'ACTIVE',
+      }, { onConflict: 'id' });
+    } catch (profErr) {
+      console.warn('Profile creation warning:', profErr);
+    }
+
+    // 5. Get current active session
+    const { data: currentSession } = await supabase
+      .from('academic_sessions')
+      .select('id')
+      .eq('is_current', true)
+      .maybeSingle();
+    const sessionId = currentSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e';
+
+    // 6. Create relational assignments
+    const createdAssignments: FacultySubjectAssignment[] = [];
+    if (assignList && assignList.length > 0) {
+      for (const item of assignList) {
+        // Authoritatively derive program and department from academic year
+        const { data: yearData } = await supabase
+          .from('academic_years')
+          .select('program_id, program:programs(department_id)')
+          .eq('id', item.academic_year_id)
+          .maybeSingle();
+
+        const programId = yearData?.program_id || null;
+        const deptId = (yearData?.program as any)?.department_id || createdFac.department_id;
+
+        const assignPayload = {
+          id: crypto.randomUUID(),
+          faculty_id: createdFac.id,
+          subject_id: item.subject_id,
+          section_id: item.section_id,
+          academic_session_id: sessionId,
+          department_id: deptId,
+          program_id: programId,
+          academic_year_id: item.academic_year_id,
+          semester_id: item.semester_id,
+          active: true,
+        };
+
+        const { data: insAssign, error: assignErr } = await supabase
+          .from('faculty_subject_assignments')
+          .insert(assignPayload)
+          .select()
+          .single();
+
+        if (assignErr) {
+          console.error('Failed to create assignment:', assignErr.message);
+        } else if (insAssign) {
+          createdAssignments.push(insAssign as FacultySubjectAssignment);
+        }
+      }
+    }
+
+    // 7. Audit log
+    try {
+      await supabase.from('audit_logs').insert({
+        action: 'FACULTY_CREATED',
+        actor_name: actorName,
+        actor_role: 'admin',
+        entity_type: 'faculty',
+        entity_id: createdFac.id,
+        new_values: {
+          full_name: createdFac.full_name,
+          employee_code: createdFac.employee_code,
+          email: createdFac.email,
+          assignments_count: createdAssignments.length,
+        },
+      });
     } catch {}
+
     this.invalidateMasterCache();
-    return true;
+    return { faculty: createdFac as Faculty, assignments: createdAssignments };
+  },
+
+  async updateFacultyWithAssignments(params: {
+    facultyId: string;
+    updates: Partial<Faculty>;
+    assignments?: Array<{
+      academic_year_id: string;
+      semester_id: string;
+      section_id: string;
+      subject_id: string;
+    }>;
+    actorName?: string;
+  }): Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }> {
+    const { facultyId, updates, assignments: newAssignments, actorName = 'Administrator' } = params;
+
+    // 1. Update faculty
+    const { data: updatedFac, error: facErr } = await supabase
+      .from('faculty')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', facultyId)
+      .select()
+      .single();
+
+    if (facErr || !updatedFac) {
+      throw new Error(`Failed to update faculty: ${facErr?.message || 'Unknown error'}`);
+    }
+
+    // 2. Update profile
+    try {
+      const isHOD = updatedFac.designation.toLowerCase().includes('hod');
+      await supabase.from('profiles').update({
+        full_name: updatedFac.full_name,
+        email: updatedFac.email,
+        phone: updatedFac.phone,
+        department_id: updatedFac.department_id,
+        role: isHOD ? 'hod' : 'faculty',
+        updated_at: new Date().toISOString(),
+      }).or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
+    } catch {}
+
+    // 3. Reconcile assignments if provided
+    let finalAssignments: FacultySubjectAssignment[] = [];
+    if (newAssignments !== undefined) {
+      const { data: existingAssignments } = await supabase
+        .from('faculty_subject_assignments')
+        .select('*')
+        .eq('faculty_id', facultyId);
+
+      const existingList = existingAssignments || [];
+
+      // Find assignments to deactivate/delete
+      for (const ex of existingList) {
+        const stillPresent = newAssignments.some(
+          na => na.section_id === ex.section_id && na.subject_id === ex.subject_id
+        );
+        if (!stillPresent && ex.active) {
+          await supabase
+            .from('faculty_subject_assignments')
+            .update({ active: false, updated_at: new Date().toISOString() })
+            .eq('id', ex.id);
+        }
+      }
+
+      // Find assignments to insert or reactivate
+      const { data: currentSession } = await supabase
+        .from('academic_sessions')
+        .select('id')
+        .eq('is_current', true)
+        .maybeSingle();
+      const sessionId = currentSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e';
+
+      for (const na of newAssignments) {
+        const existingMatch = existingList.find(
+          ex => ex.section_id === na.section_id && ex.subject_id === na.subject_id
+        );
+
+        if (existingMatch) {
+          if (!existingMatch.active) {
+            await supabase
+              .from('faculty_subject_assignments')
+              .update({ active: true, updated_at: new Date().toISOString() })
+              .eq('id', existingMatch.id);
+          }
+        } else {
+          const { data: yearData } = await supabase
+            .from('academic_years')
+            .select('program_id, program:programs(department_id)')
+            .eq('id', na.academic_year_id)
+            .maybeSingle();
+
+          const programId = yearData?.program_id || null;
+          const deptId = (yearData?.program as any)?.department_id || updatedFac.department_id;
+
+          await supabase
+            .from('faculty_subject_assignments')
+            .insert({
+              id: crypto.randomUUID(),
+              faculty_id: facultyId,
+              subject_id: na.subject_id,
+              section_id: na.section_id,
+              academic_session_id: sessionId,
+              department_id: deptId,
+              program_id: programId,
+              academic_year_id: na.academic_year_id,
+              semester_id: na.semester_id,
+              active: true,
+            });
+        }
+      }
+
+      const { data: refetched } = await supabase
+        .from('faculty_subject_assignments')
+        .select('*')
+        .eq('faculty_id', facultyId)
+        .eq('active', true);
+      finalAssignments = (refetched as FacultySubjectAssignment[]) || [];
+    }
+
+    // 4. Audit log
+    try {
+      await supabase.from('audit_logs').insert({
+        action: 'FACULTY_UPDATED',
+        actor_name: actorName,
+        actor_role: 'admin',
+        entity_type: 'faculty',
+        entity_id: facultyId,
+        new_values: {
+          full_name: updatedFac.full_name,
+          employee_code: updatedFac.employee_code,
+          active_assignments: finalAssignments.length,
+        },
+      });
+    } catch {}
+
+    this.invalidateMasterCache();
+    return { faculty: updatedFac as Faculty, assignments: finalAssignments };
+  },
+
+  async setFacultyStatus(facultyId: string, status: 'ACTIVE' | 'BLOCKED', reason?: string, actorName = 'Administrator') {
+    const isActive = status === 'ACTIVE';
+
+    const { data: fac, error: facErr } = await supabase
+      .from('faculty')
+      .update({
+        status,
+        active: isActive,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', facultyId)
+      .select()
+      .single();
+
+    if (facErr) throw new Error(facErr.message);
+
+    await supabase
+      .from('profiles')
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
+
+    if (!isActive) {
+      await supabase
+        .from('faculty_subject_assignments')
+        .update({ active: false, updated_at: new Date().toISOString() })
+        .eq('faculty_id', facultyId);
+    } else {
+      await supabase
+        .from('faculty_subject_assignments')
+        .update({ active: true, updated_at: new Date().toISOString() })
+        .eq('faculty_id', facultyId);
+    }
+
+    try {
+      await supabase.from('audit_logs').insert({
+        action: isActive ? 'FACULTY_UNBLOCKED' : 'FACULTY_BLOCKED',
+        actor_name: actorName,
+        actor_role: 'admin',
+        entity_type: 'faculty',
+        entity_id: facultyId,
+        new_values: { status, reason: reason || 'Status updated by administrator' },
+      });
+    } catch {}
+
+    this.invalidateMasterCache();
+    return fac as Faculty;
+  },
+
+  async checkFacultyHistoricalRecords(facultyId: string): Promise<{
+    hasHistoricalData: boolean;
+    attendanceCount: number;
+    timetableCount: number;
+    assignmentCount: number;
+  }> {
+    const [
+      { count: attCount },
+      { count: ttCount },
+      { count: assignCount }
+    ] = await Promise.all([
+      supabase.from('attendance_sessions').select('*', { count: 'exact', head: true }).eq('faculty_id', facultyId),
+      supabase.from('timetable_entries').select('*', { count: 'exact', head: true }).eq('faculty_id', facultyId),
+      supabase.from('faculty_subject_assignments').select('*', { count: 'exact', head: true }).eq('faculty_id', facultyId)
+    ]);
+
+    const attendanceCount = attCount || 0;
+    const timetableCount = ttCount || 0;
+    const assignmentCount = assignCount || 0;
+    const hasHistoricalData = attendanceCount > 0 || timetableCount > 0;
+
+    return {
+      hasHistoricalData,
+      attendanceCount,
+      timetableCount,
+      assignmentCount,
+    };
+  },
+
+  async safeDeleteFaculty(facultyId: string, actorName = 'Administrator'): Promise<{
+    archived: boolean;
+    deleted: boolean;
+    message: string;
+  }> {
+    const check = await this.checkFacultyHistoricalRecords(facultyId);
+
+    if (check.hasHistoricalData) {
+      await this.setFacultyStatus(facultyId, 'BLOCKED', 'Archived due to historical attendance/timetable records', actorName);
+      
+      await supabase.from('faculty').update({ status: 'ARCHIVED', active: false }).eq('id', facultyId);
+      await supabase.from('profiles').update({ status: 'ARCHIVED' }).or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
+
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'FACULTY_ARCHIVED',
+          actor_name: actorName,
+          actor_role: 'admin',
+          entity_type: 'faculty',
+          entity_id: facultyId,
+          new_values: {
+            reason: 'Archived to preserve historical records',
+            attendance_sessions: check.attendanceCount,
+            timetable_entries: check.timetableCount,
+          },
+        });
+      } catch {}
+
+      this.invalidateMasterCache();
+      return {
+        archived: true,
+        deleted: false,
+        message: `Faculty member has ${check.attendanceCount} attendance sessions and ${check.timetableCount} timetable entries. Account has been safely ARCHIVED and login disabled to preserve official college records.`,
+      };
+    }
+
+    await supabase.from('faculty_subject_assignments').delete().eq('faculty_id', facultyId);
+    await supabase.from('profiles').delete().or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
+    const { error } = await supabase.from('faculty').delete().eq('id', facultyId);
+    if (error) throw new Error(error.message);
+
+    try {
+      await supabase.from('audit_logs').insert({
+        action: 'FACULTY_DELETED',
+        actor_name: actorName,
+        actor_role: 'admin',
+        entity_type: 'faculty',
+        entity_id: facultyId,
+        new_values: { reason: 'Clean deletion (no historical records)' },
+      });
+    } catch {}
+
+    this.invalidateMasterCache();
+    return {
+      archived: false,
+      deleted: true,
+      message: 'Faculty member and allocations successfully deleted from database.',
+    };
+  },
+
+  async deleteFaculty(id: string) {
+    const res = await this.safeDeleteFaculty(id);
+    return res.deleted || res.archived;
   },
 
   // 6. Live Notices backed by Supabase

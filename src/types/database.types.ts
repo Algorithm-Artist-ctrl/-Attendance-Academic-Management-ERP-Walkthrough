@@ -126,10 +126,18 @@ export interface FacultySubjectAssignment {
   subject_id: string;
   section_id: string;
   academic_session_id: string;
+  department_id?: string;
+  program_id?: string;
+  academic_year_id?: string;
+  semester_id?: string;
   active: boolean;
   faculty?: Faculty;
   subject?: Subject;
   section?: Section;
+  semester?: Semester;
+  academic_year?: AcademicYear;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Student {

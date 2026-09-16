@@ -613,115 +613,133 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Credentials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          {/* Card 1: Login Email */}
-          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Authentication Login Email
-                </span>
-                <h4 className="text-sm font-bold text-white font-mono mt-1 break-all">
-                  {user?.email || (student ? `${student.roll_number}@student.vctm.in` : 'faculty@vctm.in')}
-                </h4>
+        {/* Credentials Section */}
+        {role === 'student' ? (
+          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#00ff88]" />
+                <h4 className="text-sm font-bold text-white">Institutional Authentication Managed by Administration</h4>
               </div>
-              <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
-                <Mail className="w-4 h-4" />
+              <p className="text-xs text-slate-400 max-w-2xl">
+                Student institutional authentication credentials and email are managed by college administration. 
+                Students cannot alter authentication passwords or login emails directly. If you require assistance or credential updates, please contact your Head of Department (HOD) or the central registrar.
+              </p>
+              <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono">
+                <span className="text-slate-500">Official Login Identifier: <strong className="text-white">{user?.email || (student ? `${student.roll_number}@student.vctm.in` : '')}</strong></span>
+                <span className="text-slate-500">Security Policy: <strong className="text-emerald-400">Institutional Admin Controlled</strong></span>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Card 1: Login Email */}
+            <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Authentication Login Email
+                  </span>
+                  <h4 className="text-sm font-bold text-white font-mono mt-1 break-all">
+                    {user?.email || 'faculty@vctm.in'}
+                  </h4>
+                </div>
+                <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+              </div>
 
-            <p className="text-[11px] text-slate-400">
-              Official authorized email used to sign in to the VCTM ERP portal.
-            </p>
+              <p className="text-[11px] text-slate-400">
+                Official authorized email used to sign in to the VCTM ERP portal.
+              </p>
 
-            {(user?.new_email || pendingNewEmail) && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs space-y-2">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block text-amber-300 text-[11.5px]">Email Change Awaiting Confirmation</span>
-                    <span className="text-[11px] text-slate-300">
-                      Supabase sent a confirmation link to <strong className="text-white font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
-                    </span>
+              {(user?.new_email || pendingNewEmail) && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block text-amber-300 text-[11.5px]">Email Change Awaiting Confirmation</span>
+                      <span className="text-[11px] text-slate-300">
+                        Supabase sent a confirmation link to <strong className="text-white font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-amber-500/15">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendVerification}
+                      isLoading={isResending}
+                      className="text-[10.5px] border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+                    >
+                      Resend Verification Email
+                    </Button>
+                    {resendSuccess && (
+                      <span className="text-[10.5px] text-emerald-400 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Link resent!
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/15">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleResendVerification}
-                    isLoading={isResending}
-                    className="text-[10.5px] border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
-                  >
-                    Resend Verification Email
-                  </Button>
-                  {resendSuccess && (
-                    <span className="text-[10.5px] text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Link resent!
-                    </span>
-                  )}
+              )}
+
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNewEmailInput(user?.email || '');
+                    setEmailModalError('');
+                    setIsEmailModalOpen(true);
+                  }}
+                  className="text-xs font-bold"
+                >
+                  Change Email Address
+                </Button>
+              </div>
+            </div>
+
+            {/* Card 2: Password */}
+            <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Authentication Password
+                  </span>
+                  <h4 className="text-sm font-bold text-white tracking-widest font-mono mt-1">
+                    ••••••••••••••••
+                  </h4>
+                </div>
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+                  <KeyRound className="w-4 h-4" />
                 </div>
               </div>
-            )}
 
-            <div className="pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setNewEmailInput(user?.email || '');
-                  setEmailModalError('');
-                  setIsEmailModalOpen(true);
-                }}
-                className="text-xs font-bold"
-              >
-                Change Email Address
-              </Button>
-            </div>
-          </div>
+              <p className="text-[11px] text-slate-400">
+                Encrypted password managed via Supabase Auth. Never stored in plaintext.
+              </p>
 
-          {/* Card 2: Password */}
-          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Authentication Password
-                </span>
-                <h4 className="text-sm font-bold text-white tracking-widest font-mono mt-1">
-                  ••••••••••••••••
-                </h4>
-              </div>
-              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
-                <KeyRound className="w-4 h-4" />
+              <div className="pt-2">
+                <Button
+                  variant="neon"
+                  size="sm"
+                  onClick={() => {
+                    setCurrentPassInput('');
+                    setNewPassInput('');
+                    setConfirmPassInput('');
+                    setPassModalError('');
+                    setIsPassModalOpen(true);
+                  }}
+                  className="text-xs font-bold"
+                >
+                  Change Password
+                </Button>
               </div>
             </div>
-
-            <p className="text-[11px] text-slate-400">
-              Encrypted password managed via Supabase Auth. Never stored in plaintext.
-            </p>
-
-            <div className="pt-2">
-              <Button
-                variant="neon"
-                size="sm"
-                onClick={() => {
-                  setCurrentPassInput('');
-                  setNewPassInput('');
-                  setConfirmPassInput('');
-                  setPassModalError('');
-                  setIsPassModalOpen(true);
-                }}
-                className="text-xs font-bold"
-              >
-                Change Password
-              </Button>
-            </div>
           </div>
+        )}
 
-        </div>
       </div>
 
       {/* ======================================================== */}
@@ -729,15 +747,16 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
 
       {/* MODAL A: CHANGE PASSWORD */}
-      <Modal
-        isOpen={isPassModalOpen}
-        onClose={() => setIsPassModalOpen(false)}
-        title="Change Authentication Password"
-      >
-        <form onSubmit={handleChangePasswordSubmit} className="space-y-4 text-xs">
-          {passModalError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+      {role !== 'student' && (
+        <Modal
+          isOpen={isPassModalOpen}
+          onClose={() => setIsPassModalOpen(false)}
+          title="Change Authentication Password"
+        >
+          <form onSubmit={handleChangePasswordSubmit} className="space-y-4 text-xs">
+            {passModalError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{passModalError}</span>
             </div>
           )}
@@ -790,57 +809,60 @@ export const ProfilePage: React.FC = () => {
           </div>
         </form>
       </Modal>
+      )}
 
       {/* MODAL B: CHANGE EMAIL */}
-      <Modal
-        isOpen={isEmailModalOpen}
-        onClose={() => setIsEmailModalOpen(false)}
-        title="Change Authentication Email Address"
-      >
-        <form onSubmit={handleChangeEmailSubmit} className="space-y-4 text-xs">
-          {emailModalError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{emailModalError}</span>
+      {role !== 'student' && (
+        <Modal
+          isOpen={isEmailModalOpen}
+          onClose={() => setIsEmailModalOpen(false)}
+          title="Change Authentication Email Address"
+        >
+          <form onSubmit={handleChangeEmailSubmit} className="space-y-4 text-xs">
+            {emailModalError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{emailModalError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Current Login Email</label>
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/15 text-slate-400 font-mono">
+                {user?.email || 'N/A'}
+              </div>
             </div>
-          )}
 
-          <div>
-            <label className="block text-slate-300 font-semibold mb-1">Current Login Email</label>
-            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/15 text-slate-400 font-mono">
-              {user?.email || 'N/A'}
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
+              <input
+                type="email"
+                required
+                value={newEmailInput}
+                onChange={(e) => setNewEmailInput(e.target.value)}
+                placeholder="e.g. hemlata.cse@gmail.com"
+                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-slate-300 font-semibold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
-            <input
-              type="email"
-              required
-              value={newEmailInput}
-              onChange={(e) => setNewEmailInput(e.target.value)}
-              placeholder="e.g. hemlata.cse@gmail.com"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
-            />
-          </div>
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/15 text-[11px] text-slate-300 space-y-1">
+              <p className="font-semibold text-emerald-400">Official Supabase Verification Notice:</p>
+              <p className="text-slate-400">
+                Supabase Auth will dispatch a confirmation email with a secure verification link to your new address. Your login credentials and database records will automatically update once you click the confirmation link.
+              </p>
+            </div>
 
-          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/15 text-[11px] text-slate-300 space-y-1">
-            <p className="font-semibold text-emerald-400">Official Supabase Verification Notice:</p>
-            <p className="text-slate-400">
-              Supabase Auth will dispatch a confirmation email with a secure verification link to your new address. Your login credentials and database records will automatically update once you click the confirmation link.
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-emerald-500/15">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsEmailModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="neon" size="sm" type="submit" disabled={isSubmittingEmail}>
-              {isSubmittingEmail ? 'Dispatching Verification...' : 'Send Verification Link'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+            <div className="flex justify-end gap-2 pt-2 border-t border-emerald-500/15">
+              <Button variant="outline" size="sm" type="button" onClick={() => setIsEmailModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="neon" size="sm" type="submit" disabled={isSubmittingEmail}>
+                {isSubmittingEmail ? 'Dispatching Verification...' : 'Send Verification Link'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
     </div>
   );

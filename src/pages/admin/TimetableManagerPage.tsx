@@ -306,6 +306,27 @@ export const TimetableManagerPage: React.FC = () => {
   // Active slot being edited in the Modal
   const [editingSlot, setEditingSlot] = useState<DraftSlot | null>(null);
 
+  // Derive assigned faculty IDs for the current section and selected subject
+  const assignedFacultyIds = useMemo(() => {
+    if (!currentSection?.id || !editingSlot?.subject_id) return new Set<string>();
+    const matches = (assignments || []).filter(
+      a => a.section_id === currentSection.id && a.subject_id === editingSlot.subject_id && a.active
+    );
+    return new Set(matches.map(a => a.faculty_id));
+  }, [assignments, currentSection?.id, editingSlot?.subject_id]);
+
+  // Sort and prioritize assigned faculty to top of dropdown
+  const sortedModalFaculty = useMemo(() => {
+    const list = [...filteredModalFaculty];
+    return list.sort((a, b) => {
+      const aAssigned = assignedFacultyIds.has(a.id);
+      const bAssigned = assignedFacultyIds.has(b.id);
+      if (aAssigned && !bAssigned) return -1;
+      if (!aAssigned && bAssigned) return 1;
+      return a.full_name.localeCompare(b.full_name);
+    });
+  }, [filteredModalFaculty, assignedFacultyIds]);
+
   const getStandardTimeForPeriod = (p: number) => {
     const existing = sectionTimetable.find(t => t.period_number === p && t.start_time && t.end_time);
     if (existing) {
@@ -2134,17 +2155,26 @@ export const TimetableManagerPage: React.FC = () => {
                           className="w-full pl-9 pr-3 py-1.5 bg-slate-950/90 border border-slate-700/70 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
                         />
                       </div>
+                      {editingSlot?.subject_id && assignedFacultyIds.size > 0 && (
+                        <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 py-0.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{assignedFacultyIds.size} faculty officially assigned to Section {currentSection?.name} for this subject</span>
+                        </div>
+                      )}
                       <select
                         value={editingSlot.faculty_id || ''}
                         onChange={(e) => setEditingSlot({ ...editingSlot, faculty_id: e.target.value || null })}
                         className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
                       >
                         <option value="">— Select Faculty Professor —</option>
-                        {filteredModalFaculty.map(f => (
-                          <option key={f.id} value={f.id}>
-                            {f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
-                          </option>
-                        ))}
+                        {sortedModalFaculty.map(f => {
+                          const isAssigned = assignedFacultyIds.has(f.id);
+                          return (
+                            <option key={f.id} value={f.id}>
+                              {isAssigned ? '★ [ASSIGNED] ' : ''}{f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   ) : (

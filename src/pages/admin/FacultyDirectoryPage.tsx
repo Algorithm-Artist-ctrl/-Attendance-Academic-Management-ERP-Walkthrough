@@ -1,11 +1,33 @@
-import React, { useState } from 'react';
-import { Users, Plus, Search, Mail, Phone, Building2, UserCheck, Trash2, Edit3 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { 
+  Users, 
+  Plus, 
+  Search, 
+  Trash2, 
+  Edit3, 
+  ShieldAlert, 
+  ShieldCheck, 
+  Layers, 
+  X, 
+  CheckCircle2, 
+  AlertCircle 
+} from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Faculty } from '../../types/database.types';
+
+interface StagedAssignment {
+  section_id: string;
+  subject_id: string;
+  academic_year_id: string;
+  semester_id: string;
+  year_name: string;
+  section_name: string;
+  subject_code: string;
+  subject_name: string;
+}
 
 export const FacultyDirectoryPage: React.FC = () => {
   const { user, role } = useAuth();
@@ -15,76 +37,359 @@ export const FacultyDirectoryPage: React.FC = () => {
     subjects, 
     sections, 
     assignments, 
-    timetable, 
-    addFaculty, 
-    updateFaculty, 
-    deleteFaculty 
+    timetable,
+    years,
+    semesters,
+    createFacultyWithAssignments,
+    updateFacultyWithAssignments,
+    setFacultyStatus,
+    safeDeleteFaculty,
   } = useAcademic();
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'BLOCKED' | 'ARCHIVED'>('ALL');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const isSuperAdmin = role === 'super_admin';
   const isHOD = role === 'hod';
 
-  // Add Faculty modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Active academic years strictly excluding 1st Year (year_number === 1)
+  const activeCohorts = useMemo(() => {
+    return years.filter(y => y.active && y.year_number !== 1);
+  }, [years]);
+
+  // ==========================================
+  // Add Faculty Modal State
+  // ==========================================
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [empCode, setEmpCode] = useState('');
   const [facCode, setFacCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [designation, setDesignation] = useState('Assistant Professor');
-  const [deptId, setDeptId] = useState(departments[0]?.id || '');
+  const [deptId, setDeptId] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [addModalError, setAddModalError] = useState<string | null>(null);
 
-  // Edit Faculty modal state
+  // Add Faculty - Assignment Builder State
+  const [assignYearId, setAssignYearId] = useState('');
+  const [assignSectionId, setAssignSectionId] = useState('');
+  const [assignSubjectId, setAssignSubjectId] = useState('');
+  const [stagedAssignments, setStagedAssignments] = useState<StagedAssignment[]>([]);
+
+  // ==========================================
+  // Edit Faculty Modal State
+  // ==========================================
   const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
-  const [editEmail, setEditEmail] = useState('');
   const [editFullName, setEditFullName] = useState('');
   const [editFacCode, setEditFacCode] = useState('');
   const [editDesignation, setEditDesignation] = useState('');
+  const [editDeptId, setEditDeptId] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editAssignments, setEditAssignments] = useState<StagedAssignment[]>([]);
+  const [editAssignYearId, setEditAssignYearId] = useState('');
+  const [editAssignSectionId, setEditAssignSectionId] = useState('');
+  const [editAssignSubjectId, setEditAssignSubjectId] = useState('');
+  const [editModalError, setEditModalError] = useState<string | null>(null);
 
-  const filteredFaculty = faculty.filter(f =>
-    f.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (f.faculty_code && f.faculty_code.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to remove faculty member "${name}" from the database?`)) {
-      try {
-        await deleteFaculty(id);
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete faculty member');
-      }
+  // Initialize deptId when departments load
+  React.useEffect(() => {
+    if (departments.length > 0 && !deptId) {
+      setDeptId(departments[0].id);
     }
+  }, [departments, deptId]);
+
+  // Cascading helpers for Add Modal
+  const availableAddSections = useMemo(() => {
+    if (!assignYearId) return [];
+    return sections.filter(s => {
+      if (!s.active) return false;
+      const sem = semesters.find(sm => sm.id === s.semester_id);
+      return sem?.academic_year_id === assignYearId;
+    });
+  }, [sections, semesters, assignYearId]);
+
+  const availableAddSubjects = useMemo(() => {
+    if (!assignSectionId) return [];
+    const sec = sections.find(s => s.id === assignSectionId);
+    const targetSemId = sec?.semester_id;
+    if (!targetSemId) return [];
+    return subjects.filter(s => s.active && s.semester_id === targetSemId);
+  }, [subjects, sections, assignSectionId]);
+
+  // Cascading helpers for Edit Modal
+  const availableEditSections = useMemo(() => {
+    if (!editAssignYearId) return [];
+    return sections.filter(s => {
+      if (!s.active) return false;
+      const sem = semesters.find(sm => sm.id === s.semester_id);
+      return sem?.academic_year_id === editAssignYearId;
+    });
+  }, [sections, semesters, editAssignYearId]);
+
+  const availableEditSubjects = useMemo(() => {
+    if (!editAssignSectionId) return [];
+    const sec = sections.find(s => s.id === editAssignSectionId);
+    const targetSemId = sec?.semester_id;
+    if (!targetSemId) return [];
+    return subjects.filter(s => s.active && s.semester_id === targetSemId);
+  }, [subjects, sections, editAssignSectionId]);
+
+  // Add staged assignment to Add Modal
+  const handleAddStagedAssignment = () => {
+    setAddModalError(null);
+    if (!assignYearId || !assignSectionId || !assignSubjectId) {
+      setAddModalError('Please select Academic Year, Section, and Subject to add an assignment.');
+      return;
+    }
+
+    const exists = stagedAssignments.some(
+      a => a.section_id === assignSectionId && a.subject_id === assignSubjectId
+    );
+    if (exists) {
+      setAddModalError('This Subject and Section assignment is already added.');
+      return;
+    }
+
+    const yr = years.find(y => y.id === assignYearId);
+    const sec = sections.find(s => s.id === assignSectionId);
+    const sub = subjects.find(s => s.id === assignSubjectId);
+
+    setStagedAssignments(prev => [
+      ...prev,
+      {
+        section_id: assignSectionId,
+        subject_id: assignSubjectId,
+        academic_year_id: assignYearId,
+        semester_id: sec?.semester_id || '',
+        year_name: yr?.name || 'Year',
+        section_name: sec?.name || 'Section',
+        subject_code: sub?.subject_code || 'Subject',
+        subject_name: sub?.subject_name || '',
+      },
+    ]);
+
+    setAssignSubjectId('');
   };
 
+  // Add staged assignment to Edit Modal
+  const handleAddEditAssignment = () => {
+    setEditModalError(null);
+    if (!editAssignYearId || !editAssignSectionId || !editAssignSubjectId) {
+      setEditModalError('Please select Academic Year, Section, and Subject to add an assignment.');
+      return;
+    }
+
+    const exists = editAssignments.some(
+      a => a.section_id === editAssignSectionId && a.subject_id === editAssignSubjectId
+    );
+    if (exists) {
+      setEditModalError('This Subject and Section assignment is already assigned.');
+      return;
+    }
+
+    const yr = years.find(y => y.id === editAssignYearId);
+    const sec = sections.find(s => s.id === editAssignSectionId);
+    const sub = subjects.find(s => s.id === editAssignSubjectId);
+
+    setEditAssignments(prev => [
+      ...prev,
+      {
+        section_id: editAssignSectionId,
+        subject_id: editAssignSubjectId,
+        academic_year_id: editAssignYearId,
+        semester_id: sec?.semester_id || '',
+        year_name: yr?.name || 'Year',
+        section_name: sec?.name || 'Section',
+        subject_code: sub?.subject_code || 'Subject',
+        subject_name: sub?.subject_name || '',
+      },
+    ]);
+
+    setEditAssignSubjectId('');
+  };
+
+  // Open Edit Modal and prefill existing assignments
+  const handleOpenEditModal = (f: Faculty) => {
+    setEditingFaculty(f);
+    setEditFullName(f.full_name);
+    setEditFacCode(f.faculty_code || '');
+    setEditDesignation(f.designation);
+    setEditDeptId(f.department_id || departments[0]?.id || '');
+    setEditEmail(f.email || '');
+    setEditPhone(f.phone || '');
+    setEditModalError(null);
+
+    // Populate active database assignments
+    const currentFsa = (assignments || []).filter(a => a.faculty_id === f.id && a.active);
+    const mapped = currentFsa.map(a => {
+      const sec = sections.find(s => s.id === a.section_id);
+      const sub = subjects.find(s => s.id === a.subject_id);
+      const sem = semesters.find(s => s.id === (a.semester_id || sec?.semester_id));
+      const yr = years.find(y => y.id === (a.academic_year_id || sem?.academic_year_id));
+      return {
+        section_id: a.section_id,
+        subject_id: a.subject_id,
+        academic_year_id: yr?.id || a.academic_year_id || '',
+        semester_id: sem?.id || a.semester_id || '',
+        year_name: yr?.name || a.academic_year?.name || 'Year',
+        section_name: sec?.name || a.section?.name || 'Section',
+        subject_code: sub?.subject_code || a.subject?.subject_code || 'Subject',
+        subject_name: sub?.subject_name || a.subject?.subject_name || '',
+      };
+    });
+    setEditAssignments(mapped);
+    setEditAssignYearId(activeCohorts[0]?.id || '');
+    setEditAssignSectionId('');
+    setEditAssignSubjectId('');
+  };
+
+  // Submit Add Faculty
   const handleCreateFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!empCode.trim() || !fullName.trim() || !email.trim()) return;
+    setAddModalError(null);
+    if (!empCode.trim() || !fullName.trim() || !email.trim()) {
+      setAddModalError('Employee code, full name, and official email are required.');
+      return;
+    }
 
     try {
-      await addFaculty({
-        department_id: deptId,
-        employee_code: empCode.trim().toUpperCase(),
-        faculty_code: facCode.trim().toUpperCase() || undefined,
-        full_name: fullName.trim(),
-        designation: designation.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim() || undefined,
-        active: true,
+      setActionLoading('creating');
+      await createFacultyWithAssignments({
+        faculty: {
+          department_id: deptId,
+          employee_code: empCode.trim().toUpperCase(),
+          faculty_code: facCode.trim().toUpperCase() || undefined,
+          full_name: fullName.trim(),
+          designation: designation.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim() || undefined,
+          active: true,
+          status: 'ACTIVE',
+        },
+        assignments: stagedAssignments.map(a => ({
+          section_id: a.section_id,
+          subject_id: a.subject_id,
+          academic_year_id: a.academic_year_id,
+          semester_id: a.semester_id,
+        })),
+        actorName: user?.full_name || 'Administrator',
       });
 
+      // Reset
       setEmpCode('');
       setFacCode('');
       setFullName('');
       setEmail('');
       setPhone('');
-      setIsModalOpen(false);
-    } catch (err) {
+      setStagedAssignments([]);
+      setIsAddModalOpen(false);
+    } catch (err: any) {
       console.error('Failed to add faculty:', err);
+      setAddModalError(err.message || 'Failed to add faculty member');
+    } finally {
+      setActionLoading(null);
     }
   };
+
+  // Submit Edit Faculty
+  const handleUpdateFaculty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFaculty) return;
+    setEditModalError(null);
+
+    if (!editFullName.trim() || !editEmail.trim()) {
+      setEditModalError('Full name and email are required.');
+      return;
+    }
+
+    try {
+      setActionLoading('updating');
+      await updateFacultyWithAssignments({
+        facultyId: editingFaculty.id,
+        updates: {
+          full_name: editFullName.trim(),
+          faculty_code: editFacCode.trim().toUpperCase() || undefined,
+          designation: editDesignation.trim(),
+          department_id: editDeptId,
+          email: editEmail.trim().toLowerCase(),
+          phone: editPhone.trim() || undefined,
+        },
+        assignments: editAssignments.map(a => ({
+          section_id: a.section_id,
+          subject_id: a.subject_id,
+          academic_year_id: a.academic_year_id,
+          semester_id: a.semester_id,
+        })),
+        actorName: user?.full_name || 'Administrator',
+      });
+
+      setEditingFaculty(null);
+    } catch (err: any) {
+      console.error('Failed to update faculty:', err);
+      setEditModalError(err.message || 'Failed to update faculty credentials and assignments');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Status Toggle (Block / Unblock)
+  const handleToggleStatus = async (f: Faculty) => {
+    const isCurrentlyBlocked = f.status === 'BLOCKED';
+    const targetStatus = isCurrentlyBlocked ? 'ACTIVE' : 'BLOCKED';
+    const promptMsg = isCurrentlyBlocked
+      ? `Unblock ${f.full_name}? This will restore portal login and teaching operations.`
+      : `Block ${f.full_name}? This will prevent portal login and attendance operations while preserving all historical records.`;
+
+    if (window.confirm(promptMsg)) {
+      try {
+        setActionLoading(`status_${f.id}`);
+        await setFacultyStatus(f.id, targetStatus, undefined, user?.full_name || 'Administrator');
+      } catch (err: any) {
+        alert(err.message || 'Failed to update faculty status');
+      } finally {
+        setActionLoading(null);
+      }
+    }
+  };
+
+  // Safe Delete / Archive
+  const handleSafeDelete = async (f: Faculty) => {
+    if (window.confirm(`Are you sure you want to remove or archive faculty member "${f.full_name}"?\n\nIf historical attendance or timetable records exist, the account will be safely archived without data loss.`)) {
+      try {
+        setActionLoading(`delete_${f.id}`);
+        const res = await safeDeleteFaculty(f.id, user?.full_name || 'Administrator');
+        alert(res.message);
+      } catch (err: any) {
+        alert(err.message || 'Failed to process faculty deletion');
+      } finally {
+        setActionLoading(null);
+      }
+    }
+  };
+
+  // Filtered Faculty List
+  const filteredFaculty = useMemo(() => {
+    return faculty.filter(f => {
+      // Status filter
+      if (statusFilter !== 'ALL') {
+        const currentStatus = f.status || (f.active ? 'ACTIVE' : 'BLOCKED');
+        if (currentStatus !== statusFilter) return false;
+      }
+
+      // Search term
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        f.full_name.toLowerCase().includes(term) ||
+        f.employee_code.toLowerCase().includes(term) ||
+        (f.faculty_code && f.faculty_code.toLowerCase().includes(term)) ||
+        (f.email && f.email.toLowerCase().includes(term)) ||
+        f.designation.toLowerCase().includes(term)
+      );
+    });
+  }, [faculty, statusFilter, searchTerm]);
 
   return (
     <div className="space-y-6">
@@ -96,7 +401,7 @@ export const FacultyDirectoryPage: React.FC = () => {
             Faculty Master Directory
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Teaching staff, designations, employee codes, and timetable shorthand codes
+            Authoritative faculty management, subject-section assignments, and authentication status
           </p>
         </div>
 
@@ -104,7 +409,14 @@ export const FacultyDirectoryPage: React.FC = () => {
           <Button
             variant="neon"
             size="sm"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setIsAddModalOpen(true);
+              setAssignYearId(activeCohorts[0]?.id || '');
+              setAssignSectionId('');
+              setAssignSubjectId('');
+              setStagedAssignments([]);
+              setAddModalError(null);
+            }}
             leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
           >
             Add Faculty Member
@@ -112,19 +424,32 @@ export const FacultyDirectoryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-            <Search className="w-4 h-4" />
+      {/* Filter & Search Bar */}
+      <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
+          <div className="relative flex-1 sm:max-w-xs">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <Search className="w-4 h-4" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, code, or email..."
+              className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+            />
           </div>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search faculty by name, code, or employee ID..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
-          />
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+          >
+            <option value="ALL">All Status</option>
+            <option value="ACTIVE">Active Only</option>
+            <option value="BLOCKED">Blocked Only</option>
+            <option value="ARCHIVED">Archived Only</option>
+          </select>
         </div>
 
         <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
@@ -144,38 +469,113 @@ export const FacultyDirectoryPage: React.FC = () => {
           {filteredFaculty.map((f) => {
             const dept = departments.find(d => d.id === f.department_id);
             const isFacultyHOD = f.designation.toLowerCase().includes('hod');
+            const currentStatus = f.status || (f.active ? 'ACTIVE' : 'BLOCKED');
+
+            // Resolve real assignments
+            const myFsa = (assignments || []).filter(a => a.faculty_id === f.id && a.active);
+            const myTt = (timetable || []).filter(t => t.faculty_id === f.id && t.active);
+
+            // Real subject codes
+            const subCodes = Array.from(new Set([
+              ...myFsa.map(a => {
+                const s = subjects.find(sub => sub.id === a.subject_id);
+                return s?.subject_code || a.subject?.subject_code;
+              }),
+              ...myTt.map(t => {
+                const s = subjects.find(sub => sub.id === t.subject_id);
+                return s?.subject_code || t.subject?.subject_code;
+              }),
+            ].filter(Boolean)));
+
+            // Real assigned sections with academic year
+            const sectionYearSet = new Set<string>();
+            myFsa.forEach(a => {
+              const sec = sections.find(s => s.id === a.section_id);
+              const sem = semesters.find(sm => sm.id === (a.semester_id || sec?.semester_id));
+              const yr = years.find(y => y.id === (a.academic_year_id || sem?.academic_year_id));
+              const yrName = yr?.name || a.academic_year?.name || '';
+              const secName = sec?.name || a.section?.name || '';
+              if (secName) {
+                sectionYearSet.add(yrName ? `${yrName} • Sec ${secName}` : `Sec ${secName}`);
+              }
+            });
+            const assignedSecList = Array.from(sectionYearSet);
+
+            const coordinatedSec = sections.find(s => s.class_coordinator_id === f.id);
 
             return (
               <div
                 key={f.id}
-                className="glass-panel rounded-3xl p-5 border border-emerald-500/15 hover:border-emerald-500/35 transition-all space-y-3 relative overflow-hidden"
+                className={`glass-panel rounded-3xl p-5 border transition-all space-y-3 relative overflow-hidden ${
+                  currentStatus === 'BLOCKED'
+                    ? 'border-rose-500/30 bg-rose-950/10'
+                    : currentStatus === 'ARCHIVED'
+                    ? 'border-slate-700/40 bg-slate-950/40 opacity-75'
+                    : 'border-emerald-500/15 hover:border-emerald-500/35'
+                }`}
               >
+                {/* Top Badges & Actions */}
                 <div className="flex items-center justify-between">
-                  {isFacultyHOD ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
-                      HOD
-                    </span>
-                  ) : <span />}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Status Badge */}
+                    {currentStatus === 'ACTIVE' && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5" /> ACTIVE
+                      </span>
+                    )}
+                    {currentStatus === 'BLOCKED' && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center gap-1">
+                        <ShieldAlert className="w-2.5 h-2.5" /> BLOCKED
+                      </span>
+                    )}
+                    {currentStatus === 'ARCHIVED' && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                        ARCHIVED
+                      </span>
+                    )}
+
+                    {isFacultyHOD && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                        HOD
+                      </span>
+                    )}
+                  </div>
+
                   {(isSuperAdmin || isHOD) && (
                     <div className="flex items-center gap-1">
+                      {/* Edit Button */}
                       <button
-                        onClick={() => {
-                          setEditingFaculty(f);
-                          setEditEmail(f.email || '');
-                          setEditFullName(f.full_name);
-                          setEditFacCode(f.faculty_code || '');
-                          setEditDesignation(f.designation);
-                          setEditPhone(f.phone || '');
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
-                        title="Edit Faculty & Official Email"
+                        onClick={() => handleOpenEditModal(f)}
+                        className="p-1.5 text-slate-400 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                        title="Edit Faculty & Assignments"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
+
+                      {/* Block / Unblock Button */}
                       <button
-                        onClick={() => handleDelete(f.id, f.full_name)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                        title="Delete Faculty"
+                        onClick={() => handleToggleStatus(f)}
+                        disabled={actionLoading === `status_${f.id}`}
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                          currentStatus === 'BLOCKED'
+                            ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
+                            : 'text-amber-400 hover:text-rose-400 hover:bg-rose-500/10'
+                        }`}
+                        title={currentStatus === 'BLOCKED' ? 'Unblock Faculty' : 'Block Faculty'}
+                      >
+                        {currentStatus === 'BLOCKED' ? (
+                          <ShieldCheck className="w-4 h-4" />
+                        ) : (
+                          <ShieldAlert className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      {/* Safe Delete / Archive Button */}
+                      <button
+                        onClick={() => handleSafeDelete(f)}
+                        disabled={actionLoading === `delete_${f.id}`}
+                        className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Safe Delete / Archive Faculty"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -183,85 +583,104 @@ export const FacultyDirectoryPage: React.FC = () => {
                   )}
                 </div>
 
+                {/* Identity Header */}
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-sm shadow-[0_0_12px_rgba(0,255,136,0.3)]">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black shadow-[0_0_12px_rgba(0,255,136,0.2)] ${
+                    currentStatus === 'BLOCKED'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      : 'bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950'
+                  }`}>
                     {f.faculty_code || f.full_name.substring(0, 2).toUpperCase()}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white leading-tight">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-white leading-tight truncate">
                       {f.full_name}
                     </h3>
-                    <p className="text-xs text-emerald-400 font-medium mt-0.5">
+                    <p className="text-xs text-emerald-400 font-medium mt-0.5 truncate">
                       {f.designation}
                     </p>
                   </div>
                 </div>
 
-                {/* Academic Assignments & Coordinator status */}
-                {(() => {
-                  const myFsa = (assignments || []).filter(a => a.faculty_id === f.id && a.active);
-                  const myTt = (timetable || []).filter(t => t.faculty_id === f.id && t.active);
-                  const subIds = new Set([...myFsa.map(a => a.subject_id), ...myTt.map(t => t.subject_id)]);
-                  const secIds = new Set([...myFsa.map(a => a.section_id), ...myTt.map(t => t.section_id)]);
-                  const assignedSubs = subjects.filter(s => subIds.has(s.id));
-                  const assignedSecs = sections.filter(s => secIds.has(s.id));
-                  const coordinatedSec = sections.find(s => s.class_coordinator_id === f.id);
-
-                  return (
-                    <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Employee Code:</span>
-                        <span className="font-mono font-bold text-white">{f.employee_code}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Timetable Code:</span>
-                        <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Department:</span>
-                        <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Official Email:</span>
-                        <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]">{f.email}</span>
-                      </div>
-                      <div className="flex justify-between items-start gap-1">
-                        <span className="text-slate-500 shrink-0">Assigned Subjects:</span>
-                        <span className="text-emerald-400 font-mono text-[11px] text-right truncate max-w-[170px]">
-                          {assignedSubs.length > 0 ? assignedSubs.map(s => s.subject_code).join(', ') : 'None'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-start gap-1">
-                        <span className="text-slate-500 shrink-0">Assigned Sections:</span>
-                        <span className="text-slate-300 font-medium text-[11px] text-right">
-                          {assignedSecs.length > 0 ? assignedSecs.map(s => `Sec ${s.name}`).join(', ') : 'None'}
-                        </span>
-                      </div>
-                      {coordinatedSec && (
-                        <div className="mt-2 p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-[11px]">
-                          <span className="text-[#00ff88] font-bold">Class Coordinator</span>
-                          <span className="text-white font-bold font-mono">Section {coordinatedSec.name} {coordinatedSec.room_number ? `(${coordinatedSec.room_number})` : ''}</span>
-                        </div>
-                      )}
+                {/* Academic Metadata & Assignments */}
+                <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Employee Code:</span>
+                    <span className="font-mono font-bold text-white">{f.employee_code}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Timetable Code:</span>
+                    <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Department:</span>
+                    <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Official Email:</span>
+                    <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]" title={f.email}>
+                      {f.email}
+                    </span>
+                  </div>
+                  {f.phone && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Phone:</span>
+                      <span className="text-slate-300 font-mono text-[11px]">{f.phone}</span>
                     </div>
-                  );
-                })()}
+                  )}
+
+                  {/* Real Database Assigned Subjects */}
+                  <div className="flex justify-between items-start gap-1 pt-1 border-t border-emerald-500/10">
+                    <span className="text-slate-500 shrink-0">Assigned Subjects:</span>
+                    <span className="text-emerald-400 font-mono text-[11px] text-right truncate max-w-[180px]" title={subCodes.join(', ')}>
+                      {subCodes.length > 0 ? subCodes.join(', ') : 'None'}
+                    </span>
+                  </div>
+
+                  {/* Real Database Assigned Sections */}
+                  <div className="flex justify-between items-start gap-1">
+                    <span className="text-slate-500 shrink-0">Assigned Sections:</span>
+                    <span className="text-slate-300 font-medium text-[11px] text-right">
+                      {assignedSecList.length > 0 ? assignedSecList.join(', ') : 'None'}
+                    </span>
+                  </div>
+
+                  {/* Class Coordinator Badge */}
+                  {coordinatedSec && (
+                    <div className="mt-2 p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-[11px]">
+                      <span className="text-[#00ff88] font-bold">Class Coordinator</span>
+                      <span className="text-white font-bold font-mono">
+                        Section {coordinatedSec.name} {coordinatedSec.room_number ? `(${coordinatedSec.room_number})` : ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Add Faculty Modal */}
+      {/* ======================================================== */}
+      {/* 1. ADD FACULTY MEMBER MODAL WITH ASSIGNMENT BUILDER */}
+      {/* ======================================================== */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Add Faculty Member"
-        description="Register a teaching faculty member into the institution directory"
-        maxWidth="md"
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add Faculty Member & Assignments"
+        description="Register a teaching faculty member with verified academic assignments across cohorts"
+        maxWidth="lg"
       >
         <form onSubmit={handleCreateFaculty} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          {addModalError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{addModalError}</span>
+            </div>
+          )}
+
+          {/* Master Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Employee Code <span className="text-rose-400">*</span>
@@ -271,13 +690,13 @@ export const FacultyDirectoryPage: React.FC = () => {
                 required
                 value={empCode}
                 onChange={(e) => setEmpCode(e.target.value)}
-                placeholder="e.g. FAC-CSE-012"
+                placeholder="e.g. FAC-CSE-015"
                 className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Timetable Code (3 letters)
+                Timetable Code (3-4 letters)
               </label>
               <input
                 type="text"
@@ -292,7 +711,7 @@ export const FacultyDirectoryPage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Full Name with Title <span className="text-rose-400">*</span>
+              Full Legal Name with Title <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -304,7 +723,7 @@ export const FacultyDirectoryPage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Department</label>
               <select
@@ -329,60 +748,195 @@ export const FacultyDirectoryPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Official Email <span className="text-rose-400">*</span>
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. rajesh.cse@vctm.in"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Official Email (Portal Login) <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. rajesh.cse@vctm.in"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Phone</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +91 98765 43210"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* ASSIGNMENT BUILDER (YEAR -> SECTION -> SUBJECT) */}
+          {/* ======================================================== */}
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-[#00ff88] flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  Academic Subject & Section Assignments
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Assign teaching subjects across active cohorts (1st Year strictly excluded)
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full">
+                {stagedAssignments.length} Staged
+              </span>
+            </div>
+
+            {/* Cascading Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              {/* Year */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Academic Year</label>
+                <select
+                  value={assignYearId}
+                  onChange={(e) => {
+                    setAssignYearId(e.target.value);
+                    setAssignSectionId('');
+                    setAssignSubjectId('');
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                >
+                  <option value="">— Select Year —</option>
+                  {activeCohorts.map(y => (
+                    <option key={y.id} value={y.id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Section */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Section</label>
+                <select
+                  value={assignSectionId}
+                  disabled={!assignYearId}
+                  onChange={(e) => {
+                    setAssignSectionId(e.target.value);
+                    setAssignSubjectId('');
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                >
+                  <option value="">— Select Section —</option>
+                  {availableAddSections.map(s => (
+                    <option key={s.id} value={s.id}>Section {s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Subject</label>
+                <select
+                  value={assignSubjectId}
+                  disabled={!assignSectionId}
+                  onChange={(e) => setAssignSubjectId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                >
+                  <option value="">— Select Subject —</option>
+                  {availableAddSubjects.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.subject_code} - {s.subject_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddStagedAssignment}
+                disabled={!assignYearId || !assignSectionId || !assignSubjectId}
+                className="text-xs"
+              >
+                + Add Assignment
+              </Button>
+            </div>
+
+            {/* Staged Assignments List */}
+            {stagedAssignments.length > 0 ? (
+              <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                {stagedAssignments.map((a, idx) => (
+                  <div
+                    key={`${a.section_id}_${a.subject_id}_${idx}`}
+                    className="flex items-center justify-between p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-[#00ff88] font-bold text-[10px]">
+                        {a.year_name} • Sec {a.section_name}
+                      </span>
+                      <span className="font-mono font-bold text-white text-[11px]">
+                        {a.subject_code}
+                      </span>
+                      <span className="text-slate-400 text-[11px] truncate max-w-[200px]">
+                        {a.subject_name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStagedAssignments(prev => prev.filter((_, i) => i !== idx))}
+                      className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                      title="Remove assignment"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 italic text-center py-1">
+                No assignments staged. You can add assignments now or assign later.
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="neon" size="sm">
-              Save Faculty Member
+            <Button
+              type="submit"
+              variant="neon"
+              size="sm"
+              disabled={actionLoading === 'creating'}
+            >
+              {actionLoading === 'creating' ? 'Saving Faculty...' : 'Save Faculty & Assignments'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Edit Faculty Credentials Modal */}
+      {/* ======================================================== */}
+      {/* 2. EDIT FACULTY & ASSIGNMENT MANAGER MODAL */}
+      {/* ======================================================== */}
       {editingFaculty && (
         <Modal
           isOpen={Boolean(editingFaculty)}
           onClose={() => setEditingFaculty(null)}
           title={`Edit Faculty — ${editingFaculty.full_name}`}
-          description="Update faculty profile and official login credentials synchronized with Supabase"
-          maxWidth="md"
+          description="Update faculty profile and reconcile teaching assignments synchronized with Supabase"
+          maxWidth="lg"
         >
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!editFullName.trim() || !editEmail.trim()) return;
+          <form onSubmit={handleUpdateFaculty} className="space-y-4 text-xs">
+            {editModalError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{editModalError}</span>
+              </div>
+            )}
 
-              try {
-                await updateFaculty(editingFaculty.id, {
-                  full_name: editFullName.trim(),
-                  faculty_code: editFacCode.trim().toUpperCase() || undefined,
-                  designation: editDesignation.trim(),
-                  email: editEmail.trim().toLowerCase(),
-                  phone: editPhone.trim() || undefined,
-                });
-                setEditingFaculty(null);
-              } catch (err: any) {
-                alert(err.message || 'Failed to update faculty credentials');
-              }
-            }}
-            className="space-y-4 text-xs"
-          >
             <div>
               <label className="block text-slate-300 font-semibold mb-1">Full Legal Name *</label>
               <input
@@ -394,7 +948,7 @@ export const FacultyDirectoryPage: React.FC = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">Timetable Code</label>
                 <input
@@ -417,46 +971,176 @@ export const FacultyDirectoryPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Department</label>
+                <select
+                  value={editDeptId}
+                  onChange={(e) => setEditDeptId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                >
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Contact Phone</label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-slate-300 font-semibold mb-1">
-                Official / Login Email (Gmail or Institutional) *
+                Official / Login Email *
               </label>
               <input
                 type="email"
                 required
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
-                placeholder="e.g. hemlata.cse@gmail.com"
                 className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
               />
             </div>
 
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Contact Phone</label>
-              <input
-                type="tel"
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
-              />
-            </div>
+            {/* Assignments Manager inside Edit Modal */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-[#00ff88] flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5" />
+                    Manage Subject & Section Assignments
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Active teaching assignments for this faculty member
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full">
+                  {editAssignments.length} Assigned
+                </span>
+              </div>
 
-            <p className="text-[11px] text-slate-400">
-              Updating the official email address synchronizes the faculty's login identifier across Supabase Auth and all ERP modules.
-            </p>
+              {/* Existing / Staged Assignments */}
+              {editAssignments.length > 0 ? (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {editAssignments.map((a, idx) => (
+                    <div
+                      key={`${a.section_id}_${a.subject_id}_${idx}`}
+                      className="flex items-center justify-between p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-[#00ff88] font-bold text-[10px]">
+                          {a.year_name} • Sec {a.section_name}
+                        </span>
+                        <span className="font-mono font-bold text-white text-[11px]">
+                          {a.subject_code}
+                        </span>
+                        <span className="text-slate-400 text-[11px] truncate max-w-[180px]">
+                          {a.subject_name}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditAssignments(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                        title="Remove assignment"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500 italic text-center py-1">
+                  No active assignments. Add one below to grant attendance and timetable rights.
+                </p>
+              )}
+
+              {/* Add New Assignment to Edit List */}
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <span className="text-[11px] font-bold text-slate-300 block">Add New Assignment</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <select
+                    value={editAssignYearId}
+                    onChange={(e) => {
+                      setEditAssignYearId(e.target.value);
+                      setEditAssignSectionId('');
+                      setEditAssignSubjectId('');
+                    }}
+                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  >
+                    <option value="">— Select Year —</option>
+                    {activeCohorts.map(y => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={editAssignSectionId}
+                    disabled={!editAssignYearId}
+                    onChange={(e) => {
+                      setEditAssignSectionId(e.target.value);
+                      setEditAssignSubjectId('');
+                    }}
+                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                  >
+                    <option value="">— Select Section —</option>
+                    {availableEditSections.map(s => (
+                      <option key={s.id} value={s.id}>Section {s.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={editAssignSubjectId}
+                    disabled={!editAssignSectionId}
+                    onChange={(e) => setEditAssignSubjectId(e.target.value)}
+                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                  >
+                    <option value="">— Select Subject —</option>
+                    {availableEditSubjects.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.subject_code} - {s.subject_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddEditAssignment}
+                    disabled={!editAssignYearId || !editAssignSectionId || !editAssignSubjectId}
+                    className="text-xs"
+                  >
+                    + Add to Assignments
+                  </Button>
+                </div>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-emerald-500/15">
               <Button type="button" variant="outline" size="sm" onClick={() => setEditingFaculty(null)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="neon" size="sm">
-                Save & Synchronize Credentials
+              <Button
+                type="submit"
+                variant="neon"
+                size="sm"
+                disabled={actionLoading === 'updating'}
+              >
+                {actionLoading === 'updating' ? 'Saving...' : 'Save & Synchronize All Changes'}
               </Button>
             </div>
           </form>
         </Modal>
       )}
-
     </div>
   );
 };

@@ -169,7 +169,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
               className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
             >
               <option value="ALL" className="bg-slate-950 text-white">All Years</option>
-              {years.map(y => (
+              {years.filter(y => y.active && y.year_number !== 1).map(y => (
                 <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
               ))}
             </select>

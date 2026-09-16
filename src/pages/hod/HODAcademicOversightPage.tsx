@@ -151,7 +151,7 @@ export const HODAcademicOversightPage: React.FC = () => {
             className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-[#00ff88] font-bold focus:outline-none focus:border-emerald-500 cursor-pointer"
           >
             <option value="ALL" className="text-white">All Years</option>
-            {years.map(y => (
+            {years.filter(y => y.active && y.year_number !== 1).map(y => (
               <option key={y.id} value={y.id} className="text-white">{y.name}</option>
             ))}
           </select>

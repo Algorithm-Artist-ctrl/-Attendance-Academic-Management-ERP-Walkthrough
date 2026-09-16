@@ -631,6 +631,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'No active session. Please log in.' };
     }
 
+    if (authState.user.role === 'student') {
+      return { success: false, error: 'Unauthorized: Student institutional authentication credentials cannot be self-altered.' };
+    }
+
     const userEmail = session.user.email;
     if (!userEmail) {
       return { success: false, error: 'User email not found in active session.' };
@@ -689,6 +693,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const changeEmail = async (newEmail: string): Promise<{ success: boolean; error?: string; pendingVerification?: boolean }> => {
     if (!authState.user) {
       return { success: false, error: 'No active session. Please log in.' };
+    }
+    if (authState.user.role === 'student') {
+      return { success: false, error: 'Unauthorized: Student institutional authentication credentials cannot be self-altered.' };
     }
     const cleanEmail = newEmail.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
