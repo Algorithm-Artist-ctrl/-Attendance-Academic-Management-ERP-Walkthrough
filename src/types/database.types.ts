@@ -196,6 +196,7 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   marked_by: string;
   marked_at: string;
+  created_at?: string;
   remarks?: string;
   student?: Student;
   session?: AttendanceSession;

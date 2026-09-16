@@ -237,6 +237,7 @@ interface AcademicContextType {
       remarks?: string;
     }>;
   }) => Promise<{ session: AttendanceSession; records: AttendanceRecord[] }>;
+  deleteAttendanceSession: (sessionId: string) => Promise<{ success: boolean; deletedSessionId?: string }>;
   submitCorrectionRequest: (params: {
     attendanceRecordId?: string;
     timetableEntryId?: string;
@@ -889,6 +890,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }) => {
     const result = await supabaseService.saveAttendance(params);
     erpStorage.saveAttendanceSession(params);
+    await refreshAttendance();
+    return result;
+  };
+
+  const deleteAttendanceSession = async (sessionId: string) => {
+    const result = await supabaseService.deleteAttendanceSession(sessionId);
     await refreshAttendance();
     return result;
   };
@@ -2049,6 +2056,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         rollbackToVersion,
         checkTimetableConflict,
         saveAttendance,
+        deleteAttendanceSession,
         submitCorrectionRequest,
         reviewCorrectionRequest,
         canSubmitClaim,

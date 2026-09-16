@@ -642,6 +642,56 @@ export const supabaseService = {
     };
   },
 
+  // 3. Delete Attendance Session (Authorized HOD/Admin/Faculty)
+  async deleteAttendanceSession(sessionId: string) {
+    if (!sessionId) throw new Error('Session ID is required to delete attendance.');
+
+    // 1. Delete associated corrections if any
+    const { data: recs } = await supabase
+      .from('attendance_records')
+      .select('id')
+      .eq('attendance_session_id', sessionId);
+
+    if (recs && recs.length > 0) {
+      const recIds = recs.map(r => r.id);
+      await supabase
+        .from('attendance_corrections')
+        .delete()
+        .in('attendance_record_id', recIds);
+    }
+
+    // 2. Delete child attendance records
+    const { error: recErr } = await supabase
+      .from('attendance_records')
+      .delete()
+      .eq('attendance_session_id', sessionId);
+    if (recErr) throw recErr;
+
+    // 3. Delete session
+    const { error: sessErr } = await supabase
+      .from('attendance_sessions')
+      .delete()
+      .eq('id', sessionId);
+    if (sessErr) throw sessErr;
+
+    // 4. Invalidate cache and broadcast Realtime event
+    this.invalidateMasterCache();
+    try {
+      const channel = supabase.channel('vctm-erp-realtime-channel');
+      await channel.send({
+        type: 'broadcast',
+        event: 'attendance_updated',
+        payload: {
+          session_id: sessionId,
+          action: 'deleted',
+          timestamp: new Date().toISOString(),
+        }
+      });
+    } catch {}
+
+    return { success: true, deletedSessionId: sessionId };
+  },
+
   // 3. Ensure Attendance Session & Record (for unrecorded lecture claims)
   async ensureAttendanceSessionAndRecord(params: {
     timetableEntryId: string;

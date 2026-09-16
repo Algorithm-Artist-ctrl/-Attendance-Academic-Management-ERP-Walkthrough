@@ -8,6 +8,8 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertCircle,
+  AlertTriangle,
+  Trash2,
   Sparkles,
   ArrowRight,
   ArrowLeft,
@@ -38,6 +40,7 @@ interface TakeAttendancePageProps {
 
 type MarkState = 'Present' | 'Absent' | 'Unmarked';
 type StatusFilter = 'ALL' | 'UNMARKED' | 'PRESENT' | 'ABSENT';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const DAY_FULL_NAMES: Record<string, string> = {
   MON: 'Monday',
@@ -63,6 +66,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     attendanceSessions,
     attendanceRecords,
     saveAttendance,
+    deleteAttendanceSession,
     getFacultyTimetable 
   } = useAcademic();
 
@@ -94,6 +98,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
   // Attendance state: Map of student_id -> 'Present' | 'Absent' | 'Unmarked'
   const [attendanceMap, setAttendanceMap] = useState<Record<string, MarkState>>({});
+  // Baseline saved attendance map from Supabase for dirty checking
+  const [savedAttendanceMap, setSavedAttendanceMap] = useState<Record<string, MarkState>>({});
   // Undo history stack
   const [history, setHistory] = useState<Array<Record<string, MarkState>>>([]);
 
@@ -102,10 +108,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
 
-  // Modals
+  // Modals & Save State
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const [isUnmarkedReviewOpen, setIsUnmarkedReviewOpen] = useState<boolean>(false);
+  const [isNavConfirmOpen, setIsNavConfirmOpen] = useState<boolean>(false);
+  const [pendingNavAction, setPendingNavAction] = useState<(() => void) | null>(null);
+  const [isClearModalOpen, setIsClearModalOpen] = useState<boolean>(false);
+  const [isDeletingSession, setIsDeletingSession] = useState<boolean>(false);
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -131,16 +143,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     return students.filter(s => s.section_id === activeSection.id && s.active);
   }, [activeSection, students]);
 
-  // Initialize attendance when an active class or date is selected
-  useEffect(() => {
-    if (!activeClass || !activeSection) return;
-
-    // Check if attendance already exists in database for this class/section/date
-    const existingSession = attendanceSessions.find(
+  // Find existing session in database if any
+  const existingSession = useMemo(() => {
+    if (!activeClass || !activeSection) return undefined;
+    return attendanceSessions.find(
       s => s.section_id === activeSection.id && 
            s.subject_id === activeClass.subject_id && 
            s.session_date === sessionDate
     );
+  }, [activeClass, activeSection, attendanceSessions, sessionDate]);
+
+  // Initialize attendance when an active class or date is selected
+  useEffect(() => {
+    if (!activeClass || !activeSection) return;
 
     const initialMap: Record<string, MarkState> = {};
     if (existingSession) {
@@ -155,10 +170,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       });
     }
     setAttendanceMap(initialMap);
+    setSavedAttendanceMap(initialMap);
     setHistory([]);
     setFocusedIndex(0);
     setStatusFilter('ALL');
-  }, [activeClassId, sessionDate, activeSection?.id, attendanceSessions, attendanceRecords, sectionStudents]);
+    setSaveStatus(existingSession ? 'saved' : 'idle');
+    setSaveError(null);
+  }, [activeClassId, sessionDate, activeSection?.id, existingSession, attendanceRecords, sectionStudents]);
 
   // Undo helper
   const pushState = useCallback((newMap: Record<string, MarkState>) => {
@@ -208,6 +226,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // Mark single student
   const setStudentStatus = (studentId: string, status: MarkState) => {
     const next = { ...attendanceMap, [studentId]: status };
+    setSaveStatus('idle');
+    setSaveError(null);
     pushState(next);
   };
 
@@ -215,12 +235,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const handleMarkAllPresent = () => {
     const updated: Record<string, MarkState> = {};
     sectionStudents.forEach(s => { updated[s.id] = 'Present'; });
+    setSaveStatus('idle');
+    setSaveError(null);
     pushState(updated);
   };
 
   const handleMarkAllAbsent = () => {
     const updated: Record<string, MarkState> = {};
     sectionStudents.forEach(s => { updated[s.id] = 'Absent'; });
+    setSaveStatus('idle');
+    setSaveError(null);
     pushState(updated);
   };
 
@@ -231,6 +255,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         updated[s.id] = 'Present';
       }
     });
+    setSaveStatus('idle');
+    setSaveError(null);
     pushState(updated);
   };
 
@@ -241,8 +267,152 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         updated[s.id] = 'Absent';
       }
     });
+    setSaveStatus('idle');
+    setSaveError(null);
     pushState(updated);
   };
+
+  // Track changes against database baseline
+  const { hasUnsavedChanges, changedCount } = useMemo(() => {
+    let diff = 0;
+    sectionStudents.forEach(s => {
+      const curr = attendanceMap[s.id] || 'Unmarked';
+      const base = savedAttendanceMap[s.id] || 'Unmarked';
+      if (curr !== base) diff++;
+    });
+    return {
+      hasUnsavedChanges: diff > 0 || (!existingSession && (presentCount > 0 || absentCount > 0)),
+      changedCount: diff > 0 ? diff : (presentCount + absentCount),
+    };
+  }, [sectionStudents, attendanceMap, savedAttendanceMap, existingSession, presentCount, absentCount]);
+
+  // Safe navigation interceptor
+  const safelyNavigate = useCallback((action: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingNavAction(() => action);
+      setIsNavConfirmOpen(true);
+    } else {
+      action();
+    }
+  }, [hasUnsavedChanges]);
+
+  const handleResetToSaved = () => {
+    const reverted: Record<string, MarkState> = {};
+    sectionStudents.forEach(s => {
+      reverted[s.id] = savedAttendanceMap[s.id] || 'Unmarked';
+    });
+    setAttendanceMap(reverted);
+    setHistory([]);
+    setSaveStatus('idle');
+    setSaveError(null);
+    setIsClearModalOpen(false);
+  };
+
+  const handleDeleteSavedSession = async () => {
+    if (!existingSession) return;
+    setIsDeletingSession(true);
+    try {
+      const res = await deleteAttendanceSession(existingSession.id);
+      if (res?.success) {
+        const reset: Record<string, MarkState> = {};
+        sectionStudents.forEach(s => {
+          reset[s.id] = 'Unmarked';
+        });
+        setAttendanceMap(reset);
+        setSavedAttendanceMap({});
+        setHistory([]);
+        setSaveStatus('idle');
+        setSaveSuccess(false);
+        setIsClearModalOpen(false);
+      } else {
+        setSaveError('Failed to delete saved attendance session from Supabase.');
+      }
+    } catch (err: any) {
+      setSaveError(err?.message || 'Error deleting session');
+    } finally {
+      setIsDeletingSession(false);
+    }
+  };
+
+  const handleDiscardAndLeave = () => {
+    setIsNavConfirmOpen(false);
+    const action = pendingNavAction;
+    setPendingNavAction(null);
+    if (action) action();
+  };
+
+  const handleSaveAndLeave = async () => {
+    setIsNavConfirmOpen(false);
+    const finalMap = { ...attendanceMap };
+    sectionStudents.forEach(s => {
+      if ((finalMap[s.id] || 'Unmarked') === 'Unmarked') {
+        finalMap[s.id] = 'Absent';
+      }
+    });
+    await executeSave(finalMap);
+    const action = pendingNavAction;
+    setPendingNavAction(null);
+    if (action) action();
+  };
+
+  // Warn on browser tab close / reload if unsaved changes exist
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Dynamic Save button configuration matching States A - E
+  const saveButtonConfig = useMemo(() => {
+    if (saveStatus === 'saving') {
+      return {
+        label: 'Saving...',
+        icon: <RotateCcw className="w-4 h-4 text-slate-950 animate-spin" />,
+        variant: 'neon' as const,
+        disabled: true,
+        className: 'font-black opacity-80 cursor-not-allowed',
+      };
+    }
+    if (saveStatus === 'error') {
+      return {
+        label: 'Save Failed — Retry',
+        icon: <AlertCircle className="w-4 h-4 text-white" />,
+        variant: 'outline' as const,
+        disabled: false,
+        className: 'font-black text-rose-300 border-rose-500 bg-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.4)] hover:bg-rose-500/30',
+      };
+    }
+    if (saveStatus === 'saved' && !hasUnsavedChanges) {
+      return {
+        label: 'Attendance Saved',
+        icon: <CheckCheck className="w-4 h-4 text-[#00ff88]" />,
+        variant: 'outline' as const,
+        disabled: false,
+        className: 'font-black text-[#00ff88] border-[#00ff88]/50 bg-[#00ff88]/10 shadow-[0_0_15px_rgba(0,255,136,0.2)]',
+      };
+    }
+    if (hasUnsavedChanges) {
+      return {
+        label: `Save Attendance (${changedCount || sectionStudents.length})`,
+        icon: <Save className="w-4 h-4 text-slate-950" />,
+        variant: 'neon' as const,
+        disabled: false,
+        className: 'font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]',
+      };
+    }
+    return {
+      label: 'Save Attendance',
+      icon: <Save className="w-4 h-4 text-slate-950" />,
+      variant: 'neon' as const,
+      disabled: false,
+      className: 'font-black shadow-[0_0_15px_rgba(0,255,136,0.25)]',
+    };
+  }, [saveStatus, hasUnsavedChanges, changedCount, sectionStudents.length]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -317,21 +487,24 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const executeSave = async (finalMap: Record<string, MarkState>) => {
     if (!activeClass || !activeSection || !activeSubject) {
       setSaveError('Please select a valid assigned class to take attendance.');
+      setSaveStatus('error');
       return;
     }
 
     if (sessionDate > todayISO) {
       setSaveError('Invalid attendance date. Attendance cannot be marked for future dates.');
+      setSaveStatus('error');
       return;
     }
 
     setIsSaving(true);
+    setSaveStatus('saving');
     setSaveError(null);
 
     try {
       const [startTime, endTime] = timeSlot.split(' – ');
 
-      await saveAttendance({
+      const result = await saveAttendance({
         timetableEntryId: activeClass.id,
         facultyId,
         sectionId: activeSection.id,
@@ -345,17 +518,22 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         })),
       });
 
+      // Strict Verification: Database must return records matching full section roster
+      if (!result?.session?.id || !result?.records || result.records.length !== sectionStudents.length) {
+        throw new Error(`Database verification mismatch: Expected ${sectionStudents.length} saved records, but received ${result?.records?.length || 0}.`);
+      }
+
+      setSavedAttendanceMap({ ...finalMap });
+      setAttendanceMap({ ...finalMap });
+      setSaveStatus('saved');
       setIsConfirmOpen(false);
       setIsUnmarkedReviewOpen(false);
       setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-        setActiveClassId(null);
-        if (onFinished) onFinished();
-      }, 1600);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('Failed to save attendance', err);
-      setSaveError(err?.message || 'Failed to record attendance in database.');
+      setSaveStatus('error');
+      setSaveError(err?.message || 'Attendance could not be saved. Check connection and retry.');
     } finally {
       setIsSaving(false);
     }
@@ -544,13 +722,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // VIEW 2: ACTIVE LECTURE ATTENDANCE MARKING SHEET (REDESIGNED FAST UI)
   // =========================================================================
   return (
-    <div className="space-y-4 pb-56 md:pb-28">
+    <div className="space-y-4 pb-64 md:pb-32">
       {/* 1. Class Context Header Bar */}
       <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveClassId(null)}
-            className="p-2.5 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/10 transition-all shrink-0 cursor-pointer flex items-center justify-center"
+            onClick={() => safelyNavigate(() => setActiveClassId(null))}
+            className="p-2.5 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/10 transition-all shrink-0 cursor-pointer flex items-center justify-center min-h-[44px] min-w-[44px]"
             title="Back to Assigned Schedule"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -581,7 +759,12 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               type="date"
               max={todayISO}
               value={sessionDate}
-              onChange={(e) => setSessionDate(e.target.value)}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                if (newDate !== sessionDate) {
+                  safelyNavigate(() => setSessionDate(newDate));
+                }
+              }}
               className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
             />
           </div>
@@ -594,13 +777,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           {/* Mobile Direct Header Save Button */}
           <Button
             size="sm"
-            variant="neon"
-            leftIcon={<Save className="w-3.5 h-3.5 text-slate-950" />}
+            variant={saveButtonConfig.variant}
+            leftIcon={saveButtonConfig.icon}
             onClick={handleInitiateSave}
-            disabled={sectionStudents.length === 0 || isSaving}
-            className="md:hidden font-black text-xs py-1.5 px-3 shadow-[0_0_15px_rgba(0,255,136,0.25)]"
+            disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
+            className={clsx('md:hidden font-black text-xs py-1.5 px-3 min-h-[44px]', saveButtonConfig.className)}
           >
-            {isSaving ? '...' : 'Save'}
+            {saveButtonConfig.label}
           </Button>
         </div>
       </div>
@@ -700,6 +883,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             title="Undo last change (Ctrl+Z / ⌘Z)"
           >
             Undo
+          </Button>
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            onClick={() => setIsClearModalOpen(true)}
+            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-400" />}
+            className="text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 border border-rose-500/20"
+            title="Clear or reset attendance marks"
+          >
+            Clear Marks
           </Button>
         </div>
 
@@ -918,13 +1111,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           <div className="flex items-center gap-2 sm:gap-3">
             <Button
               size="md"
-              variant="neon"
-              leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+              variant={saveButtonConfig.variant}
+              leftIcon={saveButtonConfig.icon}
               onClick={handleInitiateSave}
-              disabled={sectionStudents.length === 0 || isSaving}
-              className="font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(0,255,136,0.3)] py-2 sm:py-2.5 px-3 sm:px-5"
+              disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
+              className={clsx('font-black text-xs sm:text-sm py-2 sm:py-2.5 px-3 sm:px-5 min-h-[44px]', saveButtonConfig.className)}
             >
-              {isSaving ? 'Saving...' : unmarkedCount > 0 ? `Save (${completionPercent}%)` : `Save Attendance`}
+              {saveButtonConfig.label}
             </Button>
           </div>
         </div>
@@ -1009,6 +1202,128 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         variant="neon"
         isLoading={isSaving}
       />
+
+      {/* 9. Unsaved Changes Navigation Guard Modal */}
+      <Modal
+        isOpen={isNavConfirmOpen}
+        onClose={() => {
+          setIsNavConfirmOpen(false);
+          setPendingNavAction(null);
+        }}
+        title="Unsaved Attendance Changes"
+        description="You have unsaved marks on this sheet. If you navigate away now, these modifications will be lost."
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-2">
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-300">Changes will not be saved to Supabase</p>
+              <p className="text-slate-400 mt-0.5">
+                {changedCount} student mark(s) have been modified. Choose whether to save or discard your changes before leaving this session.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsNavConfirmOpen(false);
+                setPendingNavAction(null);
+              }}
+              className="w-full sm:w-auto text-xs"
+            >
+              Stay on Page
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDiscardAndLeave}
+              className="w-full sm:w-auto text-xs border-rose-500/30 hover:border-rose-500 text-rose-300"
+            >
+              Discard & Proceed
+            </Button>
+            <Button
+              variant="neon"
+              size="sm"
+              onClick={handleSaveAndLeave}
+              isLoading={isSaving}
+              className="w-full sm:w-auto text-xs font-black"
+            >
+              Save & Proceed
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 10. Clear Attendance & Reset Modal */}
+      <Modal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        title="Clear Attendance Marks"
+        description="Choose how you want to reset the attendance marks for this lecture session."
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-2">
+          {hasUnsavedChanges && (
+            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-700 space-y-2">
+              <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-amber-400" />
+                Revert Unsaved Edits
+              </h4>
+              <p className="text-xs text-slate-400">
+                Reset all modified marks back to the state stored in Supabase ({existingSession ? 'previously saved session' : 'all unmarked'}).
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetToSaved}
+                className="w-full text-xs text-amber-300 border-amber-500/30 hover:border-amber-500/60"
+              >
+                Revert to Database Baseline
+              </Button>
+            </div>
+          )}
+
+          {existingSession && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+              <h4 className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                Delete Saved Lecture Session
+              </h4>
+              <p className="text-xs text-slate-400">
+                Permanently delete this saved lecture session and all student attendance records from Supabase.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteSavedSession}
+                isLoading={isDeletingSession}
+                className="w-full text-xs text-rose-400 border-rose-500/40 hover:bg-rose-500/20"
+              >
+                {isDeletingSession ? 'Deleting from Supabase...' : 'Delete Saved Session from Database'}
+              </Button>
+            </div>
+          )}
+
+          {!existingSession && !hasUnsavedChanges && (
+            <p className="text-xs text-slate-400 text-center py-2">
+              No attendance marks or saved sessions to reset.
+            </p>
+          )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-slate-400"
+            onClick={() => setIsClearModalOpen(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

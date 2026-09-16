@@ -361,6 +361,42 @@ async function runLiveAttendancePipelineTest() {
     timetableEntryId: colInfo?.timetable_entry_id,
   });
 
+  // STEP 11: DELETE ATTENDANCE SESSION & ZERO ORPHANS VERIFICATION
+  console.log('\n▶ STEP 11: DELETE ATTENDANCE SESSION & ZERO ORPHANS VERIFICATION');
+  const deleteResult = await supabaseService.deleteAttendanceSession(sessionId);
+  assert(deleteResult?.success === true, 'deleteAttendanceSession returned success: true');
+
+  const { data: checkSess } = await supabase
+    .from('attendance_sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .maybeSingle();
+  assert(!checkSess, 'Deleted session no longer exists in attendance_sessions table');
+
+  const { data: checkRecs } = await supabase
+    .from('attendance_records')
+    .select('id')
+    .eq('attendance_session_id', sessionId);
+  assert(!checkRecs || checkRecs.length === 0, 'Zero orphan attendance records remain after session deletion');
+
+  // Re-save session for persistent testing and demo state
+  console.log('\n▶ STEP 12: RESTORING LIVE TEST SESSION FOR SEAMLESS DASHBOARD CONTINUITY');
+  const restoreResult = await supabaseService.saveAttendance({
+    timetableEntryId: entryId,
+    facultyId,
+    sectionId,
+    subjectId,
+    sessionDate: todayISO,
+    startTime,
+    endTime,
+    studentRecords: initialStudentRecords,
+  });
+
+  assert(
+    !!restoreResult.session?.id && restoreResult.records?.length === totalStudents,
+    `Restored active attendance session with all ${totalStudents} student records intact`
+  );
+
   console.log('\n================================================================================');
   console.log(`🎉 ALL ${passedAssertions}/${totalAssertions} ASSERTIONS PASSED PERFECTLY!`);
   console.log('   Live Supabase Attendance Pipeline is completely verified and production-ready.');
