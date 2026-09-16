@@ -156,8 +156,8 @@ export const StudentDirectoryPage: React.FC = () => {
   const [newRoll, setNewRoll] = useState('');
   const [newName, setNewName] = useState('');
   const [newAdmissionType, setNewAdmissionType] = useState<AdmissionType>('Regular');
-  const [newStudentYearId, setNewStudentYearId] = useState(years[0]?.id || '');
-  const [newSectionId, setNewSectionId] = useState(sections[0]?.id || '');
+  const [newStudentYearId, setNewStudentYearId] = useState<string>('');
+  const [newSectionId, setNewSectionId] = useState<string>('');
   const [newMentorId, setNewMentorId] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -173,12 +173,44 @@ export const StudentDirectoryPage: React.FC = () => {
     return sections.filter(sec => semIds.includes(sec.semester_id) && sec.active);
   }, [sections, addModalSemesters]);
 
+  const handleOpenAddModal = () => {
+    setModalError(null);
+    setNewRoll('');
+    setNewName('');
+    setNewEmail('');
+    setNewPhone('');
+    setNewMentorId('');
+    setNewAdmissionType('Regular');
+
+    // Context-aware initialization:
+    // If yearFilter is set to a specific year, use that year
+    const targetYearId = yearFilter !== 'ALL' ? yearFilter : (years[0]?.id || '');
+    setNewStudentYearId(targetYearId);
+
+    const matchingSems = semesters.filter(s => s.academic_year_id === targetYearId).map(s => s.id);
+    const yearSections = sections.filter(sec => matchingSems.includes(sec.semester_id) && sec.active);
+
+    if (sectionFilter !== 'ALL' && yearSections.some(sec => sec.id === sectionFilter)) {
+      setNewSectionId(sectionFilter);
+    } else {
+      setNewSectionId(yearSections[0]?.id || '');
+    }
+    setIsAddModalOpen(true);
+  };
+
+  const handleModalYearChange = (yearId: string) => {
+    setNewStudentYearId(yearId);
+    const matchingSems = semesters.filter(s => s.academic_year_id === yearId).map(s => s.id);
+    const matchingSecs = sections.filter(sec => matchingSems.includes(sec.semester_id) && sec.active);
+    setNewSectionId(matchingSecs[0]?.id || '');
+  };
+
   const filteredStudents = accessibleStudents.filter(s => {
     const matchesSearch = 
       s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesYear = yearFilter === 'ALL' || s.academic_year_id === yearFilter;
-    const matchesSection = sectionFilter === 'ALL' || s.section_id === sectionFilter || s.section?.name === sectionFilter;
+    const matchesSection = sectionFilter === 'ALL' || s.section_id === sectionFilter;
     const matchesAdmission = admissionFilter === 'ALL' || s.admission_type === admissionFilter;
 
     return matchesSearch && matchesYear && matchesSection && matchesAdmission;
@@ -212,20 +244,46 @@ export const StudentDirectoryPage: React.FC = () => {
       return;
     }
 
-    const selectedSec = sections.find(s => s.id === newSectionId) || addModalSections[0] || sections[0];
-    const secSemester = semesters.find(s => s.id === selectedSec?.semester_id) || addModalSemesters[0] || semesters[0];
-    const secYear = years.find(y => y.id === secSemester?.academic_year_id) || years.find(y => y.id === newStudentYearId) || years[0];
+    if (!newStudentYearId) {
+      setModalError('Please select an Academic Year.');
+      return;
+    }
+
+    if (!newSectionId) {
+      setModalError('Please select a valid Target Section.');
+      return;
+    }
+
+    const selectedSec = sections.find(s => s.id === newSectionId);
+    if (!selectedSec) {
+      setModalError('Selected Section is invalid.');
+      return;
+    }
+
+    const secSemester = semesters.find(s => s.id === selectedSec.semester_id);
+    const secYear = years.find(y => y.id === secSemester?.academic_year_id);
+
+    // Strict validation: section must belong to the selected academic year
+    if (!secSemester || !secYear || secYear.id !== newStudentYearId) {
+      setModalError('Please select a valid Academic Year and Section.');
+      return;
+    }
+
+    const selectedProgram = programs.find(p => p.id === secYear.program_id) || programs[0];
+    const selectedDept = departments.find(d => d.id === selectedProgram?.department_id) ||
+      departments.find(d => d.id === user?.department_id) ||
+      departments[0];
     const activeSession = sessions.find(s => s.is_current) || sessions[0];
 
     try {
       await addStudent({
-        institution_id: institution.id,
-        department_id: departments[0]?.id || '',
-        program_id: programs[0]?.id || '',
+        institution_id: institution?.id || '22398afa-8679-4d2c-87fc-312152a276e2',
+        department_id: selectedDept?.id || '',
+        program_id: selectedProgram?.id || '',
         academic_session_id: activeSession?.id || '',
-        academic_year_id: secYear?.id || years[0]?.id,
-        semester_id: secSemester?.id || semesters[0]?.id,
-        section_id: selectedSec?.id || newSectionId,
+        academic_year_id: secYear.id,
+        semester_id: secSemester.id,
+        section_id: selectedSec.id,
         roll_number: newRoll.trim(),
         full_name: newName.trim().toUpperCase(),
         admission_type: newAdmissionType,
@@ -240,6 +298,9 @@ export const StudentDirectoryPage: React.FC = () => {
       setNewName('');
       setNewEmail('');
       setNewPhone('');
+      setNewMentorId('');
+      setNewAdmissionType('Regular');
+      await refreshData(true);
     } catch (err: any) {
       setModalError(err.message || 'Failed to add student');
     }
@@ -263,7 +324,7 @@ export const StudentDirectoryPage: React.FC = () => {
           <Button
             variant="neon"
             size="sm"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={handleOpenAddModal}
             leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
           >
             Add New Student
@@ -674,16 +735,12 @@ export const StudentDirectoryPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Academic Year</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Academic Year <span className="text-rose-400">*</span>
+              </label>
               <select
                 value={newStudentYearId}
-                onChange={(e) => {
-                  setNewStudentYearId(e.target.value);
-                  const matchingSems = semesters.filter(s => s.academic_year_id === e.target.value);
-                  const sIds = matchingSems.map(s => s.id);
-                  const matchingSecs = sections.filter(sec => sIds.includes(sec.semester_id));
-                  if (matchingSecs[0]) setNewSectionId(matchingSecs[0].id);
-                }}
+                onChange={(e) => handleModalYearChange(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               >
                 {years.map(y => (
@@ -693,34 +750,80 @@ export const StudentDirectoryPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Target Section</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Target Section <span className="text-rose-400">*</span>
+              </label>
               <select
                 value={newSectionId}
                 onChange={(e) => setNewSectionId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
               >
-                {addModalSections.map(s => {
-                  const sem = semesters.find(sm => sm.id === s.semester_id);
-                  return (
-                    <option key={s.id} value={s.id}>
-                      Section {s.name} ({s.room_number || 'TBD'}) {sem ? `• ${sem.name}` : ''}
-                    </option>
-                  );
-                })}
+                {addModalSections.length === 0 ? (
+                  <option value="">No sections available</option>
+                ) : (
+                  addModalSections.map(s => {
+                    const sem = semesters.find(sm => sm.id === s.semester_id);
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Section {s.name} ({s.room_number || 'TBD'}) {sem ? `• ${sem.name}` : ''}
+                      </option>
+                    );
+                  })
+                )}
               </select>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
-            <select
-              value={newAdmissionType}
-              onChange={(e) => setNewAdmissionType(e.target.value as AdmissionType)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
-            >
-              <option value="Regular">Regular</option>
-              <option value="Lateral Entry">Lateral Entry</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="e.g. student@vctm.in"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
+              <input
+                type="tel"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="e.g. +91 9876543210"
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
+              <select
+                value={newAdmissionType}
+                onChange={(e) => setNewAdmissionType(e.target.value as AdmissionType)}
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              >
+                <option value="Regular">Regular</option>
+                <option value="Lateral Entry">Lateral Entry</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Mentor Faculty</label>
+              <select
+                value={newMentorId}
+                onChange={(e) => setNewMentorId(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              >
+                <option value="">None / Not Assigned</option>
+                {faculty.filter(f => f.active).map(f => (
+                  <option key={f.id} value={f.id}>{f.full_name} ({f.designation || 'Faculty'})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">

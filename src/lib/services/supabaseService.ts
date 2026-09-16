@@ -918,7 +918,43 @@ export const supabaseService = {
 
   // 5. Admin CRUD Operations with Supabase Profile Sync
   async addStudent(student: Omit<Student, 'id' | 'created_at' | 'updated_at'>) {
-    const { data, error } = await supabase.from('students').insert(student).select().single();
+    if (!student.section_id) {
+      throw new Error('Target Section is required to add a student.');
+    }
+
+    // 1. Verify section and academic hierarchy consistency directly from database
+    const { data: sec, error: secErr } = await supabase
+      .from('sections')
+      .select('id, semester_id, semester:semesters(id, academic_year_id, academic_year:academic_years(id, program_id, program:programs(id, department_id)))')
+      .eq('id', student.section_id)
+      .single();
+
+    if (secErr || !sec) {
+      throw new Error('Selected Section does not exist in the database.');
+    }
+
+    const semester = (sec as any).semester;
+    const academicYear = semester?.academic_year;
+    const program = academicYear?.program;
+
+    // Validate that student's semester and year match the section's actual hierarchy
+    if (student.semester_id && student.semester_id !== sec.semester_id) {
+      throw new Error('Relational mismatch: Semester does not match the selected Section.');
+    }
+    if (student.academic_year_id && academicYear?.id && student.academic_year_id !== academicYear.id) {
+      throw new Error('Relational mismatch: Academic Year does not match the selected Section.');
+    }
+
+    const payload = {
+      ...student,
+      section_id: sec.id,
+      semester_id: sec.semester_id,
+      academic_year_id: academicYear?.id || student.academic_year_id,
+      program_id: program?.id || student.program_id,
+      department_id: program?.department_id || student.department_id,
+    };
+
+    const { data, error } = await supabase.from('students').insert(payload).select().single();
     if (error) throw new Error(error.message);
     const createdStudent = data as Student;
 
@@ -1073,8 +1109,14 @@ export const supabaseService = {
 
     const semester = sec.semester;
     const academicYear = semester?.academic_year;
+    const academicYearId = semester?.academic_year_id || academicYear?.id;
     const program = academicYear?.program;
-    const departmentId = program?.department_id || 'fe5bc365-7a68-4290-b05e-acfa274f748a';
+    const programId = academicYear?.program_id || program?.id;
+    const departmentId = program?.department_id;
+
+    if (!academicYearId || !sec.semester_id) {
+      throw new Error(`Cannot resolve academic year or semester for section ${sectionId}`);
+    }
 
     // Get current active session
     const { data: session } = await supabase
@@ -1082,7 +1124,7 @@ export const supabaseService = {
       .select('id')
       .eq('is_current', true)
       .maybeSingle();
-    const sessionId = session?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e';
+    const sessionId = session?.id || '';
 
     // Fetch existing students to check duplicates
     const { data: existingStudents } = await supabase
@@ -1118,7 +1160,7 @@ export const supabaseService = {
             admission_type: admissionType,
             section_id: sectionId,
             semester_id: sec.semester_id,
-            academic_year_id: academicYear?.id,
+            academic_year_id: academicYearId,
             active: true,
           })
           .eq('id', existingByRoll.id);
@@ -1144,11 +1186,11 @@ export const supabaseService = {
           .from('students')
           .insert({
             id: newStudentId,
-            institution_id: '22398afa-8679-4d2c-87fc-312152a276e2',
+            institution_id: sec.institution_id || '22398afa-8679-4d2c-87fc-312152a276e2',
             department_id: departmentId,
-            program_id: program?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
-            academic_session_id: sessionId,
-            academic_year_id: academicYear?.id || 'ecdc0ed0-e0b7-4ebc-9db5-1db612317334',
+            program_id: programId,
+            academic_session_id: sessionId || null,
+            academic_year_id: academicYearId,
             semester_id: sec.semester_id,
             section_id: sectionId,
             roll_number: cleanRoll,

@@ -50,6 +50,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
     programs,
     faculty,
     sections,
+    sessions,
     addStudent,
     updateStudent,
     transferStudentSection,
@@ -284,13 +285,18 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
     setIsAdding(true);
     setAddError(null);
     try {
+      if (!sectionYear || !sectionSemester) {
+        throw new Error('Cannot determine academic year or semester for this section.');
+      }
+
+      const activeSession = sessions.find(s => s.is_current) || sessions[0];
       await addStudent({
-        institution_id: '22398afa-8679-4d2c-87fc-312152a276e2',
-        department_id: sectionDept?.id || 'fe5bc365-7a68-4290-b05e-acfa274f748a',
-        program_id: sectionProgram?.id || 'c71b3983-9ff8-43e1-a9a0-b778676bf186',
-        academic_session_id: 'a358fe68-d746-4242-9f36-2c715cd9526e',
-        academic_year_id: sectionYear?.id || 'ecdc0ed0-e0b7-4ebc-9db5-1db612317334',
-        semester_id: section.semester_id,
+        institution_id: sectionDept?.institution_id || '22398afa-8679-4d2c-87fc-312152a276e2',
+        department_id: sectionDept?.id || '',
+        program_id: sectionProgram?.id || '',
+        academic_session_id: activeSession?.id || '',
+        academic_year_id: sectionYear.id,
+        semester_id: sectionSemester.id,
         section_id: section.id,
         roll_number: addRollNumber.trim(),
         full_name: addFullName.trim(),

@@ -94,7 +94,7 @@ export class StudentSyncService {
       supabase.from('departments').select('*'),
       supabase.from('programs').select('*'),
       supabase.from('academic_sessions').select('*'),
-      supabase.from('academic_years').select('*').eq('active', true).neq('year_number', 1).order('year_number'),
+      supabase.from('academic_years').select('*').eq('active', true).order('year_number'),
       supabase.from('semesters').select('*').order('semester_number'),
       supabase.from('sections').select('*').order('name'),
       supabase.from('students').select('*')
@@ -262,7 +262,7 @@ export class StudentSyncService {
       }
 
       // Resolve Semester for Year
-      const matchingSem = semesters.find(s => s.academic_year_id === resolvedYear?.id) || semesters[0];
+      const matchingSem = resolvedYear ? semesters.find(s => s.academic_year_id === resolvedYear.id) : undefined;
       if (!matchingSem && resolvedYear) {
         rowErrors.push(`No active semester for Year ${resolvedYear.year_number}.`);
       }
@@ -273,13 +273,9 @@ export class StudentSyncService {
         rowErrors.push('Class section is missing.');
       }
 
-      let matchedSection = matchingSem 
+      const matchedSection = matchingSem 
         ? sections.find(s => s.semester_id === matchingSem.id && s.name.toUpperCase() === rawSec && s.active)
         : undefined;
-
-      if (!matchedSection) {
-        matchedSection = sections.find(s => s.name.toUpperCase() === rawSec && s.active);
-      }
 
       if (!matchedSection && rawSec) {
         if (matchingSem) {
@@ -497,7 +493,7 @@ export class StudentSyncService {
       }
 
       // Resolve Semester for this Year
-      const matchingSem = semesters.find(s => s.academic_year_id === resolvedYear.id) || semesters[0];
+      const matchingSem = semesters.find(s => s.academic_year_id === resolvedYear.id);
       if (!matchingSem) {
         errors.push({ row: rowNum, rollNumber: cleanRoll, message: `No active semester found for Year ${resolvedYear.year_number}.` });
         continue;
@@ -513,14 +509,9 @@ export class StudentSyncService {
       // Match section specifically linked to this semester/year
       let matchedSection = sections.find(s => 
         s.semester_id === matchingSem.id && 
-        s.name.toUpperCase() === rawSec &&
+        s.name.toUpperCase() === rawSec && 
         s.active
       );
-
-      // Fallback: match by name if semester_id is null
-      if (!matchedSection) {
-        matchedSection = sections.find(s => s.name.toUpperCase() === rawSec && s.active);
-      }
 
       if (!matchedSection && options?.createMissingSections && rawSec && matchingSem) {
         // Check if section already exists in DB (even if inactive)

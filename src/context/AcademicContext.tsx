@@ -598,8 +598,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const curFaculty = facultyRef.current;
       const curDepts = departmentsRef.current;
       const enrichedStudents: Student[] = rawStudents.map(s => {
-        const matchedSection = curSections.find(sec => sec.id === s.section_id) ||
-                               curSections.find(sec => sec.name === (s.section as any)?.name);
+        const matchedSection = curSections.find(sec => sec.id === s.section_id);
         return {
           ...s,
           section: matchedSection,
@@ -1277,7 +1276,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addStudent = async (studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addStudent(studentData);
-    erpStorage.addStudent(studentData);
     await refreshStudents();
     return res;
   };
