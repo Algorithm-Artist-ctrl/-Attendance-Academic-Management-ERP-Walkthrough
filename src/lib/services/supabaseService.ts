@@ -452,7 +452,7 @@ export const supabaseService = {
     return fetchPromise;
   },
 
-  // 2. Save Live Attendance Session & Student Records
+  // 2. Save Live Attendance Session & Student Records (Authoritative Atomic Supabase Flow)
   async saveAttendance(params: {
     timetableEntryId?: string;
     facultyId: string;
@@ -467,118 +467,164 @@ export const supabaseService = {
       remarks?: string;
     }>;
   }) {
+    console.log('ATTENDANCE_SAVE_START', {
+      sectionId: params.sectionId,
+      subjectId: params.subjectId,
+      sessionDate: params.sessionDate,
+      timetableEntryId: params.timetableEntryId,
+      recordCount: params.studentRecords?.length
+    });
+
     // 1. Validation: Prevent future attendance dates
     const today = getISTTodayDate();
     if (params.sessionDate > today) {
+      console.error('ATTENDANCE_SAVE_FAILED', `Invalid date: ${params.sessionDate}`);
       throw new Error(`Invalid attendance date: ${params.sessionDate}. Attendance cannot be recorded for future dates.`);
     }
 
-    // Check if session already exists for this date, section, subject, and timetable period
-    let sessionQuery = supabase
-      .from('attendance_sessions')
-      .select('*')
-      .eq('section_id', params.sectionId)
-      .eq('subject_id', params.subjectId)
-      .eq('session_date', params.sessionDate);
-
-    if (params.timetableEntryId) {
-      sessionQuery = sessionQuery.eq('timetable_entry_id', params.timetableEntryId);
-    } else if (params.startTime) {
-      sessionQuery = sessionQuery.eq('start_time', params.startTime);
+    if (!params.sectionId || !params.subjectId || !params.facultyId) {
+      console.error('ATTENDANCE_SAVE_FAILED', 'Missing required class parameters');
+      throw new Error('Missing section, subject, or faculty information.');
     }
 
-    const { data: existingSessions } = await sessionQuery.limit(1);
+    if (!params.studentRecords || params.studentRecords.length === 0) {
+      console.error('ATTENDANCE_SAVE_FAILED', 'No student records provided');
+      throw new Error('Cannot submit empty attendance roster.');
+    }
 
-    let session: AttendanceSession;
-
-    if (existingSessions && existingSessions.length > 0) {
-      session = existingSessions[0];
-      await supabase
-        .from('attendance_sessions')
-        .update({
-          marked_at: new Date().toISOString(),
-          status: 'completed',
-        })
-        .eq('id', session.id);
-    } else {
-      const { data: newSession, error: sessionErr } = await supabase
-        .from('attendance_sessions')
-        .insert({
-          timetable_entry_id: params.timetableEntryId || null,
-          faculty_id: params.facultyId,
-          section_id: params.sectionId,
-          subject_id: params.subjectId,
-          session_date: params.sessionDate,
-          start_time: params.startTime || '09:00',
-          end_time: params.endTime || '09:50',
-          status: 'completed',
-          marked_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (sessionErr || !newSession) {
-        throw new Error(`Failed to create attendance session: ${sessionErr?.message}`);
+    // Check for any unassigned/invalid status
+    for (const sr of params.studentRecords) {
+      if (!sr.studentId || (sr.status !== 'Present' && sr.status !== 'Absent')) {
+        console.error('ATTENDANCE_SAVE_FAILED', `Invalid status for student ${sr.studentId}: ${sr.status}`);
+        throw new Error(`Every student must be explicitly marked as Present or Absent.`);
       }
-      session = newSession;
     }
 
-    // Delete any previous records for this session to avoid duplicates, then insert fresh
-    await supabase.from('attendance_records').delete().eq('attendance_session_id', session.id);
+    // 2. Auth Resolution & Authorization Validation
+    const { data: authUserRes } = await supabase.auth.getUser();
+    const callerUser = authUserRes?.user;
 
-    const recordsToInsert = params.studentRecords.map(sr => ({
-      attendance_session_id: session.id,
-      student_id: sr.studentId,
-      status: sr.status,
-      marked_by: params.facultyId,
-      marked_at: new Date().toISOString(),
-      remarks: sr.remarks || null,
-    }));
+    if (callerUser) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role, faculty_id, department_id')
+        .eq('id', callerUser.id)
+        .maybeSingle();
 
-    const { data: insertedRecords, error: recordsErr } = await supabase
-      .from('attendance_records')
-      .insert(recordsToInsert)
-      .select();
+      if (profile?.role === 'student') {
+        console.error('ATTENDANCE_SAVE_FAILED', 'Student attempted to record attendance');
+        throw new Error('Unauthorized: Students cannot record or modify attendance.');
+      }
 
-    if (recordsErr) {
-      throw new Error(`Failed to insert attendance records: ${recordsErr.message}`);
+      if (profile?.role === 'faculty') {
+        const callerFacultyId = profile.faculty_id || callerUser.id;
+        if (callerFacultyId && callerFacultyId !== params.facultyId) {
+          console.error('ATTENDANCE_SAVE_FAILED', `Caller faculty ${callerFacultyId} does not match requested ${params.facultyId}`);
+          throw new Error('You are not authorized to record attendance for this class.');
+        }
+      }
+    }
+    console.log('ATTENDANCE_AUTH_VALIDATED', { callerId: callerUser?.id, facultyId: params.facultyId });
+
+    // 3. Timetable Entry Validation (if provided)
+    if (params.timetableEntryId) {
+      const { data: ttEntry, error: ttErr } = await supabase
+        .from('timetable_entries')
+        .select('id, section_id, subject_id, faculty_id, active, start_time, end_time')
+        .eq('id', params.timetableEntryId)
+        .maybeSingle();
+
+      if (ttErr || !ttEntry) {
+        console.error('ATTENDANCE_SAVE_FAILED', `Timetable entry not found: ${params.timetableEntryId}`);
+        throw new Error(`Specified timetable entry not found: ${params.timetableEntryId}`);
+      }
+
+      if (ttEntry.active === false) {
+        console.error('ATTENDANCE_SAVE_FAILED', `Timetable entry is archived/inactive: ${params.timetableEntryId}`);
+        throw new Error('Cannot record attendance for an archived or inactive timetable entry.');
+      }
+
+      if (ttEntry.section_id !== params.sectionId) {
+        console.error('ATTENDANCE_SAVE_FAILED', `Section mismatch: tt ${ttEntry.section_id} vs param ${params.sectionId}`);
+        throw new Error('Timetable entry section mismatch with selected class.');
+      }
+
+      if (ttEntry.subject_id && ttEntry.subject_id !== params.subjectId) {
+        console.error('ATTENDANCE_SAVE_FAILED', `Subject mismatch: tt ${ttEntry.subject_id} vs param ${params.subjectId}`);
+        throw new Error('Timetable entry subject mismatch with selected class.');
+      }
+
+      console.log('ATTENDANCE_TIMETABLE_VALIDATED', { timetableEntryId: params.timetableEntryId });
     }
 
-    // Fetch faculty full name for audit fidelity
-    const { data: facultyInfo } = await supabase
-      .from('faculty')
-      .select('full_name')
-      .eq('id', params.facultyId)
-      .single();
+    // 4. Student Roster Validation against live database
+    const { data: liveStudents, error: studentsErr } = await supabase
+      .from('students')
+      .select('id')
+      .eq('section_id', params.sectionId)
+      .eq('active', true);
 
-    // Audit Log
-    const presentCount = params.studentRecords.filter(r => r.status === 'Present').length;
-    const absentCount = params.studentRecords.length - presentCount;
+    if (studentsErr || !liveStudents || liveStudents.length === 0) {
+      console.error('ATTENDANCE_SAVE_FAILED', `Failed to load active students for section ${params.sectionId}`);
+      throw new Error(`Failed to load active student roster for section ${params.sectionId}.`);
+    }
 
-    await supabase.from('audit_logs').insert({
-      actor_id: params.facultyId,
-      actor_name: facultyInfo?.full_name || 'Faculty Member',
-      actor_role: 'faculty',
-      action: 'ATTENDANCE_RECORDED',
-      entity_type: 'attendance_sessions',
-      entity_id: session.id,
-      new_values: {
-        sessionDate: params.sessionDate,
-        sectionId: params.sectionId,
-        subjectId: params.subjectId,
-        presentCount,
-        absentCount,
-      },
+    if (params.studentRecords.length !== liveStudents.length) {
+      console.error('ATTENDANCE_SAVE_FAILED', `Roster count mismatch: section has ${liveStudents.length} active students, got ${params.studentRecords.length}`);
+      throw new Error(`Incomplete attendance submission: Section has ${liveStudents.length} active students, but ${params.studentRecords.length} were submitted.`);
+    }
+
+    // 5. Atomic PostgreSQL RPC Save
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_attendance_session', {
+      p_timetable_entry_id: params.timetableEntryId || null,
+      p_faculty_id: params.facultyId,
+      p_section_id: params.sectionId,
+      p_subject_id: params.subjectId,
+      p_session_date: params.sessionDate,
+      p_start_time: (params.startTime || '09:00:00').length === 5 ? `${params.startTime}:00` : (params.startTime || '09:00:00'),
+      p_end_time: (params.endTime || '09:50:00').length === 5 ? `${params.endTime}:00` : (params.endTime || '09:50:00'),
+      p_records: params.studentRecords.map(sr => ({
+        student_id: sr.studentId,
+        status: sr.status,
+        remarks: sr.remarks || null,
+      })),
     });
 
-    // Broadcast Realtime Attendance Update
+    if (rpcErr || !rpcRes?.session_id) {
+      console.error('ATTENDANCE_SAVE_FAILED', rpcErr || 'No session returned from RPC');
+      throw new Error(rpcErr?.message || 'Database error: Failed to record attendance.');
+    }
+
+    const sessionId = rpcRes.session_id;
+    console.log('ATTENDANCE_SESSION_CREATED_OR_UPDATED', { sessionId });
+    console.log('ATTENDANCE_RECORDS_UPSERTED', { recordCount: rpcRes.record_count });
+
+    // 6. Verify Persisted Rows from Live Supabase
+    const [sessVerify, recsVerify] = await Promise.all([
+      supabase.from('attendance_sessions').select('*').eq('id', sessionId).single(),
+      supabase.from('attendance_records').select('*').eq('attendance_session_id', sessionId),
+    ]);
+
+    if (sessVerify.error || !sessVerify.data || recsVerify.error || !recsVerify.data || recsVerify.data.length !== liveStudents.length) {
+      console.error('ATTENDANCE_SAVE_FAILED', 'Database verification mismatch after save');
+      throw new Error('Database verification mismatch: Saved records could not be verified in live Supabase.');
+    }
+
+    console.log('ATTENDANCE_SAVE_VERIFIED', {
+      sessionId,
+      recordsVerified: recsVerify.data.length,
+      presentCount: rpcRes.present_count,
+      absentCount: rpcRes.absent_count,
+    });
+
+    // 7. Broadcast Realtime Attendance Update
     try {
       const channel = supabase.channel('vctm-erp-realtime-channel');
       await channel.send({
         type: 'broadcast',
         event: 'attendance_updated',
         payload: {
-          session_id: session.id,
+          session_id: sessionId,
           section_id: params.sectionId,
           subject_id: params.subjectId,
           session_date: params.sessionDate,
@@ -587,7 +633,13 @@ export const supabaseService = {
       });
     } catch {}
 
-    return { session, records: insertedRecords as AttendanceRecord[] };
+    this.invalidateMasterCache();
+
+    return { 
+      session: sessVerify.data as AttendanceSession, 
+      records: recsVerify.data as AttendanceRecord[],
+      stats: rpcRes
+    };
   },
 
   // 3. Ensure Attendance Session & Record (for unrecorded lecture claims)

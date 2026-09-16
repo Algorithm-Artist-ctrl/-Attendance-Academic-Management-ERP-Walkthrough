@@ -544,7 +544,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // VIEW 2: ACTIVE LECTURE ATTENDANCE MARKING SHEET (REDESIGNED FAST UI)
   // =========================================================================
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4 pb-56 md:pb-28">
       {/* 1. Class Context Header Bar */}
       <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -573,8 +573,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           </div>
         </div>
 
-        {/* Date Selector & Session Status */}
-        <div className="flex items-center gap-3 self-end md:self-auto">
+        {/* Date Selector & Session Status & Mobile Save Action */}
+        <div className="flex items-center gap-2 sm:gap-3 self-end md:self-auto">
           <div className="flex items-center gap-2 bg-slate-950/90 border border-emerald-500/30 px-3 py-1.5 rounded-2xl text-xs">
             <Calendar className="w-4 h-4 text-[#00ff88]" />
             <input
@@ -590,6 +590,18 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             <Clock className="w-3.5 h-3.5 text-[#00ff88]" />
             <span className="font-mono">{timeSlot}</span>
           </div>
+
+          {/* Mobile Direct Header Save Button */}
+          <Button
+            size="sm"
+            variant="neon"
+            leftIcon={<Save className="w-3.5 h-3.5 text-slate-950" />}
+            onClick={handleInitiateSave}
+            disabled={sectionStudents.length === 0 || isSaving}
+            className="md:hidden font-black text-xs py-1.5 px-3 shadow-[0_0_15px_rgba(0,255,136,0.25)]"
+          >
+            {isSaving ? '...' : 'Save'}
+          </Button>
         </div>
       </div>
 
@@ -868,40 +880,51 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         )}
       </div>
 
-      {/* 6. Sticky Floating Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 border-t border-emerald-500/30 backdrop-blur-2xl p-3.5 px-4 sm:px-8 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-xs font-bold">
+      {/* 6. Sticky Floating Bottom Action Bar (Lifted above mobile nav on mobile devices) */}
+      <div className="fixed bottom-[calc(3.75rem+max(env(safe-area-inset-bottom,0px),16px))] md:bottom-0 left-0 right-0 z-40 bg-slate-950/95 border-t border-emerald-500/30 backdrop-blur-2xl p-2.5 sm:p-3.5 px-3 sm:px-8 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold">
             <span className="text-emerald-400 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
-              {presentCount} Present
+              <span>{presentCount}</span>
+              <span className="hidden xs:inline text-[11px]">Present</span>
             </span>
             <span className="text-slate-600">•</span>
             <span className="text-rose-400 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-rose-500" />
-              {absentCount} Absent
+              <span>{absentCount}</span>
+              <span className="hidden xs:inline text-[11px]">Absent</span>
             </span>
-            {unmarkedCount > 0 && (
+            {unmarkedCount > 0 ? (
               <>
                 <span className="text-slate-600">•</span>
                 <span className="text-amber-300 flex items-center gap-1 font-mono">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  {unmarkedCount} Unmarked
+                  <span>{unmarkedCount}</span>
+                  <span className="hidden xs:inline text-[11px]">Unmarked</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-slate-600 hidden sm:inline">•</span>
+                <span className="text-[#00ff88] hidden sm:flex items-center gap-1 text-[11px]">
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span>All Marked</span>
                 </span>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button
               size="md"
               variant="neon"
               leftIcon={<Save className="w-4 h-4 text-slate-950" />}
               onClick={handleInitiateSave}
               disabled={sectionStudents.length === 0 || isSaving}
-              className="font-black shadow-[0_0_20px_rgba(0,255,136,0.3)]"
+              className="font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(0,255,136,0.3)] py-2 sm:py-2.5 px-3 sm:px-5"
             >
-              {isSaving ? 'Saving...' : `Save Attendance (${completionPercent}%)`}
+              {isSaving ? 'Saving...' : unmarkedCount > 0 ? `Save (${completionPercent}%)` : `Save Attendance`}
             </Button>
           </div>
         </div>
