@@ -1546,9 +1546,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Check if session was conducted on this date
       const session = attendanceSessions.find(
-        s => s.section_id === entry.section_id &&
-             s.subject_id === entry.subject_id &&
-             s.session_date === targetDateStr
+        s => s.session_date === targetDateStr &&
+             (s.timetable_entry_id === entry.id ||
+              (s.section_id === entry.section_id &&
+               s.subject_id === entry.subject_id &&
+               (s.start_time?.substring(0, 5) === entry.start_time?.substring(0, 5) || !s.start_time)))
       );
 
       let status: 'Present' | 'Absent' | 'Not Recorded' = 'Not Recorded';
@@ -1673,9 +1675,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const sec = sections.find(s => s.id === entry.section_id);
 
       const session = attendanceSessions.find(
-        s => s.section_id === entry.section_id &&
-             s.subject_id === entry.subject_id &&
-             s.session_date === params.dateStr
+        s => s.session_date === params.dateStr &&
+             (s.timetable_entry_id === entry.id ||
+              (s.section_id === entry.section_id &&
+               s.subject_id === entry.subject_id &&
+               (s.start_time?.substring(0, 5) === entry.start_time?.substring(0, 5) || !s.start_time)))
       );
 
       let studentStatus: AttendanceStatus | 'Not Recorded' = 'Not Recorded';

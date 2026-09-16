@@ -18,14 +18,14 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
-import { getISTTodayDate, getISTDayOfWeek } from '../../lib/utils/dateUtils';
+import { getISTTodayDate, getISTDayOfWeek, getRelativeDate } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
 import { AttendanceSession } from '../../types/database.types';
 import { ATTENDANCE_ELIGIBILITY_THRESHOLD } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
 export const ReportsPage: React.FC = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { 
     departments, 
     years,
@@ -36,11 +36,35 @@ export const ReportsPage: React.FC = () => {
     students, 
     timetable,
     sessions,
+    assignments,
     attendanceSessions,
     attendanceRecords,
     deleteAttendanceSession,
     getStudentAttendance 
   } = useAcademic();
+
+  // Resolve logged-in faculty (if user is faculty)
+  const currentFaculty = useMemo(() => {
+    if (role !== 'faculty') return null;
+    return faculty.find(
+      f => f.id === user?.faculty_id || 
+           f.id === user?.faculty?.id || 
+           f.id === user?.id ||
+           (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+           (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+           (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+    ) || user?.faculty || null;
+  }, [role, user, faculty]);
+
+  const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
+
+  // Sections assigned to this faculty (from timetable & assignments)
+  const facultySectionIds = useMemo(() => {
+    if (role !== 'faculty' || !facultyId) return null;
+    const fromTimetable = timetable.filter(t => t.faculty_id === facultyId && t.section_id).map(t => t.section_id);
+    const fromAssignments = (assignments || []).filter(a => a.faculty_id === facultyId && a.section_id).map(a => a.section_id);
+    return new Set([...fromTimetable, ...fromAssignments]);
+  }, [role, facultyId, timetable, assignments]);
 
   // Tab State: 'lectures' (Lecture Attendance Management) vs 'cumulative' (Audit & Ledgers)
   const [activeTab, setActiveTab] = useState<'lectures' | 'cumulative'>('lectures');
@@ -65,6 +89,11 @@ export const ReportsPage: React.FC = () => {
   // Filtered Sessions
   const filteredSessions = useMemo(() => {
     return attendanceSessions.filter(sess => {
+      // Role Scoping: Faculty only sees their own sessions
+      if (role === 'faculty' && facultyId && sess.faculty_id !== facultyId) {
+        return false;
+      }
+
       const sec = sections.find(s => s.id === sess.section_id);
       const sem = semesters.find(s => s.id === sec?.semester_id);
       const yr = years.find(y => y.id === sem?.academic_year_id);
@@ -88,8 +117,8 @@ export const ReportsPage: React.FC = () => {
         return false;
       }
 
-      // Faculty Filter
-      if (lectureFacultyFilter !== 'ALL' && sess.faculty_id !== lectureFacultyFilter) {
+      // Faculty Filter (for Admin/HOD)
+      if (role !== 'faculty' && lectureFacultyFilter !== 'ALL' && sess.faculty_id !== lectureFacultyFilter) {
         return false;
       }
 
@@ -118,7 +147,7 @@ export const ReportsPage: React.FC = () => {
       }
       return (b.start_time || '').localeCompare(a.start_time || '');
     });
-  }, [attendanceSessions, sections, semesters, years, subjects, faculty, timetable, lectureYearFilter, lectureSectionFilter, lectureDateFilter, lectureFacultyFilter, lectureSubjectFilter, lectureSearch]);
+  }, [attendanceSessions, sections, semesters, years, subjects, faculty, timetable, lectureYearFilter, lectureSectionFilter, lectureDateFilter, lectureFacultyFilter, lectureSubjectFilter, lectureSearch, role, facultyId]);
 
   // Lecture KPIs
   const lectureKPIs = useMemo(() => {
@@ -220,10 +249,22 @@ export const ReportsPage: React.FC = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'ALL' | 'ELIGIBLE' | 'DEFAULTER'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Calculate stats for all students
+  // Available Sections scoped for faculty or all active for admin/HOD
+  const availableSections = useMemo(() => {
+    const activeSecs = sections.filter(s => s.active);
+    if (role === 'faculty' && facultySectionIds && facultySectionIds.size > 0) {
+      return activeSecs.filter(s => facultySectionIds.has(s.id));
+    }
+    return activeSecs;
+  }, [sections, role, facultySectionIds]);
+
+  // Calculate stats for all students (scoped to assigned sections if faculty)
   const allStats: StudentOverallAttendance[] = useMemo(() => {
-    return students.map(s => getStudentAttendance(s.id));
-  }, [students, getStudentAttendance]);
+    const studentList = (role === 'faculty' && facultySectionIds && facultySectionIds.size > 0)
+      ? students.filter(s => facultySectionIds.has(s.section_id || s.section?.id || ''))
+      : students;
+    return studentList.map(s => getStudentAttendance(s.id));
+  }, [students, getStudentAttendance, role, facultySectionIds]);
 
   const filteredStats = useMemo(() => {
     return allStats.filter(s => {
@@ -289,10 +330,12 @@ export const ReportsPage: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
             <FileSpreadsheet className="w-6 h-6 text-[#00ff88]" />
-            Reports & Academic Audits
+            {role === 'faculty' ? 'Attendance Reports' : 'Reports & Academic Audits'}
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Live lecture registers, 15-column master attendance exports & exam eligibility ledgers
+            {role === 'faculty'
+              ? 'View attendance history, rosters, and audit records for your assigned classes'
+              : 'Live lecture registers, 15-column master attendance exports & exam eligibility ledgers'}
           </p>
         </div>
 
@@ -421,7 +464,10 @@ export const ReportsPage: React.FC = () => {
 
           {/* Filter Bar */}
           <div className="glass-card rounded-2xl p-4 space-y-3 border border-emerald-500/20">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+            <div className={clsx(
+              "grid grid-cols-1 sm:grid-cols-2 gap-3",
+              role === 'faculty' ? "lg:grid-cols-6" : "lg:grid-cols-7"
+            )}>
               {/* Search */}
               <div className="relative sm:col-span-2">
                 <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -453,22 +499,24 @@ export const ReportsPage: React.FC = () => {
                 className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
               >
                 <option value="ALL">All Sections</option>
-                {sections.filter(s => s.active).map(sec => (
+                {availableSections.map(sec => (
                   <option key={sec.id} value={sec.id}>Section {sec.name}</option>
                 ))}
               </select>
 
-              {/* Faculty Filter */}
-              <select
-                value={lectureFacultyFilter}
-                onChange={(e) => setLectureFacultyFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
-              >
-                <option value="ALL">All Faculty</option>
-                {faculty.filter(f => f.active).map(fac => (
-                  <option key={fac.id} value={fac.id}>{fac.full_name}</option>
-                ))}
-              </select>
+              {/* Faculty Filter (Admin/HOD Only) */}
+              {role !== 'faculty' && (
+                <select
+                  value={lectureFacultyFilter}
+                  onChange={(e) => setLectureFacultyFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                >
+                  <option value="ALL">All Faculty</option>
+                  {faculty.filter(f => f.active).map(fac => (
+                    <option key={fac.id} value={fac.id}>{fac.full_name}</option>
+                  ))}
+                </select>
+              )}
 
               {/* Subject Filter */}
               <select
@@ -482,23 +530,65 @@ export const ReportsPage: React.FC = () => {
                 ))}
               </select>
 
-              {/* Date Filter */}
-              <div className="flex items-center gap-1">
-                <input
-                  type="date"
-                  value={lectureDateFilter}
-                  onChange={(e) => setLectureDateFilter(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
-                />
-                {lectureDateFilter && (
+              {/* Date Filter & Presets */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1">
+                  <input
+                    type="date"
+                    value={lectureDateFilter}
+                    onChange={(e) => setLectureDateFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+                  />
+                  {lectureDateFilter && (
+                    <button
+                      onClick={() => setLectureDateFilter('')}
+                      className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-white text-xs cursor-pointer"
+                      title="Clear Date"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setLectureDateFilter('')}
-                    className="p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-white text-xs cursor-pointer"
-                    title="Clear Date"
+                    type="button"
+                    onClick={() => setLectureDateFilter(prev => getRelativeDate(prev || getISTTodayDate(), -1))}
+                    className="flex-1 py-1 px-1 rounded-lg bg-slate-900/90 border border-emerald-500/20 text-[10px] font-bold text-slate-300 hover:text-white hover:border-emerald-500/40 transition-colors cursor-pointer"
                   >
-                    ✕
+                    ◀ Prev
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setLectureDateFilter(getISTTodayDate())}
+                    className={clsx(
+                      "flex-1 py-1 px-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer",
+                      lectureDateFilter === getISTTodayDate()
+                        ? "bg-emerald-500 text-slate-950 font-black shadow-[0_0_8px_rgba(0,255,136,0.3)]"
+                        : "bg-slate-900/90 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-emerald-500/40"
+                    )}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLectureDateFilter(prev => getRelativeDate(prev || getISTTodayDate(), 1))}
+                    className="flex-1 py-1 px-1 rounded-lg bg-slate-900/90 border border-emerald-500/20 text-[10px] font-bold text-slate-300 hover:text-white hover:border-emerald-500/40 transition-colors cursor-pointer"
+                  >
+                    Next ▶
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLectureDateFilter('')}
+                    className={clsx(
+                      "flex-1 py-1 px-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer",
+                      !lectureDateFilter
+                        ? "bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88]"
+                        : "bg-slate-900/90 border border-slate-700/60 text-slate-400 hover:text-white"
+                    )}
+                  >
+                    All
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -715,7 +805,7 @@ export const ReportsPage: React.FC = () => {
                   className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
                 >
                   <option value="ALL">All Sections</option>
-                  {sections.filter(s => s.active).map(sec => (
+                  {availableSections.map(sec => (
                     <option key={sec.id} value={sec.name}>Section {sec.name}</option>
                   ))}
                 </select>

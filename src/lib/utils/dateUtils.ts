@@ -87,3 +87,68 @@ export function formatTimeAgo(isoString?: string): string {
   }
 }
 
+const WEEKDAY_ORDER: Record<DayOfWeek, number> = {
+  MON: 0,
+  TUE: 1,
+  WED: 2,
+  THU: 3,
+  FRI: 4,
+  SAT: 5,
+  SUN: 6,
+};
+
+// Computes the exact calendar date (YYYY-MM-DD) for a weekday in the week of the reference date
+export function getDateForWeekdayInCurrentWeek(targetDay: DayOfWeek, refDateStr?: string): string {
+  const baseStr = refDateStr || getISTTodayDate();
+  const [y, m, d] = baseStr.split('-').map(Number);
+  // UTC noon avoids any timezone or daylight boundary shift
+  const refDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const jsDay = refDate.getUTCDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+  const refIndex = jsDay === 0 ? 6 : jsDay - 1; // Mon=0..Sun=6
+  const targetIndex = WEEKDAY_ORDER[targetDay];
+  const diffDays = targetIndex - refIndex;
+  const targetDate = new Date(refDate.getTime() + diffDays * 86400000);
+  return targetDate.toISOString().split('T')[0];
+}
+
+// Relative date arithmetic (e.g. -1 for previous day, +1 for next day)
+export function getRelativeDate(baseDateStr: string, offsetDays: number): string {
+  const [y, m, d] = baseDateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + offsetDays, 12, 0, 0));
+  return date.toISOString().split('T')[0];
+}
+
+// Full descriptive date format (e.g. "Wednesday, 16 September 2026")
+export function formatDateFull(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return date.toLocaleDateString('en-GB', {
+      timeZone: 'UTC',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+export function isDateInFuture(dateStr: string, refDateStr?: string): boolean {
+  const base = refDateStr || getISTTodayDate();
+  return dateStr > base;
+}
+
+export function isDateInPast(dateStr: string, refDateStr?: string): boolean {
+  const base = refDateStr || getISTTodayDate();
+  return dateStr < base;
+}
+
+export function isDateToday(dateStr: string, refDateStr?: string): boolean {
+  const base = refDateStr || getISTTodayDate();
+  return dateStr === base;
+}
+
+

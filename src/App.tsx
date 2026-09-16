@@ -135,6 +135,7 @@ export const AppContent: React.FC = () => {
           return (
             <TakeAttendancePage
               initialTimetableEntryId={navigationParams?.timetableEntryId}
+              initialSessionDate={navigationParams?.sessionDate}
               onFinished={() => setActiveTab('dashboard')}
             />
           );
@@ -168,6 +169,8 @@ export const AppContent: React.FC = () => {
           );
         case 'students':
           return <StudentDirectoryPage />;
+        case 'reports':
+          return <ReportsPage />;
         case 'notices':
           return <NoticesPage />;
         case 'corrections':
@@ -195,6 +198,7 @@ export const AppContent: React.FC = () => {
           return (
             <TakeAttendancePage
               initialTimetableEntryId={navigationParams?.timetableEntryId}
+              initialSessionDate={navigationParams?.sessionDate}
               onFinished={() => setActiveTab('dashboard')}
             />
           );

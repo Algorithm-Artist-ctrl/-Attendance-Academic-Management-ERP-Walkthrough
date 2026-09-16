@@ -1,15 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { 
+  Users, 
   Calendar, 
   CheckSquare, 
-  Users, 
-  BookOpen, 
-  RotateCcw, 
-  ArrowRight, 
-  TrendingUp, 
+  Award, 
+  Sparkles, 
   Clock, 
-  Layers, 
-  Sparkles,
+  ChevronRight, 
+  ArrowRight,
+  TrendingUp,
+  RotateCcw,
+  CheckCircle2,
+  BookOpen,
+  Layers,
   GraduationCap
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -17,7 +20,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
-import { getISTDayOfWeek } from '../../lib/utils/dateUtils';
+import { 
+  getISTDayOfWeek, 
+  getISTTodayDate, 
+  getDateForWeekdayInCurrentWeek, 
+  formatDateFull, 
+  isDateInFuture, 
+  isDateToday, 
+  isDateInPast 
+} from '../../lib/utils/dateUtils';
 import { DayOfWeek } from '../../types/database.types';
 
 interface FacultyDashboardProps {
@@ -48,6 +59,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     quizzes,
     sessionalAssessments,
     faculty: facultyList,
+    attendanceSessions,
+    attendanceRecords,
     getFacultyCorrectionRequests,
     getPublishedTimetable,
     getFacultyTimetable
@@ -89,6 +102,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       .filter(t => t.day_of_week === selectedScheduleDay)
       .sort((a, b) => a.period_number - b.period_number);
   }, [myTt, selectedScheduleDay]);
+
+  const todayISO = getISTTodayDate();
+  const selectedScheduleDate = useMemo(() => {
+    return getDateForWeekdayInCurrentWeek(selectedScheduleDay, todayISO);
+  }, [selectedScheduleDay, todayISO]);
 
   // Authoritative assigned sections: distinct sections where this faculty actually teaches
   const mySectionIds = useMemo(() => {
@@ -406,36 +424,49 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         <div className="lg:col-span-7 glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">
-                {selectedScheduleDay === todayDay 
+              <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+                <span>{selectedScheduleDay === todayDay 
                   ? `Today's Schedule (${todayDay})` 
-                  : `${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} Schedule (${selectedScheduleDay})`}
+                  : `${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} Schedule (${selectedScheduleDay})`}</span>
+                {isDateToday(selectedScheduleDate, todayISO) && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40">
+                    TODAY
+                  </span>
+                )}
+                {isDateInFuture(selectedScheduleDate, todayISO) && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                    UPCOMING
+                  </span>
+                )}
               </h3>
-              <p className="text-xs text-slate-400">
-                {selectedScheduleDay === todayDay 
-                  ? `${todayDay} Lecture Schedule • Odd Semester` 
-                  : `Viewing ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} timetable • Odd Semester`}
+              <p className="text-xs text-slate-400 mt-0.5">
+                {formatDateFull(selectedScheduleDate)} • Odd Semester
               </p>
             </div>
 
             {/* Day Selector Tabs */}
             <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
-              {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setSelectedScheduleDay(d)}
-                  className={clsx(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
-                    selectedScheduleDay === d
-                      ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_8px_rgba(0,255,136,0.3)]'
-                      : d === todayDay
-                        ? 'text-emerald-400 border border-emerald-500/30 hover:text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                  )}
-                >
-                  {d}
-                </button>
-              ))}
+              {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map(d => {
+                const dayDate = getDateForWeekdayInCurrentWeek(d, todayISO);
+                const isDayToday = d === todayDay;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setSelectedScheduleDay(d)}
+                    className={clsx(
+                      'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
+                      selectedScheduleDay === d
+                        ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_8px_rgba(0,255,136,0.3)]'
+                        : isDayToday
+                          ? 'text-emerald-400 border border-emerald-500/30 hover:text-white'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    )}
+                    title={formatDateFull(dayDate)}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
               <button
                 onClick={() => onNavigate('timetable')}
                 className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer px-2 py-1 shrink-0 ml-1"
@@ -454,7 +485,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                     ? 'No published timetable is available for your teaching assignments'
                     : selectedScheduleDay === todayDay && todayDay === 'SUN' 
                       ? 'Today is Sunday (Weekend / Holiday)' 
-                      : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} in your timetable`}
+                      : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} (${formatDateFull(selectedScheduleDate)})`}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
                   {myTt.length === 0
@@ -468,6 +499,25 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               displayedSchedule.map((entry) => {
                 const sec = sections.find(s => s.id === entry.section_id);
                 const sub = subjects.find(s => s.id === entry.subject_id);
+
+                const isFuture = isDateInFuture(selectedScheduleDate, todayISO);
+                const isToday = isDateToday(selectedScheduleDate, todayISO);
+
+                // Look up live session for this specific calendar date
+                const existingSess = attendanceSessions.find(
+                  s => s.session_date === selectedScheduleDate &&
+                       (s.timetable_entry_id === entry.id ||
+                        (s.section_id === entry.section_id &&
+                         s.subject_id === entry.subject_id &&
+                         (s.start_time?.substring(0, 5) === entry.start_time?.substring(0, 5) || !entry.start_time)))
+                );
+
+                const records = existingSess 
+                  ? attendanceRecords.filter(r => r.attendance_session_id === existingSess.id)
+                  : [];
+                const presentCount = records.filter(r => r.status === 'Present').length;
+                const totalEnrolled = students.filter(s => s.section_id === entry.section_id && s.active).length;
+                const denominator = records.length > 0 ? records.length : totalEnrolled;
 
                 return (
                   <div
@@ -488,15 +538,57 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                       </div>
                     </div>
 
-                    <Button
-                      variant="neon"
-                      size="sm"
-                      onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id })}
-                      leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
-                      className="shrink-0 text-xs font-bold"
-                    >
-                      Take Attendance
-                    </Button>
+                    <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                      {isFuture ? (
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700/60 text-slate-400">
+                          Upcoming • Attendance not available yet
+                        </span>
+                      ) : existingSess ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>✓ Attendance Marked ({presentCount}/{denominator})</span>
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
+                            className="shrink-0 text-xs font-bold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                          >
+                            View Attendance →
+                          </Button>
+                        </div>
+                      ) : isToday ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-amber-300">
+                            Not Recorded
+                          </span>
+                          <Button
+                            variant="neon"
+                            size="sm"
+                            onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
+                            leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
+                            className="shrink-0 text-xs font-bold"
+                          >
+                            Take Attendance
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-500">
+                            Not Marked (Past)
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
+                            className="shrink-0 text-xs font-bold border-slate-700 text-slate-300 hover:text-white"
+                          >
+                            View Details →
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })

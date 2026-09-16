@@ -29,12 +29,22 @@ import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { AttendanceStatus } from '../../types/database.types';
-import { getISTTodayDate, getISTDayOfWeek } from '../../lib/utils/dateUtils';
+import { AttendanceStatus, DayOfWeek } from '../../types/database.types';
+import { 
+  getISTTodayDate, 
+  getISTDayOfWeek, 
+  getDateForWeekdayInCurrentWeek, 
+  formatDateFull, 
+  getRelativeDate, 
+  isDateInFuture, 
+  isDateToday, 
+  isDateInPast 
+} from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface TakeAttendancePageProps {
   initialTimetableEntryId?: string;
+  initialSessionDate?: string;
   onFinished?: () => void;
 }
 
@@ -54,6 +64,7 @@ const DAY_FULL_NAMES: Record<string, string> = {
 
 export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({ 
   initialTimetableEntryId, 
+  initialSessionDate,
   onFinished 
 }) => {
   const { user, role } = useAuth();
@@ -86,15 +97,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // 2. Filter classes assigned STRICTLY to this faculty member
   const assignedClasses = getFacultyTimetable(facultyId);
 
+  const todayISO = getISTTodayDate();
   const todayDay = getISTDayOfWeek();
-  const [selectedDayFilter, setSelectedDayFilter] = useState<string>(todayDay);
+  const [sessionDate, setSessionDate] = useState<string>(initialSessionDate || todayISO);
+  const [selectedDayFilter, setSelectedDayFilter] = useState<string>(
+    initialSessionDate ? getISTDayOfWeek(initialSessionDate) : todayDay
+  );
 
   // Selected Class ID for active attendance marking session
   const [activeClassId, setActiveClassId] = useState<string | null>(initialTimetableEntryId || null);
-  
-  // Today's date in Asia/Kolkata (max date locked to today)
-  const todayISO = getISTTodayDate();
-  const [sessionDate, setSessionDate] = useState<string>(todayISO);
 
   // Formatted date for human-readable display (e.g. "16 Sep 2026")
   const formattedSessionDate = useMemo(() => {
@@ -154,13 +165,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     return students.filter(s => s.section_id === activeSection.id && s.active);
   }, [activeSection, students]);
 
-  // Find existing session in database if any
+  // Find existing session in database strictly for this sessionDate and class/slot
   const existingSession = useMemo(() => {
     if (!activeClass || !activeSection) return undefined;
     return attendanceSessions.find(
-      s => s.section_id === activeSection.id && 
-           s.subject_id === activeClass.subject_id && 
-           s.session_date === sessionDate
+      s => s.session_date === sessionDate &&
+           (s.timetable_entry_id === activeClass.id || 
+            (s.section_id === activeSection.id && 
+             s.subject_id === activeClass.subject_id && 
+             (s.start_time?.substring(0, 5) === activeClass.start_time?.substring(0, 5) || !activeClass.start_time)))
     );
   }, [activeClass, activeSection, attendanceSessions, sessionDate]);
 
@@ -589,41 +602,142 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       .filter(t => t.day_of_week === selectedDayFilter)
       .sort((a, b) => a.period_number - b.period_number);
 
+    const isFuture = isDateInFuture(sessionDate, todayISO);
+    const isToday = isDateToday(sessionDate, todayISO);
+    const isPast = isDateInPast(sessionDate, todayISO);
+
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Header with Date Navigation & Quick Filters */}
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 flex-wrap">
               <CheckSquare className="w-6 h-6 text-[#00ff88]" />
-              {selectedDayFilter === todayDay
-                ? `Today's Assigned Classes (${todayDay})`
-                : `${DAY_FULL_NAMES[selectedDayFilter] || selectedDayFilter} Assigned Classes (${selectedDayFilter})`}
+              <span>
+                {isToday
+                  ? `Today's Assigned Classes (${todayDay})`
+                  : `Assigned Classes — ${formatDateFull(sessionDate)}`}
+              </span>
+              {isToday && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40">
+                  TODAY
+                </span>
+              )}
+              {isFuture && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  UPCOMING
+                </span>
+              )}
+              {isPast && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                  HISTORICAL
+                </span>
+              )}
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {selectedDayFilter === todayDay
-                ? `Faculty: ${currentFaculty?.full_name} (${currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE`
-                : `Viewing schedule for ${DAY_FULL_NAMES[selectedDayFilter] || selectedDayFilter} • Faculty: ${currentFaculty?.full_name} (${currentFaculty?.faculty_code || 'Faculty'})`}
+            <p className="text-xs text-slate-400 mt-1">
+              {formatDateFull(sessionDate)} • Faculty: <span className="text-white font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
             </p>
           </div>
 
-          {/* Day Selector Tabs */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar max-w-full">
-            {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const).map(d => (
+          {/* Date Picker & Quick Selectors */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-2xl border border-emerald-500/20">
               <button
-                key={d}
-                onClick={() => setSelectedDayFilter(d)}
+                type="button"
+                onClick={() => {
+                  const prev = getRelativeDate(sessionDate, -1);
+                  setSessionDate(prev);
+                  setSelectedDayFilter(getISTDayOfWeek(prev));
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer"
+                title="Previous Day"
+              >
+                ◀ Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSessionDate(todayISO);
+                  setSelectedDayFilter(getISTDayOfWeek(todayISO));
+                }}
                 className={clsx(
-                  'px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center justify-center',
-                  selectedDayFilter === d
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                  isToday
+                    ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_10px_rgba(0,255,136,0.3)]'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
                 )}
               >
-                {d}
+                Today
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const next = getRelativeDate(sessionDate, 1);
+                  setSessionDate(next);
+                  setSelectedDayFilter(getISTDayOfWeek(next));
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer"
+                title="Next Day"
+              >
+                Next ▶
+              </button>
+            </div>
+
+            {/* Date Input */}
+            <div className="flex items-center gap-1.5 bg-slate-950/80 px-3 py-1.5 rounded-2xl border border-emerald-500/20">
+              <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+              <input
+                type="date"
+                value={sessionDate}
+                onChange={(e) => {
+                  const d = e.target.value;
+                  if (d) {
+                    setSessionDate(d);
+                    setSelectedDayFilter(getISTDayOfWeek(d));
+                  }
+                }}
+                className="bg-transparent text-xs text-white font-bold focus:outline-none cursor-pointer"
+              />
+            </div>
           </div>
+        </div>
+
+        {/* Weekday Selector Bar */}
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar max-w-full">
+          {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const).map(d => {
+            const dayDate = getDateForWeekdayInCurrentWeek(d, todayISO);
+            const isDaySelected = selectedDayFilter === d;
+            const isDayToday = d === todayDay;
+
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => {
+                  setSelectedDayFilter(d);
+                  setSessionDate(dayDate);
+                }}
+                className={clsx(
+                  'px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5',
+                  isDaySelected
+                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
+                    : isDayToday
+                      ? 'text-emerald-400 border border-emerald-500/30 hover:text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                )}
+                title={formatDateFull(dayDate)}
+              >
+                <span>{d}</span>
+                <span className={clsx(
+                  'text-[10px] opacity-75 font-mono',
+                  isDaySelected ? 'text-slate-900' : 'text-slate-500'
+                )}>
+                  {dayDate.substring(8)}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Classes Cards Grid */}
@@ -631,7 +745,9 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           <div className="glass-panel rounded-3xl p-8 sm:p-12 border border-emerald-500/20 text-center space-y-3">
             <Calendar className="w-8 h-8 text-slate-500 mx-auto" />
             <p className="font-bold text-white text-sm">
-              {selectedDayFilter === 'SUN' ? 'Today is Sunday (Weekend / Holiday)' : `No teaching lectures scheduled for ${selectedDayFilter}`}
+              {selectedDayFilter === 'SUN'
+                ? 'Today is Sunday (Weekend / Holiday)'
+                : `No teaching lectures scheduled for ${selectedDayFilter} (${formatDateFull(sessionDate)})`}
             </p>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
               {selectedDayFilter === 'SUN' 
@@ -646,17 +762,21 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               const sec = sections.find(s => s.id === cls.section_id) || cls.section;
               const enrolledStudents = students.filter(s => s.section_id === sec?.id && s.active);
 
-              // Check if already recorded today
+              // Look up live session strictly for sessionDate and class/slot
               const existingSess = attendanceSessions.find(
-                s => s.section_id === sec?.id && 
-                     s.subject_id === cls.subject_id && 
-                     s.session_date === todayISO
+                s => s.session_date === sessionDate && 
+                     (s.timetable_entry_id === cls.id || 
+                      (s.section_id === sec?.id && 
+                       s.subject_id === cls.subject_id && 
+                       (s.start_time?.substring(0, 5) === cls.start_time?.substring(0, 5) || !cls.start_time)))
               );
 
               const records = existingSess 
                 ? attendanceRecords.filter(r => r.attendance_session_id === existingSess.id)
                 : [];
               const classPresentCount = records.filter(r => r.status === 'Present').length;
+              const enrolledCount = enrolledStudents.length;
+              const totalCount = records.length > 0 ? records.length : enrolledCount;
 
               return (
                 <div
@@ -692,34 +812,80 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>{enrolledStudents.length} Students</span>
+                        <span>{enrolledCount} Students</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Attendance Status & Action */}
                   <div className="pt-3 border-t border-emerald-500/15 flex items-center justify-between gap-2">
-                    {existingSess ? (
-                      <div className="text-[11px] font-bold text-[#00ff88] flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Marked ({classPresentCount}/{records.length})</span>
-                      </div>
+                    {isFuture ? (
+                      <>
+                        <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Upcoming</span>
+                        </div>
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700/60 text-slate-500">
+                          Not Available Yet
+                        </span>
+                      </>
+                    ) : existingSess ? (
+                      <>
+                        <div className="text-[11px] font-bold text-[#00ff88] flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>✓ Marked ({classPresentCount}/{totalCount})</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSessionDate(sessionDate);
+                            setActiveClassId(cls.id);
+                          }}
+                          rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                          className="touch-target font-bold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                        >
+                          {isToday ? 'View / Update' : 'View Attendance'}
+                        </Button>
+                      </>
+                    ) : isToday ? (
+                      <>
+                        <div className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Not Recorded</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="neon"
+                          onClick={() => {
+                            setSessionDate(sessionDate);
+                            setActiveClassId(cls.id);
+                          }}
+                          leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
+                          className="touch-target font-black"
+                        >
+                          Take Attendance
+                        </Button>
+                      </>
                     ) : (
-                      <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Not Recorded</span>
-                      </div>
+                      <>
+                        <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Not Marked</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSessionDate(sessionDate);
+                            setActiveClassId(cls.id);
+                          }}
+                          className="touch-target border-slate-800 text-slate-400 hover:text-white text-xs"
+                        >
+                          Mark Historical
+                        </Button>
+                      </>
                     )}
-
-                    <Button
-                      size="sm"
-                      variant={existingSess ? 'outline' : 'neon'}
-                      onClick={() => setActiveClassId(cls.id)}
-                      rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                      className="touch-target"
-                    >
-                      {existingSess ? 'Update' : 'Take Attendance'}
-                    </Button>
                   </div>
                 </div>
               );
