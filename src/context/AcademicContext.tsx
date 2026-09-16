@@ -42,7 +42,12 @@ import {
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { erpStorage } from '../lib/storage/erpStorage';
-import { getISTTodayDate, getISTDayOfWeek } from '../lib/utils/dateUtils';
+import { 
+  getISTTodayDate, 
+  getISTDayOfWeek, 
+  isClaimWindowOpen, 
+  getClaimWindowStatus 
+} from '../lib/utils/dateUtils';
 
 export interface TodayAttendanceLecture {
   timetableEntryId: string;
@@ -258,7 +263,10 @@ interface AcademicContextType {
   canSubmitClaim: (params: {
     attendanceRecordId?: string;
     sessionDate: string;
-  }) => { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection };
+    lectureType?: string;
+    isBreak?: boolean;
+    timetableEntryId?: string;
+  }) => { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection; code?: string };
   getStudentAttendance: (studentId: string) => StudentOverallAttendance & {
     notRecordedCount: number;
     pendingClaimsCount: number;
@@ -912,20 +920,37 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     requestedStatus: AttendanceStatus;
     reason: string;
   }) => {
-    let recId = params.attendanceRecordId;
-
-    if (!recId && params.timetableEntryId && params.sessionDate && params.subjectId && params.facultyId && params.sectionId) {
-      const sessionRes = await supabaseService.ensureAttendanceSessionAndRecord({
+    // 1. Authoritative path: If timetableEntryId is present, execute server-side claimAttendance RPC
+    if (params.timetableEntryId) {
+      const claimRes = await supabaseService.claimAttendance({
         timetableEntryId: params.timetableEntryId,
-        sessionDate: params.sessionDate,
-        subjectId: params.subjectId,
-        facultyId: params.facultyId,
-        sectionId: params.sectionId,
         studentId: params.studentId,
-        status: 'Absent',
+        reason: params.reason,
+        requestedStatus: params.requestedStatus,
       });
-      recId = sessionRes.recordId;
+
+      erpStorage.submitCorrectionRequest({
+        attendanceRecordId: claimRes.recordId || params.attendanceRecordId || '',
+        studentId: params.studentId,
+        requestedStatus: params.requestedStatus,
+        reason: params.reason,
+      });
+
+      await Promise.all([refreshCorrections(), refreshAttendance()]);
+      return {
+        id: claimRes.claimId || '',
+        attendance_record_id: claimRes.recordId || '',
+        student_id: params.studentId,
+        requested_status: params.requestedStatus,
+        reason: params.reason,
+        status: 'pending' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as AttendanceCorrection;
     }
+
+    // 2. Fallback path if attendanceRecordId is provided directly
+    let recId = params.attendanceRecordId;
 
     if (!recId) {
       throw new Error('Unable to resolve attendance record for this claim.');
@@ -952,7 +977,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       requestedStatus: params.requestedStatus,
       reason: params.reason,
     });
-    await refreshCorrections();
+    await Promise.all([refreshCorrections(), refreshAttendance()]);
     return res;
   };
 
@@ -970,11 +995,58 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
-  // 4. Validate whether student can submit a claim
+  // 4. Validate whether student can submit a claim (Strict 09:00 AM - 03:40 PM IST Window)
   const canSubmitClaim = (params: {
     attendanceRecordId?: string;
     sessionDate: string;
-  }): { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection } => {
+    lectureType?: string;
+    isBreak?: boolean;
+    timetableEntryId?: string;
+  }): { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection; code?: string } => {
+    // Check non-instructional slots (Lunch/Break)
+    if (params.isBreak || params.lectureType === 'Lunch' || params.lectureType === 'Break') {
+      return {
+        canSubmit: false,
+        code: 'ATTENDANCE_NOT_APPLICABLE',
+        message: 'Attendance claim is not applicable for lunch or break periods.',
+      };
+    }
+
+    // Date check: Student claim is strictly permitted for TODAY only
+    const today = getISTTodayDate();
+    if (params.sessionDate !== today) {
+      if (params.sessionDate < today) {
+        return {
+          canSubmit: false,
+          code: 'CLAIM_DATE_PAST',
+          message: 'Attendance claims are closed for past dates. You may view your attendance history only.',
+        };
+      }
+      return {
+        canSubmit: false,
+        code: 'CLAIM_DATE_FUTURE',
+        message: 'Attendance claim is not available for future dates.',
+      };
+    }
+
+    // Time window check (09:00:00 AM - 03:40:00 PM IST)
+    const windowStatus = getClaimWindowStatus();
+    if (windowStatus === 'BEFORE_WINDOW') {
+      return {
+        canSubmit: false,
+        code: 'ATTENDANCE_CLAIM_NOT_OPEN',
+        message: 'Attendance claim window opens at 09:00 AM. Claims are accepted between 09:00 AM and 03:40 PM IST.',
+      };
+    }
+    if (windowStatus === 'CLOSED') {
+      return {
+        canSubmit: false,
+        code: 'ATTENDANCE_CLAIM_WINDOW_CLOSED',
+        message: 'Attendance claim window closed at 03:40 PM. New claims cannot be submitted today.',
+      };
+    }
+
+    // Duplicate claim check
     if (params.attendanceRecordId) {
       const existing = corrections.find(
         c => c.attendance_record_id === params.attendanceRecordId &&
@@ -983,21 +1055,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (existing) {
         return {
           canSubmit: false,
+          code: 'CLAIM_ALREADY_SUBMITTED',
           message: `Claim already submitted (Status: ${existing.status.toUpperCase()}).`,
           existingClaim: existing,
         };
       }
-    }
-
-    // Check time window
-    const sessionTime = new Date(params.sessionDate).getTime();
-    const nowTime = new Date().getTime();
-    const diffDays = Math.floor((nowTime - sessionTime) / (1000 * 60 * 60 * 24));
-    if (diffDays > claimWindowDays) {
-      return {
-        canSubmit: false,
-        message: `Attendance claim period has expired (Limit: ${claimWindowDays} days).`,
-      };
     }
 
     return { canSubmit: true };

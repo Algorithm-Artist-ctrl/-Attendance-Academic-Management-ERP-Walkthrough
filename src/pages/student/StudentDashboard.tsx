@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -27,7 +27,13 @@ import { Modal } from '../../components/common/Modal';
 import { CyberGauge3D } from '../../components/3d/CyberGauge3D';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
 import { Assignment, AssignmentSubmission, Quiz } from '../../types/database.types';
-import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay } from '../../lib/utils/dateUtils';
+import { 
+  getISTTodayDate, 
+  getISTDayOfWeek, 
+  formatDateDisplay,
+  getClaimWindowStatus,
+  ClaimWindowStatus
+} from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 
 interface StudentDashboardProps {
@@ -36,6 +42,19 @@ interface StudentDashboardProps {
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
+  const [claimWindowStatus, setClaimWindowStatus] = useState<ClaimWindowStatus>(() => getClaimWindowStatus());
+
+  useEffect(() => {
+    const updateStatus = () => {
+      setClaimWindowStatus(getClaimWindowStatus());
+    };
+    const interval = setInterval(updateStatus, 10000);
+    document.addEventListener('visibilitychange', updateStatus);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', updateStatus);
+    };
+  }, []);
   const { 
     getStudentAttendance, 
     getTodayLecturesForStudent,
@@ -328,55 +347,79 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   </div>
 
                   {/* Right: Status and Claim Action */}
-                  <div className="shrink-0 flex items-center gap-3 justify-between sm:justify-end">
-                    {/* Status Badge */}
-                    {isPresent && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        PRESENT
+                  <div className="shrink-0 flex items-center gap-2.5 justify-between sm:justify-end">
+                    {/* Non-instructional / Lunch / Break */}
+                    {lec.lectureType === 'Lunch' || lec.lectureType === 'Break' || !lec.subjectId ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-700/60 text-slate-400">
+                        Attendance Not Applicable
                       </span>
-                    )}
+                    ) : (
+                      <>
+                        {/* Status Badge */}
+                        {isPresent && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            PRESENT
+                          </span>
+                        )}
 
-                    {isAbsent && !hasPendingClaim && !hasApprovedClaim && (
-                      <div className="flex items-center gap-2.5">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 border border-rose-500/30 text-rose-400">
-                          <XCircle className="w-3.5 h-3.5" />
-                          ABSENT
-                        </span>
+                        {hasApprovedClaim && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 text-[#00ff88]">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Claim Approved (Present)
+                          </span>
+                        )}
 
-                        <Button
-                          variant="neon"
-                          size="sm"
-                          onClick={() => setSelectedLectureForClaim(lec)}
-                          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
-                          className="text-xs font-bold"
-                        >
-                          Claim Attendance
-                        </Button>
-                      </div>
-                    )}
+                        {hasPendingClaim && (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                              <Clock className="w-3.5 h-3.5 animate-spin" />
+                              Claim Submitted
+                            </span>
+                          </div>
+                        )}
 
-                    {isAbsent && hasPendingClaim && (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
-                          <Clock className="w-3.5 h-3.5 animate-spin" />
-                          Claim Pending Review
-                        </span>
-                      </div>
-                    )}
+                        {!isPresent && !hasPendingClaim && !hasApprovedClaim && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {isAbsent && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 border border-rose-500/30 text-rose-400">
+                                <XCircle className="w-3.5 h-3.5" />
+                                ABSENT
+                              </span>
+                            )}
 
-                    {hasApprovedClaim && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 text-[#00ff88]">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Claim Approved (Present)
-                      </span>
-                    )}
+                            {isNotRecorded && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                                <Clock className="w-3.5 h-3.5 text-amber-400/80" />
+                                Attendance Not Recorded
+                              </span>
+                            )}
 
-                    {isNotRecorded && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
-                        <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-                        Attendance Not Recorded
-                      </span>
+                            {/* Claim Action or Strict Time Window Boundary */}
+                            {claimWindowStatus === 'OPEN' ? (
+                              <Button
+                                variant="neon"
+                                size="sm"
+                                onClick={() => setSelectedLectureForClaim(lec)}
+                                leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                className="text-xs font-bold"
+                              >
+                                Claim Attendance
+                              </Button>
+                            ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-slate-900/90 border border-slate-700/60 text-slate-400">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                Claim opens 9:00 AM
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-900/90 border border-amber-500/20 text-slate-400">
+                                <Clock className="w-3 h-3 text-amber-400" />
+                                Claim Window Closed (3:40 PM)
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

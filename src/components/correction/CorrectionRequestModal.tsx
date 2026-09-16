@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   RotateCcw, 
@@ -8,13 +8,15 @@ import {
   BookOpen, 
   ArrowRight,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { CyberClipboard3D } from '../3d/CyberClipboard3D';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import { getISTTodayDate, getClaimWindowStatus, ClaimWindowStatus } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 import { AttendanceStatus } from '../../types/database.types';
 
@@ -44,7 +46,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
   const studentId = student?.id || '';
 
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [selectedDate, setSelectedDate] = useState<string>('2026-08-24');
+  const [selectedDate, setSelectedDate] = useState<string>(() => getISTTodayDate());
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(preselectedSubjectId || subjects[0]?.id || '');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('09:00 – 09:50');
   const [currentStatus, setCurrentStatus] = useState<'Absent' | 'Present'>('Absent');
@@ -53,6 +55,24 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Reactive Claim Window Status (09:00:00 AM - 03:40:00 PM IST)
+  const [claimWindowStatus, setClaimWindowStatus] = useState<ClaimWindowStatus>(() => getClaimWindowStatus());
+
+  useEffect(() => {
+    const checkStatus = () => {
+      setClaimWindowStatus(getClaimWindowStatus());
+    };
+    const timer = setInterval(checkStatus, 10000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') checkStatus();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
 
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId) || subjects[0];
   
@@ -73,6 +93,23 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
     if (!reason.trim()) {
       setErrorMessage('Please state the valid reason for this correction request.');
       return;
+    }
+
+    if (user?.role === 'student') {
+      const today = getISTTodayDate();
+      if (selectedDate !== today) {
+        setErrorMessage(`Attendance claims can only be submitted for today's classes (${today}).`);
+        return;
+      }
+      const windowStatus = getClaimWindowStatus();
+      if (windowStatus === 'BEFORE_WINDOW') {
+        setErrorMessage("Attendance claim window opens at 09:00:00 AM IST.");
+        return;
+      }
+      if (windowStatus === 'CLOSED') {
+        setErrorMessage("Attendance claim window closed at 03:40:00 PM IST for today.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -121,6 +158,25 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
       description="Step-by-step attendance correction workflow submitted directly to faculty"
       maxWidth="2xl"
     >
+      {/* Official Claim Window Banner */}
+      <div className={clsx(
+        "p-3 rounded-xl border mb-4 text-xs flex items-center justify-between gap-3",
+        claimWindowStatus === 'OPEN' 
+          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+          : claimWindowStatus === 'BEFORE_WINDOW'
+          ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+          : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+      )}>
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 shrink-0" />
+          <span>
+            <strong>Official Claim Window:</strong> 09:00 AM – 03:40 PM IST (Today Only)
+          </span>
+        </div>
+        <span className="font-bold text-[11px] uppercase tracking-wider">
+          {claimWindowStatus === 'OPEN' ? 'Window Active' : claimWindowStatus === 'BEFORE_WINDOW' ? 'Opens 9:00 AM' : 'Window Closed (3:40 PM)'}
+        </span>
+      </div>
       {/* 4-Step Stepper Bar Matching Screen 5 */}
       <div className="grid grid-cols-4 gap-2 mb-6">
         {steps.map((s) => (
@@ -330,11 +386,14 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
                   type="button"
                   variant="neon"
                   size="sm"
+                  disabled={isSubmitting || (user?.role === 'student' && (claimWindowStatus !== 'OPEN' || selectedDate !== getISTTodayDate()))}
                   isLoading={isSubmitting}
                   onClick={handleSubmitRequest}
                   rightIcon={<CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />}
                 >
-                  Submit Request
+                  {user?.role === 'student' && claimWindowStatus !== 'OPEN' 
+                    ? 'Claim Window Closed' 
+                    : 'Submit Request'}
                 </Button>
               )}
             </div>

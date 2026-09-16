@@ -1,15 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RotateCcw, Plus, Clock, CheckCircle2, XCircle, AlertCircle, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 import { CorrectionRequestModal } from '../../components/correction/CorrectionRequestModal';
+import { getClaimWindowStatus, ClaimWindowStatus } from '../../lib/utils/dateUtils';
 
 export const CorrectionRequestsPage: React.FC = () => {
   const { user } = useAuth();
   const { corrections, attendanceRecords, attendanceSessions } = useAcademic();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+
+  // Reactive Claim Window Status (09:00:00 AM - 03:40:00 PM IST)
+  const [claimWindowStatus, setClaimWindowStatus] = useState<ClaimWindowStatus>(() => getClaimWindowStatus());
+
+  useEffect(() => {
+    const checkStatus = () => {
+      setClaimWindowStatus(getClaimWindowStatus());
+    };
+    const timer = setInterval(checkStatus, 10000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') checkStatus();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
 
   const student = user?.student;
   const studentId = student?.id || '';
@@ -29,14 +48,33 @@ export const CorrectionRequestsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="neon"
-          size="sm"
-          onClick={() => setIsNewModalOpen(true)}
-          leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
-        >
-          New Correction Request
-        </Button>
+        <div className="flex items-center gap-3">
+          {claimWindowStatus === 'OPEN' ? (
+            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] text-xs font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+              Claim Window Open (09:00 AM – 03:40 PM IST)
+            </span>
+          ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
+            <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              Opens at 09:00 AM IST
+            </span>
+          ) : (
+            <span className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center gap-1.5">
+              <XCircle className="w-3.5 h-3.5 text-rose-400" />
+              Claim Window Closed (3:40 PM)
+            </span>
+          )}
+
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={() => setIsNewModalOpen(true)}
+            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+          >
+            New Correction Request
+          </Button>
+        </div>
       </div>
 
       {/* Requests History List / Table */}

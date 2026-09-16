@@ -151,4 +151,59 @@ export function isDateToday(dateStr: string, refDateStr?: string): boolean {
   return dateStr === base;
 }
 
+// ==============================================================================
+// STUDENT ATTENDANCE CLAIM TIME WINDOW (09:00:00 AM -> 03:40:00 PM IST)
+// ==============================================================================
+export const CLAIM_WINDOW_START_TIME = '09:00:00';
+export const CLAIM_WINDOW_END_TIME = '15:40:00'; // 03:40 PM IST
+
+export type ClaimWindowStatus = 'BEFORE_WINDOW' | 'OPEN' | 'CLOSED';
+
+// Returns current time in Asia/Kolkata (IST) in "HH:mm:ss" format (24-hour)
+export function getISTCurrentTimeString(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: INSTITUTION_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const h = parts.find(p => p.type === 'hour')?.value || '00';
+  const m = parts.find(p => p.type === 'minute')?.value || '00';
+  const s = parts.find(p => p.type === 'second')?.value || '00';
+
+  return `${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`;
+}
+
+// Determines if student attendance claim window is open, before window, or closed
+export function getClaimWindowStatus(customTimeOrDate?: Date | string): ClaimWindowStatus {
+  let timeStr: string;
+
+  if (typeof customTimeOrDate === 'string' && customTimeOrDate.includes(':')) {
+    const segments = customTimeOrDate.split(':');
+    const h = segments[0].padStart(2, '0');
+    const m = (segments[1] || '00').padStart(2, '0');
+    const s = (segments[2] || '00').padStart(2, '0');
+    timeStr = `${h}:${m}:${s}`;
+  } else if (customTimeOrDate instanceof Date) {
+    timeStr = getISTCurrentTimeString(customTimeOrDate);
+  } else {
+    timeStr = getISTCurrentTimeString(new Date());
+  }
+
+  if (timeStr < CLAIM_WINDOW_START_TIME) {
+    return 'BEFORE_WINDOW';
+  }
+  if (timeStr >= CLAIM_WINDOW_END_TIME) {
+    return 'CLOSED';
+  }
+  return 'OPEN';
+}
+
+// Returns true strictly between 09:00:00 AM and 03:39:59 PM IST
+export function isClaimWindowOpen(customTimeOrDate?: Date | string): boolean {
+  return getClaimWindowStatus(customTimeOrDate) === 'OPEN';
+}
+
 

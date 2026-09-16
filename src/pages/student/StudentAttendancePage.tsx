@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Download, 
   Filter, 
@@ -22,7 +22,7 @@ import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicConte
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
-import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay } from '../../lib/utils/dateUtils';
+import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay, getClaimWindowStatus, ClaimWindowStatus } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
 import { SubjectAttendanceStat } from '../../types/academic.types';
 import { DayOfWeek } from '../../types/database.types';
@@ -79,6 +79,24 @@ export const StudentAttendancePage: React.FC = () => {
 
   // Modal State for Claiming Attendance
   const [selectedLectureForClaim, setSelectedLectureForClaim] = useState<TodayAttendanceLecture | null>(null);
+
+  // Reactive Claim Window Status (09:00:00 AM - 03:40:00 PM IST)
+  const [claimWindowStatus, setClaimWindowStatus] = useState<ClaimWindowStatus>(() => getClaimWindowStatus());
+
+  useEffect(() => {
+    const checkStatus = () => {
+      setClaimWindowStatus(getClaimWindowStatus());
+    };
+    const timer = setInterval(checkStatus, 10000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') checkStatus();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -294,7 +312,7 @@ export const StudentAttendancePage: React.FC = () => {
       {/* ======================================================== */}
       {activeTab === 'today' && (
         <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-4">
-          <div className="flex items-center justify-between border-b border-emerald-500/15 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
             <div>
               <h2 className="text-base font-black text-white">
                 Scheduled Lectures for Today — {formattedTodayDate}
@@ -303,9 +321,27 @@ export const StudentAttendancePage: React.FC = () => {
                 Section {currentSection?.name} • Classroom: {currentSection?.room_number}
               </p>
             </div>
-            <span className="px-3 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-[#00ff88] text-xs font-bold">
-              Live Real-Time Sync
-            </span>
+            <div className="flex items-center gap-2.5">
+              {claimWindowStatus === 'OPEN' ? (
+                <span className="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] text-xs font-bold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                  Claim Window Open (09:00 AM – 03:40 PM IST)
+                </span>
+              ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
+                <span className="px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  Claim Window Opens at 09:00 AM IST
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center gap-1.5" title="Student claims close promptly at 03:40 PM IST">
+                  <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                  Claim Window Closed for Today (03:40 PM IST)
+                </span>
+              )}
+              <span className="hidden sm:inline-block px-3 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-slate-300 text-xs font-bold">
+                Live Sync
+              </span>
+            </div>
           </div>
 
           {todayLectures.length === 0 ? (
@@ -320,6 +356,10 @@ export const StudentAttendancePage: React.FC = () => {
                 const isNotRecorded = lec.status === 'Not Recorded';
                 const hasPendingClaim = lec.claimStatus === 'pending';
                 const hasApprovedClaim = lec.claimStatus === 'approved';
+                const isLunchOrBreak = lec.lectureType?.toLowerCase().includes('lunch') || 
+                                       lec.lectureType?.toLowerCase().includes('break') ||
+                                       lec.subjectName?.toLowerCase().includes('lunch') ||
+                                       lec.subjectName?.toLowerCase().includes('break');
 
                 return (
                   <div
@@ -354,70 +394,73 @@ export const StudentAttendancePage: React.FC = () => {
                     </div>
 
                     <div className="shrink-0 flex items-center gap-3">
-                      {isPresent && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          PRESENT
+                      {isLunchOrBreak ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                          Attendance Not Applicable
                         </span>
-                      )}
+                      ) : (
+                        <>
+                          {isPresent && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              PRESENT
+                            </span>
+                          )}
 
-                      {isAbsent && !hasPendingClaim && !hasApprovedClaim && (
-                        <div className="flex items-center gap-2.5">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 border border-rose-500/30 text-rose-400">
-                            <XCircle className="w-3.5 h-3.5" />
-                            ABSENT
-                          </span>
+                          {hasPendingClaim && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                              <Clock className="w-3.5 h-3.5 animate-spin" />
+                              Claim Pending
+                            </span>
+                          )}
 
-                          <Button
-                            variant="neon"
-                            size="sm"
-                            onClick={() => setSelectedLectureForClaim(lec)}
-                            leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
-                            className="text-xs font-bold"
-                          >
-                            Claim Attendance
-                          </Button>
-                        </div>
-                      )}
+                          {hasApprovedClaim && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 text-[#00ff88]">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Claim Approved (Present)
+                            </span>
+                          )}
 
-                      {isAbsent && hasPendingClaim && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
-                          <Clock className="w-3.5 h-3.5 animate-spin" />
-                          Claim Pending
-                        </span>
-                      )}
+                          {!isPresent && !hasPendingClaim && !hasApprovedClaim && (
+                            <div className="flex items-center gap-2.5">
+                              {isAbsent && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 border border-rose-500/30 text-rose-400">
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  ABSENT
+                                </span>
+                              )}
 
-                      {hasApprovedClaim && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 text-[#00ff88]">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Claim Approved (Present)
-                        </span>
-                      )}
+                              {isNotRecorded && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                                  <Clock className="w-3.5 h-3.5 text-amber-400/80" />
+                                  Attendance Not Recorded
+                                </span>
+                              )}
 
-                      {isNotRecorded && !hasPendingClaim && !hasApprovedClaim && (
-                        <div className="flex items-center gap-2.5">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
-                            <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-                            Attendance Not Recorded
-                          </span>
-
-                          <Button
-                            variant="neon"
-                            size="sm"
-                            onClick={() => setSelectedLectureForClaim(lec)}
-                            leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
-                            className="text-xs font-bold"
-                          >
-                            Claim Attendance
-                          </Button>
-                        </div>
-                      )}
-
-                      {isNotRecorded && hasPendingClaim && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
-                          <Clock className="w-3.5 h-3.5 animate-spin" />
-                          Claim Pending
-                        </span>
+                              {claimWindowStatus === 'OPEN' ? (
+                                <Button
+                                  variant="neon"
+                                  size="sm"
+                                  onClick={() => setSelectedLectureForClaim(lec)}
+                                  leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                  className="text-xs font-bold"
+                                >
+                                  Claim Attendance
+                                </Button>
+                              ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                  Claim opens 9:00 AM
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 border border-rose-500/25 text-rose-300" title="Claims are only accepted between 09:00 AM and 03:40 PM IST">
+                                  <Clock className="w-3.5 h-3.5 text-rose-400" />
+                                  Claim Window Closed (3:40 PM)
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -535,11 +578,18 @@ export const StudentAttendancePage: React.FC = () => {
 
           {/* Selected Date Detail Inspection */}
           <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
-            <div className="flex items-center justify-between border-b border-emerald-500/15 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-4">
               <div>
-                <h3 className="text-sm font-bold text-white tracking-wide">
-                  Lectures for {formattedHistoryDate}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white tracking-wide">
+                    Lectures for {formattedHistoryDate}
+                  </h3>
+                  {selectedHistoryDate === todayDateStr && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#00ff88]/15 border border-[#00ff88]/30 text-[#00ff88]">
+                      Today
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Section {currentSection?.name} • Room {currentSection?.room_number}
                 </p>
@@ -570,60 +620,92 @@ export const StudentAttendancePage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {historyData.lectures.map((lec) => (
-                  <div
-                    key={lec.timetableEntryId}
-                    className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-[#00ff88] font-mono text-xs font-bold shrink-0 min-w-[105px] text-center">
-                        {lec.startTime} – {lec.endTime}
-                        <span className="block text-[9px] text-slate-400 font-sans font-normal">Period {lec.periodNumber}</span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white">
-                            {lec.subjectName}
-                          </h4>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                            {lec.subjectCode}
-                          </span>
+                {historyData.lectures.map((lec) => {
+                  const isToday = selectedHistoryDate === todayDateStr;
+                  const isLunchOrBreak = lec.lectureType?.toLowerCase().includes('lunch') || 
+                                         lec.lectureType?.toLowerCase().includes('break') ||
+                                         lec.subjectName?.toLowerCase().includes('lunch') ||
+                                         lec.subjectName?.toLowerCase().includes('break');
+                  const isPresent = lec.status === 'Present';
+                  const hasPendingClaim = lec.claimStatus === 'pending';
+                  const hasApprovedClaim = lec.claimStatus === 'approved';
+
+                  return (
+                    <div
+                      key={lec.timetableEntryId}
+                      className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-[#00ff88] font-mono text-xs font-bold shrink-0 min-w-[105px] text-center">
+                          {lec.startTime} – {lec.endTime}
+                          <span className="block text-[9px] text-slate-400 font-sans font-normal">Period {lec.periodNumber}</span>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                          {lec.facultyName} • <span className="text-slate-300">{lec.roomNumber}</span>
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-white">
+                              {lec.subjectName}
+                            </h4>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                              {lec.subjectCode}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                            {lec.facultyName} • <span className="text-slate-300">{lec.roomNumber}</span> • {lec.lectureType}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-3">
+                        {isLunchOrBreak ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                            Attendance Not Applicable
+                          </span>
+                        ) : (
+                          <>
+                            <AttendanceStatusBadge status={lec.status} />
+
+                            {hasPendingClaim && (
+                              <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-500/30">
+                                Claim Pending Review
+                              </span>
+                            )}
+
+                            {hasApprovedClaim && (
+                              <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-[#00ff88] text-[11px] font-bold border border-emerald-500/30">
+                                Claim Approved
+                              </span>
+                            )}
+
+                            {/* Only today's classes can be claimed within the open window! Past or future dates cannot be claimed */}
+                            {isToday && !isPresent && !hasPendingClaim && !hasApprovedClaim && (
+                              claimWindowStatus === 'OPEN' ? (
+                                <Button
+                                  variant="neon"
+                                  size="sm"
+                                  onClick={() => setSelectedLectureForClaim(lec)}
+                                  leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                  className="text-xs font-bold"
+                                >
+                                  Claim Attendance
+                                </Button>
+                              ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                  Claim opens 9:00 AM
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 border border-rose-500/25 text-rose-300" title="Claims are only accepted between 09:00 AM and 03:40 PM IST">
+                                  <Clock className="w-3.5 h-3.5 text-rose-400" />
+                                  Claim Closed (3:40 PM)
+                                </span>
+                              )
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-
-                    <div className="shrink-0 flex items-center gap-3">
-                      <AttendanceStatusBadge status={lec.status} />
-
-                      {lec.status !== 'Present' && !lec.claimId && (
-                        <Button
-                          variant="neon"
-                          size="sm"
-                          onClick={() => setSelectedLectureForClaim(lec)}
-                          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
-                          className="text-xs font-bold"
-                        >
-                          Claim Attendance
-                        </Button>
-                      )}
-
-                      {lec.claimStatus === 'pending' && (
-                        <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-500/30">
-                          Claim Pending Review
-                        </span>
-                      )}
-
-                      {lec.claimStatus === 'approved' && (
-                        <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-[#00ff88] text-[11px] font-bold border border-emerald-500/30">
-                          Claim Approved
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

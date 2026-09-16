@@ -763,7 +763,54 @@ export const supabaseService = {
     return { sessionId: session.id, recordId: record.id };
   },
 
-  // 4. Submit Correction Request
+  // 3B. Authoritative Student Attendance Claim via RPC (Enforces 09:00 AM - 03:40 PM IST Window Server-Side)
+  async claimAttendance(params: {
+    timetableEntryId: string;
+    studentId: string;
+    reason: string;
+    requestedStatus?: AttendanceStatus;
+    simulatedTime?: string;
+    simulatedDate?: string;
+  }): Promise<{
+    success: boolean;
+    code: string;
+    message: string;
+    claimId?: string;
+    sessionId?: string;
+    recordId?: string;
+  }> {
+    const { data, error } = await supabase.rpc('claim_attendance', {
+      p_timetable_entry_id: params.timetableEntryId,
+      p_student_id: params.studentId,
+      p_reason: params.reason,
+      p_requested_status: params.requestedStatus || 'Present',
+      p_simulated_time: params.simulatedTime || null,
+      p_simulated_date: params.simulatedDate || null,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to submit attendance claim to server.');
+    }
+
+    const res = data as any;
+    if (!res || !res.success) {
+      const errMessage = res?.message || 'Attendance claim was rejected by institutional policy.';
+      const err = new Error(errMessage) as any;
+      err.code = res?.code || 'ATTENDANCE_CLAIM_REJECTED';
+      throw err;
+    }
+
+    return {
+      success: true,
+      code: res.code,
+      message: res.message,
+      claimId: res.claim_id,
+      sessionId: res.session_id,
+      recordId: res.record_id,
+    };
+  },
+
+  // 4. Submit Correction Request (General fallback)
   async submitCorrection(params: {
     attendanceRecordId: string;
     studentId: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   CheckCircle2, 
   RotateCcw, 
@@ -35,7 +35,6 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
   const { 
     submitCorrectionRequest, 
     canSubmitClaim, 
-    claimWindowDays 
   } = useAcademic();
 
   const student = user?.student;
@@ -47,6 +46,17 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Validate claim window and eligibility
+  const claimValidation = useMemo(() => {
+    if (!lecture) return { canSubmit: false, message: 'No lecture selected.' };
+    return canSubmitClaim({
+      attendanceRecordId: lecture.attendanceRecordId,
+      sessionDate: lecture.sessionDate,
+      lectureType: lecture.lectureType,
+      timetableEntryId: lecture.timetableEntryId,
+    });
+  }, [lecture, canSubmitClaim]);
 
   if (!lecture) return null;
 
@@ -84,13 +94,8 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
     }
 
     // Validate using helper
-    const validation = canSubmitClaim({
-      attendanceRecordId: lecture.attendanceRecordId,
-      sessionDate: lecture.sessionDate,
-    });
-
-    if (!validation.canSubmit) {
-      setErrorMessage(validation.message || 'Unable to submit claim.');
+    if (!claimValidation.canSubmit) {
+      setErrorMessage(claimValidation.message || 'Attendance claim window is closed.');
       return;
     }
 
@@ -246,8 +251,15 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
             </div>
           )}
 
+          {!claimValidation.canSubmit && (
+            <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>{claimValidation.message}</span>
+            </div>
+          )}
+
           <div className="p-3 rounded-xl bg-slate-950/40 border border-emerald-500/10 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Claim Policy Window: <strong>{claimWindowDays} Days</strong></span>
+            <span>Daily Claim Window: <strong className="text-emerald-400">09:00 AM – 03:40 PM IST</strong></span>
             <span>Target Reviewer: <strong className="text-white">{lecture.facultyName}</strong></span>
           </div>
 
@@ -267,7 +279,7 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
               type="submit"
               variant="neon"
               size="sm"
-              disabled={isSubmitting || !!successMessage}
+              disabled={isSubmitting || !!successMessage || !claimValidation.canSubmit}
               leftIcon={<Send className="w-3.5 h-3.5 text-slate-950" />}
             >
               {isSubmitting ? 'Submitting Claim...' : 'Submit Attendance Claim'}
