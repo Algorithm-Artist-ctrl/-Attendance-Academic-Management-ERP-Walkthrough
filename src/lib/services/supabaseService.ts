@@ -146,7 +146,7 @@ export const supabaseService = {
         supabase.from('sections').select('*').order('name', { ascending: true }),
         supabase.from('subjects').select('*').order('subject_code', { ascending: true }),
         supabase.from('faculty').select('*').order('full_name', { ascending: true }),
-        supabase.from('faculty_subject_assignments').select('*'),
+        supabase.from('faculty_subject_assignments').select('*').eq('active', true),
         supabase.from('students').select('*').order('roll_number', { ascending: true }),
         supabase.from('profiles').select('*'),
         supabase.from('classrooms').select('*').order('room_number', { ascending: true }),
@@ -236,7 +236,7 @@ export const supabaseService = {
     return (data as Subject[]) || [];
   },
 
-  async fetchAssignments(activeOnly = false): Promise<FacultySubjectAssignment[]> {
+  async fetchAssignments(activeOnly = true): Promise<FacultySubjectAssignment[]> {
     let q = supabase.from('faculty_subject_assignments').select('*');
     if (activeOnly) q = q.eq('active', true);
     const { data, error } = await q;
@@ -372,7 +372,7 @@ export const supabaseService = {
         { data: marksHistoryList },
         { data: sessionalAssessmentsList },
       ] = await Promise.all([
-        supabase.from('timetable_entries').select('*').order('period_number', { ascending: true }),
+        supabase.from('timetable_entries').select('*').eq('active', true).order('period_number', { ascending: true }),
         supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
         supabase.from('attendance_records').select('*'),
         supabase.from('attendance_corrections').select('*').order('created_at', { ascending: false }),

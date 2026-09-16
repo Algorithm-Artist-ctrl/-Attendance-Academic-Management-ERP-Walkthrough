@@ -431,6 +431,12 @@ async function runMandatoryE2ETests() {
 
   console.log(`  ✓ Restored original profile for ${facTarget!.full_name}`);
 
+  // TEARDOWN CLEANUP: Clean up Section A test entries so production database is not polluted
+  if (initialSecACount === 0) {
+    await supabaseService.deleteSectionTimetable({ sectionId: secAId, deletedBy: 'Test Teardown' });
+    console.log('  ✓ Teardown: Cleaned up Section A test timetable entries from Supabase');
+  }
+
   console.log('\n================================================================================');
   console.log(`🎉 ALL ${passedAssertions}/${totalAssertions} MANDATORY PIPELINE VERIFICATIONS PASSED!`);
   console.log('   - Section A Clear -> verified 0 in DB & cache');

@@ -77,7 +77,11 @@ export const TimetableManagerPage: React.FC = () => {
     return y2 ? y2.id : 'ALL';
   });
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
-    return sections[0]?.id || '';
+    const y2 = years.find(y => y.year_number === 2);
+    const targetYearId = y2 ? y2.id : 'ALL';
+    const matchingSemIds = targetYearId === 'ALL' ? [] : semesters.filter(s => s.academic_year_id === targetYearId).map(s => s.id);
+    const validSecs = targetYearId === 'ALL' ? sections.filter(s => s.active) : sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+    return validSecs[0]?.id || sections[0]?.id || '';
   });
 
   // Dynamic sections filtered by selected academic year

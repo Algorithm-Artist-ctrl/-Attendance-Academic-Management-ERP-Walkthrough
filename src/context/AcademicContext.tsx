@@ -355,9 +355,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setClassrooms(loadedClassrooms);
         const loadedSubjects = data.subjects || [];
         const loadedFaculty = data.faculty || [];
-        const loadedAssignments = data.assignments || [];
+        const loadedAssignments = (data.assignments || []).filter(a => a.active !== false);
         const loadedStudents = data.students || [];
-        const rawTimetable = data.timetable || [];
+        const rawTimetable = (data.timetable || []).filter(t => t.active !== false);
 
         // Enriched Timetable entries with joined references
         const enrichedTimetable: TimetableEntry[] = rawTimetable.map(t => ({
@@ -679,17 +679,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const refreshAssignments = useCallback(async () => {
     try {
-      const rawAssignments = await supabaseService.fetchAssignments();
+      const rawAssignments = await supabaseService.fetchAssignments(true);
       const curFaculty = facultyRef.current;
       const curSubjects = subjectsRef.current;
       const curSections = sectionsRef.current;
 
-      const enrichedAssignments: FacultySubjectAssignment[] = rawAssignments.map(a => ({
-        ...a,
-        faculty: curFaculty.find(f => f.id === a.faculty_id),
-        subject: curSubjects.find(s => s.id === a.subject_id),
-        section: curSections.find(sec => sec.id === a.section_id),
-      }));
+      const enrichedAssignments: FacultySubjectAssignment[] = (rawAssignments || [])
+        .filter(a => a.active !== false)
+        .map(a => ({
+          ...a,
+          faculty: curFaculty.find(f => f.id === a.faculty_id),
+          subject: curSubjects.find(s => s.id === a.subject_id),
+          section: curSections.find(sec => sec.id === a.section_id),
+        }));
 
       setAssignments(enrichedAssignments);
       erpStorage.setAssignments(enrichedAssignments);
@@ -792,6 +794,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .on('broadcast', { event: 'timetable_updated' }, (payload: any) => {
         const secId = payload?.payload?.section_id;
         const action = payload?.payload?.action;
+        if (action === 'DELETED' && secId) {
+          setTimetable(prev => {
+            const rem = prev.filter(t => t.section_id !== secId);
+            erpStorage.setTimetable(rem);
+            return rem;
+          });
+          setAssignments(prev => {
+            const rem = prev.filter(a => a.section_id !== secId);
+            erpStorage.setAssignments(rem);
+            return rem;
+          });
+        }
         refreshTimetable(secId);
         if (action === 'DELETED') {
           refreshAssignments();
@@ -845,9 +859,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
         debounceTableSync('assessments', () => refreshAssessments());
-      })
-      .on('broadcast', { event: 'timetable_updated' }, () => {
-        refreshTimetable();
       })
       .subscribe();
 
@@ -1262,11 +1273,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return remaining;
     });
     setAssignments(prev => {
-      const updated = prev.map(a => a.section_id === sectionId ? { ...a, active: false } : a);
+      const updated = prev.filter(a => a.section_id !== sectionId);
       erpStorage.setAssignments(updated);
       return updated;
     });
-    await refreshTimetable();
+    await refreshTimetable(sectionId);
     await refreshAssignments();
     return res.success;
   };

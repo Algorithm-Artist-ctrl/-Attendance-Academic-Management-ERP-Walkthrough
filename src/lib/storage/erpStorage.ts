@@ -415,7 +415,7 @@ class ERPStorageService {
   }
 
   public getAssignments(): FacultySubjectAssignment[] {
-    const assignments = loadFromStorage<FacultySubjectAssignment[]>(STORAGE_KEYS.ASSIGNMENTS, []);
+    const assignments = loadFromStorage<FacultySubjectAssignment[]>(STORAGE_KEYS.ASSIGNMENTS, []).filter(a => a.active !== false);
     const faculty = this.getFaculty();
     const subjects = this.getSubjects();
     const sections = this.getSections();
@@ -522,7 +522,7 @@ class ERPStorageService {
   }
 
   public getTimetable(): TimetableEntry[] {
-    const entries = loadFromStorage<TimetableEntry[]>(STORAGE_KEYS.TIMETABLE, []);
+    const entries = loadFromStorage<TimetableEntry[]>(STORAGE_KEYS.TIMETABLE, []).filter(e => e.active !== false);
     const subjects = this.getSubjects();
     const faculty = this.getFaculty();
     const sections = this.getSections();
