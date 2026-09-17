@@ -144,8 +144,8 @@ export const TimetableManagerPage: React.FC = () => {
 
   // Current Section and Year objects
   const currentSection = useMemo(() => {
-    return filteredSections.find(s => s.id === selectedSectionId) || filteredSections[0] || sections[0];
-  }, [filteredSections, selectedSectionId, sections]);
+    return filteredSections.find(s => s.id === selectedSectionId) || filteredSections[0] || null;
+  }, [filteredSections, selectedSectionId]);
 
   const currentYear = useMemo(() => {
     const sem = semesters.find(s => s.id === currentSection?.semester_id);
@@ -371,8 +371,8 @@ export const TimetableManagerPage: React.FC = () => {
         period_number: period,
         start_time: time.start,
         end_time: time.end,
-        subject_id: isLunch ? null : (scopedSubjects[0]?.id || null),
-        faculty_id: isLunch ? null : (scopedFaculty[0]?.id || null),
+        subject_id: null,
+        faculty_id: null,
         room_number: isLunch ? 'Refectory / Break' : (currentSection?.room_number || ''),
         lecture_type: isLunch ? 'Lunch' : 'Theory',
       });
@@ -425,8 +425,10 @@ export const TimetableManagerPage: React.FC = () => {
             lectureType: editingSlot.lecture_type,
           });
           resolvedSubjectId = createdSubject.id;
-        } else if (!resolvedSubjectId && scopedSubjects.length > 0) {
-          resolvedSubjectId = scopedSubjects[0].id;
+        } else if (!resolvedSubjectId) {
+          setSlotModalError('Please select a subject course for this lecture period.');
+          setIsSavingSlot(false);
+          return;
         }
       } else {
         resolvedSubjectId = null;
@@ -451,6 +453,10 @@ export const TimetableManagerPage: React.FC = () => {
             departmentId: resolvedDeptId,
           });
           resolvedFacultyId = createdFaculty.id;
+        } else if (!resolvedFacultyId) {
+          setSlotModalError('Please select a faculty professor for this lecture period.');
+          setIsSavingSlot(false);
+          return;
         }
       } else {
         resolvedFacultyId = null;
@@ -1002,6 +1008,16 @@ export const TimetableManagerPage: React.FC = () => {
                 setEditingSlot(null);
                 setCsvPreview(null);
                 setCsvError(null);
+                setIsManualFaculty(false);
+                setIsManualSubject(false);
+                setIsManualRoom(false);
+                setFacultySearchTerm('');
+                setSlotModalError(null);
+                setPublishSuccessMsg(null);
+                setPublishError(null);
+                setDetectedConflicts([]);
+                setCrossSectionWarnings([]);
+                setFacultyConflicts([]);
               }}
               className="px-3 py-2 bg-slate-950/90 border-2 border-emerald-500/40 rounded-xl text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88] touch-target cursor-pointer"
             >
@@ -1023,6 +1039,16 @@ export const TimetableManagerPage: React.FC = () => {
                 setEditingSlot(null);
                 setCsvPreview(null);
                 setCsvError(null);
+                setIsManualFaculty(false);
+                setIsManualSubject(false);
+                setIsManualRoom(false);
+                setFacultySearchTerm('');
+                setSlotModalError(null);
+                setPublishSuccessMsg(null);
+                setPublishError(null);
+                setDetectedConflicts([]);
+                setCrossSectionWarnings([]);
+                setFacultyConflicts([]);
               }}
               className="px-3 py-2 bg-slate-950/90 border-2 border-emerald-500/40 rounded-xl text-xs text-[#00ff88] font-black focus:outline-none focus:border-[#00ff88] touch-target cursor-pointer"
             >
@@ -1980,17 +2006,22 @@ export const TimetableManagerPage: React.FC = () => {
                     const newType = e.target.value as LectureType;
                     const isLunch = newType === 'Lunch';
                     const isSports = newType === 'Sports';
+                    const isOther = newType === 'Other';
+                    const isNonInstructional = isLunch || isSports || isOther;
                     setEditingSlot({
                       ...editingSlot,
                       lecture_type: newType,
-                      ...(isLunch ? {
+                      ...(isNonInstructional ? {
                         subject_id: null,
                         faculty_id: null,
+                      } : {}),
+                      ...(isLunch ? {
                         room_number: editingSlot.room_number || 'Refectory / Break'
                       } : isSports ? {
                         room_number: editingSlot.room_number || 'Sports Ground'
                       } : {})
                     });
+                    setSlotModalError(null);
                   }}
                   className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
                 >
@@ -2063,7 +2094,20 @@ export const TimetableManagerPage: React.FC = () => {
                     scopedSubjects.length > 0 ? (
                       <select
                         value={editingSlot.subject_id || ''}
-                        onChange={(e) => setEditingSlot({ ...editingSlot, subject_id: e.target.value || null })}
+                        onChange={(e) => {
+                          const newSubId = e.target.value || null;
+                          let nextFacId = editingSlot.faculty_id;
+                          if (newSubId && currentSection?.id) {
+                            const isStillAssigned = (assignments || []).some(
+                              a => a.section_id === currentSection.id && a.subject_id === newSubId && a.faculty_id === nextFacId && a.active
+                            );
+                            if (!isStillAssigned) nextFacId = null;
+                          } else {
+                            nextFacId = null;
+                          }
+                          setEditingSlot({ ...editingSlot, subject_id: newSubId, faculty_id: nextFacId });
+                          setSlotModalError(null);
+                        }}
                         className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
                       >
                         <option value="">— Select Subject for this Semester —</option>
@@ -2163,7 +2207,10 @@ export const TimetableManagerPage: React.FC = () => {
                       )}
                       <select
                         value={editingSlot.faculty_id || ''}
-                        onChange={(e) => setEditingSlot({ ...editingSlot, faculty_id: e.target.value || null })}
+                        onChange={(e) => {
+                          setEditingSlot({ ...editingSlot, faculty_id: e.target.value || null });
+                          setSlotModalError(null);
+                        }}
                         className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
                       >
                         <option value="">— Select Faculty Professor —</option>
@@ -2171,7 +2218,7 @@ export const TimetableManagerPage: React.FC = () => {
                           const isAssigned = assignedFacultyIds.has(f.id);
                           return (
                             <option key={f.id} value={f.id}>
-                              {isAssigned ? '★ [ASSIGNED] ' : ''}{f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
+                              {isAssigned ? '★ [ASSIGNED TO THIS SECTION & SUBJECT] ' : ''}{f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
                             </option>
                           );
                         })}

@@ -3243,14 +3243,16 @@ export const supabaseService = {
    */
   async checkFacultyCrossSectionConflicts(params: {
     sectionId: string;
-    entries: Array<{ faculty_id: string; day_of_week: DayOfWeek; period_number: number; start_time?: string; end_time?: string; subject_id?: string }>;
+    entries: Array<{ faculty_id: string; day_of_week: DayOfWeek; period_number: number; start_time?: string; end_time?: string; subject_id?: string; lecture_type?: string }>;
   }): Promise<Array<{ facultyName: string; day: DayOfWeek; period: number; otherSectionName: string; otherSubjectCode?: string; timeRange?: string }>> {
-    const facultyIds = Array.from(new Set(params.entries.map(e => e.faculty_id).filter(Boolean)));
+    const isNonInstructional = (type?: string) => ['Lunch', 'Sports', 'Other'].includes(type || '');
+    const validEntries = params.entries.filter(e => e.faculty_id && !isNonInstructional(e.lecture_type));
+    const facultyIds = Array.from(new Set(validEntries.map(e => e.faculty_id).filter(Boolean)));
     if (facultyIds.length === 0) return [];
 
     const { data: otherEntries, error } = await supabase
       .from('timetable_entries')
-      .select('faculty_id, day_of_week, period_number, start_time, end_time, section_id, sections(name), subjects(subject_code), faculty(full_name)')
+      .select('faculty_id, day_of_week, period_number, start_time, end_time, section_id, lecture_type, sections(id, name, semester_id, semesters(semester_number, academic_year_id, academic_years(name))), subjects(subject_code), faculty(full_name)')
       .in('faculty_id', facultyIds)
       .neq('section_id', params.sectionId)
       .eq('active', true);
@@ -3265,8 +3267,9 @@ export const supabaseService = {
       return (h || 0) * 60 + (m || 0);
     };
 
-    for (const e of params.entries) {
+    for (const e of validEntries) {
       const match = otherEntries.find((o: any) => {
+        if (isNonInstructional(o.lecture_type)) return false;
         if (o.faculty_id !== e.faculty_id || o.day_of_week !== e.day_of_week) return false;
         if (e.start_time && e.end_time && o.start_time && o.end_time) {
           const sA = toMins(e.start_time);
@@ -3274,7 +3277,7 @@ export const supabaseService = {
           const sB = toMins(o.start_time);
           const eB = toMins(o.end_time);
           if (eA > sA && eB > sB) {
-            return sA < eB && eA > sB;
+            return sA < eB && sB < eA;
           }
         }
         return o.period_number === e.period_number;
@@ -3282,7 +3285,11 @@ export const supabaseService = {
 
       if (match) {
         const facName = (match as any).faculty?.full_name || 'Faculty Member';
-        const secName = (match as any).sections?.name || 'Other Section';
+        const secObj = (match as any).sections;
+        const semObj = secObj?.semesters;
+        const yrObj = semObj?.academic_years;
+        const yrName = yrObj?.name;
+        const secName = yrName ? `${yrName} Section ${secObj?.name || ''}` : `Section ${secObj?.name || 'Other Section'}`;
         const subCode = (match as any).subjects?.subject_code;
         const timeRange = (match as any).start_time && (match as any).end_time ? `${(match as any).start_time}–${(match as any).end_time}` : undefined;
 

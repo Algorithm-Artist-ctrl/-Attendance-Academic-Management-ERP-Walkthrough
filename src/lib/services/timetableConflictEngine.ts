@@ -83,9 +83,9 @@ export class TimetableConflictEngine {
     targetSectionId: string;
     proposedEntries: ProposedTimetableEntry[];
     currentDbEntries: TimetableEntry[];
-    sections: Section[];
-    subjects: Subject[];
-    faculty: Faculty[];
+    sections?: Section[];
+    subjects?: Subject[];
+    faculty?: Faculty[];
     assignments?: FacultySubjectAssignment[];
     semesters?: Semester[];
     academicYears?: AcademicYear[];
@@ -94,9 +94,9 @@ export class TimetableConflictEngine {
       targetSectionId,
       proposedEntries,
       currentDbEntries,
-      sections,
-      subjects,
-      faculty,
+      sections = [],
+      subjects = [],
+      faculty = [],
       assignments = [],
       semesters = [],
       academicYears = [],
@@ -116,13 +116,13 @@ export class TimetableConflictEngine {
       if (!sec) return 'another section';
       const sem = semesters.find(s => s.id === sec.semester_id);
       const yr = sem ? academicYears.find(y => y.id === sem.academic_year_id) : undefined;
-      const yrPrefix = yr ? `${yr.name} ` : (sem ? `Sem ${sem.semester_number} ` : '');
+      const yrPrefix = yr?.name ? `${yr.name} ` : (sem?.name ? `${sem.name} ` : (sem?.semester_number ? `Sem ${sem.semester_number} ` : ''));
       return `${yrPrefix}Section ${sec.name} (${sec.room_number || 'Room TBD'})`;
     };
 
     // Verify Rule E: Target section exists and active
     const targetSection = sectionMap.get(targetSectionId);
-    if (!targetSection || !targetSection.active) {
+    if (sections.length > 0 && (!targetSection || !targetSection.active)) {
       conflicts.push({
         rule: 'INVALID_SECTION',
         severity: 'blocking',
@@ -166,7 +166,7 @@ export class TimetableConflictEngine {
       const sub = entry.subject_id ? subjectMap.get(entry.subject_id) : undefined;
       const facName = fac?.full_name || entry.faculty_name || 'Faculty Member';
       const subCode = sub?.subject_code || entry.subject_code || (entry.lecture_type === 'Lunch' ? 'Lunch Break' : 'Subject');
-      const roomNum = (entry.room_number || targetSection.room_number || '').trim();
+      const roomNum = (entry.room_number || targetSection?.room_number || '').trim();
       const timeStr = `${entry.start_time}–${entry.end_time}`;
 
       // -------------------------------------------------------------
@@ -201,7 +201,7 @@ export class TimetableConflictEngine {
               day: entry.day_of_week,
               period_number: entry.period_number,
               timeRange: timeStr,
-              message: `Same-section collision on ${entry.day_of_week} Period ${entry.period_number}: Section ${targetSection.name} already has ${priorSub} scheduled during ${prior.start_time}–${prior.end_time}.`,
+              message: `Same-section collision on ${entry.day_of_week} Period ${entry.period_number}: Section ${targetSection?.name || ''} already has ${priorSub} scheduled during ${prior.start_time}–${prior.end_time}.`,
               entry,
               conflictingEntry: prior,
             });
@@ -210,13 +210,21 @@ export class TimetableConflictEngine {
         }
       }
 
+      // Helper for non-instructional and common areas
+      const isNonInstructionalType = (type?: string) => ['Lunch', 'Sports', 'Other'].includes(type || '');
+      const isCommonRoomArea = (r?: string) => {
+        if (!r) return true;
+        const low = r.toLowerCase().trim();
+        return low === 'tbd' || low.includes('refectory') || low.includes('break') || low.includes('cafeteria') || low.includes('dining');
+      };
+
       // -------------------------------------------------------------
       // Rule B: Faculty Conflict (Simultaneous double-booking)
       // -------------------------------------------------------------
-      if (entry.faculty_id && entry.lecture_type !== 'Lunch') {
+      if (entry.faculty_id && !isNonInstructionalType(entry.lecture_type)) {
         // B1: Against other entries in this proposed batch
         for (const prior of processedProposed) {
-          if (prior.faculty_id && prior.faculty_id === entry.faculty_id && prior.day_of_week === entry.day_of_week) {
+          if (prior.faculty_id && !isNonInstructionalType(prior.lecture_type) && prior.faculty_id === entry.faculty_id && prior.day_of_week === entry.day_of_week) {
             const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time);
             if (overlaps) {
               conflicts.push({
@@ -239,8 +247,9 @@ export class TimetableConflictEngine {
           if (entry.id && dbEntry.id && entry.id === dbEntry.id) continue;
           if (entry.section_id && dbEntry.section_id && entry.section_id === dbEntry.section_id) continue;
           if (dbEntry.section_id === targetSectionId) continue;
+          if (isNonInstructionalType(dbEntry.lecture_type)) continue;
 
-          if (dbEntry.faculty_id && dbEntry.faculty_id === entry.faculty_id && dbEntry.day_of_week === entry.day_of_week && dbEntry.lecture_type !== 'Lunch') {
+          if (dbEntry.faculty_id && dbEntry.faculty_id === entry.faculty_id && dbEntry.day_of_week === entry.day_of_week) {
             const dbStart = dbEntry.start_time || '09:00';
             const dbEnd = dbEntry.end_time || '09:50';
             const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, dbStart, dbEnd);
@@ -266,16 +275,16 @@ export class TimetableConflictEngine {
       // -------------------------------------------------------------
       // Rule C: Room Collision (Simultaneous room occupancy)
       // -------------------------------------------------------------
-      if (roomNum && roomNum.toUpperCase() !== 'TBD' && entry.lecture_type !== 'Lunch') {
+      if (roomNum && !isCommonRoomArea(roomNum) && !isNonInstructionalType(entry.lecture_type)) {
         // C1: Against other entries in this proposed batch
         for (const prior of processedProposed) {
-          const priorRoom = (prior.room_number || targetSection.room_number || '').trim();
+          const priorRoom = (prior.room_number || targetSection?.room_number || '').trim();
           if (
             priorRoom && 
-            priorRoom.toUpperCase() !== 'TBD' &&
+            !isCommonRoomArea(priorRoom) &&
+            !isNonInstructionalType(prior.lecture_type) &&
             priorRoom.toLowerCase() === roomNum.toLowerCase() && 
-            prior.day_of_week === entry.day_of_week &&
-            prior.lecture_type !== 'Lunch'
+            prior.day_of_week === entry.day_of_week
           ) {
             const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time);
             if (overlaps) {
@@ -299,12 +308,12 @@ export class TimetableConflictEngine {
           if (entry.id && dbEntry.id && entry.id === dbEntry.id) continue;
           if (entry.section_id && dbEntry.section_id && entry.section_id === dbEntry.section_id) continue;
           if (dbEntry.section_id === targetSectionId) continue;
-          if (dbEntry.lecture_type === 'Lunch') continue;
+          if (isNonInstructionalType(dbEntry.lecture_type)) continue;
 
           const dbRoom = (dbEntry.room_number || '').trim();
           if (
             dbRoom && 
-            dbRoom.toUpperCase() !== 'TBD' &&
+            !isCommonRoomArea(dbRoom) &&
             dbRoom.toLowerCase() === roomNum.toLowerCase() && 
             dbEntry.day_of_week === entry.day_of_week
           ) {

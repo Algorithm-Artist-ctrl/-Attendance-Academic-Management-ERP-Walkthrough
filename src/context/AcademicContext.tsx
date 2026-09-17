@@ -1647,6 +1647,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 6. Timetable Conflict Engine
   const checkTimetableConflict = (entry: Omit<TimetableEntry, 'id'>, excludeId?: string): TimetableConflict | null => {
+    const isNonInstructional = (type?: string) => ['Lunch', 'Sports', 'Other'].includes(type || '');
+    const isCommonArea = (room?: string) => {
+      if (!room) return true;
+      const r = room.toLowerCase().trim();
+      return r === 'tbd' || r.includes('refectory') || r.includes('break') || r.includes('cafeteria') || r.includes('dining');
+    };
+
+    const formatSectionLabel = (secId?: string) => {
+      if (!secId) return 'Another Section';
+      const sec = sections.find(s => s.id === secId);
+      if (!sec) return 'Another Section';
+      const sem = semesters.find(sm => sm.id === sec.semester_id);
+      const yr = years.find(y => y.id === sem?.academic_year_id);
+      return yr ? `${yr.name} Section ${sec.name}` : `Section ${sec.name}`;
+    };
+
     const activeEntries = timetable.filter(t => {
       if (!t.active) return false;
       if (excludeId && t.id === excludeId) return false;
@@ -1693,50 +1709,52 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
              hasTimeOverlap(entry, t)
       );
       if (sameSecConflict) {
-        const sec = sections.find(s => s.id === entry.section_id);
         const sub = subjects.find(s => s.id === sameSecConflict.subject_id);
         return {
           type: 'same_section',
           severity: 'blocking',
-          message: `Same-section collision: Section ${sec?.name || ''} already has ${sub?.subject_code || 'a lecture'} scheduled on ${entry.day_of_week} Period ${entry.period_number} (${sameSecConflict.start_time || ''}–${sameSecConflict.end_time || ''}).`,
+          message: `Same-section collision: ${formatSectionLabel(entry.section_id)} already has ${sub?.subject_code || 'a lecture'} scheduled on ${entry.day_of_week} Period ${sameSecConflict.period_number} (${sameSecConflict.start_time || ''}–${sameSecConflict.end_time || ''}).`,
           conflictingEntry: sameSecConflict
         };
       }
     }
 
-    // Rule 2: Faculty Double-Booking
-    const facultyConflict = activeEntries.find(
-      t => t.faculty_id === entry.faculty_id &&
-           t.day_of_week === entry.day_of_week &&
-           hasTimeOverlap(entry, t)
-    );
+    // Rule 2: Faculty Double-Booking (Skipped for non-instructional slots e.g. Lunch Break)
+    if (entry.faculty_id && !isNonInstructional(entry.lecture_type)) {
+      const facultyConflict = activeEntries.find(
+        t => !isNonInstructional(t.lecture_type) &&
+             t.faculty_id === entry.faculty_id &&
+             t.day_of_week === entry.day_of_week &&
+             hasTimeOverlap(entry, t)
+      );
 
-    if (facultyConflict) {
-      const fac = faculty.find(f => f.id === entry.faculty_id);
-      const conflictSec = sections.find(s => s.id === facultyConflict.section_id);
-      return {
-        type: 'faculty',
-        severity: 'blocking',
-        message: `Faculty conflict: ${fac?.full_name || 'Faculty'} is already scheduled to teach Section ${conflictSec?.name || 'Unknown'} during Period ${entry.period_number} on ${entry.day_of_week} (${facultyConflict.start_time || ''}–${facultyConflict.end_time || ''}).`,
-        conflictingEntry: facultyConflict
-      };
+      if (facultyConflict) {
+        const fac = faculty.find(f => f.id === entry.faculty_id);
+        return {
+          type: 'faculty',
+          severity: 'blocking',
+          message: `Faculty conflict: ${fac?.full_name || 'Faculty'} is already scheduled to teach ${formatSectionLabel(facultyConflict.section_id)} during Period ${facultyConflict.period_number} on ${entry.day_of_week} (${facultyConflict.start_time || ''}–${facultyConflict.end_time || ''}).`,
+          conflictingEntry: facultyConflict
+        };
+      }
     }
 
-    // Rule 3: Room Collision
-    if (entry.room_number) {
+    // Rule 3: Room Collision (Skipped for non-instructional slots and common break spaces)
+    if (entry.room_number && !isNonInstructional(entry.lecture_type) && !isCommonArea(entry.room_number)) {
       const roomConflict = activeEntries.find(
-        t => t.room_number &&
+        t => !isNonInstructional(t.lecture_type) &&
+             t.room_number &&
+             !isCommonArea(t.room_number) &&
              t.room_number.toLowerCase().trim() === entry.room_number.toLowerCase().trim() &&
              t.day_of_week === entry.day_of_week &&
              hasTimeOverlap(entry, t)
       );
 
       if (roomConflict) {
-        const conflictSec = sections.find(s => s.id === roomConflict.section_id);
         return {
           type: 'room',
           severity: 'blocking',
-          message: `Room collision: ${entry.room_number} is already occupied by Section ${conflictSec?.name || 'Unknown'} during Period ${entry.period_number} on ${entry.day_of_week} (${roomConflict.start_time || ''}–${roomConflict.end_time || ''}).`,
+          message: `Room collision: Room ${entry.room_number} is already occupied by ${formatSectionLabel(roomConflict.section_id)} during Period ${roomConflict.period_number} on ${entry.day_of_week} (${roomConflict.start_time || ''}–${roomConflict.end_time || ''}).`,
           conflictingEntry: roomConflict
         };
       }
