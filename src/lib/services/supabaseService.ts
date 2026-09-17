@@ -3853,7 +3853,45 @@ export const supabaseService = {
     actorRole?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const cleanEmail = email.trim().toLowerCase();
+
+      // STRICT SECURITY POLICY: Students cannot reset passwords directly or receive email reset links.
+      if (cleanEmail.includes('@student.')) {
+        return {
+          success: false,
+          error: 'For security reasons, students cannot reset their password directly. Please contact your Super Admin / College Administrator to reset your account password.'
+        };
+      }
+
+      if (targetUserId) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('role, student_id')
+          .eq('id', targetUserId)
+          .maybeSingle();
+
+        if (prof && (prof.role === 'student' || prof.student_id)) {
+          return {
+            success: false,
+            error: 'For security reasons, students cannot reset their password directly. Please contact your Super Admin / College Administrator to reset your account password.'
+          };
+        }
+      }
+
+      const { data: student } = await supabase
+        .from('students')
+        .select('id')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+
+      if (student) {
+        return {
+          success: false,
+          error: 'For security reasons, students cannot reset their password directly. Please contact your Super Admin / College Administrator to reset your account password.'
+        };
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
       });
 
@@ -3864,7 +3902,7 @@ export const supabaseService = {
         action: 'PASSWORD_RESET_REQUESTED',
         entity_type: 'USER_ACCOUNT',
         entity_id: targetUserId || null,
-        new_values: { email, requested_at: new Date().toISOString() },
+        new_values: { email: cleanEmail, requested_at: new Date().toISOString() },
         created_at: new Date().toISOString(),
       }]);
 

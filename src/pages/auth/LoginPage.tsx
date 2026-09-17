@@ -293,6 +293,7 @@ export const LoginPage: React.FC = () => {
       <ForgotPasswordModal
         isOpen={isForgotModalOpen}
         onClose={() => setIsForgotModalOpen(false)}
+        portalRole={activeRoleTab}
       />
     </div>
   );

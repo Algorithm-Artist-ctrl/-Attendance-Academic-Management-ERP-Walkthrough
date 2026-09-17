@@ -926,6 +926,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Password Recovery Initiation: Resolves identifier to registered email and dispatches recovery link
+  // NOTE: Students are strictly blocked from self-service password reset per institutional security policy.
   const resetPasswordForEmail = async (rawIdentifier: string): Promise<{ success: boolean; error?: string; email?: string }> => {
     const trimmed = rawIdentifier.trim();
     if (!trimmed) {
@@ -937,7 +938,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'No registered institutional account found matching this identifier.' };
     }
 
+    // STRICT SECURITY POLICY: Students cannot reset passwords directly.
+    const cleanRoll = trimmed.replace(/[\s\-_]/g, '');
+    const isStudentEmail = email.toLowerCase().includes('@student.');
+    const isNumericRoll = /^\d+$/.test(cleanRoll);
+
+    if (isStudentEmail || isNumericRoll) {
+      return {
+        success: false,
+        error: 'For security reasons, students cannot reset their password directly. Please contact your Super Admin / College Administrator to reset your account password.',
+      };
+    }
+
     try {
+      // Check database to ensure target is not a student account
+      const { data: studentMatch } = await supabase
+        .from('students')
+        .select('id')
+        .or(`roll_number.ilike.${cleanRoll},roll_number.ilike.${trimmed},email.ilike.${email}`)
+        .maybeSingle();
+
+      if (studentMatch) {
+        return {
+          success: false,
+          error: 'For security reasons, students cannot reset their password directly. Please contact your Super Admin / College Administrator to reset your account password.',
+        };
+      }
+
+      const { data: profileMatch } = await supabase
+        .from('profiles')
+        .select('role, student_id')
+        .ilike('email', email)
+        .maybeSingle();
+
+      if (profileMatch && (profileMatch.role === 'student' || profileMatch.student_id)) {
+        return {
+          success: false,
+          error: 'For security reasons, students cannot reset their password directly. Please contact your Super Admin / College Administrator to reset your account password.',
+        };
+      }
+
       const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,

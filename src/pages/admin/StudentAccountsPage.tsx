@@ -43,7 +43,6 @@ export const StudentAccountsPage: React.FC = () => {
     refreshAdminAccounts, 
     updateAccountStatus, 
     updateAccountCredentials,
-    requestPasswordReset,
     refreshStudents
   } = useAcademic();
 
@@ -265,7 +264,7 @@ export const StudentAccountsPage: React.FC = () => {
     setActionMessage(null);
     try {
       const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
-        password: 'student123',
+        password: 'VctmStudent@2026',
         isDefaultPassword: true,
       });
 
@@ -273,7 +272,7 @@ export const StudentAccountsPage: React.FC = () => {
         setEditPassword('');
         setActionMessage({
           type: 'success',
-          text: 'Institution default password ("student123") set in Supabase Auth. Student can log in immediately.'
+          text: 'Institution default password ("VctmStudent@2026") set in Supabase Auth. Student can log in immediately.'
         });
       } else {
         setActionMessage({
@@ -288,33 +287,6 @@ export const StudentAccountsPage: React.FC = () => {
       });
     } finally {
       setIsSettingDefaultPass(false);
-    }
-  };
-
-  const handlePasswordReset = async () => {
-    if (!selectedAccount) return;
-    setActionLoading(true);
-    setActionMessage(null);
-    try {
-      const res = await requestPasswordReset(selectedAccount.email, selectedAccount.auth_user_id);
-      if (res.success) {
-        setActionMessage({
-          type: 'success',
-          text: `Password reset instructions dispatched to ${selectedAccount.email}. Audit log recorded.`
-        });
-      } else {
-        setActionMessage({
-          type: 'error',
-          text: res.error || 'Failed to dispatch password reset instructions.'
-        });
-      }
-    } catch (err: any) {
-      setActionMessage({
-        type: 'error',
-        text: err?.message || 'Error executing password reset.'
-      });
-    } finally {
-      setActionLoading(false);
     }
   };
 
@@ -801,7 +773,7 @@ export const StudentAccountsPage: React.FC = () => {
                 </div>
 
                 {/* Quick Action Buttons */}
-                <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center justify-start gap-2 pt-1">
                   <Button
                     variant="outline"
                     size="sm"
@@ -810,18 +782,7 @@ export const StudentAccountsPage: React.FC = () => {
                     className="text-xs border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/40"
                     leftIcon={<Sparkles className="w-3 h-3 text-cyan-400" />}
                   >
-                    Apply Default ("student123")
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePasswordReset}
-                    isLoading={actionLoading}
-                    className="text-xs text-slate-400 hover:text-white"
-                    leftIcon={<Mail className="w-3 h-3 text-slate-400" />}
-                  >
-                    Send Reset Link
+                    Apply Default ("VctmStudent@2026")
                   </Button>
                 </div>
               </div>

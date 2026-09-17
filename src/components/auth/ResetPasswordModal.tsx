@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyRound, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { KeyRound, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight, ShieldAlert } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
@@ -10,7 +10,7 @@ interface ResetPasswordModalProps {
 }
 
 export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose }) => {
-  const { user, completePasswordRecovery, cancelPasswordRecovery } = useAuth();
+  const { user, role, completePasswordRecovery, cancelPasswordRecovery } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,10 +18,17 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const isStudent = role === 'student' || user?.role === 'student' || (user?.email && user.email.toLowerCase().includes('@student.'));
+
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (isStudent) {
+      setErrorMessage('For security reasons, students cannot reset their password directly.');
+      return;
+    }
 
     if (newPassword.length < 6) {
       setErrorMessage('New password must be at least 6 characters long.');
@@ -62,20 +69,47 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
       onClose={handleCancel}
       title={
         <div className="flex items-center gap-2.5 text-white">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88]">
-            <KeyRound className="w-4 h-4" />
+          <div className={`p-1.5 rounded-lg ${isStudent ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' : 'bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88]'}`}>
+            {isStudent ? <ShieldAlert className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
           </div>
-          <span>Choose New Password</span>
+          <span>Password Recovery</span>
         </div>
       }
       description={
-        user?.email
+        isStudent
+          ? 'Student account security policy'
+          : user?.email
           ? `Setting new password for verified recovery session: ${user.email}`
           : 'Enter your new secure password to finalize account recovery'
       }
       maxWidth="md"
     >
-      {successMessage ? (
+      {isStudent ? (
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+              <span>Password Recovery Restricted</span>
+            </div>
+            <p className="text-slate-300 text-sm font-medium">
+              For security reasons, students cannot reset their password directly.
+            </p>
+            <p className="text-slate-400 text-xs">
+              Please contact your Super Admin / College Administrator to reset your account password.
+            </p>
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-emerald-500/15">
+            <Button
+              type="button"
+              variant="neon"
+              onClick={handleCancel}
+            >
+              Back to Login
+            </Button>
+          </div>
+        </div>
+      ) : successMessage ? (
         <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs space-y-3 animate-in fade-in">
           <div className="flex items-center gap-2 font-bold text-[#00ff88]">
             <CheckCircle2 className="w-5 h-5" />
