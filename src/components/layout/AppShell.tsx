@@ -48,9 +48,14 @@ export const AppShell: React.FC<AppShellProps> = ({
     faculty,
     attendanceRecords,
     attendanceSessions,
-    subjects
+    subjects,
+    notifications,
+    unreadNotificationCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead
   } = useAcademic();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const currentFaculty = React.useMemo(() => {
     return faculty.find(
@@ -329,14 +334,132 @@ export const AppShell: React.FC<AppShellProps> = ({
           {/* User Profile Header Chip */}
           <div className="flex items-center gap-2 sm:gap-3 ml-auto">
             {/* Notification Bell */}
-            <button 
-              onClick={() => onTabChange('notices')}
-              title="View Notices & Circulars"
-              className="relative p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors cursor-pointer touch-target flex items-center justify-center"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                title="View Notifications"
+                className="relative p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors cursor-pointer touch-target flex items-center justify-center"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotificationCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-[0_0_8px_rgba(0,255,136,0.6)]">
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </span>
+                ) : (
+                  <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500/40" />
+                )}
+              </button>
+
+              {isNotifOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsNotifOpen(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900/95 border border-emerald-500/30 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.7)] z-50 overflow-hidden animate-in zoom-in-95 duration-150">
+                    <div className="p-3.5 border-b border-emerald-500/20 flex items-center justify-between bg-slate-950/60">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-[#00ff88]" />
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Notifications</h4>
+                        {unreadNotificationCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                            {unreadNotificationCount} new
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {unreadNotificationCount > 0 && (
+                          <button
+                            onClick={() => markAllNotificationsAsRead()}
+                            className="text-[10px] font-bold text-emerald-400 hover:text-white transition-colors"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setIsNotifOpen(false)}
+                          className="text-slate-400 hover:text-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto divide-y divide-emerald-500/10 custom-scrollbar">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-slate-400 space-y-1">
+                          <Bell className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-40" />
+                          <p className="text-xs font-semibold text-slate-300">No Notifications</p>
+                          <p className="text-[11px] text-slate-500">You're all caught up with classes and assessments.</p>
+                        </div>
+                      ) : (
+                        notifications.slice(0, 15).map(n => (
+                          <div
+                            key={n.id}
+                            onClick={() => {
+                              if (!n.is_read) markNotificationAsRead(n.id);
+                              if (n.type.includes('MARKS')) {
+                                onTabChange('marks');
+                                setIsNotifOpen(false);
+                              } else if (n.type.includes('ASSIGNMENT')) {
+                                onTabChange(role === 'student' ? 'student_assignments' : 'assignments');
+                                setIsNotifOpen(false);
+                              }
+                            }}
+                            className={clsx(
+                              "p-3 transition-colors cursor-pointer flex gap-3 text-left",
+                              n.is_read ? "bg-transparent hover:bg-slate-800/40" : "bg-emerald-500/5 hover:bg-emerald-500/10"
+                            )}
+                          >
+                            <div className="mt-0.5 shrink-0">
+                              {n.type.includes('MARKS') ? (
+                                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+                                  <Award className="w-3.5 h-3.5" />
+                                </div>
+                              ) : n.type.includes('ASSIGNMENT') ? (
+                                <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                                  <FileText className="w-3.5 h-3.5" />
+                                </div>
+                              ) : (
+                                <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center">
+                                  <Bell className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-xs font-bold text-white truncate">{n.title}</span>
+                                {!n.is_read && (
+                                  <span className="w-2 h-2 rounded-full bg-[#00ff88] shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
+                                {n.message}
+                              </p>
+                              <span className="text-[10px] text-slate-500 mt-1 block">
+                                {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="p-2.5 bg-slate-950/80 border-t border-emerald-500/15 text-center">
+                      <button
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          onTabChange('notices');
+                        }}
+                        className="text-xs font-bold text-[#00ff88] hover:underline"
+                      >
+                        View Official Notices & Circulars →
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Profile Avatar & Info */}
             <button 

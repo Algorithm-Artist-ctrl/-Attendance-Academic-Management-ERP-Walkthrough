@@ -261,11 +261,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (profile.faculty_id || profile.role === 'faculty' || profile.role === 'hod') {
-            const fid = profile.faculty_id || profile.id;
+            if (profile.faculty_id) {
+              await supabase
+                .from('faculty')
+                .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
+                .eq('id', profile.faculty_id);
+            }
+            // Also sync by auth_user_id or id if faculty_id differed
             await supabase
               .from('faculty')
               .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
-              .eq('id', fid);
+              .or(`auth_user_id.eq.${profile.id},id.eq.${profile.id}`);
           }
 
           profile.email = confirmedNewEmail;
@@ -848,6 +854,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // 1. Proactively verify and ensure an active Supabase session before updating credentials
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      let session = sessionData?.session;
+
+      if (!session || !session.access_token || sessionErr) {
+        // Attempt session refresh if token is expired or missing in memory
+        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+        if (refreshErr || !refreshData.session) {
+          return { success: false, error: 'Your session has expired. Please log in again.' };
+        }
+        session = refreshData.session;
+      }
+
       const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
       const { data, error: authErr } = await supabase.auth.updateUser(
         { email: cleanEmail },
@@ -855,6 +874,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       if (authErr) {
+        const msg = authErr.message || '';
+        if (msg.includes('Auth session missing') || msg.toLowerCase().includes('session missing') || msg.toLowerCase().includes('jwt expired')) {
+          return { success: false, error: 'Your session has expired. Please log in again.' };
+        }
+        if (msg.includes('over_email_send_rate_limit') || msg.toLowerCase().includes('rate limit')) {
+          return { success: false, error: 'Email verification rate limit reached. Please wait a few minutes before trying again.' };
+        }
+        if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered') || msg.toLowerCase().includes('exists')) {
+          return { success: false, error: 'This email address is already in use by another account.' };
+        }
         return { success: false, error: authErr.message };
       }
 
@@ -887,7 +916,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true, pendingVerification: isPending };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to request email update' };
+      const msg = err?.message || '';
+      if (msg.includes('Auth session missing') || msg.toLowerCase().includes('session missing')) {
+        return { success: false, error: 'Your session has expired. Please log in again.' };
+      }
+      return { success: false, error: msg || 'Failed to request email update' };
     }
   };
 

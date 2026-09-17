@@ -110,65 +110,84 @@ export const SettingsPage: React.FC = () => {
             </h3>
           </div>
 
-          {passwordMsg && (
-            <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-              passwordMsg.type === 'success' 
-                ? 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]' 
-                : 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-            }`}>
-              {passwordMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-              <span>{passwordMsg.text}</span>
+          {role === 'student' ? (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1.5 text-xs text-slate-300">
+                  <p className="font-bold text-white">Institutional Credential Policy</p>
+                  <p className="text-slate-300 leading-relaxed">
+                    For security reasons, student passwords cannot be altered directly. Please contact your Super Admin or College Administrator to reset your password.
+                  </p>
+                  <p className="text-[11px] text-amber-400/90 font-mono pt-1">
+                    Contact: Central Administrative Office / Registrar Desk
+                  </p>
+                </div>
+              </div>
             </div>
+          ) : (
+            <>
+              {passwordMsg && (
+                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  passwordMsg.type === 'success' 
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]' 
+                    : 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                }`}>
+                  {passwordMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  <span>{passwordMsg.text}</span>
+                </div>
+              )}
+
+              <form onSubmit={handlePasswordChange} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  />
+                </div>
+
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">New Password</label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-7 text-slate-500 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Confirm New Password</label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat new password"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  />
+                </div>
+
+                <Button type="submit" variant="neon" size="sm" isLoading={isChangingPassword} className="w-full mt-2">
+                  Update Password
+                </Button>
+              </form>
+            </>
           )}
-
-          <form onSubmit={handlePasswordChange} className="space-y-3.5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Current Password</label>
-              <input
-                type="password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
-              />
-            </div>
-
-            <div className="relative">
-              <label className="block text-xs font-semibold text-slate-400 mb-1">New Password</label>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-7 text-slate-500 hover:text-white"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Confirm New Password</label>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat new password"
-                className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
-              />
-            </div>
-
-            <Button type="submit" variant="neon" size="sm" isLoading={isChangingPassword} className="w-full mt-2">
-              Update Password
-            </Button>
-          </form>
         </div>
 
         {/* Card 2: Notification Preferences */}

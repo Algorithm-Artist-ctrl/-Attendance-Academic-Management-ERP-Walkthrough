@@ -98,9 +98,15 @@ export const StudentMarksPage: React.FC = () => {
                   </div>
                   <div className="text-right pl-4 border-l border-slate-800">
                     <div className="text-[11px] text-slate-400">Internal Score</div>
-                    <div className="text-sm font-bold font-mono text-emerald-400">
-                      {item.totalInternalScore} <span className="text-xs text-slate-500">/ {item.maxInternalScore || 100}</span>
-                    </div>
+                    {item.maxInternalScore > 0 ? (
+                      <div className="text-sm font-bold font-mono text-emerald-400">
+                        {item.totalInternalScore} <span className="text-xs text-slate-500">/ {item.maxInternalScore}</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-semibold text-slate-400 mt-1">
+                        Not Evaluated
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -113,45 +119,18 @@ export const StudentMarksPage: React.FC = () => {
                     <Award className="w-3.5 h-3.5 text-emerald-400" /> Sessional Examinations
                   </h4>
                   <div className="space-y-2 text-xs">
-                    {/* Sessional 1 */}
-                    <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                      <span className="text-slate-400">Sessional 1:</span>
-                      <span className="font-mono font-bold text-white">
-                        {item.sessionalMarks.sessional1?.obtained !== undefined 
-                          ? `${item.sessionalMarks.sessional1.obtained} / ${item.sessionalMarks.sessional1.max}` 
-                          : '—'}
-                      </span>
-                    </div>
-
-                    {/* Sessional 2 */}
-                    <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                      <span className="text-slate-400">Sessional 2:</span>
-                      <span className="font-mono font-bold text-white">
-                        {item.sessionalMarks.sessional2?.obtained !== undefined 
-                          ? `${item.sessionalMarks.sessional2.obtained} / ${item.sessionalMarks.sessional2.max}` 
-                          : '—'}
-                      </span>
-                    </div>
-
-                    {/* Pre-University Test */}
-                    <div className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                      <span className="text-slate-400">Pre-University Test:</span>
-                      <span className="font-mono font-bold text-white">
-                        {item.sessionalMarks.put?.obtained !== undefined 
-                          ? `${item.sessionalMarks.put.obtained} / ${item.sessionalMarks.put.max}` 
-                          : '—'}
-                      </span>
-                    </div>
-
-                    {/* Additional Custom Sessionals (if any created by teacher) */}
-                    {item.sessionalMarks.otherSessionals && item.sessionalMarks.otherSessionals.map(s => (
-                      <div key={s.assessmentId} className="flex justify-between items-center py-1 border-b border-slate-800/40">
-                        <span className="text-slate-400 truncate max-w-[140px]">{s.title}:</span>
-                        <span className="font-mono font-bold text-white">
-                          {s.obtainedMarks !== undefined ? `${s.obtainedMarks} / ${s.maxMarks}` : '—'}
-                        </span>
-                      </div>
-                    ))}
+                    {item.sessionalMarks.sessionals.length === 0 ? (
+                      <p className="text-slate-500 py-3 text-center">No sessional marks published yet.</p>
+                    ) : (
+                      item.sessionalMarks.sessionals.map((s, idx) => (
+                        <div key={s.assessmentId || idx} className="flex justify-between items-center py-1 border-b border-slate-800/40">
+                          <span className="text-slate-400 truncate max-w-[140px]">{s.title}:</span>
+                          <span className="font-mono font-bold text-white">
+                            {s.obtainedMarks !== undefined ? `${s.obtainedMarks} / ${s.maxMarks}` : 'Pending'}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 

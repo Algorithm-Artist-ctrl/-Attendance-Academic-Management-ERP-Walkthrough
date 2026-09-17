@@ -543,4 +543,28 @@ export interface FacultyDashboardPayload {
   attendanceSessions: AttendanceSession[];
 }
 
+export type NotificationType =
+  | 'MARKS_PUBLISHED'
+  | 'MARKS_UPDATED'
+  | 'ASSIGNMENT_POSTED'
+  | 'ASSIGNMENT_UPDATED'
+  | 'ATTENDANCE_CLAIM'
+  | 'ATTENDANCE_UPDATE'
+  | 'TIMETABLE_UPDATE'
+  | 'GENERAL';
+
+export interface StudentNotification {
+  id: string;
+  recipient_user_id?: string;
+  recipient_student_id?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  reference_type?: string;
+  reference_id?: string;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 

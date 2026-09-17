@@ -32,7 +32,8 @@ import {
   AdmissionType,
   AccountStatus,
   AdminAccountDirectoryEntry,
-  ClassCoordinatorAssignment
+  ClassCoordinatorAssignment,
+  StudentNotification
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -115,11 +116,16 @@ interface AcademicContextType {
   sessionalMarks: SessionalMark[];
   marksHistory: MarksHistory[];
   adminAccounts: AdminAccountDirectoryEntry[];
+  notifications: StudentNotification[];
+  unreadNotificationCount: number;
   isLoading: boolean;
   claimWindowDays: number;
   setClaimWindowDays: (days: number) => void;
   refreshData: (forceRefreshMaster?: boolean) => Promise<void>;
   refreshAdminAccounts: () => Promise<void>;
+  refreshNotifications: (studentId?: string, userId?: string) => Promise<void>;
+  markNotificationAsRead: (notificationId: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
   getFacultyCoordinatorAssignments: (facultyId: string) => ClassCoordinatorAssignment[];
   refreshCoordinatorAssignments: (facultyId?: string) => Promise<ClassCoordinatorAssignment[]>;
   updateAccountStatus: (userId: string, status: AccountStatus, reason?: string) => Promise<{ success: boolean; error?: string }>;
@@ -418,6 +424,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [sessionalMarks, setSessionalMarks] = useState<SessionalMark[]>([]);
   const [marksHistory, setMarksHistory] = useState<MarksHistory[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccountDirectoryEntry[]>([]);
+  const [notifications, setNotifications] = useState<StudentNotification[]>([]);
+  const unreadNotificationCount = notifications.filter(n => !n.is_read).length;
 
   // Stable refs for cross-table joins to eliminate stale closures in granular callbacks
   const sectionsRef = useRef(sections);
@@ -925,6 +933,31 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return classCoordinatorAssignments.filter(c => c.faculty_id === facultyId && c.active);
   }, [classCoordinatorAssignments]);
 
+  const refreshNotifications = useCallback(async (studentId?: string, userId?: string) => {
+    try {
+      const activeUser = erpStorage.getCurrentSessionUser();
+      const stId = studentId || activeUser?.student_id || activeUser?.student?.id;
+      const uId = userId || activeUser?.id;
+      if (stId || uId) {
+        const notifs = await supabaseService.fetchStudentNotifications(stId || '', uId);
+        setNotifications(notifs);
+      }
+    } catch (err) {
+      console.warn('Notice: Error refreshing notifications:', err);
+    }
+  }, []);
+
+  const markNotificationAsRead = useCallback(async (notificationId: string) => {
+    setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
+    await supabaseService.markNotificationAsRead(notificationId);
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    const activeUser = erpStorage.getCurrentSessionUser();
+    await supabaseService.markAllNotificationsAsRead(activeUser?.id, activeUser?.student_id || activeUser?.student?.id);
+  }, []);
+
   // Table-specific debouncing to prevent event storms while remaining responsive
   const debounceTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -940,22 +973,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Initial load & automatic refresh on auth state changes (no manual browser refresh needed)
   useEffect(() => {
     loadDataFromSupabase(true);
+    refreshNotifications();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         loadDataFromSupabase(true);
+        refreshNotifications();
       } else if (event === 'SIGNED_OUT') {
         setAttendanceSessions([]);
         setAttendanceRecords([]);
         setCorrections([]);
         setAdminAccounts([]);
+        setNotifications([]);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [loadDataFromSupabase]);
+  }, [loadDataFromSupabase, refreshNotifications]);
 
   // Realtime Supabase Channel Subscription with granular event handlers
   useEffect(() => {
@@ -1039,13 +1075,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
         debounceTableSync('class_coordinator_assignments', () => refreshCoordinatorAssignments());
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        debounceTableSync('notifications', () => refreshNotifications());
+      })
       .subscribe();
 
     return () => {
       Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
       supabase.removeChannel(channel);
     };
-  }, [debounceTableSync, refreshStudents, refreshTimetable, refreshAttendance, refreshCorrections, refreshFaculty, refreshSections, refreshSubjects, refreshAssignments, refreshAssessments, refreshCoordinatorAssignments]);
+  }, [debounceTableSync, refreshStudents, refreshTimetable, refreshAttendance, refreshCorrections, refreshFaculty, refreshSections, refreshSubjects, refreshAssignments, refreshAssessments, refreshCoordinatorAssignments, refreshNotifications]);
 
   const refreshData = async (forceRefreshMaster = false) => {
     await loadDataFromSupabase(forceRefreshMaster);
@@ -2265,13 +2304,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     for (const stat of studentAtt.subjectStats) {
       // Dynamic Sessional Assessments for student's section & subject
       const subAssessments = sessionalAssessments.filter(
-        sa => sa.subject_id === stat.subjectId && (!sa.section_id || sa.section_id === student.section_id)
+        sa => sa.subject_id === stat.subjectId && 
+              (!sa.section_id || sa.section_id === student.section_id) &&
+              (sa.status === 'published' || sa.status === 'completed' || !sa.status)
       );
 
       // Deduplicate assessments by title to prevent duplicate rows
       const seenTitles = new Set<string>();
       const uniqueAssessments = subAssessments.filter(sa => {
-        const key = sa.title.toLowerCase().trim();
+        const key = (sa.title || '').toLowerCase().trim();
         if (seenTitles.has(key)) return false;
         seenTitles.add(key);
         return true;
@@ -2279,45 +2320,67 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const dynamicSessionals = uniqueAssessments.map(sa => {
         const sm = sessionalMarks.find(m => m.sessional_assessment_id === sa.id && m.student_id === studentId);
+        const hasScore = sm !== undefined && sm.marks_obtained !== undefined && sm.marks_obtained !== null;
         return {
           assessmentId: sa.id,
           title: sa.title,
           maxMarks: sa.max_marks,
-          obtainedMarks: sm ? sm.marks_obtained : undefined,
+          obtainedMarks: hasScore ? sm.marks_obtained : undefined,
           examDate: sa.exam_date,
         };
       });
 
       // Legacy sessional entries (if any were entered directly by type)
       const subSessional = sessionalMarks.filter(sm => sm.student_id === studentId && sm.subject_id === stat.subjectId);
-      const s1 = subSessional.find(s => s.sessional_type === 'Sessional 1');
-      const s2 = subSessional.find(s => s.sessional_type === 'Sessional 2');
-      const put = subSessional.find(s => s.sessional_type === 'Pre-University Test');
-      const fin = subSessional.find(s => s.sessional_type === 'Final Sessional');
+      for (const sm of subSessional) {
+        const alreadyInDynamic = dynamicSessionals.some(
+          ds => ds.assessmentId === sm.sessional_assessment_id || 
+                ds.title.toLowerCase() === sm.sessional_type?.toLowerCase()
+        );
+        if (!alreadyInDynamic && sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
+          dynamicSessionals.push({
+            assessmentId: sm.id,
+            title: sm.sessional_type || 'Sessional Assessment',
+            maxMarks: sm.max_marks || 30,
+            obtainedMarks: sm.marks_obtained,
+            examDate: sm.created_at,
+          });
+        }
+      }
 
-      // Match dynamic sessionals for standard 3 components
-      const s1Dyn = dynamicSessionals.find(s => s.title.toLowerCase() === 'sessional 1');
-      const s2Dyn = dynamicSessionals.find(s => s.title.toLowerCase() === 'sessional 2');
-      const putDyn = dynamicSessionals.find(s => 
+      // Filter visible sessionals: show ONLY if marks were entered OR if assessment is explicitly published
+      const visibleSessionals = dynamicSessionals.filter(s => 
+        s.obtainedMarks !== undefined || 
+        subAssessments.some(sa => sa.id === s.assessmentId && (sa.status === 'published' || sa.status === 'completed'))
+      );
+
+      const s1Dyn = visibleSessionals.find(s => s.title.toLowerCase() === 'sessional 1' || s.title.toLowerCase().startsWith('sessional 1'));
+      const s2Dyn = visibleSessionals.find(s => s.title.toLowerCase() === 'sessional 2' || s.title.toLowerCase().startsWith('sessional 2'));
+      const putDyn = visibleSessionals.find(s => 
         s.title.toLowerCase() === 'pre-university test' || 
         s.title.toLowerCase() === 'put' || 
         s.title.toLowerCase().includes('pre-university') ||
         s.title.toLowerCase().includes('pre university')
       );
 
-      const sessional1Val = s1Dyn 
+      const s1 = subSessional.find(s => s.sessional_type === 'Sessional 1');
+      const s2 = subSessional.find(s => s.sessional_type === 'Sessional 2');
+      const put = subSessional.find(s => s.sessional_type === 'Pre-University Test');
+      const fin = subSessional.find(s => s.sessional_type === 'Final Sessional');
+
+      const sessional1Val = (s1Dyn && s1Dyn.obtainedMarks !== undefined) 
         ? { obtained: s1Dyn.obtainedMarks, max: s1Dyn.maxMarks }
-        : (s1 ? { obtained: s1.marks_obtained, max: s1.max_marks || 30 } : undefined);
+        : (s1 && s1.marks_obtained !== undefined && s1.marks_obtained !== null ? { obtained: s1.marks_obtained, max: s1.max_marks || 30 } : undefined);
 
-      const sessional2Val = s2Dyn 
+      const sessional2Val = (s2Dyn && s2Dyn.obtainedMarks !== undefined) 
         ? { obtained: s2Dyn.obtainedMarks, max: s2Dyn.maxMarks }
-        : (s2 ? { obtained: s2.marks_obtained, max: s2.max_marks || 30 } : undefined);
+        : (s2 && s2.marks_obtained !== undefined && s2.marks_obtained !== null ? { obtained: s2.marks_obtained, max: s2.max_marks || 30 } : undefined);
 
-      const putVal = putDyn 
+      const putVal = (putDyn && putDyn.obtainedMarks !== undefined) 
         ? { obtained: putDyn.obtainedMarks, max: putDyn.maxMarks }
-        : (put ? { obtained: put.marks_obtained, max: put.max_marks || 100 } : undefined);
+        : (put && put.marks_obtained !== undefined && put.marks_obtained !== null ? { obtained: put.marks_obtained, max: put.max_marks || 100 } : undefined);
 
-      const otherSessionals = dynamicSessionals.filter(s => 
+      const otherSessionals = visibleSessionals.filter(s => 
         s !== s1Dyn && s !== s2Dyn && s !== putDyn
       );
 
@@ -2328,7 +2391,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           quizId: q.id,
           title: q.title,
           maxMarks: q.max_marks,
-          obtainedMarks: qr?.marks_obtained,
+          obtainedMarks: (qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null) ? qr.marks_obtained : undefined,
           quizDate: q.quiz_date,
         };
       });
@@ -2340,7 +2403,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           assignmentId: a.id,
           title: a.title,
           maxMarks: a.max_marks,
-          obtainedMarks: sub?.marks_obtained,
+          obtainedMarks: (sub && sub.marks_obtained !== undefined && sub.marks_obtained !== null) ? sub.marks_obtained : undefined,
           status: sub ? sub.status : 'not_started',
           dueDate: a.due_date,
         };
@@ -2349,29 +2412,23 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let totalScore = 0;
       let maxScore = 0;
 
-      // Add scores from dynamic sessionals
-      for (const ds of dynamicSessionals) {
-        if (ds.obtainedMarks !== undefined) {
+      // Add scores ONLY from assessments that have actual entered marks (supporting genuine 0 marks)
+      for (const ds of visibleSessionals) {
+        if (ds.obtainedMarks !== undefined && ds.obtainedMarks !== null) {
           totalScore += ds.obtainedMarks;
           maxScore += ds.maxMarks;
         }
       }
 
-      // Add legacy sessional scores if dynamic list is empty
-      if (dynamicSessionals.length === 0) {
-        if (s1) { totalScore += s1.marks_obtained; maxScore += s1.max_marks || 30; }
-        if (s2) { totalScore += s2.marks_obtained; maxScore += s2.max_marks || 30; }
-        if (put) { totalScore += put.marks_obtained; maxScore += put.max_marks || 100; }
-      }
-
       for (const q of quizMarksList) {
-        if (q.obtainedMarks !== undefined) {
+        if (q.obtainedMarks !== undefined && q.obtainedMarks !== null) {
           totalScore += q.obtainedMarks;
           maxScore += q.maxMarks;
         }
       }
+
       for (const a of assignmentMarksList) {
-        if (a.obtainedMarks !== undefined) {
+        if (a.obtainedMarks !== undefined && a.obtainedMarks !== null) {
           totalScore += a.obtainedMarks;
           maxScore += a.maxMarks;
         }
@@ -2387,9 +2444,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           sessional1: sessional1Val,
           sessional2: sessional2Val,
           put: putVal,
-          final: fin ? { obtained: fin.marks_obtained, max: fin.max_marks || 30 } : undefined,
+          final: (fin && fin.marks_obtained !== undefined && fin.marks_obtained !== null) ? { obtained: fin.marks_obtained, max: fin.max_marks || 30 } : undefined,
           otherSessionals,
-          sessionals: dynamicSessionals,
+          sessionals: visibleSessionals,
         },
         quizMarks: quizMarksList,
         assignmentMarks: assignmentMarksList,
@@ -2522,10 +2579,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sessionalMarks,
         marksHistory,
         adminAccounts,
+        notifications,
+        unreadNotificationCount,
         isLoading,
         claimWindowDays,
         setClaimWindowDays,
         refreshData,
+        refreshAdminAccounts,
+        refreshNotifications,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
         refreshStudents,
         refreshTimetable,
         refreshAttendance,
@@ -2535,7 +2598,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         refreshSubjects,
         refreshAssignments,
         refreshAssessments,
-        refreshAdminAccounts,
         getFacultyCoordinatorAssignments,
         refreshCoordinatorAssignments,
         updateAccountStatus,

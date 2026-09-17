@@ -36,7 +36,9 @@ import {
   ClassCoordinatorAssignment,
   FacultyDashboardPayload,
   StudentAttendanceHistoryRecord,
-  StudentAttendanceHistorySummary
+  StudentAttendanceHistorySummary,
+  StudentNotification,
+  NotificationType
 } from '../../types/database.types';
 import { getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -3324,12 +3326,96 @@ export const supabaseService = {
       new_values: { title: assignment.title, max_marks: assignment.max_marks, due_date: assignment.due_date }
     });
 
+    // Notify students in the target section
+    try {
+      if (assignment.section_id) {
+        const { data: sectionStudents } = await supabase
+          .from('students')
+          .select('id, auth_user_id')
+          .eq('section_id', assignment.section_id)
+          .eq('active', true);
+
+        if (sectionStudents && sectionStudents.length > 0) {
+          let subjectName = 'Course Subject';
+          if (assignment.subject_id) {
+            const { data: sub } = await supabase
+              .from('subjects')
+              .select('subject_name')
+              .eq('id', assignment.subject_id)
+              .maybeSingle();
+            if (sub?.subject_name) subjectName = sub.subject_name;
+          }
+
+          const dueDateStr = assignment.due_date ? new Date(assignment.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Pending';
+
+          const notifRows = sectionStudents.map(st => ({
+            recipient_user_id: st.auth_user_id || null,
+            recipient_student_id: st.id,
+            type: 'ASSIGNMENT_POSTED' as NotificationType,
+            title: 'New Assignment Posted',
+            message: `${subjectName}: ${assignment.title} (Due: ${dueDateStr})`,
+            reference_type: 'assignment',
+            reference_id: data.id,
+            is_read: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+
+          await supabase.from('notifications').insert(notifRows);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for assignment:', notifErr);
+    }
+
     return data as Assignment;
   },
 
   async updateAssignment(id: string, updates: Partial<Assignment>) {
     const { data, error } = await supabase.from('assignments').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+
+    try {
+      if (data && data.section_id && (updates.title || updates.due_date || updates.max_marks)) {
+        const { data: sectionStudents } = await supabase
+          .from('students')
+          .select('id, auth_user_id')
+          .eq('section_id', data.section_id)
+          .eq('active', true);
+
+        if (sectionStudents && sectionStudents.length > 0) {
+          let subjectName = 'Course Subject';
+          if (data.subject_id) {
+            const { data: sub } = await supabase
+              .from('subjects')
+              .select('subject_name')
+              .eq('id', data.subject_id)
+              .maybeSingle();
+            if (sub?.subject_name) subjectName = sub.subject_name;
+          }
+
+          const dueDateStr = data.due_date ? new Date(data.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Updated';
+
+          const notifRows = sectionStudents.map(st => ({
+            recipient_user_id: st.auth_user_id || null,
+            recipient_student_id: st.id,
+            type: 'ASSIGNMENT_UPDATED' as NotificationType,
+            title: 'Assignment Updated',
+            message: `${subjectName}: ${data.title} was updated (Due: ${dueDateStr})`,
+            reference_type: 'assignment',
+            reference_id: data.id,
+            is_read: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+
+          await supabase.from('notifications').insert(notifRows);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for assignment update:', notifErr);
+    }
+
     return data as Assignment;
   },
 
@@ -3674,6 +3760,44 @@ export const supabaseService = {
           reason: `${params.sessionalType || 'Sessional'} Marks Updated`
         });
       }
+    }
+
+    // Trigger Real-time notifications for affected students
+    try {
+      let subjectName = 'Course Subject';
+      if (params.subjectId) {
+        const { data: subData } = await supabase.from('subjects').select('subject_name').eq('id', params.subjectId).maybeSingle();
+        if (subData?.subject_name) subjectName = subData.subject_name;
+      }
+
+      const notifRows: any[] = [];
+      for (const sm of params.studentMarks) {
+        const { data: stData } = await supabase
+          .from('students')
+          .select('auth_user_id')
+          .eq('id', sm.studentId)
+          .maybeSingle();
+
+        const isUpdate = sm.oldMarks !== undefined && sm.oldMarks !== null;
+        notifRows.push({
+          recipient_user_id: stData?.auth_user_id || null,
+          recipient_student_id: sm.studentId,
+          type: (isUpdate ? 'MARKS_UPDATED' : 'MARKS_PUBLISHED') as NotificationType,
+          title: isUpdate ? 'Marks Updated' : 'New Marks Published',
+          message: `${subjectName} — ${params.sessionalType || 'Sessional'}: ${sm.marksObtained}/${params.maxMarks}`,
+          reference_type: 'sessional_mark',
+          reference_id: params.sessionalAssessmentId || null,
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      if (notifRows.length > 0) {
+        await supabase.from('notifications').insert(notifRows);
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for marks:', notifErr);
     }
 
     return upsertResult.data as SessionalMark[];
@@ -4344,6 +4468,100 @@ export const supabaseService = {
       console.error('Error in fetchFacultyDashboardData:', err);
       return null;
     }
+  },
+
+  // ==========================================
+  // REAL-TIME NOTIFICATIONS ENGINE
+  // ==========================================
+  async fetchStudentNotifications(studentId: string, userId?: string): Promise<StudentNotification[]> {
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (userId && studentId) {
+        query = query.or(`recipient_user_id.eq.${userId},recipient_student_id.eq.${studentId}`);
+      } else if (userId) {
+        query = query.eq('recipient_user_id', userId);
+      } else if (studentId) {
+        query = query.eq('recipient_student_id', studentId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn('Notice: Error fetching student notifications:', error.message);
+        return [];
+      }
+      return (data || []) as StudentNotification[];
+    } catch (err) {
+      console.warn('Notice: Exception fetching student notifications:', err);
+      return [];
+    }
+  },
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    try {
+      const { error } = await supabase.rpc('mark_notification_as_read', {
+        p_notification_id: notificationId,
+      });
+      if (error) {
+        // Fallback to direct update if RPC fails
+        await supabase
+          .from('notifications')
+          .update({ is_read: true, updated_at: new Date().toISOString() })
+          .eq('id', notificationId);
+      }
+    } catch (err) {
+      console.warn('Notice: Error marking notification read:', err);
+    }
+  },
+
+  async markAllNotificationsAsRead(userId?: string, studentId?: string): Promise<void> {
+    try {
+      const { error } = await supabase.rpc('mark_all_notifications_as_read');
+      if (error && (userId || studentId)) {
+        // Fallback to direct update
+        let query = supabase
+          .from('notifications')
+          .update({ is_read: true, updated_at: new Date().toISOString() })
+          .eq('is_read', false);
+
+        if (userId && studentId) {
+          query = query.or(`recipient_user_id.eq.${userId},recipient_student_id.eq.${studentId}`);
+        } else if (userId) {
+          query = query.eq('recipient_user_id', userId);
+        } else if (studentId) {
+          query = query.eq('recipient_student_id', studentId);
+        }
+        await query;
+      }
+    } catch (err) {
+      console.warn('Notice: Error marking all notifications read:', err);
+    }
+  },
+
+  async createNotifications(notifications: Partial<StudentNotification>[]): Promise<void> {
+    if (!notifications || notifications.length === 0) return;
+    try {
+      const cleanRows = notifications.map(n => ({
+        recipient_user_id: n.recipient_user_id || null,
+        recipient_student_id: n.recipient_student_id || null,
+        type: n.type || 'GENERAL',
+        title: n.title,
+        message: n.message,
+        reference_type: n.reference_type || null,
+        reference_id: n.reference_id || null,
+        is_read: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      await supabase.from('notifications').insert(cleanRows);
+    } catch (err) {
+      console.warn('Notice: Error inserting notifications:', err);
+    }
   }
 };
+
 
