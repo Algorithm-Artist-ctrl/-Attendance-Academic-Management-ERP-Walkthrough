@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   Users, 
   GraduationCap, 
@@ -34,8 +34,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     departments, 
     programs, 
     adminAccounts,
+    refreshAdminAccounts,
     auditLogs 
   } = useAcademic();
+
+  useEffect(() => {
+    if (adminAccounts.length === 0) {
+      refreshAdminAccounts();
+    }
+  }, [adminAccounts.length, refreshAdminAccounts]);
 
   const totalStudents = students.filter(s => s.active !== false && s.status !== 'ARCHIVED').length;
   const totalFaculty = faculty.filter(f => f.active !== false && f.status !== 'ARCHIVED').length;

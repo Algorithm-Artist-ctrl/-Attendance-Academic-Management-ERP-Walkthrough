@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole, Student, Faculty, Section } from '../types/database.types';
+import { UserProfile, UserRole, Student, Faculty, Section, AdmissionType } from '../types/database.types';
 import { AuthState, LoginCredentials, SignUpData } from '../types/auth.types';
 import { supabase } from '../lib/supabase/supabaseClient';
 import { erpStorage } from '../lib/storage/erpStorage';
@@ -11,6 +11,11 @@ export interface UserProfileUpdates {
   designation?: string;
   employee_code?: string;
   faculty_code?: string;
+  section_id?: string;
+  mentor_faculty_id?: string | null;
+  admission_type?: AdmissionType;
+  academic_year_id?: string;
+  semester_id?: string;
 }
 
 export interface AuthContextType extends AuthState {
@@ -64,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: student } = await supabase
         .from('students')
         .select('id, email, roll_number')
-        .ilike('roll_number', cleanRoll)
+        .or(`roll_number.ilike.${cleanRoll},roll_number.ilike.${trimmed}`)
         .maybeSingle();
 
       if (student) {
@@ -75,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('student_id', student.id)
           .maybeSingle();
         if (prof?.email) return prof.email.toLowerCase().trim();
-        return `${cleanRoll}@vctm.in`;
+        return `${cleanRoll.toLowerCase()}@student.vctm.in`;
       }
 
       // 3. Search faculty by employee code or faculty code
@@ -98,6 +103,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profile?.email) {
         return profile.email.toLowerCase().trim();
+      }
+
+      // 5. If purely numeric, assume student roll number pattern
+      if (/^\d+$/.test(cleanRoll)) {
+        return `${cleanRoll.toLowerCase()}@student.vctm.in`;
       }
     } catch (err) {
       console.warn('Error resolving identifier to email:', err);
@@ -123,6 +133,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('email', authUserEmail.toLowerCase().trim())
           .maybeSingle();
         profile = profByEmail;
+      }
+
+      // Auto-heal missing profile if user authenticated in auth.users
+      if (!profile) {
+        // Try finding student by auth_user_id or email
+        let studentRecord: any = null;
+        const { data: stByAuth } = await supabase
+          .from('students')
+          .select('*')
+          .eq('auth_user_id', authUserId)
+          .maybeSingle();
+        studentRecord = stByAuth;
+
+        if (!studentRecord && authUserEmail) {
+          const cleanEmail = authUserEmail.toLowerCase().trim();
+          const rollCandidate = cleanEmail.split('@')[0];
+          const { data: stByEmail } = await supabase
+            .from('students')
+            .select('*')
+            .or(`email.ilike.${cleanEmail},roll_number.ilike.${rollCandidate}`)
+            .maybeSingle();
+          studentRecord = stByEmail;
+        }
+
+        if (studentRecord) {
+          const targetEmail = authUserEmail || studentRecord.email || `${studentRecord.roll_number}@student.vctm.in`;
+          const healedProfile = {
+            id: authUserId,
+            email: targetEmail.toLowerCase().trim(),
+            full_name: studentRecord.full_name,
+            role: 'student' as UserRole,
+            department_id: studentRecord.department_id,
+            student_id: studentRecord.id,
+            phone: studentRecord.phone,
+            status: studentRecord.status || 'ACTIVE',
+          };
+          try {
+            await supabase.from('profiles').upsert(healedProfile, { onConflict: 'id' });
+            if (!studentRecord.auth_user_id) {
+              await supabase.from('students').update({ auth_user_id: authUserId }).eq('id', studentRecord.id);
+            }
+          } catch (e) {
+            console.warn('Student profile auto-heal notice:', e);
+          }
+          profile = healedProfile as any;
+        }
+
+        // Try finding faculty by auth_user_id or email
+        if (!profile) {
+          let facRecord: any = null;
+          const { data: fByAuth } = await supabase
+            .from('faculty')
+            .select('*')
+            .eq('auth_user_id', authUserId)
+            .maybeSingle();
+          facRecord = fByAuth;
+
+          if (!facRecord && authUserEmail) {
+            const cleanEmail = authUserEmail.toLowerCase().trim();
+            const { data: fByEmail } = await supabase
+              .from('faculty')
+              .select('*')
+              .ilike('email', cleanEmail)
+              .maybeSingle();
+            facRecord = fByEmail;
+          }
+
+          if (facRecord) {
+            const isHOD = facRecord.designation?.toLowerCase().includes('hod') || facRecord.faculty_code === 'WSM';
+            const targetEmail = authUserEmail || facRecord.email;
+            const healedProfile = {
+              id: authUserId,
+              email: targetEmail.toLowerCase().trim(),
+              full_name: facRecord.full_name,
+              role: (isHOD ? 'hod' : 'faculty') as UserRole,
+              department_id: facRecord.department_id,
+              faculty_id: facRecord.id,
+              phone: facRecord.phone,
+              status: facRecord.status || 'ACTIVE',
+            };
+            try {
+              await supabase.from('profiles').upsert(healedProfile, { onConflict: 'id' });
+              if (!facRecord.auth_user_id) {
+                await supabase.from('faculty').update({ auth_user_id: authUserId }).eq('id', facRecord.id);
+              }
+            } catch (e) {
+              console.warn('Faculty profile auto-heal notice:', e);
+            }
+            profile = healedProfile as any;
+          }
+        }
+
+        // Check if Super Admin
+        if (!profile && authUserEmail?.toLowerCase().trim() === 'admin@vctm.in') {
+          const adminProf = {
+            id: authUserId,
+            email: 'admin@vctm.in',
+            full_name: 'Tarun Kushwah',
+            role: 'super_admin' as UserRole,
+            status: 'ACTIVE',
+          };
+          try {
+            await supabase.from('profiles').upsert(adminProf, { onConflict: 'id' });
+          } catch {}
+          profile = adminProf as any;
+        }
       }
 
       if (!profile) return null;
@@ -169,7 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: student } = await supabase
           .from('students')
           .select('*, section:sections(*)')
-          .eq('id', studId)
+          .or(`id.eq.${studId},auth_user_id.eq.${authUserId}`)
           .maybeSingle();
 
         if (student) {
@@ -190,7 +306,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: fac } = await supabase
           .from('faculty')
           .select('*')
-          .eq('id', facId)
+          .or(`id.eq.${facId},auth_user_id.eq.${authUserId}`)
           .maybeSingle();
 
         if (fac) {
@@ -269,6 +385,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               pendingNewEmail: session.user.new_email || null,
             });
           } else {
+            // Fallback to cached session user if ID/email matches, preventing logout on transient network hiccup
+            const cachedUser = erpStorage.getCurrentSessionUser();
+            if (cachedUser && (cachedUser.id === session.user.id || cachedUser.email === session.user.email)) {
+              setAuthState({
+                user: cachedUser,
+                role: cachedUser.role,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+                isPasswordRecovery: isRecoverySession,
+                pendingNewEmail: session.user.new_email || null,
+              });
+            } else {
+              erpStorage.setCurrentSessionUser(null);
+              setAuthState({
+                user: null,
+                role: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+                isPasswordRecovery: isRecoverySession,
+                pendingNewEmail: null,
+              });
+            }
+          }
+        }
+      } catch {
+        if (isMounted) {
+          const cachedUser = erpStorage.getCurrentSessionUser();
+          if (cachedUser) {
+            setAuthState(prev => ({
+              ...prev,
+              user: cachedUser,
+              role: cachedUser.role,
+              isAuthenticated: true,
+              isLoading: false,
+            }));
+          } else {
             erpStorage.setCurrentSessionUser(null);
             setAuthState({
               user: null,
@@ -280,19 +434,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               pendingNewEmail: null,
             });
           }
-        }
-      } catch {
-        if (isMounted) {
-          erpStorage.setCurrentSessionUser(null);
-          setAuthState({
-            user: null,
-            role: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-            isPasswordRecovery: isRecoverySession,
-            pendingNewEmail: null,
-          });
         }
       }
     };
@@ -323,7 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }));
           }
         }
-      } else if (event === 'SIGNED_OUT' || !session || !session.user) {
+      } else if (event === 'SIGNED_OUT') {
         if (isMounted) {
           erpStorage.setCurrentSessionUser(null);
           setAuthState({
@@ -336,7 +477,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             pendingNewEmail: null,
           });
         }
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      } else if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
         const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user);
         if (isMounted && profile) {
           if (profile.status === 'BLOCKED' || profile.status === 'ARCHIVED') {
@@ -910,13 +1051,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updated_at: new Date().toISOString()
         };
         if (cleanName) studentPayload.full_name = cleanName;
+        if (updates.section_id) studentPayload.section_id = updates.section_id;
+        if (updates.mentor_faculty_id !== undefined) studentPayload.mentor_faculty_id = updates.mentor_faculty_id || null;
+        if (updates.admission_type) studentPayload.admission_type = updates.admission_type;
+        if (updates.academic_year_id) studentPayload.academic_year_id = updates.academic_year_id;
+        if (updates.semester_id) studentPayload.semester_id = updates.semester_id;
 
         const { error: sErr } = await supabase
           .from('students')
           .update(studentPayload)
           .eq('id', studId);
 
-        if (sErr) console.warn('Student phone update warning:', sErr.message);
+        if (sErr) console.warn('Student profile update warning:', sErr.message);
       }
 
       // 2. Update Faculty record if applicable
@@ -968,7 +1114,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         student: authState.user.student ? { 
           ...authState.user.student, 
           full_name: cleanName || authState.user.student.full_name,
-          phone: cleanPhone 
+          phone: cleanPhone,
+          section_id: updates.section_id || authState.user.student.section_id,
+          mentor_faculty_id: updates.mentor_faculty_id !== undefined ? (updates.mentor_faculty_id || undefined) : authState.user.student.mentor_faculty_id,
+          admission_type: updates.admission_type || authState.user.student.admission_type,
+          academic_year_id: updates.academic_year_id || authState.user.student.academic_year_id,
+          semester_id: updates.semester_id || authState.user.student.semester_id,
         } : undefined,
         faculty: authState.user.faculty ? { 
           ...authState.user.faculty, 

@@ -49,6 +49,8 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
   const { 
     subjects, 
     sections, 
+    years,
+    semesters,
     faculty,
     students, 
     timetable, 
@@ -159,6 +161,8 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
 
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
   const currentSection = sections.find(s => s.id === selectedSectionId);
+  const currentSem = semesters.find(s => s.id === currentSection?.semester_id);
+  const currentYear = years.find(y => y.id === currentSem?.academic_year_id);
 
   // Available sections for the currently selected subject
   const availableSectionsForSubject = useMemo(() => {
@@ -499,6 +503,8 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 </h1>
               </div>
               <p className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-2">
+                {currentYear && <span>Year: <strong className="text-white">{currentYear.name}</strong></span>}
+                {currentYear && <span>•</span>}
                 <span>Room: <strong className="text-white">{currentSection?.room_number || 'Room TBD'}</strong></span>
                 <span>•</span>
                 <span>Enrolled: <strong className="text-[#00ff88]">{sectionStudents.length} Students</strong></span>
@@ -525,21 +531,25 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           {/* Section Selector Pills */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             <span className="text-xs font-bold text-slate-400 shrink-0">Select Section:</span>
-            {availableSectionsForSubject.map(sec => (
-              <button
-                key={sec.id}
-                onClick={() => setSelectedSectionId(sec.id)}
-                className={clsx(
-                  'px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5',
-                  selectedSectionId === sec.id
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)] font-black'
-                    : 'bg-slate-950/80 text-slate-400 hover:text-white hover:bg-slate-900 border border-emerald-500/20'
-                )}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                Section {sec.name} ({sec.room_number || 'Room TBD'})
-              </button>
-            ))}
+            {availableSectionsForSubject.map(sec => {
+              const sem = semesters.find(s => s.id === sec.semester_id);
+              const yr = years.find(y => y.id === sem?.academic_year_id);
+              return (
+                <button
+                  key={sec.id}
+                  onClick={() => setSelectedSectionId(sec.id)}
+                  className={clsx(
+                    'px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5',
+                    selectedSectionId === sec.id
+                      ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)] font-black'
+                      : 'bg-slate-950/80 text-slate-400 hover:text-white hover:bg-slate-900 border border-emerald-500/20'
+                  )}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  {yr?.name ? `${yr.name} • ` : ''}Section {sec.name} ({sec.room_number || 'Room TBD'})
+                </button>
+              );
+            })}
           </div>
 
           {/* Subject Switcher Dropdown (if faculty teaches multiple subjects) */}

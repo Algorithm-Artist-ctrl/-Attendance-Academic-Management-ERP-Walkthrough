@@ -71,6 +71,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const { 
     subjects, 
     sections, 
+    years,
+    semesters,
     students, 
     timetable, 
     faculty,
@@ -808,9 +810,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                       <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-950 border border-emerald-500/30 text-[#00ff88]">
                         {cls.start_time?.substring(0, 5)} – {cls.end_time?.substring(0, 5)} (P{cls.period_number})
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
-                        Section {sec?.name}
-                      </span>
+                      {(() => {
+                        const sem = semesters.find(s => s.id === sec?.semester_id);
+                        const yr = years.find(y => y.id === sem?.academic_year_id);
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                            {yr?.name ? `${yr.name} • ` : ''}Section {sec?.name}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     {/* Subject Details */}
@@ -935,9 +943,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 font-mono text-xs font-bold text-[#00ff88]">
                 {activeSubject?.subject_code}
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-emerald-500/20 text-xs font-bold text-white">
-                Section {activeSection?.name}
-              </span>
+              {(() => {
+                const sem = semesters.find(s => s.id === activeSection?.semester_id);
+                const yr = years.find(y => y.id === sem?.academic_year_id);
+                return (
+                  <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-emerald-500/20 text-xs font-bold text-white">
+                    {yr?.name ? `${yr.name} • ` : ''}Section {activeSection?.name}
+                  </span>
+                );
+              })()}
               <span className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-slate-700 text-xs font-mono text-slate-300">
                 {roomNumber}
               </span>

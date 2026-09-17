@@ -35,6 +35,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
     assignmentSubmissions, 
     subjects, 
     sections, 
+    years,
+    semesters,
     faculty, 
     students,
     timetable,
@@ -344,9 +346,15 @@ export const FacultyAssignmentsPage: React.FC = () => {
               className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             >
               <option value="ALL">All Assigned Sections ({myAssignedSections.length})</option>
-              {myAssignedSections.map(sec => (
-                <option key={sec.id} value={sec.id}>Section {sec.name}</option>
-              ))}
+              {myAssignedSections.map(sec => {
+                const sem = semesters.find(s => s.id === sec.semester_id);
+                const yr = years.find(y => y.id === sem?.academic_year_id);
+                return (
+                  <option key={sec.id} value={sec.id}>
+                    {yr?.name ? `${yr.name} • ` : ''}Section {sec.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
@@ -362,9 +370,18 @@ export const FacultyAssignmentsPage: React.FC = () => {
           <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-blue-500/20">
             {selectedSectionFilter === 'ALL' ? 'All Assigned Sections' : 'Section ' + sections.find(s => s.id === selectedSectionFilter)?.name}
           </span>
-          <span className="text-slate-400">
-            • Odd Semester 2026–2027 (Second Year)
-          </span>
+          {(() => {
+            const activeSec = selectedSectionFilter !== 'ALL' 
+              ? sections.find(s => s.id === selectedSectionFilter) 
+              : myAssignedSections[0];
+            const sem = semesters.find(s => s.id === activeSec?.semester_id);
+            const yr = years.find(y => y.id === sem?.academic_year_id);
+            return (
+              <span className="text-slate-400">
+                • {sem?.name || 'Odd Semester 2026–2027'} {yr?.name ? `(${yr.name})` : ''}
+              </span>
+            );
+          })()}
         </div>
         <span className="text-[11px] text-blue-400 font-semibold hidden sm:inline">
           ✓ Section-Specific Isolation Active
@@ -520,11 +537,15 @@ export const FacultyAssignmentsPage: React.FC = () => {
               >
                 {myAssignedSubjects
                   .find(s => s.subject.id === selectedSubjectId)
-                  ?.sections.map(sec => (
-                    <option key={sec.id} value={sec.id}>
-                      Section {sec.name} {sec.room_number ? `(${sec.room_number})` : ''}
-                    </option>
-                  ))}
+                  ?.sections.map(sec => {
+                    const sem = semesters.find(s => s.id === sec.semester_id);
+                    const yr = years.find(y => y.id === sem?.academic_year_id);
+                    return (
+                      <option key={sec.id} value={sec.id}>
+                        {yr?.name ? `${yr.name} • ` : ''}Section {sec.name} {sec.room_number ? `(${sec.room_number})` : ''}
+                      </option>
+                    );
+                  })}
               </select>
             </div>
           </div>

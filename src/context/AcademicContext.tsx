@@ -119,6 +119,14 @@ interface AcademicContextType {
   refreshData: (forceRefreshMaster?: boolean) => Promise<void>;
   refreshAdminAccounts: () => Promise<void>;
   updateAccountStatus: (userId: string, status: AccountStatus, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  updateAccountCredentials: (
+    targetUserId: string,
+    options: {
+      email?: string;
+      password?: string;
+      isDefaultPassword?: boolean;
+    }
+  ) => Promise<{ success: boolean; data?: any; error?: string }>;
   requestPasswordReset: (email: string, targetUserId?: string) => Promise<{ success: boolean; error?: string }>;
 
   // Real Database Actions
@@ -626,8 +634,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSessionalMarks(enrichedSessionalMarks);
         setMarksHistory(enrichedMarksHistory);
 
-        // Fetch unified Admin Account Directory
-        supabaseService.fetchAdminAccounts().then(accs => setAdminAccounts(accs)).catch(() => {});
+        // Fetch unified Admin Account Directory only for super_admin
+        const currentSession = erpStorage.getCurrentSessionUser();
+        if (currentSession?.role === 'super_admin') {
+          supabaseService.fetchAdminAccounts().then(accs => setAdminAccounts(accs)).catch(() => {});
+        }
       }
     } catch (err) {
       console.error('Failed to sync from Supabase, using local cache:', err);
@@ -1378,6 +1389,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addStudent = async (studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addStudent(studentData);
     await refreshStudents();
+    await refreshData(true);
     return res;
   };
 
@@ -1385,6 +1397,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const res = await supabaseService.updateStudent(id, updates);
     erpStorage.updateStudent(id, updates);
     await refreshStudents();
+    await refreshData(true);
     return res;
   };
 
@@ -1807,10 +1820,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [timetable]);
 
   const getStudentTimetable = useCallback((studentId: string): TimetableEntry[] => {
-    const student = students.find(s => s.id === studentId || s.roll_number === studentId);
-    if (!student) return [];
-
-    const sectionId = student.section_id || student.section?.id;
+    let student = students.find(s => s.id === studentId || s.roll_number === studentId);
+    if (!student) {
+      const sessionUser = erpStorage.getCurrentSessionUser();
+      if (sessionUser?.student?.id === studentId || sessionUser?.student?.roll_number === studentId || sessionUser?.id === studentId) {
+        student = sessionUser.student;
+      }
+    }
+    const sectionId = student?.section_id || student?.section?.id || erpStorage.getCurrentSessionUser()?.student?.section_id;
     if (!sectionId) return [];
 
     return getPublishedTimetable({ sectionId });
@@ -1823,10 +1840,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 9. Get Today's Live Attendance Lectures for Student (Consumes Same Authoritative Timetable)
   const getTodayLecturesForStudent = (studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
-    const student = students.find(s => s.id === studentId || s.roll_number === studentId);
-    if (!student) return [];
-
-    const sectionId = student.section_id || student.section?.id;
+    let student = students.find(s => s.id === studentId || s.roll_number === studentId);
+    if (!student) {
+      const sessionUser = erpStorage.getCurrentSessionUser();
+      if (sessionUser?.student?.id === studentId || sessionUser?.student?.roll_number === studentId || sessionUser?.id === studentId) {
+        student = sessionUser.student;
+      }
+    }
+    const sectionId = student?.section_id || student?.section?.id || erpStorage.getCurrentSessionUser()?.student?.section_id;
     if (!sectionId) return [];
 
     const defaultDateStr = getISTTodayDate();
@@ -2299,6 +2320,38 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   }, [refreshAdminAccounts]);
 
+  const updateAccountCredentials = useCallback(async (
+    targetUserId: string,
+    options: {
+      email?: string;
+      password?: string;
+      isDefaultPassword?: boolean;
+    }
+  ): Promise<{ success: boolean; data?: any; error?: string }> => {
+    const actor = erpStorage.getCurrentSessionUser();
+    const res = await supabaseService.adminUpdateAccountCredentials({
+      targetUserId,
+      email: options.email,
+      password: options.password,
+      isDefaultPassword: options.isDefaultPassword,
+      actorId: actor?.id,
+      actorName: actor?.full_name || 'Super Admin',
+      actorRole: actor?.role || 'super_admin',
+    });
+
+    if (res.success) {
+      await Promise.all([
+        refreshAdminAccounts(),
+        supabaseService.fetchStudents(false).then(s => setStudents(s)),
+        supabaseService.fetchFaculty(false).then(f => setFaculty(f)),
+        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50).then(resp => {
+          if (resp.data) setAuditLogs(resp.data as AuditLog[]);
+        }),
+      ]);
+    }
+    return res;
+  }, [refreshAdminAccounts]);
+
   const requestPasswordReset = useCallback(async (
     email: string,
     targetUserId?: string
@@ -2366,6 +2419,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         refreshAssessments,
         refreshAdminAccounts,
         updateAccountStatus,
+        updateAccountCredentials,
         requestPasswordReset,
         createAssignment,
         updateAssignment,

@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { AdmissionType } from '../../types/database.types';
 
 export const ProfilePage: React.FC = () => {
   const { user, role, changePassword, changeEmail, updateUserProfile, resendEmailVerification, pendingNewEmail } = useAuth();
@@ -31,7 +32,7 @@ export const ProfilePage: React.FC = () => {
     years, 
     semesters, 
     sections, 
-    subjects,
+    subjects, 
     faculty, 
     assignments,
     timetable,
@@ -73,13 +74,45 @@ export const ProfilePage: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [successBannerText, setSuccessBannerText] = useState('Profile Updated Successfully!');
 
+  // Student-specific editable academic credentials state
+  const [selectedSectionId, setSelectedSectionId] = useState(currentStudent?.section_id || '');
+  const [classroomRoom, setClassroomRoom] = useState(sec?.room_number || '');
+  const [admissionType, setAdmissionType] = useState<AdmissionType>((currentStudent?.admission_type as AdmissionType) || 'Regular');
+  const [selectedMentorId, setSelectedMentorId] = useState(currentStudent?.mentor_faculty_id || '');
+
   React.useEffect(() => {
     if (user?.full_name) setFullName(user.full_name);
     if (student?.phone || currentFaculty?.phone || user?.phone) {
       setPhone(student?.phone || currentFaculty?.phone || user?.phone || '');
     }
     if (currentFaculty?.designation) setDesignation(currentFaculty.designation);
-  }, [user, student, currentFaculty]);
+    if (student?.section_id) setSelectedSectionId(student.section_id);
+    if (sec?.room_number) setClassroomRoom(sec.room_number);
+    if (student?.admission_type) setAdmissionType(student.admission_type as AdmissionType);
+    if (student?.mentor_faculty_id) setSelectedMentorId(student.mentor_faculty_id);
+  }, [user, student, currentFaculty, sec]);
+
+  // Scoped active sections for student
+  const studentAvailableSections = React.useMemo(() => {
+    if (student?.semester_id) {
+      const match = sections.filter(s => s.active && s.semester_id === student.semester_id);
+      if (match.length > 0) return match;
+    }
+    if (student?.academic_year_id) {
+      const matchingSemIds = semesters.filter(s => s.academic_year_id === student.academic_year_id).map(s => s.id);
+      const match = sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+      if (match.length > 0) return match;
+    }
+    return sections.filter(s => s.active);
+  }, [sections, semesters, student?.semester_id, student?.academic_year_id]);
+
+  const handleSectionChange = (newSecId: string) => {
+    setSelectedSectionId(newSecId);
+    const newSec = sections.find(s => s.id === newSecId);
+    if (newSec?.room_number) {
+      setClassroomRoom(newSec.room_number);
+    }
+  };
 
   // Account Security Modal States
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
@@ -120,26 +153,72 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setFullName(user?.full_name || '');
+    setPhone(student?.phone || currentFaculty?.phone || user?.phone || '');
+    setDesignation(currentFaculty?.designation || '');
+    setSelectedSectionId(student?.section_id || '');
+    setClassroomRoom(sec?.room_number || '');
+    setAdmissionType((student?.admission_type as AdmissionType) || 'Regular');
+    setSelectedMentorId(student?.mentor_faculty_id || '');
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const res = await updateUserProfile({ 
-        full_name: fullName.trim(),
-        phone: phone.trim(),
-        designation: currentFaculty ? designation.trim() : undefined,
-      });
-      if (!res.success) {
-        setSuccessBannerText(res.error || 'Failed to update profile info');
+      if (role === 'student') {
+        if (!fullName.trim()) {
+          setSuccessBannerText('Full Legal Name is required.');
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3500);
+          setIsSaving(false);
+          return;
+        }
+
+        const chosenSection = sections.find(s => s.id === selectedSectionId);
+        const chosenSem = semesters.find(s => s.id === chosenSection?.semester_id);
+        const chosenYear = years.find(y => y.id === chosenSem?.academic_year_id);
+
+        const res = await updateUserProfile({ 
+          full_name: fullName.trim().toUpperCase(),
+          phone: phone.trim(),
+          section_id: selectedSectionId || undefined,
+          mentor_faculty_id: selectedMentorId || null,
+          admission_type: admissionType,
+          semester_id: chosenSem?.id,
+          academic_year_id: chosenYear?.id,
+        });
+        if (!res.success) {
+          setSuccessBannerText(res.error || 'Failed to update student profile');
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3500);
+          return;
+        }
+        await refreshData(true);
+        setIsEditing(false);
+        setSuccessBannerText('Student Profile & Academic Credentials Successfully Updated in Supabase!');
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3500);
-        return;
+      } else {
+        const res = await updateUserProfile({ 
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          designation: currentFaculty ? designation.trim() : undefined,
+        });
+        if (!res.success) {
+          setSuccessBannerText(res.error || 'Failed to update profile info');
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3500);
+          return;
+        }
+        await refreshData(true);
+        setIsEditing(false);
+        setSuccessBannerText('Profile Information Updated and Synchronized College-wide!');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3500);
       }
-      await refreshData(true);
-      setIsEditing(false);
-      setSuccessBannerText('Profile Information Updated and Synchronized College-wide!');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err: any) {
       setSuccessBannerText(err.message || 'Error updating profile');
       setSaveSuccess(true);
@@ -290,7 +369,13 @@ export const ProfilePage: React.FC = () => {
             <Button
               variant={isEditing ? "outline" : "neon"}
               size="sm"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => {
+                if (isEditing) {
+                  handleCancelEdit();
+                } else {
+                  setIsEditing(true);
+                }
+              }}
               leftIcon={<Edit3 className="w-3.5 h-3.5" />}
             >
               {isEditing ? "Cancel" : "Edit Profile Info"}
@@ -318,7 +403,7 @@ export const ProfilePage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">
-                  Email Address <span className="text-[10px] text-slate-400 font-normal">(Managed via Account Security below)</span>
+                  Email Address <span className="text-[10px] text-slate-400 font-normal">{role === 'student' ? '(Institutional Login Identifier)' : '(Managed via Account Security below)'}</span>
                 </label>
                 <input
                   type="email"
@@ -363,39 +448,112 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value={`${prog?.name || 'Academic Program'}${year?.name ? ` • ${year.name}` : ''}${sem?.name ? ` • ${sem.name}` : ''}`}
+                      value={`${prog?.name || 'B.Tech in Computer Science & Engineering'}${year?.name ? ` • ${year.name}` : ''}${sem?.name ? ` • ${sem.name}` : ''}`}
                       className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Assigned Section & Classroom</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={sec?.name ? `Section ${sec.name}${sec.room_number ? ` (${sec.room_number})` : ''}` : 'Section Not Assigned'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
-                    />
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Assigned Section {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    </label>
+                    {isEditing ? (
+                      <select
+                        value={selectedSectionId}
+                        onChange={(e) => handleSectionChange(e.target.value)}
+                        disabled={isSaving}
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                      >
+                        <option value="">Select Section</option>
+                        {studentAvailableSections.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            Section {s.name} {s.room_number ? `(Room ${s.room_number})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={sec?.name ? `Section ${sec.name}` : 'Section Not Assigned'}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
+                      />
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Admission Type</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={student.admission_type || 'Regular'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
-                    />
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Assigned Classroom / Room {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={classroomRoom}
+                        onChange={(e) => setClassroomRoom(e.target.value)}
+                        placeholder="e.g. Room 204 or LH-1"
+                        disabled={isSaving}
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={sec?.room_number || classroomRoom || '—'}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
+                      />
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Assigned Faculty Mentor</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={mentor?.full_name ? `${mentor.full_name} (${mentor.faculty_code || mentor.employee_code})` : 'Not Assigned'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
-                    />
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Admission Type {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    </label>
+                    {isEditing ? (
+                      <select
+                        value={admissionType}
+                        onChange={(e) => setAdmissionType(e.target.value as AdmissionType)}
+                        disabled={isSaving}
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                      >
+                        <option value="Regular">Regular</option>
+                        <option value="Lateral Entry">Lateral Entry</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={student.admission_type || admissionType || 'Regular'}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Assigned Faculty Mentor {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    </label>
+                    {isEditing ? (
+                      <select
+                        value={selectedMentorId}
+                        onChange={(e) => setSelectedMentorId(e.target.value)}
+                        disabled={isSaving}
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                      >
+                        <option value="">No Faculty Mentor Assigned</option>
+                        {faculty.filter(f => f.active).map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.full_name} ({f.faculty_code || f.employee_code || 'Faculty'})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={mentor?.full_name ? `${mentor.full_name} (${mentor.faculty_code || mentor.employee_code})` : 'Not Assigned'}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      />
+                    )}
                   </div>
                 </>
               )}
@@ -497,10 +655,7 @@ export const ProfilePage: React.FC = () => {
                   type="button" 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => {
-                    setIsEditing(false);
-                    setPhone(student?.phone || currentFaculty?.phone || user?.phone || '');
-                  }}
+                  onClick={handleCancelEdit}
                   disabled={isSaving}
                 >
                   Cancel
@@ -580,6 +735,7 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. ACCOUNT SECURITY & SUPABASE AUTH CREDENTIALS */}
       {/* ======================================================== */}
+      {role !== 'student' && (
       <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 space-y-5 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
           <div>
@@ -614,27 +770,9 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Credentials Section */}
-        {role === 'student' ? (
-          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#00ff88]" />
-                <h4 className="text-sm font-bold text-white">Institutional Authentication Managed by Administration</h4>
-              </div>
-              <p className="text-xs text-slate-400 max-w-2xl">
-                Student institutional authentication credentials and email are managed by college administration. 
-                Students cannot alter authentication passwords or login emails directly. If you require assistance or credential updates, please contact your Head of Department (HOD) or the central registrar.
-              </p>
-              <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono">
-                <span className="text-slate-500">Official Login Identifier: <strong className="text-white">{user?.email || (student ? `${student.roll_number}@student.vctm.in` : '')}</strong></span>
-                <span className="text-slate-500">Security Policy: <strong className="text-emerald-400">Institutional Admin Controlled</strong></span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Card 1: Login Email */}
-            <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card 1: Login Email */}
+          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -738,9 +876,8 @@ export const ProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-
-      </div>
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* 3. MODALS */}

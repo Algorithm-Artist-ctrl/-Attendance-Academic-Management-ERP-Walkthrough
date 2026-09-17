@@ -35,6 +35,8 @@ export const FacultySessionalMarksPage: React.FC = () => {
     marksHistory, 
     subjects, 
     sections, 
+    years,
+    semesters,
     faculty,
     students,
     timetable,
@@ -362,9 +364,15 @@ export const FacultySessionalMarksPage: React.FC = () => {
             >
               {myAssignedSubjects
                 .find(s => s.subject.id === selectedSubjectId)
-                ?.sections.map(sec => (
-                  <option key={sec.id} value={sec.id}>Section {sec.name}</option>
-                ))}
+                ?.sections.map(sec => {
+                  const sem = semesters.find(s => s.id === sec.semester_id);
+                  const yr = years.find(y => y.id === sem?.academic_year_id);
+                  return (
+                    <option key={sec.id} value={sec.id}>
+                      {yr?.name ? `${yr.name} • ` : ''}Section {sec.name}
+                    </option>
+                  );
+                })}
             </select>
           </div>
 
@@ -403,9 +411,15 @@ export const FacultySessionalMarksPage: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-emerald-500/20">
               Section {selectedSection.name}
             </span>
-            <span className="text-slate-400">
-              • Odd Semester 2026–2027 (Second Year)
-            </span>
+            {(() => {
+              const sem = semesters.find(s => s.id === selectedSection.semester_id);
+              const yr = years.find(y => y.id === sem?.academic_year_id);
+              return (
+                <span className="text-slate-400">
+                  • {sem?.name || 'Odd Semester 2026–2027'} {yr?.name ? `(${yr.name})` : ''}
+                </span>
+              );
+            })()}
           </div>
           <span className="text-[11px] text-emerald-400 font-semibold hidden sm:inline">
             ✓ Section-Specific Marks Isolation Active

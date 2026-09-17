@@ -35,6 +35,7 @@ import {
   AdminAccountDirectoryEntry
 } from '../../types/database.types';
 import { getISTTodayDate } from '../utils/dateUtils';
+import { erpStorage } from '../storage/erpStorage';
 
 interface StaticSetupCache {
   timestamp: number;
@@ -981,8 +982,69 @@ export const supabaseService = {
       throw new Error('Relational mismatch: Academic Year does not match the selected Section.');
     }
 
+    let sessionId = student.academic_session_id;
+    if (!sessionId) {
+      const { data: currentSession } = await supabase
+        .from('academic_sessions')
+        .select('id')
+        .eq('is_current', true)
+        .maybeSingle();
+      sessionId = currentSession?.id || 'a358fe68-d746-4242-9f36-2c715cd9526e';
+    }
+
+    let instId = student.institution_id;
+    if (!instId) {
+      const { data: inst } = await supabase
+        .from('institutions')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      instId = inst?.id || '22398afa-8679-4d2c-87fc-312152a276e2';
+    }
+
+    const cleanRoll = student.roll_number.trim().toUpperCase();
+    const targetEmail = student.email?.trim().toLowerCase() || `${cleanRoll.toLowerCase()}@student.vctm.in`;
+
+    // Atomically provision Auth User, Identity, Student Record, and Profile via SECURITY DEFINER procedure
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('provision_student_account', {
+      p_roll_number: cleanRoll,
+      p_full_name: student.full_name.trim().toUpperCase(),
+      p_section_id: sec.id,
+      p_admission_type: student.admission_type || 'Regular',
+      p_email: targetEmail,
+      p_password: 'student123',
+      p_phone: student.phone || null,
+      p_mentor_faculty_id: student.mentor_faculty_id || null,
+      p_actor_name: 'Super Admin',
+    });
+
+    if (!rpcErr && rpcRes?.student_id) {
+      const { data: createdStudent } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', rpcRes.student_id)
+        .single();
+
+      this.invalidateMasterCache();
+      return (createdStudent || {
+        id: rpcRes.student_id,
+        auth_user_id: rpcRes.auth_user_id,
+        roll_number: cleanRoll,
+        full_name: student.full_name,
+        section_id: sec.id,
+        email: targetEmail,
+      }) as Student;
+    }
+
+    // Direct fallback insertion
+    console.warn('RPC provision_student_account failed, applying direct insert:', rpcErr?.message);
     const payload = {
       ...student,
+      roll_number: cleanRoll,
+      email: targetEmail,
+      institution_id: instId,
+      academic_session_id: sessionId,
+      mentor_faculty_id: student.mentor_faculty_id ? student.mentor_faculty_id : null,
       section_id: sec.id,
       semester_id: sec.semester_id,
       academic_year_id: academicYear?.id || student.academic_year_id,
@@ -992,26 +1054,8 @@ export const supabaseService = {
 
     const { data, error } = await supabase.from('students').insert(payload).select().single();
     if (error) throw new Error(error.message);
-    const createdStudent = data as Student;
-
-    // Automatically create Supabase profile for this student
-    try {
-      await supabase.from('profiles').upsert({
-        id: createdStudent.id,
-        email: createdStudent.email || `${createdStudent.roll_number}@vctm.in`,
-        full_name: createdStudent.full_name,
-        role: 'student',
-        department_id: createdStudent.department_id,
-        student_id: createdStudent.id,
-        faculty_id: null,
-        phone: createdStudent.phone
-      }, { onConflict: 'id' });
-    } catch (profErr) {
-      console.warn('Profile auto-creation warning:', profErr);
-    }
-
     this.invalidateMasterCache();
-    return createdStudent;
+    return data as Student;
   },
 
   async updateStudent(id: string, updates: Partial<Student>) {
@@ -1396,7 +1440,41 @@ export const supabaseService = {
       throw new Error(`Official Email "${facData.email}" is already in use by "${existingEmail.full_name}".`);
     }
 
-    // 3. Insert Faculty
+    // 3. Atomically Provision Faculty Account, Supabase Auth User, Profile & Assignments via RPC
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('provision_faculty_account', {
+      p_employee_code: facData.employee_code.trim().toUpperCase(),
+      p_full_name: facData.full_name.trim(),
+      p_email: facData.email.trim().toLowerCase(),
+      p_department_id: facData.department_id,
+      p_designation: facData.designation.trim(),
+      p_faculty_code: facData.faculty_code?.trim().toUpperCase() || null,
+      p_password: 'faculty@123',
+      p_phone: facData.phone?.trim() || null,
+      p_assignments: assignList || [],
+      p_actor_name: actorName,
+    });
+
+    if (!rpcErr && rpcRes?.faculty_id) {
+      const { data: createdFac } = await supabase
+        .from('faculty')
+        .select('*')
+        .eq('id', rpcRes.faculty_id)
+        .single();
+
+      const { data: assignments } = await supabase
+        .from('faculty_subject_assignments')
+        .select('*')
+        .eq('faculty_id', rpcRes.faculty_id);
+
+      this.invalidateMasterCache();
+      return { faculty: createdFac as Faculty, assignments: (assignments as FacultySubjectAssignment[]) || [] };
+    }
+
+    if (rpcErr) {
+      console.warn('RPC provision_faculty_account failed, using direct insert fallback:', rpcErr.message);
+    }
+
+    // Direct fallback insertion
     const newFacultyId = crypto.randomUUID();
     const { data: createdFac, error: facErr } = await supabase
       .from('faculty')
@@ -1448,7 +1526,6 @@ export const supabaseService = {
     const createdAssignments: FacultySubjectAssignment[] = [];
     if (assignList && assignList.length > 0) {
       for (const item of assignList) {
-        // Authoritatively derive program and department from academic year
         const { data: yearData } = await supabase
           .from('academic_years')
           .select('program_id, program:programs(department_id)')
@@ -1504,6 +1581,13 @@ export const supabaseService = {
 
     this.invalidateMasterCache();
     return { faculty: createdFac as Faculty, assignments: createdAssignments };
+  },
+
+  async reconcileAuthAccounts(): Promise<{ success: boolean; reconciled_students: number; reconciled_faculty: number }> {
+    const { data, error } = await supabase.rpc('reconcile_all_accounts');
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as any;
   },
 
   async updateFacultyWithAssignments(params: {
@@ -3478,6 +3562,12 @@ export const supabaseService = {
   // 12. Super Admin Account Directory & Management
   async fetchAdminAccounts(): Promise<AdminAccountDirectoryEntry[]> {
     try {
+      const currentUser = erpStorage.getCurrentSessionUser();
+      // Strictly restrict RPC to super_admin to prevent 400 Bad Request / permission errors for non-admins
+      if (!currentUser || currentUser.role !== 'super_admin') {
+        return [];
+      }
+
       const { data, error } = await supabase.rpc('get_admin_account_directory');
       if (error) {
         console.warn('RPC get_admin_account_directory failed, falling back to manual join:', error.message);
@@ -3611,6 +3701,90 @@ export const supabaseService = {
     } catch (err: any) {
       console.error('Error requesting password reset:', err);
       return { success: false, error: err?.message || 'Failed to send password reset instructions' };
+    }
+  },
+
+  async adminUpdateAccountCredentials(params: {
+    targetUserId: string;
+    email?: string;
+    password?: string;
+    isDefaultPassword?: boolean;
+    actorId?: string;
+    actorName?: string;
+    actorRole?: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    const {
+      targetUserId,
+      email,
+      password,
+      isDefaultPassword = false,
+      actorId,
+      actorName = 'Super Admin',
+      actorRole = 'super_admin',
+    } = params;
+
+    try {
+      // 1. Try server-side endpoint first (/api/auth/update-credentials)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      let apiSuccess = false;
+      let apiResult: any = null;
+
+      if (token) {
+        try {
+          const response = await fetch('/api/auth/update-credentials', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              target_user_id: targetUserId,
+              email: email?.trim() || undefined,
+              password: password?.trim() || undefined,
+              is_default_password: Boolean(isDefaultPassword),
+            }),
+          });
+
+          if (response.ok) {
+            const json = await response.json();
+            if (json.success) {
+              apiSuccess = true;
+              apiResult = json.data;
+            } else {
+              return { success: false, error: json.error || 'Failed to update credentials via API.' };
+            }
+          }
+        } catch (apiFetchErr) {
+          // If fetch fails (e.g. non-browser test runner or network error), fallback to direct RPC
+          console.warn('Endpoint /api/auth/update-credentials not reachable, falling back to direct RPC:', apiFetchErr);
+        }
+      }
+
+      // 2. Direct RPC fallback using authenticated Super Admin session
+      if (!apiSuccess) {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('admin_update_account_credentials', {
+          p_target_user_id: targetUserId,
+          p_new_email: email?.trim() ? email.trim().toLowerCase() : null,
+          p_new_password: password?.trim() ? password.trim() : null,
+          p_is_default_password: Boolean(isDefaultPassword),
+          p_actor_id: actorId || null,
+          p_actor_name: actorName,
+          p_actor_role: actorRole,
+        });
+
+        if (rpcErr) {
+          return { success: false, error: rpcErr.message };
+        }
+        apiResult = rpcData;
+      }
+
+      this.invalidateMasterCache();
+      return { success: true, data: apiResult };
+    } catch (err: any) {
+      console.error('Error updating account credentials:', err);
+      return { success: false, error: err?.message || 'Failed to update account credentials.' };
     }
   },
 

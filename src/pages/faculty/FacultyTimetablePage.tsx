@@ -31,6 +31,7 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
     departments, 
     programs, 
     years, 
+    semesters,
     faculty,
     getFacultyTimetable,
     getPublishedTimetable
@@ -70,7 +71,11 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
   const taughtSubjects = subjects.filter(s => uniqueSubjectIds.includes(s.id));
   const dept = departments.find(d => d.id === currentFaculty?.department_id) || departments[0];
 
-  const sectionNames = taughtSections.map(s => `Section ${s.name}`).join(' & ') || 'Assigned Sections';
+  const sectionNames = taughtSections.map(s => {
+    const sem = semesters.find(sm => sm.id === s.semester_id);
+    const yr = years.find(y => y.id === sem?.academic_year_id);
+    return `${yr?.name ? `${yr.name} ` : ''}Sec ${s.name}`;
+  }).join(', ') || 'Assigned Sections';
   const subjectCodes = taughtSubjects.map(s => s.subject_code).join(', ');
 
   const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
@@ -296,9 +301,15 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                     </span>
                     <span className="text-xs font-mono text-slate-300 font-bold">{slot.time}</span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
-                    Section {sec?.name}
-                  </span>
+                  {(() => {
+                    const sem = semesters.find(s => s.id === sec?.semester_id);
+                    const yr = years.find(y => y.id === sem?.academic_year_id);
+                    return (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                        {yr?.name ? `${yr.name} • ` : ''}Section {sec?.name}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div>
@@ -393,9 +404,15 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/15 text-[#00ff88] border border-emerald-500/25">
                                 {sub?.subject_code}
                               </span>
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900 text-slate-300 border border-emerald-500/15">
-                                Sec {sec?.name}
-                              </span>
+                              {(() => {
+                                const sem = semesters.find(s => s.id === sec?.semester_id);
+                                const yr = years.find(y => y.id === sem?.academic_year_id);
+                                return (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900 text-slate-300 border border-emerald-500/15">
+                                    {yr?.name ? `${yr.name} ` : ''}Sec {sec?.name}
+                                  </span>
+                                );
+                              })()}
                             </div>
 
                             <p className="font-bold text-white text-xs leading-snug tracking-tight line-clamp-2" title={sub?.subject_name}>

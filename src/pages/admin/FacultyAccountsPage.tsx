@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -16,6 +16,10 @@ import {
   Filter, 
   RefreshCw,
   EyeOff,
+  Eye,
+  Save,
+  Check,
+  Sparkles,
   AlertTriangle
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
@@ -24,6 +28,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AccountStatus } from '../../types/database.types';
 import { formatTimeAgo } from '../../lib/utils/dateUtils';
+import { supabaseService } from '../../lib/services/supabaseService';
 
 export const FacultyAccountsPage: React.FC = () => {
   const { user: currentSessionUser } = useAuth();
@@ -33,14 +38,45 @@ export const FacultyAccountsPage: React.FC = () => {
     adminAccounts, 
     refreshAdminAccounts, 
     updateAccountStatus, 
+    updateAccountCredentials,
     requestPasswordReset,
     refreshFaculty
   } = useAcademic();
+
+  useEffect(() => {
+    if (adminAccounts.length === 0) {
+      refreshAdminAccounts();
+    }
+  }, [adminAccounts.length, refreshAdminAccounts]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | AccountStatus>('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleReconcile = async () => {
+    setIsReconciling(true);
+    setReconcileResult(null);
+    try {
+      const res = await supabaseService.reconcileAuthAccounts();
+      setReconcileResult({
+        type: 'success',
+        message: `Successfully reconciled ${res.reconciled_students} student(s) and ${res.reconciled_faculty} faculty account(s).`,
+      });
+      await Promise.all([refreshAdminAccounts(), refreshFaculty()]);
+      setTimeout(() => setReconcileResult(null), 7000);
+    } catch (err: any) {
+      setReconcileResult({
+        type: 'error',
+        message: `Reconciliation failed: ${err?.message || 'Unknown error'}`,
+      });
+      setTimeout(() => setReconcileResult(null), 7000);
+    } finally {
+      setIsReconciling(false);
+    }
+  };
 
   // Selected faculty account for management modal
   const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
@@ -49,6 +85,14 @@ export const FacultyAccountsPage: React.FC = () => {
   const [blockReason, setBlockReason] = useState('');
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+
+  // Credential management local state
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isSettingDefaultPass, setIsSettingDefaultPass] = useState(false);
 
   // Combine unified directory data with faculty data
   const accountsData = useMemo(() => {
@@ -112,10 +156,127 @@ export const FacultyAccountsPage: React.FC = () => {
 
   const handleOpenManage = (account: any) => {
     setSelectedAccount(account);
+    setEditEmail(account.email || '');
+    setEditPassword('');
+    setShowPassword(false);
     setActionMessage(null);
     setBlockReason('');
     setShowBlockConfirm(false);
     setShowArchiveConfirm(false);
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!selectedAccount || !editEmail) return;
+    const clean = editEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+      setActionMessage({
+        type: 'error',
+        text: 'Please enter a valid official email address (e.g. name@vctm.in).'
+      });
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+    setActionMessage(null);
+    try {
+      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+        email: clean,
+      });
+
+      if (res.success) {
+        setSelectedAccount((prev: any) => prev ? { ...prev, email: clean } : null);
+        setActionMessage({
+          type: 'success',
+          text: `Official email successfully updated to "${clean}". Supabase Auth identity, profile, and faculty records are synchronized. Faculty member can log in immediately.`
+        });
+      } else {
+        setActionMessage({
+          type: 'error',
+          text: res.error || 'Failed to update official email.'
+        });
+      }
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: err?.message || 'An error occurred while updating email.'
+      });
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
+
+  const handleSetCustomPassword = async () => {
+    if (!selectedAccount || !editPassword) return;
+    const cleanPass = editPassword.trim();
+    if (cleanPass.length < 6) {
+      setActionMessage({
+        type: 'error',
+        text: 'Password must be at least 6 characters in length.'
+      });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    setActionMessage(null);
+    try {
+      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+        password: cleanPass,
+        isDefaultPassword: false,
+      });
+
+      if (res.success) {
+        setEditPassword('');
+        setShowPassword(false);
+        setActionMessage({
+          type: 'success',
+          text: 'Custom password updated successfully in Supabase Auth. Faculty can log in immediately.'
+        });
+      } else {
+        setActionMessage({
+          type: 'error',
+          text: res.error || 'Failed to set custom password.'
+        });
+      }
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: err?.message || 'An error occurred while updating password.'
+      });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleSetDefaultPassword = async () => {
+    if (!selectedAccount) return;
+    setIsSettingDefaultPass(true);
+    setActionMessage(null);
+    try {
+      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+        password: 'faculty@123',
+        isDefaultPassword: true,
+      });
+
+      if (res.success) {
+        setEditPassword('');
+        setActionMessage({
+          type: 'success',
+          text: 'Institution default password ("faculty@123") set in Supabase Auth. Faculty can log in immediately.'
+        });
+      } else {
+        setActionMessage({
+          type: 'error',
+          text: res.error || 'Failed to apply default password.'
+        });
+      }
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: err?.message || 'An error occurred while setting default password.'
+      });
+    } finally {
+      setIsSettingDefaultPass(false);
+    }
   };
 
   const handlePasswordReset = async () => {
@@ -239,6 +400,16 @@ export const FacultyAccountsPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleReconcile}
+            isLoading={isReconciling}
+            leftIcon={<ShieldCheck className={`w-3.5 h-3.5 text-emerald-400 ${isReconciling ? 'animate-spin' : ''}`} />}
+            className="border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/10 text-emerald-300"
+          >
+            Reconcile Auth Accounts
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
             isLoading={isRefreshing}
             leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />}
@@ -247,6 +418,20 @@ export const FacultyAccountsPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {reconcileResult && (
+        <div className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${
+          reconcileResult.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+        }`}>
+          <div className="flex items-center gap-2">
+            {reconcileResult.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
+            <span>{reconcileResult.message}</span>
+          </div>
+          <button onClick={() => setReconcileResult(null)} className="text-slate-400 hover:text-white text-xs ml-4">✕</button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="glass-card rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
@@ -493,39 +678,134 @@ export const FacultyAccountsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Credential Security Panel (Strict Protection Rule: No Plaintext Passwords) */}
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Super Admin Credential Management Panel */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/25 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-emerald-500/10">
                 <div className="flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-emerald-400" />
-                  <h4 className="text-xs font-bold text-white">Credential & Password Security</h4>
+                  <div>
+                    <h4 className="text-xs font-bold text-white tracking-wide">Account Credential Management</h4>
+                    <p className="text-[10px] text-slate-400">Direct Super Admin Auth Controls • Active Immediately</p>
+                  </div>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                  <EyeOff className="w-3 h-3 text-emerald-400" />
-                  Protected & Encrypted
+                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  Confirmed Identity
                 </span>
               </div>
 
-              <div className="flex items-center justify-between bg-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-800">
-                <div>
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wide block">Password State</span>
-                  <span className="text-base font-black tracking-widest text-slate-300">••••••••••••</span>
+              {/* 1. Official Login Email (Identity) Control */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    Official Login Email (Supabase Auth Identity)
+                  </label>
+                  {selectedAccount.email && (
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Current: {selectedAccount.email}
+                    </span>
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePasswordReset}
-                  isLoading={actionLoading}
-                  className="text-xs"
-                  leftIcon={<KeyRound className="w-3 h-3 text-emerald-400" />}
-                >
-                  Send Reset Link
-                </Button>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={e => setEditEmail(e.target.value)}
+                    placeholder="faculty.name@vctm.in"
+                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUpdateEmail}
+                    isLoading={isUpdatingEmail}
+                    disabled={!editEmail || editEmail.trim().toLowerCase() === selectedAccount.email.toLowerCase()}
+                    leftIcon={<Save className="w-3.5 h-3.5 text-emerald-400" />}
+                    className="text-xs shrink-0"
+                  >
+                    Save Email
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Changing email updates Supabase Auth, profile, and faculty records atomically. Subject assignments, timetable, and department mapping remain fully intact.
+                </p>
               </div>
 
-              <p className="text-[11px] text-slate-400">
-                In compliance with institution security policies, passwords are cryptographically salted and hashed. Clicking "Send Reset Link" immediately emails secure password reset instructions to <span className="text-white font-mono">{selectedAccount.email}</span> and writes to the audit log.
-              </p>
+              {/* 2. Password Management Controls */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                  Set / Reset Password
+                </label>
+                
+                {/* Custom Password Input */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={editPassword}
+                      onChange={e => setEditPassword(e.target.value)}
+                      placeholder="Enter new custom password (min 6 characters)..."
+                      className="w-full px-3 py-2 pr-9 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSetCustomPassword}
+                    isLoading={isUpdatingPassword}
+                    disabled={!editPassword || editPassword.trim().length < 6}
+                    leftIcon={<Check className="w-3.5 h-3.5" />}
+                    className="text-xs shrink-0"
+                  >
+                    Set Password
+                  </Button>
+                </div>
+
+                {/* Quick Action Buttons */}
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSetDefaultPassword}
+                    isLoading={isSettingDefaultPass}
+                    className="text-xs border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/40"
+                    leftIcon={<Sparkles className="w-3 h-3 text-cyan-400" />}
+                  >
+                    Apply Default ("faculty@123")
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePasswordReset}
+                    isLoading={actionLoading}
+                    className="text-xs text-slate-400 hover:text-white"
+                    leftIcon={<Mail className="w-3 h-3 text-slate-400" />}
+                  >
+                    Send Reset Link
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[10px] text-slate-400 space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Immediate Login Enabled
+                </div>
+                <p>
+                  Super Admin updates are confirmed immediately without requiring the faculty member to click an email link. Passwords are cryptographically salted and hashed with bcrypt.
+                </p>
+              </div>
             </div>
 
             {/* Account Status Controls */}

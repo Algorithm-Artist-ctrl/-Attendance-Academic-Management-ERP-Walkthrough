@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
+import handleAdminAuth from './api/admin-auth.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -530,6 +531,9 @@ export const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && pathname === '/api/proxy-sheet') {
       return await handleCsvProxyGet(req, res, urlObj);
+    }
+    if (pathname.startsWith('/api/auth/')) {
+      return await handleAdminAuth(req, res);
     }
     if (req.method === 'GET' || req.method === 'HEAD') {
       return serveStatic(req, res);

@@ -494,8 +494,18 @@ export const FacultyDirectoryPage: React.FC = () => {
               const sem = semesters.find(sm => sm.id === (a.semester_id || sec?.semester_id));
               const yr = years.find(y => y.id === (a.academic_year_id || sem?.academic_year_id));
               const yrName = yr?.name || a.academic_year?.name || '';
-              const secName = sec?.name || a.section?.name || '';
-              if (secName) {
+              const secName = (sec?.name || a.section?.name || '').replace(/^section\s*/i, '').trim();
+              if (secName && yr?.year_number !== 1) {
+                sectionYearSet.add(yrName ? `${yrName} • Sec ${secName}` : `Sec ${secName}`);
+              }
+            });
+            myTt.forEach(t => {
+              const sec = sections.find(s => s.id === t.section_id);
+              const sem = semesters.find(sm => sm.id === sec?.semester_id);
+              const yr = years.find(y => y.id === sem?.academic_year_id);
+              const yrName = yr?.name || '';
+              const secName = (sec?.name || '').replace(/^section\s*/i, '').trim();
+              if (secName && yr?.year_number !== 1) {
                 sectionYearSet.add(yrName ? `${yrName} • Sec ${secName}` : `Sec ${secName}`);
               }
             });

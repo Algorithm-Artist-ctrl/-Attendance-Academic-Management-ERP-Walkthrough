@@ -52,6 +52,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     assignments, 
     subjects, 
     sections, 
+    years,
+    semesters,
     corrections, 
     departments,
     students,
@@ -108,23 +110,118 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     return getDateForWeekdayInCurrentWeek(selectedScheduleDay, todayISO);
   }, [selectedScheduleDay, todayISO]);
 
-  // Authoritative assigned sections: distinct sections where this faculty actually teaches
+  // Authoritative assigned sections: distinct sections where this faculty actually teaches or is assigned
   const mySectionIds = useMemo(() => {
-    return Array.from(new Set(myTt.map(t => t.section_id).filter(Boolean)));
-  }, [myTt]);
+    const fromTt = myTt.map(t => t.section_id).filter(Boolean);
+    const fromAssignments = (assignments || [])
+      .filter(a => a.faculty_id === facultyId && a.active)
+      .map(a => a.section_id)
+      .filter(Boolean);
+    return Array.from(new Set([...fromTt, ...fromAssignments]));
+  }, [myTt, assignments, facultyId]);
+
+  // Enriched section details with authoritative academic year from database hierarchy
+  const enrichedAssignedSections = useMemo(() => {
+    return mySectionIds
+      .map(secId => {
+        const sec = sections.find(s => s.id === secId);
+        if (!sec || !sec.active) return null;
+
+        const sem = semesters.find(s => s.id === sec.semester_id);
+        const yr = years.find(y => y.id === sem?.academic_year_id);
+
+        // Strictly exclude 1st Year (year_number === 1)
+        if (yr?.year_number === 1) return null;
+
+        const secStudents = students.filter(s => s.section_id === sec.id && s.active);
+
+        // Subjects taught or assigned to this faculty for this specific section
+        const fromTtSubs = myTt.filter(t => t.section_id === sec.id).map(t => t.subject_id);
+        const fromAsgnSubs = (assignments || [])
+          .filter(a => a.faculty_id === facultyId && a.section_id === sec.id && a.active)
+          .map(a => a.subject_id);
+        const secSubjectIds = Array.from(new Set([...fromTtSubs, ...fromAsgnSubs].filter(Boolean)));
+        const subjectsInSec = subjects.filter(sub => secSubjectIds.includes(sub.id) && sub.active);
+
+        const cleanSecName = (sec.name || '').replace(/^section\s*/i, '').trim();
+        const rawRoom = sec.room_number || '';
+        const cleanRoom = rawRoom ? rawRoom.replace(/^Room\s*(No\.?\s*)?/i, '').trim() : 'Room TBD';
+
+        return {
+          sec,
+          sem,
+          year: yr,
+          yearName: yr?.name || 'Academic Year',
+          yearNumber: yr?.year_number || 0,
+          cleanSecName,
+          cleanRoom: cleanRoom || 'Room TBD',
+          studentCount: secStudents.length,
+          subjectsInSec,
+        };
+      })
+      .filter(Boolean) as Array<{
+        sec: (typeof sections)[0];
+        sem?: (typeof semesters)[0];
+        year?: (typeof years)[0];
+        yearName: string;
+        yearNumber: number;
+        cleanSecName: string;
+        cleanRoom: string;
+        studentCount: number;
+        subjectsInSec: typeof subjects;
+      }>;
+  }, [mySectionIds, sections, semesters, years, students, myTt, assignments, facultyId, subjects]);
+
+  // Distinct academic years for filtering (only years where faculty is actually assigned)
+  const distinctAssignedYears = useMemo(() => {
+    const yearMap = new Map<string, { id: string; name: string; year_number: number; count: number }>();
+    enrichedAssignedSections.forEach(item => {
+      if (item.year) {
+        const existing = yearMap.get(item.year.id);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          yearMap.set(item.year.id, {
+            id: item.year.id,
+            name: item.year.name,
+            year_number: item.year.year_number,
+            count: 1,
+          });
+        }
+      }
+    });
+    return Array.from(yearMap.values()).sort((a, b) => a.year_number - b.year_number);
+  }, [enrichedAssignedSections]);
+
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
+
+  // Filtered assigned sections based on selected academic year tab
+  const displayedAssignedSections = useMemo(() => {
+    const filtered = selectedYearFilter === 'ALL'
+      ? enrichedAssignedSections
+      : enrichedAssignedSections.filter(item => item.year?.id === selectedYearFilter);
+
+    // Sort by Year Number ascending, then Section Name
+    return [...filtered].sort((a, b) => {
+      if (a.yearNumber !== b.yearNumber) {
+        return a.yearNumber - b.yearNumber;
+      }
+      return a.cleanSecName.localeCompare(b.cleanSecName);
+    });
+  }, [enrichedAssignedSections, selectedYearFilter]);
 
   const mySections = useMemo(() => {
-    return sections.filter(sec => mySectionIds.includes(sec.id) && sec.active);
-  }, [sections, mySectionIds]);
+    return enrichedAssignedSections.map(item => item.sec);
+  }, [enrichedAssignedSections]);
 
   // Authoritative assigned subjects: distinct subjects taught across these sections
-  const mySubjectIds = useMemo(() => {
-    return Array.from(new Set(myTt.map(t => t.subject_id).filter(Boolean)));
-  }, [myTt]);
-
   const mySubjects = useMemo(() => {
-    return subjects.filter(s => mySubjectIds.includes(s.id) && s.active);
-  }, [subjects, mySubjectIds]);
+    const subIds = new Set<string>();
+    enrichedAssignedSections.forEach(item => {
+      item.subjectsInSec.forEach(s => subIds.add(s.id));
+    });
+    return subjects.filter(s => subIds.has(s.id) && s.active);
+  }, [enrichedAssignedSections, subjects]);
 
   // Pending correction requests assigned strictly to this faculty
   const myPendingCorrections = useMemo(() => {
@@ -244,43 +341,77 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             </p>
           </div>
           <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] self-start sm:self-auto">
-            {mySections.length} Assigned Sections
+            {enrichedAssignedSections.length} Assigned Sections
           </span>
         </div>
 
-        {mySections.length === 0 ? (
+        {/* Multi-Year Filter Tabs (when faculty teaches across multiple academic years) */}
+        {distinctAssignedYears.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+            <span className="text-xs font-semibold text-slate-400 shrink-0">Filter by Year:</span>
+            <button
+              onClick={() => setSelectedYearFilter('ALL')}
+              className={clsx(
+                'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
+                selectedYearFilter === 'ALL'
+                  ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_10px_rgba(0,255,136,0.3)]'
+                  : 'bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-emerald-500/40'
+              )}
+            >
+              All Years ({enrichedAssignedSections.length})
+            </button>
+            {distinctAssignedYears.map(yr => (
+              <button
+                key={yr.id}
+                onClick={() => setSelectedYearFilter(yr.id)}
+                className={clsx(
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
+                  selectedYearFilter === yr.id
+                    ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_10px_rgba(0,255,136,0.3)]'
+                    : 'bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-emerald-500/40'
+                )}
+              >
+                {yr.name} ({yr.count})
+              </button>
+            ))}
+          </div>
+        )}
+
+        {enrichedAssignedSections.length === 0 ? (
           <div className="p-8 text-center bg-slate-950/60 rounded-2xl border border-emerald-500/15 space-y-2">
             <BookOpen className="w-8 h-8 text-slate-500 mx-auto" />
-            <h4 className="text-sm font-bold text-white">No published timetable is available for your teaching assignments</h4>
+            <h4 className="text-sm font-bold text-white">No published timetable or teaching assignments available</h4>
             <p className="text-xs text-slate-400">
-              When the department HOD publishes your timetable schedule, your assigned classes, sections, and subjects will appear here automatically.
+              When teaching assignments or published timetable schedules are configured for your profile, your assigned classes, sections, and subjects will appear here automatically.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {mySections.map(sec => {
-              const subjectsInSec = mySubjects.filter(sub =>
-                myTt.some(t => t.subject_id === sub.id && t.section_id === sec.id)
-              );
-              const secStudents = students.filter(s => s.section_id === sec.id && s.active);
-
+            {displayedAssignedSections.map(({ sec, sem, year, yearName, cleanSecName, cleanRoom, studentCount, subjectsInSec }) => {
               return (
                 <div
                   key={sec.id}
-                  className="p-5 rounded-2xl bg-slate-950/80 border border-emerald-500/25 space-y-4 shadow-xl relative overflow-hidden"
+                  className="p-5 rounded-2xl bg-slate-950/80 border border-emerald-500/25 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between"
                 >
                   {/* Section Banner Header */}
                   <div className="flex items-center justify-between border-b border-emerald-500/15 pb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-base shadow-[0_0_12px_rgba(0,255,136,0.3)]">
-                        {sec.name}
+                        {cleanSecName}
                       </div>
                       <div>
-                        <h4 className="text-base font-black text-white tracking-tight">
-                          SECTION {sec.name}
-                        </h4>
-                        <p className="text-xs text-emerald-400 font-mono">
-                          {sec.room_number || 'Room TBD'} • {secStudents.length} Students
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base font-black text-white tracking-tight">
+                            SECTION {cleanSecName}
+                          </h4>
+                          {yearName && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30">
+                              {yearName}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-emerald-400 font-mono mt-0.5">
+                          {yearName} • {cleanRoom} • {studentCount} Students
                         </p>
                       </div>
                     </div>
@@ -290,50 +421,56 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   </div>
 
                   {/* Assigned Subjects in This Section */}
-                  <div className="space-y-3">
-                    {subjectsInSec.map(sub => {
-                      const asgnCount = courseAssignments.filter(a => a.subject_id === sub.id && a.section_id === sec.id).length;
-                      const quizCount = quizzes.filter(q => q.subject_id === sub.id && q.section_id === sec.id).length;
-                      const sessCount = sessionalAssessments.filter(sa => sa.subject_id === sub.id && sa.section_id === sec.id).length;
+                  <div className="space-y-3 flex-1">
+                    {subjectsInSec.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-slate-400 bg-slate-900/60 rounded-xl border border-emerald-500/10">
+                        Section allocated • Subject curriculum pending assignment
+                      </div>
+                    ) : (
+                      subjectsInSec.map(sub => {
+                        const asgnCount = courseAssignments.filter(a => a.subject_id === sub.id && a.section_id === sec.id).length;
+                        const quizCount = quizzes.filter(q => q.subject_id === sub.id && q.section_id === sec.id).length;
+                        const sessCount = sessionalAssessments.filter(sa => sa.subject_id === sub.id && sa.section_id === sec.id).length;
 
-                      return (
-                        <div
-                          key={sub.id}
-                          className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/15 hover:border-emerald-500/40 transition-all space-y-2.5"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black bg-emerald-500/15 text-[#00ff88] border border-emerald-500/25">
-                                {sub.subject_code}
-                              </span>
-                              <h5 className="text-xs sm:text-sm font-bold text-white mt-1">
-                                {sub.subject_name}
-                              </h5>
-                              <span className="text-[11px] text-slate-400">
-                                {sub.lecture_type || 'Theory'} • {sub.credits || 4} Credits
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t border-emerald-500/10 text-[11px] text-slate-400">
-                            <div className="flex items-center gap-2 text-[10px]">
-                              <span>Assgn: <strong className="text-blue-400">{asgnCount}</strong></span>
-                              <span>Quizzes: <strong className="text-purple-400">{quizCount}</strong></span>
-                              <span>Sess: <strong className="text-amber-400">{sessCount}</strong></span>
+                        return (
+                          <div
+                            key={sub.id}
+                            className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/15 hover:border-emerald-500/40 transition-all space-y-2.5"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black bg-emerald-500/15 text-[#00ff88] border border-emerald-500/25">
+                                  {sub.subject_code}
+                                </span>
+                                <h5 className="text-xs sm:text-sm font-bold text-white mt-1">
+                                  {sub.subject_name}
+                                </h5>
+                                <span className="text-[11px] text-slate-400">
+                                  {sub.lecture_type || 'Theory'} • {sub.credits || 4} Credits
+                                </span>
+                              </div>
                             </div>
 
-                            <Button
-                              variant="neon"
-                              size="sm"
-                              onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
-                              className="text-[10px] py-1 px-3 font-bold"
-                            >
-                              Workspace →
-                            </Button>
+                            <div className="flex items-center justify-between pt-2 border-t border-emerald-500/10 text-[11px] text-slate-400">
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span>Assgn: <strong className="text-blue-400">{asgnCount}</strong></span>
+                                <span>Quizzes: <strong className="text-purple-400">{quizCount}</strong></span>
+                                <span>Sess: <strong className="text-amber-400">{sessCount}</strong></span>
+                              </div>
+
+                              <Button
+                                variant="neon"
+                                size="sm"
+                                onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
+                                className="text-[10px] py-1 px-3 font-bold"
+                              >
+                                Workspace →
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               );
@@ -347,8 +484,15 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         const coordinatedSection = sections.find(sec => sec.class_coordinator_id === facultyId);
         if (!coordinatedSection) return null;
 
+        const coordSem = semesters.find(s => s.id === coordinatedSection.semester_id);
+        const coordYear = years.find(y => y.id === coordSem?.academic_year_id);
+        const coordYearName = coordYear?.name || 'Academic Year';
+
         const secStudents = students.filter(s => s.section_id === coordinatedSection.id && s.active);
         const secTotalLectures = getPublishedTimetable({ sectionId: coordinatedSection.id });
+        const cleanCoordRoom = coordinatedSection.room_number 
+          ? coordinatedSection.room_number.replace(/^Room\s*(No\.?\s*)?/i, '').trim()
+          : `Section ${coordinatedSection.name}`;
 
         return (
           <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -363,11 +507,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                       OFFICIAL CLASS COORDINATOR
                     </span>
                     <span className="text-xs text-slate-400 font-mono">
-                      {coordinatedSection.room_number ? `Room ${coordinatedSection.room_number}` : `Section ${coordinatedSection.name}`}
+                      {coordYearName} • {cleanCoordRoom}
                     </span>
                   </div>
                   <h3 className="text-base font-black text-white mt-1">
-                    Class Coordinator Portal — Section {coordinatedSection.name}
+                    Class Coordinator Portal — {coordYearName} Section {coordinatedSection.name}
                   </h3>
                   <p className="text-xs text-slate-300 mt-0.5">
                     Coordinating {secStudents.length} enrolled students and complete weekly timetable oversight ({secTotalLectures.length} weekly periods)
@@ -406,11 +550,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               </div>
               <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
                 <span className="text-slate-400 text-[10px] block font-semibold">Department & Year</span>
-                <span className="text-sm font-bold text-white block mt-0.5 truncate">{dept?.name || 'CSE'} (2nd Yr)</span>
+                <span className="text-sm font-bold text-white block mt-0.5 truncate">{dept?.name || 'CSE'} ({coordYearName})</span>
               </div>
               <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
                 <span className="text-slate-400 text-[10px] block font-semibold">Coordinator Role</span>
-                <span className="text-sm font-bold text-emerald-400 block mt-0.5">Section {coordinatedSection.name} Lead</span>
+                <span className="text-sm font-bold text-emerald-400 block mt-0.5">{coordYearName} Sec {coordinatedSection.name} Lead</span>
               </div>
             </div>
           </div>
@@ -499,6 +643,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               displayedSchedule.map((entry) => {
                 const sec = sections.find(s => s.id === entry.section_id);
                 const sub = subjects.find(s => s.id === entry.subject_id);
+                const sem = semesters.find(s => s.id === sec?.semester_id);
+                const yr = years.find(y => y.id === sem?.academic_year_id);
+                const yrName = yr?.name || '';
+                const cleanRoom = (entry.room_number || sec?.room_number || '')
+                  .replace(/^Room\s*(No\.?\s*)?/i, '').trim();
 
                 const isFuture = isDateInFuture(selectedScheduleDate, todayISO);
                 const isToday = isDateToday(selectedScheduleDate, todayISO);
@@ -533,7 +682,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                           {sub?.subject_name || 'Subject'}
                         </h4>
                         <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                          Section {sec?.name} • {entry.room_number || sec?.room_number} • {entry.lecture_type || 'Theory'}
+                          {yrName ? `${yrName} • ` : ''}Section {sec?.name} • {cleanRoom || 'Room TBD'} • {entry.lecture_type || 'Theory'}
                         </p>
                       </div>
                     </div>
