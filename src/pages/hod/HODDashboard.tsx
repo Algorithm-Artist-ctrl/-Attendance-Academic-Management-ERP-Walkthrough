@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, 
   Users, 
@@ -9,7 +9,15 @@ import {
   Download, 
   Calendar,
   Layers,
-  BookOpen
+  BookOpen,
+  History,
+  Search,
+  Clock,
+  XCircle,
+  ChevronRight,
+  Filter,
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -17,7 +25,9 @@ import { Button } from '../../components/common/Button';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { getISTTodayDate, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
+import { StudentAttendanceHistorySummary } from '../../types/database.types';
 import { ATTENDANCE_ELIGIBILITY_THRESHOLD } from '../../config/academicConfig';
+import { supabaseService } from '../../lib/services/supabaseService';
 import { clsx } from 'clsx';
 
 interface HODDashboardProps {
@@ -36,6 +46,8 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
     sessions,
     years,
     semesters,
+    corrections,
+    attendanceRecords,
     getStudentAttendance,
     refreshData 
   } = useAcademic();
@@ -55,6 +67,113 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
 
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('ALL');
+
+  // ---------------------------------------------------------------------------
+  // Dedicated Student Attendance History & Drill-Down State
+  // ---------------------------------------------------------------------------
+  const [drillDownYearId, setDrillDownYearId] = useState<string>('');
+  const [drillDownSectionId, setDrillDownSectionId] = useState<string>('');
+  const [drillDownStudentId, setDrillDownStudentId] = useState<string>('');
+  const [drillDownStartDate, setDrillDownStartDate] = useState<string>('');
+  const [drillDownEndDate, setDrillDownEndDate] = useState<string>('');
+  const [studentHistoryData, setStudentHistoryData] = useState<StudentAttendanceHistorySummary | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+
+  // Supported academic years (2nd, 3rd, 4th strictly — NO 1st Year)
+  const supportedYears = useMemo(() => {
+    return years.filter(y => y.active && y.year_number !== 1);
+  }, [years]);
+
+  // Dynamic sections for drill-down based on drillDownYearId
+  const drillDownSections = useMemo(() => {
+    if (!drillDownYearId) return [];
+    const matchingSemIds = semesters.filter(s => s.academic_year_id === drillDownYearId).map(s => s.id);
+    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
+  }, [sections, semesters, drillDownYearId]);
+
+  // Dynamic students for drill-down based on drillDownSectionId
+  const drillDownStudents = useMemo(() => {
+    if (!drillDownSectionId) return [];
+    return students.filter(s => s.active && s.section_id === drillDownSectionId && (!dept?.id || s.department_id === dept.id));
+  }, [students, drillDownSectionId, dept?.id]);
+
+  // Reactive fetch for selected student's attendance history
+  useEffect(() => {
+    if (!drillDownStudentId) {
+      setStudentHistoryData(null);
+      return;
+    }
+    let isSubscribed = true;
+    setIsLoadingHistory(true);
+    supabaseService.fetchStudentAttendanceHistory({
+      studentId: drillDownStudentId,
+      startDate: drillDownStartDate || undefined,
+      endDate: drillDownEndDate || undefined,
+    }).then(res => {
+      if (isSubscribed) {
+        setStudentHistoryData(res);
+        setIsLoadingHistory(false);
+      }
+    }).catch(err => {
+      console.error('Failed to fetch student attendance history:', err);
+      if (isSubscribed) setIsLoadingHistory(false);
+    });
+    return () => { isSubscribed = false; };
+  }, [drillDownStudentId, drillDownStartDate, drillDownEndDate, corrections, attendanceRecords]);
+
+  // Jump from roster row directly into drill-down
+  const handleSelectStudentForHistory = (sId: string) => {
+    const stud = students.find(s => s.id === sId);
+    if (stud) {
+      if (stud.academic_year_id) setDrillDownYearId(stud.academic_year_id);
+      if (stud.section_id) setDrillDownSectionId(stud.section_id);
+      setDrillDownStudentId(stud.id);
+      setTimeout(() => {
+        const elem = document.getElementById('student-attendance-history-section');
+        if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  // Export Student Lecture-by-Lecture Attendance History to CSV
+  const handleExportStudentHistoryCSV = () => {
+    if (!studentHistoryData || studentHistoryData.records.length === 0) return;
+    const exportRows = studentHistoryData.records.map(r => ({
+      'Roll Number': studentHistoryData.rollNumber,
+      'Student Name': studentHistoryData.fullName,
+      'Academic Year': studentHistoryData.yearName,
+      'Section': studentHistoryData.sectionName,
+      'Session Date': r.sessionDate,
+      'Time Slot': r.startTime ? `${r.startTime} - ${r.endTime || ''}` : 'Scheduled Slot',
+      'Subject Code': r.subjectCode,
+      'Subject Name': r.subjectName,
+      'Faculty Member': r.facultyName,
+      'Recorded Status': r.status,
+      'Claim Status': r.claimStatus ? r.claimStatus.toUpperCase() : 'None',
+      'Claim Reason': r.claimReason || '',
+      'Claim Remarks': r.claimRemarks || '',
+      'Session Remarks': r.remarks || '',
+    }));
+    exportToCSV(exportRows, `Attendance_History_${studentHistoryData.rollNumber}_${getISTTodayDate()}`);
+  };
+
+  // Export Entire Section Overall Attendance Report to CSV
+  const handleExportSectionReportCSV = () => {
+    const sec = sections.find(s => s.id === drillDownSectionId);
+    const secStats = studentStats.filter(s => s.sectionName === sec?.name);
+    if (secStats.length === 0) return;
+    const exportRows = secStats.map(s => ({
+      'Roll Number': s.rollNumber,
+      'Student Name': s.fullName,
+      'Section': s.sectionName,
+      'Total Conducted': s.totalLectures,
+      'Attended (Present)': s.presentLectures,
+      'Absent Count': s.totalLectures - s.presentLectures,
+      'Attendance Percentage': s.percentage !== null ? `${s.percentage}%` : 'No Data',
+      'Eligibility Status': s.isDefaulter ? 'Defaulter (<75%)' : 'Eligible',
+    }));
+    exportToCSV(exportRows, `Section_Report_${sec?.name || 'Section'}_${getISTTodayDate()}`);
+  };
 
   // Dynamic sections based on selectedYearFilter
   const dynamicSections = useMemo(() => {
@@ -343,6 +462,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                 <th className="px-5 py-3.5 text-center">Attended</th>
                 <th className="px-5 py-3.5 text-center">Percentage</th>
                 <th className="px-5 py-3.5 text-center">Status</th>
+                <th className="px-5 py-3.5 text-right">Audit</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-500/10">
@@ -383,6 +503,16 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                         {!hasData ? 'No attendance recorded' : isDefaulter ? 'Defaulter (<75%)' : 'Eligible'}
                       </span>
                     </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        onClick={() => handleSelectStudentForHistory(s.studentId)}
+                        className="px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-[#00ff88] text-[11px] font-bold transition-all inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                        title="Open complete attendance history drill-down"
+                      >
+                        <span>View History</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -390,6 +520,339 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
           </table>
         </div>
       </div>
+
+      {/* ====================================================================== */}
+      {/* DEDICATED STUDENT ATTENDANCE HISTORY & VERIFICATION DRILL-DOWN SECTION */}
+      {/* ====================================================================== */}
+      <div id="student-attendance-history-section" className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden space-y-5 p-6 shadow-2xl">
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-500/15 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.15)] shrink-0">
+              <History className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  Student Attendance History & Audit Drill-Down
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                  Authoritative DB Records
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Lecture-by-lecture audit with real status tracking, discrepancy claims, and formula percentage.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Action Export Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="neon"
+              size="sm"
+              disabled={!studentHistoryData || studentHistoryData.records.length === 0}
+              onClick={handleExportStudentHistoryCSV}
+              leftIcon={<Download className="w-4 h-4 text-slate-950" />}
+              className="font-bold text-xs shadow-[0_0_12px_rgba(0,255,136,0.2)]"
+            >
+              Export Student History (CSV)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!drillDownSectionId}
+              onClick={handleExportSectionReportCSV}
+              leftIcon={<FileSpreadsheet className="w-4 h-4 text-[#00ff88]" />}
+              className="font-bold text-xs"
+            >
+              Export Section Report (CSV)
+            </Button>
+          </div>
+        </div>
+
+        {/* Interactive Filter Bar */}
+        <div className="bg-slate-950/70 border border-emerald-500/20 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Year Selector */}
+          <div>
+            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              1. Academic Year (Strictly No 1st Year)
+            </label>
+            <select
+              value={drillDownYearId}
+              onChange={(e) => {
+                setDrillDownYearId(e.target.value);
+                setDrillDownSectionId('');
+                setDrillDownStudentId('');
+              }}
+              className="w-full bg-slate-900 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-[#00ff88] cursor-pointer"
+            >
+              <option value="">Select Academic Year...</option>
+              {supportedYears.map(y => (
+                <option key={y.id} value={y.id}>{y.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Selector */}
+          <div>
+            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              2. Section ({drillDownSections.length})
+            </label>
+            <select
+              value={drillDownSectionId}
+              disabled={!drillDownYearId}
+              onChange={(e) => {
+                setDrillDownSectionId(e.target.value);
+                setDrillDownStudentId('');
+              }}
+              className="w-full bg-slate-900 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-[#00ff88] cursor-pointer disabled:opacity-40"
+            >
+              <option value="">Select Section...</option>
+              {drillDownSections.map(s => (
+                <option key={s.id} value={s.id}>Section {s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Student Selector */}
+          <div>
+            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              3. Student ({drillDownStudents.length})
+            </label>
+            <select
+              value={drillDownStudentId}
+              disabled={!drillDownSectionId}
+              onChange={(e) => setDrillDownStudentId(e.target.value)}
+              className="w-full bg-slate-900 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs font-bold text-[#00ff88] focus:outline-none focus:border-[#00ff88] cursor-pointer disabled:opacity-40"
+            >
+              <option value="">Select Student...</option>
+              {drillDownStudents.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.roll_number} — {s.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Range: Start */}
+          <div>
+            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              Start Date (Optional)
+            </label>
+            <input
+              type="date"
+              value={drillDownStartDate}
+              onChange={(e) => setDrillDownStartDate(e.target.value)}
+              className="w-full bg-slate-900 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 focus:outline-none focus:border-[#00ff88] cursor-pointer"
+            />
+          </div>
+
+          {/* Date Range: End */}
+          <div>
+            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              End Date (Optional)
+            </label>
+            <input
+              type="date"
+              value={drillDownEndDate}
+              onChange={(e) => setDrillDownEndDate(e.target.value)}
+              className="w-full bg-slate-900 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 focus:outline-none focus:border-[#00ff88] cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Performance Metric Cards */}
+        {studentHistoryData && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {/* Total Scheduled */}
+              <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-emerald-500/15 text-center">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Total Lectures</span>
+                <span className="text-xl sm:text-2xl font-black text-white mt-0.5 block font-mono">
+                  {studentHistoryData.totalLectures}
+                </span>
+                <span className="text-[10px] text-slate-400">All Scheduled</span>
+              </div>
+
+              {/* Present Count */}
+              <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-emerald-500/20 text-center">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 block">Attended (Present)</span>
+                <span className="text-xl sm:text-2xl font-black text-[#00ff88] mt-0.5 block font-mono">
+                  {studentHistoryData.presentCount}
+                </span>
+                <span className="text-[10px] text-emerald-400/80 font-bold">Present in Class</span>
+              </div>
+
+              {/* Absent Count */}
+              <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-rose-500/20 text-center">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-rose-400 block">Absent Count</span>
+                <span className="text-xl sm:text-2xl font-black text-rose-400 mt-0.5 block font-mono">
+                  {studentHistoryData.absentCount}
+                </span>
+                <span className="text-[10px] text-rose-400/80 font-bold">Unattended</span>
+              </div>
+
+              {/* Excluded Slots */}
+              <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 text-center">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Excluded Slots</span>
+                <span className="text-xl sm:text-2xl font-black text-slate-400 mt-0.5 block font-mono">
+                  {studentHistoryData.notMarkedCount + studentHistoryData.cancelledCount}
+                </span>
+                <span className="text-[10px] text-slate-500">Not Marked / Cancelled</span>
+              </div>
+
+              {/* Real Percentage */}
+              <div className={clsx(
+                'col-span-2 sm:col-span-1 p-3.5 rounded-2xl border text-center shadow-lg',
+                studentHistoryData.attendancePercentage === null
+                  ? 'bg-slate-950/60 border-slate-800'
+                  : studentHistoryData.attendancePercentage < 75
+                    ? 'bg-rose-950/20 border-rose-500/40'
+                    : 'bg-emerald-950/20 border-emerald-500/40'
+              )}>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-300 block">
+                  Official Percentage
+                </span>
+                <span className={clsx(
+                  'text-2xl font-black mt-0.5 block font-mono tracking-tight',
+                  studentHistoryData.attendancePercentage === null
+                    ? 'text-slate-400'
+                    : studentHistoryData.attendancePercentage < 75
+                      ? 'text-rose-400'
+                      : 'text-[#00ff88]'
+                )}>
+                  {studentHistoryData.attendancePercentage !== null ? `${studentHistoryData.attendancePercentage}%` : 'N/A'}
+                </span>
+                <span className="text-[9px] text-slate-400 block" title="Formula: Present / (Present + Absent) * 100">
+                  Present ÷ (Present + Absent) × 100
+                </span>
+              </div>
+            </div>
+
+            <div className="px-4 py-2 rounded-xl bg-slate-950/40 border border-emerald-500/10 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                Auditing: <strong className="text-white">{studentHistoryData.fullName}</strong> (<span className="text-[#00ff88] font-mono">{studentHistoryData.rollNumber}</span>) • {studentHistoryData.yearName} • Section {studentHistoryData.sectionName}
+              </div>
+              <div className="text-[10px] text-slate-400">
+                Formula complies with University eligibility norms. Unconducted slots are strictly excluded from the denominator.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* History Records Table / States */}
+        {isLoadingHistory ? (
+          <div className="py-12 text-center space-y-3">
+            <RefreshCw className="w-8 h-8 text-[#00ff88] animate-spin mx-auto" />
+            <p className="text-xs text-slate-400 font-bold">Querying complete attendance history from Supabase...</p>
+          </div>
+        ) : !drillDownStudentId ? (
+          <div className="p-10 rounded-2xl bg-slate-950/40 border border-emerald-500/10 text-center space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88] flex items-center justify-center mx-auto">
+              <History className="w-5 h-5" />
+            </div>
+            <h4 className="text-sm font-bold text-white">Select a Student to View History</h4>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Choose an Academic Year, Section, and Student above, or click "View History" on any student in the roster table above.
+            </p>
+          </div>
+        ) : studentHistoryData && studentHistoryData.records.length === 0 ? (
+          <div className="p-10 rounded-2xl bg-slate-950/40 border border-emerald-500/10 text-center space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+              <Clock className="w-5 h-5" />
+            </div>
+            <h4 className="text-sm font-bold text-white">No Lecture Records Found</h4>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              There are no attendance sessions recorded for this student in the chosen date range.
+            </p>
+          </div>
+        ) : studentHistoryData ? (
+          <div className="overflow-x-auto rounded-2xl border border-emerald-500/15">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/90 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <tr>
+                  <th className="px-4 py-3">Session Date</th>
+                  <th className="px-4 py-3">Time Slot</th>
+                  <th className="px-4 py-3">Subject</th>
+                  <th className="px-4 py-3">Assigned Faculty</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3">Claim Discrepancy & Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-500/10 bg-slate-950/40">
+                {studentHistoryData.records.map((r) => (
+                  <tr key={r.recordId} className="hover:bg-emerald-500/5 transition-colors">
+                    <td className="px-4 py-3.5 font-mono font-bold text-white">
+                      {r.sessionDate}
+                    </td>
+
+                    <td className="px-4 py-3.5 font-mono text-slate-300">
+                      {r.startTime ? `${r.startTime} – ${r.endTime || ''}` : 'Official Slot'}
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-white">{r.subjectName}</div>
+                      <span className="text-[10px] font-mono text-emerald-400 font-semibold">{r.subjectCode}</span>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-slate-300 font-medium">
+                      {r.facultyName}
+                    </td>
+
+                    <td className="px-4 py-3.5 text-center">
+                      <span className={clsx(
+                        'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border',
+                        r.status === 'Present'
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                          : r.status === 'Absent'
+                            ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                            : r.status === 'Cancelled'
+                              ? 'bg-slate-800/60 border-slate-700/60 text-slate-400'
+                              : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                      )}>
+                        ● {r.status}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      {r.claimStatus ? (
+                        <div className="space-y-0.5">
+                          <span className={clsx(
+                            'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border',
+                            r.claimStatus === 'approved'
+                              ? 'bg-emerald-500/20 text-[#00ff88] border-emerald-500/30'
+                              : r.claimStatus === 'rejected'
+                                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                                : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                          )}>
+                            Claim {r.claimStatus.toUpperCase()}
+                          </span>
+                          {r.claimReason && (
+                            <p className="text-[10px] text-slate-300 italic truncate max-w-xs" title={r.claimReason}>
+                              "{r.claimReason}"
+                            </p>
+                          )}
+                          {r.claimRemarks && (
+                            <p className="text-[9px] text-slate-400 font-sans" title={r.claimRemarks}>
+                              Review: {r.claimRemarks}
+                            </p>
+                          )}
+                        </div>
+                      ) : r.remarks ? (
+                        <span className="text-[10px] text-slate-400 italic">{r.remarks}</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-600">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </div>
+
 
     </div>
   );

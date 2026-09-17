@@ -239,8 +239,52 @@ export interface AttendanceCorrection {
   review_remarks?: string;
   created_at: string;
   student?: Student;
-  record?: AttendanceRecord;
+  record?: AttendanceRecord & {
+    session?: AttendanceSession & {
+      subject?: Subject;
+      section?: Section;
+      faculty?: Faculty;
+    };
+  };
   reviewer?: Faculty;
+}
+
+export interface StudentAttendanceHistoryRecord {
+  recordId: string;
+  sessionId: string;
+  sessionDate: string;
+  startTime?: string;
+  endTime?: string;
+  subjectId: string;
+  subjectCode: string;
+  subjectName: string;
+  facultyId: string;
+  facultyName: string;
+  sectionId: string;
+  sectionName: string;
+  status: 'Present' | 'Absent' | 'Not Marked' | 'Cancelled';
+  rawStatus: AttendanceStatus | 'Not Marked';
+  remarks?: string;
+  claimStatus?: CorrectionStatus;
+  claimId?: string;
+  claimReason?: string;
+  claimRemarks?: string;
+}
+
+export interface StudentAttendanceHistorySummary {
+  studentId: string;
+  rollNumber: string;
+  fullName: string;
+  sectionName: string;
+  yearName: string;
+  totalLectures: number;
+  presentCount: number;
+  absentCount: number;
+  notMarkedCount: number;
+  cancelledCount: number;
+  eligibleConducted: number;
+  attendancePercentage: number | null;
+  records: StudentAttendanceHistoryRecord[];
 }
 
 export interface AuditLog {

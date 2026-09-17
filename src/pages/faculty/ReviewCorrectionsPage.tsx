@@ -232,9 +232,9 @@ export const ReviewCorrectionsPage: React.FC = () => {
             <div className="space-y-3 md:hidden">
               {currentList.map((item) => {
                 const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
-                const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
-                const sub = subjects.find(s => s.id === session?.subject_id);
-                const sec = sections.find(s => s.id === session?.section_id);
+                const session = record?.session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                const sub = session?.subject || subjects.find(s => s.id === session?.subject_id);
+                const sec = session?.section || sections.find(s => s.id === session?.section_id);
                 const stud = item.student || students.find(s => s.id === item.student_id);
                 const isProcessing = processingId === item.id;
 
@@ -333,9 +333,9 @@ export const ReviewCorrectionsPage: React.FC = () => {
                   <tbody className="divide-y divide-emerald-500/10">
                     {currentList.map((item) => {
                       const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
-                      const session = attendanceSessions.find(s => s.id === record?.attendance_session_id);
-                      const sub = subjects.find(s => s.id === session?.subject_id);
-                      const sec = sections.find(s => s.id === session?.section_id);
+                      const session = record?.session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                      const sub = session?.subject || subjects.find(s => s.id === session?.subject_id);
+                      const sec = session?.section || sections.find(s => s.id === session?.section_id);
                       const stud = item.student || students.find(s => s.id === item.student_id);
 
                       const isProcessing = processingId === item.id;

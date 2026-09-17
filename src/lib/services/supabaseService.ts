@@ -34,7 +34,9 @@ import {
   AccountStatus,
   AdminAccountDirectoryEntry,
   ClassCoordinatorAssignment,
-  FacultyDashboardPayload
+  FacultyDashboardPayload,
+  StudentAttendanceHistoryRecord,
+  StudentAttendanceHistorySummary
 } from '../../types/database.types';
 import { getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -329,7 +331,7 @@ export const supabaseService = {
   async fetchCorrections(): Promise<AttendanceCorrection[]> {
     const { data, error } = await supabase
       .from('attendance_corrections')
-      .select('*')
+      .select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching corrections:', error.message);
@@ -389,7 +391,7 @@ export const supabaseService = {
         supabase.from('timetable_entries').select('*').eq('active', true).order('period_number', { ascending: true }),
         supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
         supabase.from('attendance_records').select('*'),
-        supabase.from('attendance_corrections').select('*').order('created_at', { ascending: false }),
+        supabase.from('attendance_corrections').select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))').order('created_at', { ascending: false }),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('assignments').select('*').order('created_at', { ascending: false }),
@@ -809,7 +811,8 @@ export const supabaseService = {
 
   // 3B. Authoritative Student Attendance Claim via RPC (Enforces 09:00 AM - 03:40 PM IST Window Server-Side)
   async claimAttendance(params: {
-    timetableEntryId: string;
+    timetableEntryId?: string;
+    attendanceRecordId?: string;
     studentId: string;
     reason: string;
     requestedStatus?: AttendanceStatus;
@@ -819,17 +822,19 @@ export const supabaseService = {
     success: boolean;
     code: string;
     message: string;
+    id?: string;
     claimId?: string;
     sessionId?: string;
     recordId?: string;
   }> {
     const { data, error } = await supabase.rpc('claim_attendance', {
-      p_timetable_entry_id: params.timetableEntryId,
+      p_timetable_entry_id: params.timetableEntryId || null,
       p_student_id: params.studentId,
       p_reason: params.reason,
       p_requested_status: params.requestedStatus || 'Present',
       p_simulated_time: params.simulatedTime || null,
       p_simulated_date: params.simulatedDate || null,
+      p_attendance_record_id: params.attendanceRecordId || null,
     });
 
     if (error) {
@@ -848,13 +853,110 @@ export const supabaseService = {
       success: true,
       code: res.code,
       message: res.message,
+      id: res.claim_id,
       claimId: res.claim_id,
       sessionId: res.session_id,
       recordId: res.record_id,
     };
   },
 
-  // 4. Submit Correction Request (General fallback)
+  // 4A. Atomic Approve Attendance Claim RPC
+  async approveAttendanceClaim(params: {
+    claimId: string;
+    facultyId: string;
+    remarks?: string;
+  }): Promise<{
+    success: boolean;
+    code: string;
+    message: string;
+    claimId: string;
+    recordId: string;
+    studentId: string;
+    status: string;
+  }> {
+    const { data, error } = await supabase.rpc('approve_attendance_claim', {
+      p_claim_id: params.claimId,
+      p_faculty_id: params.facultyId,
+      p_remarks: params.remarks || null,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to approve attendance claim.');
+    }
+
+    const res = data as any;
+    if (!res || !res.success) {
+      const err = new Error(res?.message || 'Approval rejected.') as any;
+      err.code = res?.code || 'CLAIM_APPROVAL_FAILED';
+      throw err;
+    }
+
+    return res;
+  },
+
+  // 4B. Atomic Reject Attendance Claim RPC
+  async rejectAttendanceClaim(params: {
+    claimId: string;
+    facultyId: string;
+    remarks?: string;
+  }): Promise<{
+    success: boolean;
+    code: string;
+    message: string;
+    claimId: string;
+    studentId: string;
+  }> {
+    const { data, error } = await supabase.rpc('reject_attendance_claim', {
+      p_claim_id: params.claimId,
+      p_faculty_id: params.facultyId,
+      p_remarks: params.remarks || null,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to reject attendance claim.');
+    }
+
+    const res = data as any;
+    if (!res || !res.success) {
+      const err = new Error(res?.message || 'Rejection failed.') as any;
+      err.code = res?.code || 'CLAIM_REJECTION_FAILED';
+      throw err;
+    }
+
+    return res;
+  },
+
+  // 4C. Review Correction Request (Unified wrapper calling atomic RPCs)
+  async reviewCorrection(params: {
+    correctionId: string;
+    status: 'approved' | 'rejected';
+    reviewerFacultyId: string;
+    reviewRemarks?: string;
+  }): Promise<AttendanceCorrection> {
+    if (params.status === 'approved') {
+      await this.approveAttendanceClaim({
+        claimId: params.correctionId,
+        facultyId: params.reviewerFacultyId,
+        remarks: params.reviewRemarks,
+      });
+    } else {
+      await this.rejectAttendanceClaim({
+        claimId: params.correctionId,
+        facultyId: params.reviewerFacultyId,
+        remarks: params.reviewRemarks,
+      });
+    }
+
+    const { data } = await supabase
+      .from('attendance_corrections')
+      .select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))')
+      .eq('id', params.correctionId)
+      .maybeSingle();
+
+    return data as AttendanceCorrection;
+  },
+
+  // 4D. Submit Correction Request (Direct fallback)
   async submitCorrection(params: {
     attendanceRecordId: string;
     studentId: string;
@@ -880,80 +982,150 @@ export const supabaseService = {
     return data as AttendanceCorrection;
   },
 
-  // 4. Review Correction Request (Approve / Reject)
-  async reviewCorrection(params: {
-    correctionId: string;
-    status: 'approved' | 'rejected';
-    reviewerFacultyId: string;
-    reviewRemarks?: string;
-  }) {
-    const { data: updatedCorrection, error: corrErr } = await supabase
+  // 4E. Fetch Relational Claims for Faculty / HOD
+  async fetchFacultyClaims(): Promise<AttendanceCorrection[]> {
+    const { data, error } = await supabase
       .from('attendance_corrections')
-      .update({
-        status: params.status,
-        reviewed_by: params.reviewerFacultyId,
-        reviewed_at: new Date().toISOString(),
-        review_remarks: params.reviewRemarks || null,
-      })
-      .eq('id', params.correctionId)
-      .select()
-      .single();
+      .select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))')
+      .order('created_at', { ascending: false });
 
-    if (corrErr || !updatedCorrection) {
-      throw new Error(`Failed to update correction: ${corrErr?.message}`);
+    if (error) {
+      console.error('Error fetching relational claims:', error.message);
+      return [];
     }
-
-    // Fetch reviewer faculty full name for audit fidelity
-    const { data: reviewerInfo } = await supabase
-      .from('faculty')
-      .select('full_name')
-      .eq('id', params.reviewerFacultyId)
-      .single();
-
-    // If approved, update the actual attendance record in database
-    if (params.status === 'approved' && updatedCorrection.attendance_record_id) {
-      await supabase
-        .from('attendance_records')
-        .update({
-          status: updatedCorrection.requested_status,
-          marked_by: params.reviewerFacultyId,
-          marked_at: new Date().toISOString(),
-          remarks: `Corrected via Request #${params.correctionId}`,
-        })
-        .eq('id', updatedCorrection.attendance_record_id);
-
-      // Audit Log for Approval
-      await supabase.from('audit_logs').insert({
-        actor_id: params.reviewerFacultyId,
-        actor_name: reviewerInfo?.full_name || 'Faculty Member',
-        actor_role: 'faculty',
-        action: 'ATTENDANCE_CORRECTION_APPROVED',
-        entity_type: 'attendance_records',
-        entity_id: updatedCorrection.attendance_record_id,
-        new_values: {
-          correctionId: params.correctionId,
-          newStatus: updatedCorrection.requested_status,
-          remarks: params.reviewRemarks,
-        },
-      });
-    } else if (params.status === 'rejected') {
-      // Audit Log for Rejection
-      await supabase.from('audit_logs').insert({
-        actor_id: params.reviewerFacultyId,
-        actor_name: reviewerInfo?.full_name || 'Faculty Member',
-        actor_role: 'faculty',
-        action: 'ATTENDANCE_CORRECTION_REJECTED',
-        entity_type: 'attendance_corrections',
-        entity_id: params.correctionId,
-        new_values: {
-          correctionId: params.correctionId,
-          rejectionRemarks: params.reviewRemarks,
-        },
-      });
-    }
-
-    return updatedCorrection as AttendanceCorrection;
+    return (data as AttendanceCorrection[]) || [];
   },
+
+  // 4F. Fetch Complete Student Attendance History & Performance Summary
+  async fetchStudentAttendanceHistory(params: {
+    studentId: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<StudentAttendanceHistorySummary | null> {
+    const { data: student, error: studErr } = await supabase
+      .from('students')
+      .select(`
+        id,
+        roll_number,
+        full_name,
+        section_id,
+        academic_year_id,
+        section:sections(id, name),
+        academic_year:academic_years(id, name, year_number)
+      `)
+      .eq('id', params.studentId)
+      .maybeSingle();
+
+    if (studErr || !student) {
+      console.error('Student not found for attendance history:', studErr?.message);
+      return null;
+    }
+
+    const { data: rawRecords, error: recErr } = await supabase
+      .from('attendance_records')
+      .select(`
+        id,
+        status,
+        remarks,
+        created_at,
+        marked_at,
+        attendance_session_id,
+        session:attendance_sessions(
+          id,
+          session_date,
+          start_time,
+          end_time,
+          status,
+          subject_id,
+          faculty_id,
+          section_id,
+          subject:subjects(id, subject_code, subject_name),
+          faculty:faculty(id, full_name, faculty_code)
+        )
+      `)
+      .eq('student_id', params.studentId);
+
+    if (recErr) {
+      console.error('Failed to query student attendance records:', recErr.message);
+      return null;
+    }
+
+    const { data: rawCorrections } = await supabase
+      .from('attendance_corrections')
+      .select('*')
+      .eq('student_id', params.studentId);
+
+    const correctionMap = new Map((rawCorrections || []).map(c => [c.attendance_record_id, c]));
+    const recordsList: StudentAttendanceHistoryRecord[] = [];
+
+    (rawRecords || []).forEach((r: any) => {
+      const session = r.session;
+      if (!session) return;
+
+      if (params.startDate && session.session_date < params.startDate) return;
+      if (params.endDate && session.session_date > params.endDate) return;
+
+      const claim = correctionMap.get(r.id);
+      const displayStatus: 'Present' | 'Absent' | 'Not Marked' | 'Cancelled' = 
+        session.status === 'cancelled'
+          ? 'Cancelled'
+          : (r.status === 'Present' ? 'Present' : 'Absent');
+
+      recordsList.push({
+        recordId: r.id,
+        sessionId: session.id,
+        sessionDate: session.session_date,
+        startTime: session.start_time ? session.start_time.substring(0, 5) : undefined,
+        endTime: session.end_time ? session.end_time.substring(0, 5) : undefined,
+        subjectId: session.subject_id,
+        subjectCode: session.subject?.subject_code || '',
+        subjectName: session.subject?.subject_name || 'Academic Subject',
+        facultyId: session.faculty_id,
+        facultyName: session.faculty?.full_name || 'Assigned Faculty',
+        sectionId: session.section_id,
+        sectionName: (student as any).section?.name || '',
+        status: displayStatus,
+        rawStatus: r.status,
+        remarks: r.remarks,
+        claimStatus: claim?.status,
+        claimId: claim?.id,
+        claimReason: claim?.reason,
+        claimRemarks: claim?.review_remarks,
+      });
+    });
+
+    recordsList.sort((a, b) => {
+      const dComp = b.sessionDate.localeCompare(a.sessionDate);
+      if (dComp !== 0) return dComp;
+      return (b.startTime || '').localeCompare(a.startTime || '');
+    });
+
+    const presentCount = recordsList.filter(r => r.status === 'Present').length;
+    const absentCount = recordsList.filter(r => r.status === 'Absent').length;
+    const notMarkedCount = recordsList.filter(r => r.status === 'Not Marked').length;
+    const cancelledCount = recordsList.filter(r => r.status === 'Cancelled').length;
+    const eligibleConducted = presentCount + absentCount;
+    const attendancePercentage = eligibleConducted > 0 
+      ? Math.round((presentCount / eligibleConducted) * 100) 
+      : null;
+
+    return {
+      studentId: student.id,
+      rollNumber: student.roll_number,
+      fullName: student.full_name,
+      sectionName: (student as any).section?.name || '',
+      yearName: (student as any).academic_year?.name || '',
+      totalLectures: recordsList.length,
+      presentCount,
+      absentCount,
+      notMarkedCount,
+      cancelledCount,
+      eligibleConducted,
+      attendancePercentage,
+      records: recordsList,
+    };
+  },
+
 
   // 5. Admin CRUD Operations with Supabase Profile Sync
   async addStudent(student: Omit<Student, 'id' | 'created_at' | 'updated_at'>) {

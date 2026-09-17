@@ -995,10 +995,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         debounceTableSync('attendance', () => refreshAttendance());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
-        debounceTableSync('attendance', () => refreshAttendance());
+        debounceTableSync('attendance', () => {
+          refreshAttendance();
+          refreshCorrections();
+        });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
-        debounceTableSync('attendance_corrections', () => refreshCorrections());
+        debounceTableSync('attendance_corrections', () => {
+          refreshCorrections();
+          refreshAttendance();
+        });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty' }, () => {
         debounceTableSync('faculty', () => refreshFaculty());
@@ -1083,65 +1089,33 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     requestedStatus: AttendanceStatus;
     reason: string;
   }) => {
-    // 1. Authoritative path: If timetableEntryId is present, execute server-side claimAttendance RPC
-    if (params.timetableEntryId) {
-      const claimRes = await supabaseService.claimAttendance({
-        timetableEntryId: params.timetableEntryId,
-        studentId: params.studentId,
-        reason: params.reason,
-        requestedStatus: params.requestedStatus,
-      });
-
-      erpStorage.submitCorrectionRequest({
-        attendanceRecordId: claimRes.recordId || params.attendanceRecordId || '',
-        studentId: params.studentId,
-        requestedStatus: params.requestedStatus,
-        reason: params.reason,
-      });
-
-      await Promise.all([refreshCorrections(), refreshAttendance()]);
-      return {
-        id: claimRes.claimId || '',
-        attendance_record_id: claimRes.recordId || '',
-        student_id: params.studentId,
-        requested_status: params.requestedStatus,
-        reason: params.reason,
-        status: 'pending' as const,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as AttendanceCorrection;
-    }
-
-    // 2. Fallback path if attendanceRecordId is provided directly
-    let recId = params.attendanceRecordId;
-
-    if (!recId) {
-      throw new Error('Unable to resolve attendance record for this claim.');
-    }
-
-    // Validate duplicate
-    const existing = corrections.find(
-      c => c.attendance_record_id === recId &&
-           (c.status === 'pending' || c.status === 'approved')
-    );
-    if (existing) {
-      throw new Error(`A claim for this lecture has already been submitted (Status: ${existing.status.toUpperCase()}).`);
-    }
-
-    const res = await supabaseService.submitCorrection({
-      attendanceRecordId: recId,
+    // Execute authoritative server-side claimAttendance RPC
+    const claimRes = await supabaseService.claimAttendance({
+      timetableEntryId: params.timetableEntryId,
+      attendanceRecordId: params.attendanceRecordId,
       studentId: params.studentId,
-      requestedStatus: params.requestedStatus,
       reason: params.reason,
+      requestedStatus: params.requestedStatus,
     });
+
     erpStorage.submitCorrectionRequest({
-      attendanceRecordId: recId,
+      attendanceRecordId: claimRes.recordId || params.attendanceRecordId || '',
       studentId: params.studentId,
       requestedStatus: params.requestedStatus,
       reason: params.reason,
     });
+
     await Promise.all([refreshCorrections(), refreshAttendance()]);
-    return res;
+    return {
+      id: claimRes.claimId || '',
+      attendance_record_id: claimRes.recordId || params.attendanceRecordId || '',
+      student_id: params.studentId,
+      requested_status: params.requestedStatus,
+      reason: params.reason,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as AttendanceCorrection;
   };
 
   // 3. Review Correction Request (Approve / Reject)
@@ -1153,8 +1127,37 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }) => {
     const res = await supabaseService.reviewCorrection(params);
     erpStorage.reviewCorrectionRequest(params);
-    await refreshCorrections();
-    await refreshAttendance();
+
+    // Optimistically update local corrections state
+    setCorrections(prev => prev.map(c => {
+      if (c.id === params.correctionId) {
+        return {
+          ...c,
+          status: params.status,
+          reviewed_by: params.reviewerFacultyId,
+          reviewed_at: new Date().toISOString(),
+          review_remarks: params.reviewRemarks,
+        };
+      }
+      return c;
+    }));
+
+    // If approved, optimistically flip attendance record to Present immediately
+    if (params.status === 'approved' && res?.attendance_record_id) {
+      setAttendanceRecords(prev => prev.map(r => {
+        if (r.id === res.attendance_record_id) {
+          return {
+            ...r,
+            status: 'Present',
+            marked_by: params.reviewerFacultyId,
+            marked_at: new Date().toISOString(),
+          };
+        }
+        return r;
+      }));
+    }
+
+    await Promise.all([refreshCorrections(), refreshAttendance()]);
     return res;
   };
 
@@ -1999,6 +2002,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // 10. Filter Attendance Claims strictly for the assigned faculty
   const getFacultyCorrectionRequests = (facultyId: string): AttendanceCorrection[] => {
     const myAssignments = assignments.filter(a => a.faculty_id === facultyId);
+    const myCoordAssignments = classCoordinatorAssignments.filter(c => c.faculty_id === facultyId && c.active);
 
     return corrections.filter(c => {
       // If already reviewed by this faculty
@@ -2016,7 +2020,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const isAssigned = myAssignments.some(
         a => a.subject_id === sess.subject_id && a.section_id === sess.section_id
       );
-      return isAssigned;
+      if (isAssigned) return true;
+
+      // Match 3: Faculty is Class Coordinator for this section
+      const isCoordinator = myCoordAssignments.some(ca => ca.section_id === sess.section_id) ||
+                            sections.some(s => s.id === sess.section_id && s.class_coordinator_id === facultyId);
+      if (isCoordinator) return true;
+
+      return false;
     });
   };
 
