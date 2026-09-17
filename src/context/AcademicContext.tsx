@@ -1647,11 +1647,28 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 6. Timetable Conflict Engine
   const checkTimetableConflict = (entry: Omit<TimetableEntry, 'id'>, excludeId?: string): TimetableConflict | null => {
-    const isNonInstructional = (type?: string) => ['Lunch', 'Sports', 'Other'].includes(type || '');
+    const isNonInstructional = (type?: string, period?: number) => {
+      if (period === 5) return true;
+      if (!type) return false;
+      const t = type.toLowerCase().trim();
+      return t === 'lunch' || t.includes('lunch') || t.includes('break') || t.includes('sport') || t.includes('recess') || t.includes('other');
+    };
+
     const isCommonArea = (room?: string) => {
       if (!room) return true;
       const r = room.toLowerCase().trim();
-      return r === 'tbd' || r.includes('refectory') || r.includes('break') || r.includes('cafeteria') || r.includes('dining');
+      return (
+        r === '' ||
+        r === 'tbd' ||
+        r === 'room' ||
+        r.includes('refectory') ||
+        r.includes('break') ||
+        r.includes('cafeteria') ||
+        r.includes('dining') ||
+        r.includes('canteen') ||
+        r.includes('ground') ||
+        r.includes('sports')
+      );
     };
 
     const formatSectionLabel = (secId?: string) => {
@@ -1663,11 +1680,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return yr ? `${yr.name} Section ${sec.name}` : `Section ${sec.name}`;
     };
 
+    // Filter active entries: strictly exclude current slot by ID and slot coordinates
     const activeEntries = timetable.filter(t => {
       if (!t.active) return false;
+      // Exclude exact slot ID being edited
       if (excludeId && t.id === excludeId) return false;
-      // Exclude the same slot being edited
-      if (entry.section_id && t.section_id === entry.section_id && t.day_of_week === entry.day_of_week && t.period_number === entry.period_number) {
+      // Exclude the same slot being edited by coordinates
+      if (
+        entry.section_id &&
+        t.section_id === entry.section_id &&
+        t.day_of_week === entry.day_of_week &&
+        t.period_number === entry.period_number
+      ) {
         return false;
       }
       return true;
@@ -1679,7 +1703,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return (h || 0) * 60 + (m || 0);
     };
 
-    const hasTimeOverlap = (e1: { start_time?: string; end_time?: string; period_number: number }, e2: { start_time?: string; end_time?: string; period_number: number }) => {
+    const hasTimeOverlap = (
+      e1: { start_time?: string; end_time?: string; period_number: number },
+      e2: { start_time?: string; end_time?: string; period_number: number }
+    ) => {
       if (e1.start_time && e1.end_time && e2.start_time && e2.end_time) {
         const sA = toMins(e1.start_time);
         const eA = toMins(e1.end_time);
@@ -1701,7 +1728,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
     }
 
-    // Rule 1: Same Section Intra-Slot Collision
+    // Rule 1: Same Section Intra-Slot Collision (Multiple classes scheduled in the same section at the same time)
     if (entry.section_id) {
       const sameSecConflict = activeEntries.find(
         t => t.section_id === entry.section_id &&
@@ -1719,10 +1746,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    // Rule 2: Faculty Double-Booking (Skipped for non-instructional slots e.g. Lunch Break)
-    if (entry.faculty_id && !isNonInstructional(entry.lecture_type)) {
+    // Rule 2: Faculty Double-Booking across sections (Strictly skipped for non-instructional slots e.g. Lunch Break, Sports, Other, Period 5)
+    if (entry.faculty_id && !isNonInstructional(entry.lecture_type, entry.period_number)) {
       const facultyConflict = activeEntries.find(
-        t => !isNonInstructional(t.lecture_type) &&
+        t => t.section_id !== entry.section_id &&
+             !isNonInstructional(t.lecture_type, t.period_number) &&
              t.faculty_id === entry.faculty_id &&
              t.day_of_week === entry.day_of_week &&
              hasTimeOverlap(entry, t)
@@ -1739,10 +1767,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    // Rule 3: Room Collision (Skipped for non-instructional slots and common break spaces)
-    if (entry.room_number && !isNonInstructional(entry.lecture_type) && !isCommonArea(entry.room_number)) {
+    // Rule 3: Room Collision across sections
+    // Strictly requires:
+    // 1. Entry is instructional (NOT Lunch, NOT Period 5, NOT Sports, NOT Other)
+    // 2. Room is a specific classroom (NOT common dining/refectory/break spaces)
+    // 3. Belonging to ANOTHER section (t.section_id !== entry.section_id)
+    if (
+      entry.room_number &&
+      !isNonInstructional(entry.lecture_type, entry.period_number) &&
+      !isCommonArea(entry.room_number)
+    ) {
       const roomConflict = activeEntries.find(
-        t => !isNonInstructional(t.lecture_type) &&
+        t => t.section_id !== entry.section_id &&
+             !isNonInstructional(t.lecture_type, t.period_number) &&
              t.room_number &&
              !isCommonArea(t.room_number) &&
              t.room_number.toLowerCase().trim() === entry.room_number.toLowerCase().trim() &&

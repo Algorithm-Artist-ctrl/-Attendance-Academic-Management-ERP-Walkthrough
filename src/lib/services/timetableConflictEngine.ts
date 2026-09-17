@@ -211,20 +211,36 @@ export class TimetableConflictEngine {
       }
 
       // Helper for non-instructional and common areas
-      const isNonInstructionalType = (type?: string) => ['Lunch', 'Sports', 'Other'].includes(type || '');
+      const isNonInstructionalType = (type?: string, period?: number) => {
+        if (period === 5) return true;
+        if (!type) return false;
+        const low = type.toLowerCase().trim();
+        return low === 'lunch' || low.includes('lunch') || low.includes('break') || low.includes('sport') || low.includes('recess') || low.includes('other');
+      };
       const isCommonRoomArea = (r?: string) => {
         if (!r) return true;
         const low = r.toLowerCase().trim();
-        return low === 'tbd' || low.includes('refectory') || low.includes('break') || low.includes('cafeteria') || low.includes('dining');
+        return (
+          low === '' ||
+          low === 'tbd' ||
+          low === 'room' ||
+          low.includes('refectory') ||
+          low.includes('break') ||
+          low.includes('cafeteria') ||
+          low.includes('dining') ||
+          low.includes('canteen') ||
+          low.includes('ground') ||
+          low.includes('sports')
+        );
       };
 
       // -------------------------------------------------------------
       // Rule B: Faculty Conflict (Simultaneous double-booking)
       // -------------------------------------------------------------
-      if (entry.faculty_id && !isNonInstructionalType(entry.lecture_type)) {
+      if (entry.faculty_id && !isNonInstructionalType(entry.lecture_type, entry.period_number)) {
         // B1: Against other entries in this proposed batch
         for (const prior of processedProposed) {
-          if (prior.faculty_id && !isNonInstructionalType(prior.lecture_type) && prior.faculty_id === entry.faculty_id && prior.day_of_week === entry.day_of_week) {
+          if (prior.faculty_id && !isNonInstructionalType(prior.lecture_type, prior.period_number) && prior.faculty_id === entry.faculty_id && prior.day_of_week === entry.day_of_week) {
             const overlaps = checkIntervalOverlap(entry.start_time, entry.end_time, prior.start_time, prior.end_time);
             if (overlaps) {
               conflicts.push({
@@ -247,7 +263,7 @@ export class TimetableConflictEngine {
           if (entry.id && dbEntry.id && entry.id === dbEntry.id) continue;
           if (entry.section_id && dbEntry.section_id && entry.section_id === dbEntry.section_id) continue;
           if (dbEntry.section_id === targetSectionId) continue;
-          if (isNonInstructionalType(dbEntry.lecture_type)) continue;
+          if (isNonInstructionalType(dbEntry.lecture_type, dbEntry.period_number)) continue;
 
           if (dbEntry.faculty_id && dbEntry.faculty_id === entry.faculty_id && dbEntry.day_of_week === entry.day_of_week) {
             const dbStart = dbEntry.start_time || '09:00';
@@ -275,14 +291,14 @@ export class TimetableConflictEngine {
       // -------------------------------------------------------------
       // Rule C: Room Collision (Simultaneous room occupancy)
       // -------------------------------------------------------------
-      if (roomNum && !isCommonRoomArea(roomNum) && !isNonInstructionalType(entry.lecture_type)) {
+      if (roomNum && !isCommonRoomArea(roomNum) && !isNonInstructionalType(entry.lecture_type, entry.period_number)) {
         // C1: Against other entries in this proposed batch
         for (const prior of processedProposed) {
           const priorRoom = (prior.room_number || targetSection?.room_number || '').trim();
           if (
             priorRoom && 
             !isCommonRoomArea(priorRoom) &&
-            !isNonInstructionalType(prior.lecture_type) &&
+            !isNonInstructionalType(prior.lecture_type, prior.period_number) &&
             priorRoom.toLowerCase() === roomNum.toLowerCase() && 
             prior.day_of_week === entry.day_of_week
           ) {
@@ -308,7 +324,7 @@ export class TimetableConflictEngine {
           if (entry.id && dbEntry.id && entry.id === dbEntry.id) continue;
           if (entry.section_id && dbEntry.section_id && entry.section_id === dbEntry.section_id) continue;
           if (dbEntry.section_id === targetSectionId) continue;
-          if (isNonInstructionalType(dbEntry.lecture_type)) continue;
+          if (isNonInstructionalType(dbEntry.lecture_type, dbEntry.period_number)) continue;
 
           const dbRoom = (dbEntry.room_number || '').trim();
           if (

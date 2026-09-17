@@ -556,48 +556,91 @@ class ERPStorageService {
 
   // Conflict detection for timetable entries
   public checkTimetableConflict(entry: Omit<TimetableEntry, 'id'>, excludeId?: string): TimetableConflict | null {
-    const entries = this.getTimetable().filter(e => e.id !== excludeId && e.active);
+    const isNonInstructional = (type?: string, period?: number) => {
+      if (period === 5) return true;
+      if (!type) return false;
+      const low = type.toLowerCase().trim();
+      return low === 'lunch' || low.includes('lunch') || low.includes('break') || low.includes('sport') || low.includes('recess') || low.includes('other');
+    };
 
-    // 1. Faculty Conflict: same faculty at same day & period
-    const facultyConflict = entries.find(
-      e => e.faculty_id === entry.faculty_id &&
-           e.day_of_week === entry.day_of_week &&
-           e.period_number === entry.period_number
-    );
-    if (facultyConflict) {
-      return {
-        type: 'faculty',
-        message: `Faculty conflict: ${facultyConflict.faculty?.full_name || 'Faculty'} is already scheduled for Section ${facultyConflict.section?.name || ''} in Period ${entry.period_number} on ${entry.day_of_week}.`,
-        conflictingEntry: facultyConflict
-      };
+    const isCommonArea = (room?: string) => {
+      if (!room) return true;
+      const r = room.toLowerCase().trim();
+      return (
+        r === '' ||
+        r === 'tbd' ||
+        r === 'room' ||
+        r.includes('refectory') ||
+        r.includes('break') ||
+        r.includes('cafeteria') ||
+        r.includes('dining') ||
+        r.includes('canteen') ||
+        r.includes('ground') ||
+        r.includes('sports')
+      );
+    };
+
+    const entries = this.getTimetable().filter(e => {
+      if (!e.active) return false;
+      if (excludeId && e.id === excludeId) return false;
+      if (entry.section_id && e.section_id === entry.section_id && e.day_of_week === entry.day_of_week && e.period_number === entry.period_number) {
+        return false;
+      }
+      return true;
+    });
+
+    // 1. Faculty Conflict: same faculty at same day & period (skipped for non-instructional)
+    if (entry.faculty_id && !isNonInstructional(entry.lecture_type, entry.period_number)) {
+      const facultyConflict = entries.find(
+        e => e.section_id !== entry.section_id &&
+             !isNonInstructional(e.lecture_type, e.period_number) &&
+             e.faculty_id === entry.faculty_id &&
+             e.day_of_week === entry.day_of_week &&
+             e.period_number === entry.period_number
+      );
+      if (facultyConflict) {
+        return {
+          type: 'faculty',
+          message: `Faculty conflict: ${facultyConflict.faculty?.full_name || 'Faculty'} is already scheduled for Section ${facultyConflict.section?.name || ''} in Period ${entry.period_number} on ${entry.day_of_week}.`,
+          conflictingEntry: facultyConflict
+        };
+      }
     }
 
-    // 2. Room Conflict: same room at same day & period
-    const roomConflict = entries.find(
-      e => e.room_number.toLowerCase() === entry.room_number.toLowerCase() &&
-           e.day_of_week === entry.day_of_week &&
-           e.period_number === entry.period_number
-    );
-    if (roomConflict) {
-      return {
-        type: 'room',
-        message: `Room conflict: ${entry.room_number} is already booked for Section ${roomConflict.section?.name || ''} in Period ${entry.period_number} on ${entry.day_of_week}.`,
-        conflictingEntry: roomConflict
-      };
+    // 2. Room Conflict: same room at same day & period in ANOTHER section (skipped for non-instructional & common areas)
+    if (entry.room_number && !isNonInstructional(entry.lecture_type, entry.period_number) && !isCommonArea(entry.room_number)) {
+      const roomConflict = entries.find(
+        e => e.section_id !== entry.section_id &&
+             !isNonInstructional(e.lecture_type, e.period_number) &&
+             e.room_number &&
+             !isCommonArea(e.room_number) &&
+             e.room_number.toLowerCase().trim() === entry.room_number.toLowerCase().trim() &&
+             e.day_of_week === entry.day_of_week &&
+             e.period_number === entry.period_number
+      );
+      if (roomConflict) {
+        return {
+          type: 'room',
+          message: `Room conflict: ${entry.room_number} is already booked for Section ${roomConflict.section?.name || ''} in Period ${entry.period_number} on ${entry.day_of_week}.`,
+          conflictingEntry: roomConflict
+        };
+      }
     }
 
     // 3. Section Conflict: same section at same day & period
-    const sectionConflict = entries.find(
-      e => e.section_id === entry.section_id &&
-           e.day_of_week === entry.day_of_week &&
-           e.period_number === entry.period_number
-    );
-    if (sectionConflict) {
-      return {
-        type: 'section',
-        message: `Section conflict: Section ${sectionConflict.section?.name || ''} already has ${sectionConflict.subject?.subject_name || 'a lecture'} scheduled in Period ${entry.period_number} on ${entry.day_of_week}.`,
-        conflictingEntry: sectionConflict
-      };
+    if (entry.section_id) {
+      const sectionConflict = entries.find(
+        e => e.section_id === entry.section_id &&
+             e.day_of_week === entry.day_of_week &&
+             e.period_number === entry.period_number
+      );
+      if (sectionConflict) {
+        return {
+          type: 'section',
+          message: `Section conflict: Section ${sectionConflict.section?.name || ''} already has ${sectionConflict.subject?.subject_name || 'a lecture'} scheduled in Period ${entry.period_number} on ${entry.day_of_week}.`,
+          conflictingEntry: sectionConflict
+        };
+      }
     }
 
     return null;

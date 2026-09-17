@@ -292,14 +292,40 @@ export class TimetableResolver {
         const slotEnd = newSlot?.end_time || '09:50';
         const targetSecName = section?.name || doc.section_name || 'Target Section';
 
+        const isNonInstructional = (slot?: any, periodNum?: number) => {
+          if (periodNum === 5) return true;
+          if (!slot) return false;
+          if (slot.is_break) return true;
+          const type = (slot.lecture_type || slot.subject_code || '').toLowerCase().trim();
+          return type === 'lunch' || type.includes('lunch') || type.includes('break') || type.includes('sport') || type.includes('other');
+        };
+
+        const isCommonArea = (room?: string) => {
+          if (!room) return true;
+          const r = room.toLowerCase().trim();
+          return (
+            r === '' ||
+            r === 'tbd' ||
+            r === 'room' ||
+            r.includes('refectory') ||
+            r.includes('break') ||
+            r.includes('cafeteria') ||
+            r.includes('dining') ||
+            r.includes('canteen') ||
+            r.includes('ground') ||
+            r.includes('sports')
+          );
+        };
+
         // Check Conflicts for new slot against other sections
         let slotConflict: TimetableConflict | undefined;
 
         // A. FACULTY CONFLICT: Same faculty + same day + overlapping time + active in another section
-        if (newSlot && resolvedFac) {
+        if (newSlot && resolvedFac && !isNonInstructional(newSlot, pNum)) {
           const facultyOverlap = existingTimetable.find(t => {
             if (t.faculty_id !== resolvedFac?.id || t.day_of_week !== day || !t.active) return false;
             if (t.section_id === targetSectionId) return false; // Exclude own section being replaced
+            if (isNonInstructional(t, t.period_number)) return false;
 
             const existStart = t.start_time?.substring(0, 5) || '09:00';
             const existEnd = t.end_time?.substring(0, 5) || '09:50';
@@ -325,10 +351,12 @@ export class TimetableResolver {
         }
 
         // B. ROOM CONFLICT: Same room + same day + overlapping time + active in another section
-        if (newSlot && (newSlot.room_number || doc.room_number)) {
+        if (newSlot && (newSlot.room_number || doc.room_number) && !isNonInstructional(newSlot, pNum) && !isCommonArea(newSlot.room_number || doc.room_number)) {
           const roomToTest = (newSlot.room_number || doc.room_number).toUpperCase().replace(/ROOM/g, '').trim();
           const roomOverlap = existingTimetable.find(t => {
             if (t.section_id === targetSectionId || !t.active || t.day_of_week !== day) return false;
+            if (isNonInstructional(t, t.period_number)) return false;
+            if (isCommonArea(t.room_number)) return false;
             const tRoom = (t.room_number || '').toUpperCase().replace(/ROOM/g, '').trim();
             if (tRoom !== roomToTest) return false;
 

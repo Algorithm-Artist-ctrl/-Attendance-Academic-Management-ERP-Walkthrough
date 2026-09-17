@@ -388,7 +388,11 @@ export const TimetableManagerPage: React.FC = () => {
     setIsSavingSlot(true);
 
     try {
-      const isNonInstructional = ['Lunch', 'Sports', 'Other'].includes(editingSlot.lecture_type);
+      const isNonInstructional =
+        editingSlot.period_number === 5 ||
+        ['lunch', 'break', 'sport', 'recess', 'other'].some(k =>
+          (editingSlot.lecture_type || '').toLowerCase().includes(k)
+        );
 
       // Validate Time
       if (!editingSlot.start_time || !editingSlot.end_time) {
