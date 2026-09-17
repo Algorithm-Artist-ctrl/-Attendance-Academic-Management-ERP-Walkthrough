@@ -1,9 +1,11 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useAuth } from './context/AuthContext';
+import { useAcademic } from './context/AcademicContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import { ResetPasswordModal } from './components/auth/ResetPasswordModal';
 import { AppShell } from './components/layout/AppShell';
 import vctmOfficialLogo from './assets/vctm-logo.png';
+import { GraduationCap, RotateCcw, AlertTriangle } from 'lucide-react';
 
 // Lazy Loaded Common Pages
 const ProfilePage = lazy(() => import('./pages/common/ProfilePage').then(m => ({ default: m.ProfilePage })));
@@ -65,9 +67,34 @@ const PageSkeletonLoader: React.FC = () => (
 );
 
 export const AppContent: React.FC = () => {
-  const { isAuthenticated, role, isLoading, logout, isPasswordRecovery } = useAuth();
+  const { user, isAuthenticated, role, isLoading, logout, isPasswordRecovery } = useAuth();
+  const { faculty } = useAcademic();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [navigationParams, setNavigationParams] = useState<any>(null);
+  const [isTeachingMode, setIsTeachingMode] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.pathname.startsWith('/hod/teaching');
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsTeachingMode(window.location.pathname.startsWith('/hod/teaching'));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleToggleTeachingMode = (enabled: boolean) => {
+    setIsTeachingMode(enabled);
+    setActiveTab('dashboard');
+    setNavigationParams(null);
+    if (typeof window !== 'undefined') {
+      if (enabled) {
+        window.history.pushState(null, '', '/hod/teaching');
+      } else {
+        window.history.pushState(null, '', '/hod');
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -191,6 +218,156 @@ export const AppContent: React.FC = () => {
 
     // 3. HOD Portal Routing
     if (role === 'hod') {
+      // A. Dedicated Teaching / Faculty Mode for HOD
+      if (isTeachingMode) {
+        const currentFaculty = faculty.find(
+          f => f.id === user?.faculty_id || 
+               f.id === user?.faculty?.id || 
+               f.id === user?.id ||
+               (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+               (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+               (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+        ) || user?.faculty;
+        const facultyId = currentFaculty?.id || user?.faculty_id || '';
+
+        if (!facultyId) {
+          return (
+            <div className="glass-panel p-8 rounded-3xl border border-rose-500/30 text-center max-w-xl mx-auto space-y-4 my-12">
+              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center mx-auto">
+                <AlertTriangle className="w-7 h-7" />
+              </div>
+              <h2 className="text-lg font-black text-white">Faculty Profile Not Configured</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Your account is authenticated as <strong className="text-white">Head of Department</strong>, but no active teaching faculty profile was resolved for your user record ({user?.email}).
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleTeachingMode(false)}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs hover:bg-[#00ff88] transition-all cursor-pointer shadow-md"
+                >
+                  Return to HOD Dashboard
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        let facultyModeComponent: React.ReactNode;
+        switch (activeTab) {
+          case 'profile':
+            facultyModeComponent = <ProfilePage />;
+            break;
+          case 'take_attendance':
+            facultyModeComponent = (
+              <TakeAttendancePage
+                initialTimetableEntryId={navigationParams?.timetableEntryId}
+                initialSessionDate={navigationParams?.sessionDate}
+                onFinished={() => setActiveTab('dashboard')}
+              />
+            );
+            break;
+          case 'timetable':
+            facultyModeComponent = (
+              <FacultyTimetablePage
+                onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+              />
+            );
+            break;
+          case 'quizzes':
+            facultyModeComponent = <FacultyQuizzesPage />;
+            break;
+          case 'faculty_assignments':
+            facultyModeComponent = <CourseAssignmentsPage />;
+            break;
+          case 'section_workspace':
+            facultyModeComponent = (
+              <FacultySectionWorkspacePage
+                initialSubjectId={navigationParams?.subjectId}
+                initialSectionId={navigationParams?.sectionId}
+                initialSubTab={navigationParams?.initialSubTab || 'overview'}
+                onBack={() => setActiveTab('dashboard')}
+                onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+              />
+            );
+            break;
+          case 'sessional_marks':
+            facultyModeComponent = <FacultySessionalMarksPage />;
+            break;
+          case 'history':
+            facultyModeComponent = (
+              <AttendanceHistoryPage
+                onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
+              />
+            );
+            break;
+          case 'students':
+            facultyModeComponent = <StudentDirectoryPage forceFacultyScope={true} />;
+            break;
+          case 'reports':
+            facultyModeComponent = <ReportsPage forceFacultyMode={true} />;
+            break;
+          case 'notices':
+            facultyModeComponent = <NoticesPage />;
+            break;
+          case 'corrections':
+            facultyModeComponent = <ReviewCorrectionsPage forceFacultyMode={true} />;
+            break;
+          case 'settings':
+            facultyModeComponent = <SettingsPage />;
+            break;
+          case 'dashboard':
+          default:
+            facultyModeComponent = <FacultyDashboard onNavigate={handleNavigate} />;
+            break;
+        }
+
+        return (
+          <div className="space-y-6">
+            {/* Top Mode Banner */}
+            <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-[#00ff88]/30 bg-gradient-to-r from-emerald-950/70 via-slate-900/90 to-slate-950/80 shadow-[0_0_25px_rgba(0,255,136,0.12)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="px-2.5 py-0.5 rounded-md bg-[#00ff88]/20 border border-[#00ff88]/40 text-[#00ff88] text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+                    FACULTY MODE
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-400">•</span>
+                  <span className="text-xs font-bold text-slate-300">
+                    Role: <span className="text-emerald-400">HOD + Faculty</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-400">•</span>
+                  <span className="text-xs font-medium text-slate-400">
+                    You are currently acting as: <strong className="text-white">FACULTY</strong>
+                  </span>
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-[#00ff88]" />
+                  Teaching / Faculty Mode
+                </h2>
+                <p className="text-xs text-slate-300">
+                  Welcome, <strong className="text-white">{user?.full_name || 'HOD'}</strong>. Manage attendance, tests, marks, and assignments strictly for your assigned classes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleToggleTeachingMode(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/40 hover:border-rose-400/60 text-slate-200 hover:text-white hover:bg-rose-500/15 text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md group"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-400 group-hover:rotate-180 transition-transform duration-300" />
+                  <span>Exit Faculty Mode</span>
+                </button>
+              </div>
+            </div>
+
+            {facultyModeComponent}
+          </div>
+        );
+      }
+
+      // B. Normal HOD Management Mode
       switch (activeTab) {
         case 'profile':
           return <ProfilePage />;
@@ -310,7 +487,12 @@ export const AppContent: React.FC = () => {
 
   return (
     <>
-      <AppShell activeTab={activeTab} onTabChange={handleNavigate}>
+      <AppShell 
+        activeTab={activeTab} 
+        onTabChange={handleNavigate}
+        isTeachingMode={role === 'hod' && isTeachingMode}
+        onToggleTeachingMode={handleToggleTeachingMode}
+      >
         <Suspense fallback={<PageSkeletonLoader />}>
           {renderContent()}
         </Suspense>

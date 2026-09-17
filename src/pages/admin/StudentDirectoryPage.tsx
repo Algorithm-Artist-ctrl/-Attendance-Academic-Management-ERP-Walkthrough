@@ -29,7 +29,11 @@ import { AdmissionType, Student } from '../../types/database.types';
 import { studentSyncService, StudentSyncResult } from '../../lib/services/studentSyncService';
 import { clsx } from 'clsx';
 
-export const StudentDirectoryPage: React.FC = () => {
+interface StudentDirectoryPageProps {
+  forceFacultyScope?: boolean;
+}
+
+export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forceFacultyScope = false }) => {
   const { user, role } = useAuth();
   const { 
     institution, 
@@ -42,14 +46,15 @@ export const StudentDirectoryPage: React.FC = () => {
     faculty, 
     students,
     assignments,
+    timetable,
     addStudent,
     deleteStudent,
     refreshData
   } = useAcademic();
 
-  const isSuperAdmin = role === 'super_admin';
-  const isHOD = role === 'hod';
-  const isFaculty = role === 'faculty';
+  const isSuperAdmin = !forceFacultyScope && role === 'super_admin';
+  const isHOD = !forceFacultyScope && role === 'hod';
+  const isFaculty = forceFacultyScope || role === 'faculty';
 
   // Google Sheet Sync State for Super Admin
   const [googleSheetUrl, setGoogleSheetUrl] = useState('');
@@ -127,17 +132,31 @@ export const StudentDirectoryPage: React.FC = () => {
 
   // Role-based student filtering
   const accessibleStudents = React.useMemo(() => {
+    if (isFaculty) {
+      const currentFaculty = faculty.find(
+        f => f.id === user?.faculty_id || 
+             f.id === user?.faculty?.id || 
+             f.id === user?.id ||
+             (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+             (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+             (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+      ) || user?.faculty;
+      const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+
+      const taughtSectionIds = new Set<string>();
+      assignments
+        .filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active)
+        .forEach(fsa => taughtSectionIds.add(fsa.section_id));
+      (timetable || [])
+        .filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.section_id)
+        .forEach(t => taughtSectionIds.add(t.section_id));
+
+      return students.filter(s => taughtSectionIds.has(s.section_id));
+    }
     if (isSuperAdmin) return students;
     if (isHOD) return students.filter(s => s.department_id === user?.department_id);
-    if (isFaculty) {
-      const currentFacultyId = user?.faculty_id || user?.id || '';
-      const mySectionIds = assignments
-        .filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active)
-        .map(fsa => fsa.section_id);
-      return students.filter(s => mySectionIds.includes(s.section_id));
-    }
     return students;
-  }, [students, isSuperAdmin, isHOD, isFaculty, user, assignments]);
+  }, [students, isSuperAdmin, isHOD, isFaculty, user, assignments, timetable, faculty]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('ALL');
@@ -146,10 +165,32 @@ export const StudentDirectoryPage: React.FC = () => {
 
   // Dynamic sections based on yearFilter
   const availableSections = React.useMemo(() => {
-    if (yearFilter === 'ALL') return sections.filter(s => s.active);
+    let baseSections = sections.filter(s => s.active);
+    if (isFaculty) {
+      const currentFaculty = faculty.find(
+        f => f.id === user?.faculty_id || 
+             f.id === user?.faculty?.id || 
+             f.id === user?.id ||
+             (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+             (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+             (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+      ) || user?.faculty;
+      const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+
+      const taughtSectionIds = new Set<string>();
+      assignments
+        .filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active)
+        .forEach(fsa => taughtSectionIds.add(fsa.section_id));
+      (timetable || [])
+        .filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.section_id)
+        .forEach(t => taughtSectionIds.add(t.section_id));
+
+      baseSections = baseSections.filter(s => taughtSectionIds.has(s.id));
+    }
+    if (yearFilter === 'ALL') return baseSections;
     const matchingSemIds = semesters.filter(sem => sem.academic_year_id === yearFilter).map(sem => sem.id);
-    return sections.filter(s => s.active && matchingSemIds.includes(s.semester_id));
-  }, [sections, semesters, yearFilter]);
+    return baseSections.filter(s => matchingSemIds.includes(s.semester_id));
+  }, [sections, semesters, yearFilter, isFaculty, faculty, user, assignments, timetable]);
 
   // Add Student modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -316,7 +357,9 @@ export const StudentDirectoryPage: React.FC = () => {
             Student Master Directory
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Official institutional enrollment records • Total {students.length} Students
+            {isFaculty 
+              ? `My Assigned Class Students • Showing ${filteredStudents.length} Students`
+              : `Official institutional enrollment records • Total ${students.length} Students`}
           </p>
         </div>
 

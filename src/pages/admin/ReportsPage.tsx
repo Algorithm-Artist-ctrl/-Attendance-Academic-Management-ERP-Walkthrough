@@ -24,7 +24,11 @@ import { AttendanceSession } from '../../types/database.types';
 import { ATTENDANCE_ELIGIBILITY_THRESHOLD } from '../../config/academicConfig';
 import { clsx } from 'clsx';
 
-export const ReportsPage: React.FC = () => {
+interface ReportsPageProps {
+  forceFacultyMode?: boolean;
+}
+
+export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = false }) => {
   const { role, user } = useAuth();
   const { 
     departments, 
@@ -43,9 +47,11 @@ export const ReportsPage: React.FC = () => {
     getStudentAttendance 
   } = useAcademic();
 
-  // Resolve logged-in faculty (if user is faculty)
+  const isFacultyMode = forceFacultyMode || role === 'faculty';
+
+  // Resolve logged-in faculty (if user is faculty or in faculty mode)
   const currentFaculty = useMemo(() => {
-    if (role !== 'faculty') return null;
+    if (!isFacultyMode) return null;
     return faculty.find(
       f => f.id === user?.faculty_id || 
            f.id === user?.faculty?.id || 
@@ -54,17 +60,17 @@ export const ReportsPage: React.FC = () => {
            (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
            (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
     ) || user?.faculty || null;
-  }, [role, user, faculty]);
+  }, [isFacultyMode, user, faculty]);
 
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
   // Sections assigned to this faculty (from timetable & assignments)
   const facultySectionIds = useMemo(() => {
-    if (role !== 'faculty' || !facultyId) return null;
+    if (!isFacultyMode || !facultyId) return null;
     const fromTimetable = timetable.filter(t => t.faculty_id === facultyId && t.section_id).map(t => t.section_id);
     const fromAssignments = (assignments || []).filter(a => a.faculty_id === facultyId && a.section_id).map(a => a.section_id);
     return new Set([...fromTimetable, ...fromAssignments]);
-  }, [role, facultyId, timetable, assignments]);
+  }, [isFacultyMode, facultyId, timetable, assignments]);
 
   // Tab State: 'lectures' (Lecture Attendance Management) vs 'cumulative' (Audit & Ledgers)
   const [activeTab, setActiveTab] = useState<'lectures' | 'cumulative'>('lectures');
@@ -90,7 +96,7 @@ export const ReportsPage: React.FC = () => {
   const filteredSessions = useMemo(() => {
     return attendanceSessions.filter(sess => {
       // Role Scoping: Faculty only sees their own sessions
-      if (role === 'faculty' && facultyId && sess.faculty_id !== facultyId) {
+      if (isFacultyMode && facultyId && sess.faculty_id !== facultyId) {
         return false;
       }
 
@@ -118,7 +124,7 @@ export const ReportsPage: React.FC = () => {
       }
 
       // Faculty Filter (for Admin/HOD)
-      if (role !== 'faculty' && lectureFacultyFilter !== 'ALL' && sess.faculty_id !== lectureFacultyFilter) {
+      if (!isFacultyMode && lectureFacultyFilter !== 'ALL' && sess.faculty_id !== lectureFacultyFilter) {
         return false;
       }
 
@@ -147,7 +153,7 @@ export const ReportsPage: React.FC = () => {
       }
       return (b.start_time || '').localeCompare(a.start_time || '');
     });
-  }, [attendanceSessions, sections, semesters, years, subjects, faculty, timetable, lectureYearFilter, lectureSectionFilter, lectureDateFilter, lectureFacultyFilter, lectureSubjectFilter, lectureSearch, role, facultyId]);
+  }, [attendanceSessions, sections, semesters, years, subjects, faculty, timetable, lectureYearFilter, lectureSectionFilter, lectureDateFilter, lectureFacultyFilter, lectureSubjectFilter, lectureSearch, isFacultyMode, facultyId]);
 
   // Lecture KPIs
   const lectureKPIs = useMemo(() => {
@@ -252,19 +258,19 @@ export const ReportsPage: React.FC = () => {
   // Available Sections scoped for faculty or all active for admin/HOD
   const availableSections = useMemo(() => {
     const activeSecs = sections.filter(s => s.active);
-    if (role === 'faculty' && facultySectionIds && facultySectionIds.size > 0) {
+    if (isFacultyMode && facultySectionIds && facultySectionIds.size > 0) {
       return activeSecs.filter(s => facultySectionIds.has(s.id));
     }
     return activeSecs;
-  }, [sections, role, facultySectionIds]);
+  }, [sections, isFacultyMode, facultySectionIds]);
 
   // Calculate stats for all students (scoped to assigned sections if faculty)
   const allStats: StudentOverallAttendance[] = useMemo(() => {
-    const studentList = (role === 'faculty' && facultySectionIds && facultySectionIds.size > 0)
+    const studentList = (isFacultyMode && facultySectionIds && facultySectionIds.size > 0)
       ? students.filter(s => facultySectionIds.has(s.section_id || s.section?.id || ''))
       : students;
     return studentList.map(s => getStudentAttendance(s.id));
-  }, [students, getStudentAttendance, role, facultySectionIds]);
+  }, [students, getStudentAttendance, isFacultyMode, facultySectionIds]);
 
   const filteredStats = useMemo(() => {
     return allStats.filter(s => {
@@ -330,10 +336,10 @@ export const ReportsPage: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
             <FileSpreadsheet className="w-6 h-6 text-[#00ff88]" />
-            {role === 'faculty' ? 'Attendance Reports' : 'Reports & Academic Audits'}
+            {isFacultyMode ? 'Attendance Reports' : 'Reports & Academic Audits'}
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            {role === 'faculty'
+            {isFacultyMode
               ? 'View attendance history, rosters, and audit records for your assigned classes'
               : 'Live lecture registers, 15-column master attendance exports & exam eligibility ledgers'}
           </p>
@@ -466,7 +472,7 @@ export const ReportsPage: React.FC = () => {
           <div className="glass-card rounded-2xl p-4 space-y-3 border border-emerald-500/20">
             <div className={clsx(
               "grid grid-cols-1 sm:grid-cols-2 gap-3",
-              role === 'faculty' ? "lg:grid-cols-6" : "lg:grid-cols-7"
+              isFacultyMode ? "lg:grid-cols-6" : "lg:grid-cols-7"
             )}>
               {/* Search */}
               <div className="relative sm:col-span-2">
@@ -505,15 +511,15 @@ export const ReportsPage: React.FC = () => {
               </select>
 
               {/* Faculty Filter (Admin/HOD Only) */}
-              {role !== 'faculty' && (
+              {!isFacultyMode && (
                 <select
                   value={lectureFacultyFilter}
                   onChange={(e) => setLectureFacultyFilter(e.target.value)}
                   className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
                 >
                   <option value="ALL">All Faculty</option>
-                  {faculty.filter(f => f.active).map(fac => (
-                    <option key={fac.id} value={fac.id}>{fac.full_name}</option>
+                  {faculty.map(f => (
+                    <option key={f.id} value={f.id}>{f.full_name}</option>
                   ))}
                 </select>
               )}
@@ -664,7 +670,7 @@ export const ReportsPage: React.FC = () => {
                           >
                             Roster
                           </Button>
-                          {(role === 'super_admin' || role === 'hod') && (
+                          {!isFacultyMode && (role === 'super_admin' || role === 'hod') && (
                             <button
                               onClick={() => setSessionToDelete(session)}
                               className="p-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"
@@ -754,7 +760,7 @@ export const ReportsPage: React.FC = () => {
                                 >
                                   View Roster
                                 </Button>
-                                {(role === 'super_admin' || role === 'hod') && (
+                                {!isFacultyMode && (role === 'super_admin' || role === 'hod') && (
                                   <button
                                     onClick={() => setSessionToDelete(session)}
                                     className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"

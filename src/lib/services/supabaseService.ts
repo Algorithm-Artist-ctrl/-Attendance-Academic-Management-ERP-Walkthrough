@@ -537,35 +537,37 @@ export const supabaseService = {
         throw new Error('Unauthorized: Students cannot record or modify attendance.');
       }
 
-      if (profile?.role === 'faculty') {
+      if (profile?.role === 'faculty' || (profile?.role === 'hod' && profile.faculty_id)) {
         const callerFacultyId = profile.faculty_id || callerUser.id;
-        if (callerFacultyId && callerFacultyId !== params.facultyId) {
-          console.error('ATTENDANCE_SAVE_FAILED', `Caller faculty ${callerFacultyId} does not match requested ${params.facultyId}`);
-          throw new Error('You are not authorized to record attendance for this class.');
-        }
+        if (profile.role === 'faculty' || (profile.role === 'hod' && params.facultyId === callerFacultyId)) {
+          if (callerFacultyId && callerFacultyId !== params.facultyId) {
+            console.error('ATTENDANCE_SAVE_FAILED', `Caller faculty ${callerFacultyId} does not match requested ${params.facultyId}`);
+            throw new Error('You are not authorized to record attendance for this class.');
+          }
 
-        // Verify faculty is assigned to this section and subject via assignments or timetable
-        const { data: directAssign } = await supabase
-          .from('faculty_subject_assignments')
-          .select('id')
-          .eq('faculty_id', params.facultyId)
-          .eq('section_id', params.sectionId)
-          .eq('subject_id', params.subjectId)
-          .eq('active', true)
-          .maybeSingle();
+          // Verify faculty is assigned to this section and subject via assignments or timetable
+          const { data: directAssign } = await supabase
+            .from('faculty_subject_assignments')
+            .select('id')
+            .eq('faculty_id', params.facultyId)
+            .eq('section_id', params.sectionId)
+            .eq('subject_id', params.subjectId)
+            .eq('active', true)
+            .maybeSingle();
 
-        const { data: ttSlot } = await supabase
-          .from('timetable_entries')
-          .select('id')
-          .eq('faculty_id', params.facultyId)
-          .eq('section_id', params.sectionId)
-          .eq('subject_id', params.subjectId)
-          .eq('active', true)
-          .maybeSingle();
+          const { data: ttSlot } = await supabase
+            .from('timetable_entries')
+            .select('id')
+            .eq('faculty_id', params.facultyId)
+            .eq('section_id', params.sectionId)
+            .eq('subject_id', params.subjectId)
+            .eq('active', true)
+            .maybeSingle();
 
-        if (!directAssign && !ttSlot) {
-          console.error('ATTENDANCE_SAVE_FAILED', `Faculty ${params.facultyId} not assigned to section ${params.sectionId} and subject ${params.subjectId}`);
-          throw new Error('You are not authorized or assigned to mark attendance for this subject and section.');
+          if (!directAssign && !ttSlot) {
+            console.error('ATTENDANCE_SAVE_FAILED', `Faculty ${params.facultyId} not assigned to section ${params.sectionId} and subject ${params.subjectId}`);
+            throw new Error('You are not authorized or assigned to mark attendance for this subject and section.');
+          }
         }
       }
     }

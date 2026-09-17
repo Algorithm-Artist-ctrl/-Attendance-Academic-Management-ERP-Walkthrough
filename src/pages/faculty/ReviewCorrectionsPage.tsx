@@ -21,7 +21,11 @@ import { Modal } from '../../components/common/Modal';
 import { clsx } from 'clsx';
 import { AttendanceCorrection } from '../../types/database.types';
 
-export const ReviewCorrectionsPage: React.FC = () => {
+interface ReviewCorrectionsPageProps {
+  forceFacultyMode?: boolean;
+}
+
+export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ forceFacultyMode = false }) => {
   const { user, role } = useAuth();
   const { 
     getFacultyCorrectionRequests, 
@@ -47,6 +51,9 @@ export const ReviewCorrectionsPage: React.FC = () => {
 
   // Filter requests strictly assigned to this faculty (or department-wide for HOD, or all for admin)
   const myClaims = React.useMemo(() => {
+    if (forceFacultyMode || role === 'faculty') {
+      return getFacultyCorrectionRequests(facultyId);
+    }
     if (role === 'super_admin') {
       return corrections;
     }
@@ -62,7 +69,7 @@ export const ReviewCorrectionsPage: React.FC = () => {
       });
     }
     return getFacultyCorrectionRequests(facultyId);
-  }, [role, user, currentFaculty, corrections, attendanceRecords, attendanceSessions, subjects, faculty, facultyId, getFacultyCorrectionRequests]);
+  }, [forceFacultyMode, role, user, currentFaculty, corrections, attendanceRecords, attendanceSessions, subjects, faculty, facultyId, getFacultyCorrectionRequests]);
 
   const reviewerTitle = React.useMemo(() => {
     if (role === 'hod') {
