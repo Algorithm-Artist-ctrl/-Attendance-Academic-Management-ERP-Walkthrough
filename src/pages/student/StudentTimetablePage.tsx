@@ -180,8 +180,10 @@ export const StudentTimetablePage: React.FC = () => {
 
                     <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-[11px] text-slate-300">
                       <div className="flex items-center gap-1.5 truncate max-w-[65%]">
-                        <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate">{fac?.full_name || 'Faculty Member'}</span>
+                        <User className={clsx("w-3.5 h-3.5 shrink-0", fac?.full_name ? "text-emerald-400" : "text-slate-500")} />
+                        <span className={clsx("truncate", !fac?.full_name && "text-slate-500 italic")}>
+                          {fac?.full_name || 'Unassigned Faculty'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -252,8 +254,8 @@ export const StudentTimetablePage: React.FC = () => {
                               <span className="font-bold text-white block text-xs truncate" title={sub?.subject_name}>
                                 {sub?.subject_name || 'Subject'}
                               </span>
-                              <span className="text-[11px] text-slate-300 font-medium block truncate" title={fac?.full_name}>
-                                {fac?.full_name || 'Faculty Member'}
+                              <span className={clsx("text-[11px] font-medium block truncate", fac?.full_name ? "text-slate-300" : "text-slate-500 italic")} title={fac?.full_name}>
+                                {fac?.full_name || 'Unassigned Faculty'}
                               </span>
                               <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-emerald-500/10">
                                 <span className="text-slate-400">{entry.lecture_type || 'Theory'}</span>

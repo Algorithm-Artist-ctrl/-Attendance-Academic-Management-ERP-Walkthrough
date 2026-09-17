@@ -52,6 +52,8 @@ interface DraftSlot {
   faculty_id?: string | null;
   room_number: string;
   lecture_type: LectureType;
+  original_day_of_week?: DayOfWeek;
+  original_period_number?: number;
 }
 
 export const TimetableManagerPage: React.FC = () => {
@@ -305,8 +307,15 @@ export const TimetableManagerPage: React.FC = () => {
   // Draft in-memory map for Edit Mode: Key = `${day_of_week}-${period_number}`
   const [draftSlots, setDraftSlots] = useState<Map<string, DraftSlot>>(new Map());
 
+  const prevSectionIdRef = useRef<string>(selectedSectionId);
+
   // Synchronize draftSlots whenever section changes or edit mode is entered
   useEffect(() => {
+    if (prevSectionIdRef.current !== selectedSectionId) {
+      prevSectionIdRef.current = selectedSectionId;
+      setPublishSuccessMsg(null);
+      setPublishError(null);
+    }
     const map = new Map<string, DraftSlot>();
     for (const t of sectionTimetable) {
       const key = `${t.day_of_week}-${t.period_number}`;
@@ -323,8 +332,6 @@ export const TimetableManagerPage: React.FC = () => {
       });
     }
     setDraftSlots(map);
-    setPublishSuccessMsg(null);
-    setPublishError(null);
   }, [selectedSectionId, sectionTimetable, currentSection]);
 
   // Active slot being edited in the Modal
@@ -387,7 +394,11 @@ export const TimetableManagerPage: React.FC = () => {
     setSlotModalError(null);
 
     if (existing) {
-      setEditingSlot({ ...existing });
+      setEditingSlot({
+        ...existing,
+        original_day_of_week: existing.day_of_week,
+        original_period_number: existing.period_number,
+      });
     } else {
       const isLunch = period === 5;
       setEditingSlot({
@@ -399,6 +410,8 @@ export const TimetableManagerPage: React.FC = () => {
         faculty_id: null,
         room_number: isLunch ? 'Refectory / Break' : (currentSection?.room_number || ''),
         lecture_type: isLunch ? 'Lunch' : 'Theory',
+        original_day_of_week: day,
+        original_period_number: period,
       });
     }
   };
@@ -482,9 +495,7 @@ export const TimetableManagerPage: React.FC = () => {
           });
           resolvedFacultyId = createdFaculty.id;
         } else if (!resolvedFacultyId) {
-          setSlotModalError('Please select a faculty professor for this lecture period.');
-          setIsSavingSlot(false);
-          return;
+          resolvedFacultyId = null;
         }
       } else {
         resolvedFacultyId = null;
@@ -555,6 +566,12 @@ export const TimetableManagerPage: React.FC = () => {
       const key = `${editingSlot.day_of_week}-${editingSlot.period_number}`;
       setDraftSlots(prev => {
         const next = new Map(prev);
+        if (editingSlot.original_day_of_week && editingSlot.original_period_number) {
+          const oldKey = `${editingSlot.original_day_of_week}-${editingSlot.original_period_number}`;
+          if (oldKey !== key) {
+            next.delete(oldKey);
+          }
+        }
         next.set(key, {
           id: saveRes.entry.id,
           day_of_week: editingSlot.day_of_week,
@@ -569,9 +586,11 @@ export const TimetableManagerPage: React.FC = () => {
         return next;
       });
 
-      setPublishSuccessMsg(`Slot for ${editingSlot.day_of_week} Period ${editingSlot.period_number} saved to live database successfully.`);
+      const successMsg = `Slot for ${editingSlot.day_of_week} Period ${editingSlot.period_number} saved to live database successfully.`;
+      setPublishSuccessMsg(successMsg);
       setEditingSlot(null);
       await refreshData();
+      setPublishSuccessMsg(successMsg);
     } catch (err: any) {
       console.error('Error saving timetable slot:', err);
       setSlotModalError(err.message || 'An error occurred while saving the slot.');
@@ -1776,8 +1795,10 @@ export const TimetableManagerPage: React.FC = () => {
 
                     <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-[11px] text-slate-300">
                       <div className="flex items-center gap-1.5 truncate max-w-[65%]">
-                        <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate">{fac?.full_name || (entry.lecture_type === 'Sports' ? 'Sports Coordinator' : 'Faculty')}</span>
+                        <User className={clsx("w-3.5 h-3.5 shrink-0", fac?.full_name ? "text-emerald-400" : "text-slate-500")} />
+                        <span className={clsx("truncate", !fac?.full_name && "text-slate-500 italic")}>
+                          {fac?.full_name || (entry.lecture_type === 'Sports' ? 'Sports Coordinator' : 'Unassigned Faculty')}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -1924,9 +1945,15 @@ export const TimetableManagerPage: React.FC = () => {
                             {sub?.subject_name}
                           </span>
 
-                          <span className="text-[11px] text-emerald-400 block truncate font-mono" title={fac?.full_name}>
-                            {fac?.full_name || 'Faculty'}
-                          </span>
+                          {fac?.full_name ? (
+                            <span className="text-[11px] text-emerald-400 block truncate font-mono" title={fac.full_name}>
+                              {fac.full_name}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-500 italic block truncate font-mono">
+                              Unassigned Faculty
+                            </span>
+                          )}
 
                           {slotConflict && (
                             <div className="pt-0.5">
@@ -2136,10 +2163,19 @@ export const TimetableManagerPage: React.FC = () => {
                           const newSubId = e.target.value || null;
                           let nextFacId = editingSlot.faculty_id;
                           if (newSubId && currentSection?.id) {
-                            const isStillAssigned = (assignments || []).some(
+                            const isStillAssigned = nextFacId ? (assignments || []).some(
                               a => a.section_id === currentSection.id && a.subject_id === newSubId && a.faculty_id === nextFacId && a.active
-                            );
-                            if (!isStillAssigned) nextFacId = null;
+                            ) : false;
+                            if (!isStillAssigned) {
+                              const explicitAssign = (assignments || []).find(
+                                a => a.section_id === currentSection.id && a.subject_id === newSubId && a.active
+                              );
+                              if (explicitAssign) {
+                                nextFacId = explicitAssign.faculty_id;
+                              } else {
+                                nextFacId = null;
+                              }
+                            }
                           } else {
                             nextFacId = null;
                           }
@@ -2251,7 +2287,7 @@ export const TimetableManagerPage: React.FC = () => {
                         }}
                         className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-xl text-white font-bold focus:outline-none focus:border-[#00ff88]"
                       >
-                        <option value="">— Select Faculty Professor —</option>
+                        <option value="">— Unassigned (No Faculty) —</option>
                         {sortedModalFaculty.map(f => {
                           const isAssigned = assignedFacultyIds.has(f.id);
                           return (

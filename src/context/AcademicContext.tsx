@@ -1876,9 +1876,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
       // Find the specific assignment for THIS student's section
-      const assignment = assignments.find(
-        a => a.subject_id === sub.id && a.section_id === studSectionId
-      ) || assignments.find(a => a.subject_id === sub.id);
+      const assignment = studSectionId ? assignments.find(
+        a => a.subject_id === sub.id && a.section_id === studSectionId && a.active
+      ) : undefined;
 
       const assignedFac = faculty.find(f => f.id === assignment?.faculty_id) ||
                           faculty.find(f => timetable.some(t => t.subject_id === sub.id && t.section_id === studSectionId && t.faculty_id === f.id));

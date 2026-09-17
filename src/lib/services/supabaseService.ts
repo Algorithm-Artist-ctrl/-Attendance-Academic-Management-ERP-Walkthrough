@@ -2639,6 +2639,34 @@ export const supabaseService = {
       updated_at: new Date().toISOString()
     };
 
+    // Query prior state to handle assignment deactivation if faculty changes or unassigns
+    let priorFacultyId: string | null = null;
+    let priorSubjectId: string | null = null;
+
+    if (params.slotId) {
+      const { data: existing } = await supabase
+        .from('timetable_entries')
+        .select('faculty_id, subject_id')
+        .eq('id', params.slotId)
+        .maybeSingle();
+      if (existing) {
+        priorFacultyId = existing.faculty_id;
+        priorSubjectId = existing.subject_id;
+      }
+    } else {
+      const { data: existing } = await supabase
+        .from('timetable_entries')
+        .select('faculty_id, subject_id')
+        .eq('section_id', params.sectionId)
+        .eq('day_of_week', params.dayOfWeek)
+        .eq('period_number', params.periodNumber)
+        .maybeSingle();
+      if (existing) {
+        priorFacultyId = existing.faculty_id;
+        priorSubjectId = existing.subject_id;
+      }
+    }
+
     let savedEntry: TimetableEntry;
 
     if (params.slotId) {
@@ -2660,7 +2688,7 @@ export const supabaseService = {
       savedEntry = data as TimetableEntry;
     }
 
-    // Sync faculty_subject_assignments if instructional
+    // 1. Sync faculty_subject_assignments if instructional facultyId is present
     if (params.facultyId && params.subjectId) {
       try {
         const { data: currentSessionData } = await supabase
@@ -2696,6 +2724,30 @@ export const supabaseService = {
         }
       } catch (err) {
         console.warn('Syncing assignment warning:', err);
+      }
+    }
+
+    // 2. Deactivate prior assignment if this faculty no longer teaches any slots for this section and subject
+    if (priorFacultyId && priorSubjectId && (priorFacultyId !== params.facultyId || priorSubjectId !== params.subjectId)) {
+      try {
+        const { data: remainingSlots } = await supabase
+          .from('timetable_entries')
+          .select('id')
+          .eq('section_id', params.sectionId)
+          .eq('subject_id', priorSubjectId)
+          .eq('faculty_id', priorFacultyId)
+          .eq('active', true);
+
+        if (!remainingSlots || remainingSlots.length === 0) {
+          await supabase
+            .from('faculty_subject_assignments')
+            .update({ active: false, updated_at: new Date().toISOString() })
+            .eq('faculty_id', priorFacultyId)
+            .eq('subject_id', priorSubjectId)
+            .eq('section_id', params.sectionId);
+        }
+      } catch (err) {
+        console.warn('Deactivating prior assignment warning:', err);
       }
     }
 

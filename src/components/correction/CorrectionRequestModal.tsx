@@ -38,6 +38,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
     subjects, 
     faculty, 
     assignments,
+    timetable,
     attendanceRecords, 
     submitCorrectionRequest
   } = useAcademic();
@@ -74,13 +75,14 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
     };
   }, []);
 
-  const selectedSubject = subjects.find(s => s.id === selectedSubjectId) || subjects[0];
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   
-  // Section-specific faculty lookup
-  const currentAssignment = assignments.find(
-    a => a.subject_id === selectedSubject?.id && a.section_id === student?.section_id
-  ) || assignments.find(a => a.subject_id === selectedSubject?.id);
-  const assignedFaculty = faculty.find(f => f.id === currentAssignment?.faculty_id) || faculty[0];
+  // Section-specific faculty lookup (strictly scoped to student section)
+  const currentAssignment = student?.section_id && selectedSubject?.id ? assignments.find(
+    a => a.subject_id === selectedSubject.id && a.section_id === student.section_id && a.active
+  ) : undefined;
+  const assignedFaculty = faculty.find(f => f.id === currentAssignment?.faculty_id) ||
+                          (student?.section_id && selectedSubject?.id ? faculty.find(f => timetable.some(t => t.subject_id === selectedSubject.id && t.section_id === student.section_id && t.faculty_id === f.id && t.active)) : undefined);
 
   const steps = [
     { num: 1, title: 'Select Lecture' },
