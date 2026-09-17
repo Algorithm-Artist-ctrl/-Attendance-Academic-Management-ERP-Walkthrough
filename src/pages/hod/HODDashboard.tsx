@@ -925,7 +925,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
             </div>
           )}
 
-          {/* Date Filter Controls */}
+          {/* Quick Date Filters & Future-Date Guard Controls: Today, Yesterday, Custom Range, All History */}
           <div className="pt-2 border-t border-emerald-500/15 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
