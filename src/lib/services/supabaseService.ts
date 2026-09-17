@@ -40,7 +40,7 @@ import {
   StudentNotification,
   NotificationType
 } from '../../types/database.types';
-import { getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
+import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
 
 interface StaticSetupCache {
@@ -1059,13 +1059,45 @@ export const supabaseService = {
 
     const correctionMap = new Map((rawCorrections || []).map(c => [c.attendance_record_id, c]));
     const recordsList: StudentAttendanceHistoryRecord[] = [];
+    const collegeToday = getCollegeToday();
+
+    // Strict future-date validation & parameter sanitization
+    const effectiveStartDate = params.startDate;
+    let effectiveEndDate = params.endDate;
+
+    // If startDate is in future, no valid attendance records can exist
+    if (effectiveStartDate && effectiveStartDate > collegeToday) {
+      return {
+        studentId: student.id,
+        rollNumber: student.roll_number,
+        fullName: student.full_name,
+        sectionName: (student as any).section?.name || '',
+        yearName: (student as any).academic_year?.name || '',
+        totalLectures: 0,
+        presentCount: 0,
+        absentCount: 0,
+        notMarkedCount: 0,
+        cancelledCount: 0,
+        eligibleConducted: 0,
+        attendancePercentage: null,
+        records: [],
+      };
+    }
+
+    // Clamp endDate to collegeToday so future attendance is never queried or returned
+    if (!effectiveEndDate || effectiveEndDate > collegeToday) {
+      effectiveEndDate = collegeToday;
+    }
 
     (rawRecords || []).forEach((r: any) => {
       const session = r.session;
       if (!session) return;
 
-      if (params.startDate && session.session_date < params.startDate) return;
-      if (params.endDate && session.session_date > params.endDate) return;
+      // STRICT PROTECTION: Never process or display any attendance session beyond today's date
+      if (session.session_date > collegeToday) return;
+
+      if (effectiveStartDate && session.session_date < effectiveStartDate) return;
+      if (effectiveEndDate && session.session_date > effectiveEndDate) return;
 
       const claim = correctionMap.get(r.id);
       const displayStatus: 'Present' | 'Absent' | 'Not Marked' | 'Cancelled' = 

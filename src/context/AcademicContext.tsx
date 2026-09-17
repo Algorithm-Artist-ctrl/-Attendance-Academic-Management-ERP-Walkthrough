@@ -47,6 +47,7 @@ import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { erpStorage } from '../lib/storage/erpStorage';
 import { 
+  getCollegeToday,
   getISTTodayDate, 
   getISTDayOfWeek, 
   isClaimWindowOpen, 
@@ -1882,10 +1883,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const assignedFac = faculty.find(f => f.id === assignment?.faculty_id) ||
                           faculty.find(f => timetable.some(t => t.subject_id === sub.id && t.section_id === studSectionId && t.faculty_id === f.id));
 
-      // Student's individual actual attendance records for this subject
+      // Student's individual actual attendance records for this subject (strictly up to collegeToday)
+      const collegeToday = getCollegeToday();
       const subRecords = studentRecords.filter(r => {
         const sess = attendanceSessions.find(s => s.id === r.attendance_session_id);
-        return sess && sess.subject_id === sub.id && (studSectionId ? sess.section_id === studSectionId : true);
+        return sess && 
+               sess.session_date <= collegeToday &&
+               sess.subject_id === sub.id && 
+               (studSectionId ? sess.section_id === studSectionId : true);
       });
 
       const attended = subRecords.filter(r => r.status === 'Present').length;

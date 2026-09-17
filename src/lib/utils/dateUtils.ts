@@ -1,8 +1,8 @@
 import { DayOfWeek } from '../../types/database.types';
 import { INSTITUTION_TIMEZONE } from '../../config/academicConfig';
 
-// Format current date in Asia/Kolkata (IST) timezone as YYYY-MM-DD
-export function getISTTodayDate(): string {
+// Format current date in Asia/Kolkata (IST) college timezone as YYYY-MM-DD
+export function getCollegeToday(): string {
   const now = new Date();
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: INSTITUTION_TIMEZONE,
@@ -15,6 +15,14 @@ export function getISTTodayDate(): string {
   const day = parts.find(p => p.type === 'day')?.value || String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+// Get yesterday's date in Asia/Kolkata college timezone as YYYY-MM-DD
+export function getCollegeYesterday(): string {
+  return getRelativeDate(getCollegeToday(), -1);
+}
+
+// Backward-compatible alias
+export const getISTTodayDate = getCollegeToday;
 
 // Get day of week code ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN') in Asia/Kolkata (IST)
 export function getISTDayOfWeek(dateStr?: string): DayOfWeek {
