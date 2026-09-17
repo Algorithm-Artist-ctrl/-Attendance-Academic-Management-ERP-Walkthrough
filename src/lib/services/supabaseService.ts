@@ -32,9 +32,11 @@ import {
   Classroom,
   AdmissionType,
   AccountStatus,
-  AdminAccountDirectoryEntry
+  AdminAccountDirectoryEntry,
+  ClassCoordinatorAssignment,
+  FacultyDashboardPayload
 } from '../../types/database.types';
-import { getISTTodayDate } from '../utils/dateUtils';
+import { getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
 
 interface StaticSetupCache {
@@ -3812,6 +3814,318 @@ export const supabaseService = {
     } catch (err: any) {
       console.warn('Exception recording audit log:', err);
       return { success: false, error: err?.message };
+    }
+  },
+
+  // 13. Class Coordinator Relational Management (Migration 017)
+  async fetchClassCoordinatorAssignments(facultyId?: string): Promise<ClassCoordinatorAssignment[]> {
+    try {
+      let q = supabase
+        .from('class_coordinator_assignments')
+        .select(`
+          id,
+          faculty_id,
+          section_id,
+          academic_session_id,
+          active,
+          created_at,
+          updated_at,
+          faculty:faculty(*),
+          section:sections(
+            id,
+            name,
+            room_number,
+            active,
+            semester:semesters(
+              id,
+              name,
+              semester_number,
+              academic_year:academic_years(
+                id,
+                name,
+                year_number
+              )
+            )
+          ),
+          academic_session:academic_sessions(*)
+        `)
+        .eq('active', true);
+
+      if (facultyId) {
+        q = q.eq('faculty_id', facultyId);
+      }
+
+      const { data, error } = await q;
+      if (error) {
+        console.warn('Error fetching from class_coordinator_assignments, falling back to sections:', error.message);
+        let secQ = supabase
+          .from('sections')
+          .select(`
+            id,
+            name,
+            room_number,
+            class_coordinator_id,
+            active,
+            class_coordinator:faculty(*),
+            semester:semesters(
+              id,
+              name,
+              semester_number,
+              academic_year:academic_years(
+                id,
+                name,
+                year_number
+              )
+            )
+          `)
+          .eq('active', true);
+
+        if (facultyId) {
+          secQ = secQ.eq('class_coordinator_id', facultyId);
+        } else {
+          secQ = secQ.not('class_coordinator_id', 'is', null);
+        }
+
+        const { data: secData } = await secQ;
+        return (secData || []).map((sec: any) => ({
+          id: `legacy-${sec.id}`,
+          faculty_id: sec.class_coordinator_id,
+          section_id: sec.id,
+          active: true,
+          faculty: sec.class_coordinator,
+          section: sec,
+        }));
+      }
+
+      return (data as any[]) || [];
+    } catch (err) {
+      console.error('Error in fetchClassCoordinatorAssignments:', err);
+      return [];
+    }
+  },
+
+  async assignClassCoordinator(facultyId: string, sectionId: string, sessionId?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let effectiveSessionId = sessionId;
+      if (!effectiveSessionId) {
+        const { data: session } = await supabase.from('academic_sessions').select('id').eq('is_current', true).maybeSingle();
+        effectiveSessionId = session?.id;
+      }
+
+      const { error: ccaErr } = await supabase
+        .from('class_coordinator_assignments')
+        .upsert({
+          faculty_id: facultyId,
+          section_id: sectionId,
+          academic_session_id: effectiveSessionId || null,
+          active: true,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'section_id,academic_session_id'
+        });
+
+      if (ccaErr) {
+        console.error('Failed to assign in class_coordinator_assignments:', ccaErr.message);
+        return { success: false, error: ccaErr.message };
+      }
+
+      await supabase
+        .from('sections')
+        .update({ class_coordinator_id: facultyId })
+        .eq('id', sectionId);
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to assign class coordinator.' };
+    }
+  },
+
+  // 14. Scoped Fast Faculty Dashboard Query (Parallel, <100ms, Single Source of Truth)
+  async fetchFacultyDashboardData(facultyId: string): Promise<FacultyDashboardPayload | null> {
+    try {
+      if (!facultyId) return null;
+
+      const todayDay = getISTDayOfWeek();
+
+      // Parallel Step 1: Core faculty identity, assignments, timetable, and coordinators
+      const [
+        facultyRes,
+        assignmentsRes,
+        coordRes,
+        timetableRes,
+        correctionsRes
+      ] = await Promise.all([
+        supabase.from('faculty').select('*').eq('id', facultyId).maybeSingle(),
+        supabase.from('faculty_subject_assignments').select('*, section:sections(*), subject:subjects(*), academic_year:academic_years(*)').eq('faculty_id', facultyId).eq('active', true),
+        this.fetchClassCoordinatorAssignments(facultyId),
+        supabase.from('timetable_entries').select('*, section:sections(*), subject:subjects(*), classroom:classrooms(*)').eq('faculty_id', facultyId).eq('active', true).order('period_number', { ascending: true }),
+        supabase.from('attendance_corrections').select('*, student:students(*)').eq('status', 'pending')
+      ]);
+
+      const facultyMember = facultyRes.data;
+      if (!facultyMember) return null;
+
+      if (facultyMember.department_id) {
+        const { data: deptData } = await supabase.from('departments').select('*').eq('id', facultyMember.department_id).maybeSingle();
+        (facultyMember as any).department = deptData;
+      }
+
+      const rawAssignments = (assignmentsRes.data || []) as FacultySubjectAssignment[];
+      const coordAssignments = coordRes;
+      const rawTimetable = (timetableRes.data || []) as TimetableEntry[];
+      const pendingCorrections = (correctionsRes.data || []) as AttendanceCorrection[];
+
+      // Filter out break entries and entries without subject
+      const facultyTimetable = rawTimetable.filter(t => !t.is_break && t.subject_id);
+
+      // Collect distinct section IDs (teaching + coordinator)
+      const sectionIdSet = new Set<string>();
+      facultyTimetable.forEach(t => { if (t.section_id) sectionIdSet.add(t.section_id); });
+      rawAssignments.forEach(a => { if (a.section_id) sectionIdSet.add(a.section_id); });
+      coordAssignments.forEach(c => { if (c.section_id) sectionIdSet.add(c.section_id); });
+      const distinctSectionIds = Array.from(sectionIdSet);
+
+      // Parallel Step 2: Hydrate full section hierarchies, student counts, and weekly attendance sessions
+      const [sectionsRes, studentCountsRes, attendanceSessionsRes] = await Promise.all([
+        distinctSectionIds.length > 0
+          ? supabase
+              .from('sections')
+              .select(`
+                id,
+                name,
+                room_number,
+                active,
+                semester_id,
+                semester:semesters(
+                  id,
+                  name,
+                  semester_number,
+                  academic_year:academic_years(
+                    id,
+                    name,
+                    year_number
+                  )
+                )
+              `)
+              .in('id', distinctSectionIds)
+              .eq('active', true)
+          : Promise.resolve({ data: [] }),
+        distinctSectionIds.length > 0
+          ? supabase
+              .from('students')
+              .select('section_id')
+              .in('section_id', distinctSectionIds)
+              .eq('active', true)
+          : Promise.resolve({ data: [] }),
+        supabase
+          .from('attendance_sessions')
+          .select('*')
+          .eq('faculty_id', facultyId)
+          .order('session_date', { ascending: false })
+          .limit(100)
+      ]);
+
+      const rawSections = (sectionsRes.data || []) as any[];
+      const rawStudents = (studentCountsRes.data || []) as any[];
+      const attendanceSessions = (attendanceSessionsRes.data || []) as AttendanceSession[];
+
+      // Build section student counts map
+      const studentCountMap = new Map<string, number>();
+      rawStudents.forEach(s => {
+        if (s.section_id) {
+          studentCountMap.set(s.section_id, (studentCountMap.get(s.section_id) || 0) + 1);
+        }
+      });
+
+      // Filter sections: strictly exclude 1st Year (year_number === 1)
+      const enrichedSections = rawSections
+        .map(sec => {
+          const sem = sec.semester;
+          const yr = sem?.academic_year;
+          if (yr?.year_number === 1) return null;
+
+          const cleanSecName = (sec.name || '').replace(/^section\s*/i, '').trim();
+          const rawRoom = sec.room_number || '';
+          const cleanRoom = rawRoom ? rawRoom.replace(/^Room\s*(No\.?\s*)?/i, '').trim() : 'Room TBD';
+
+          // Subjects taught in this section by this faculty
+          const fromTtSubs = facultyTimetable.filter(t => t.section_id === sec.id).map(t => (t as any).subject).filter(Boolean);
+          const fromAsgnSubs = rawAssignments.filter(a => a.section_id === sec.id).map(a => a.subject).filter(Boolean);
+          const subMap = new Map<string, Subject>();
+          [...fromTtSubs, ...fromAsgnSubs].forEach((s: any) => {
+            if (s && s.id) subMap.set(s.id, s);
+          });
+
+          return {
+            sec: {
+              id: sec.id,
+              name: sec.name,
+              room_number: sec.room_number,
+              semester_id: sec.semester_id,
+              active: sec.active,
+            } as Section,
+            sem,
+            year: yr,
+            yearName: yr?.name || 'Academic Year',
+            yearNumber: yr?.year_number || 0,
+            cleanSecName,
+            cleanRoom: cleanRoom || 'Room TBD',
+            studentCount: studentCountMap.get(sec.id) || 0,
+            subjectsInSec: Array.from(subMap.values()),
+          };
+        })
+        .filter(Boolean) as Array<{
+          sec: Section;
+          sem?: Semester;
+          year?: AcademicYear;
+          yearName: string;
+          yearNumber: number;
+          cleanSecName: string;
+          cleanRoom: string;
+          studentCount: number;
+          subjectsInSec: Subject[];
+        }>;
+
+      // Extract all distinct subjects for this faculty
+      const subjectMap = new Map<string, Subject>();
+      facultyTimetable.forEach(t => {
+        const sub = (t as any).subject;
+        if (sub && sub.id) subjectMap.set(sub.id, sub);
+      });
+      rawAssignments.forEach(a => {
+        if (a.subject && a.subject.id) subjectMap.set(a.subject.id, a.subject);
+      });
+      const allSubjects = Array.from(subjectMap.values());
+
+      // Today's schedule sorted by period
+      const todaySchedule = todayDay === 'SUN'
+        ? []
+        : facultyTimetable
+            .filter(t => t.day_of_week === todayDay)
+            .sort((a, b) => a.period_number - b.period_number);
+
+      return {
+        faculty: facultyMember,
+        assignments: rawAssignments,
+        coordinatorAssignments: coordAssignments.filter(c => {
+          const yrNum = (c.section as any)?.semester?.academic_year?.year_number;
+          return yrNum !== 1;
+        }),
+        timetable: facultyTimetable,
+        sections: enrichedSections,
+        subjects: allSubjects,
+        todaySchedule,
+        todayClassesCount: todaySchedule.length,
+        weeklyLoad: facultyTimetable.length,
+        assignedSectionsCount: enrichedSections.length,
+        assignedSubjectsCount: allSubjects.length,
+        pendingCorrectionsCount: pendingCorrections.length,
+        pendingCorrections,
+        attendanceSessions
+      };
+    } catch (err) {
+      console.error('Error in fetchFacultyDashboardData:', err);
+      return null;
     }
   }
 };

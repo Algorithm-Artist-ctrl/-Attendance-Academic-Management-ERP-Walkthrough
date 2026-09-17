@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   Calendar, 
@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   BookOpen,
   Layers,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
@@ -29,7 +30,9 @@ import {
   isDateToday, 
   isDateInPast 
 } from '../../lib/utils/dateUtils';
-import { DayOfWeek } from '../../types/database.types';
+import { DayOfWeek, FacultyDashboardPayload } from '../../types/database.types';
+import { supabaseService } from '../../lib/services/supabaseService';
+import { supabase } from '../../lib/supabase/supabaseClient';
 
 interface FacultyDashboardProps {
   onNavigate: (tab: string, params?: any) => void;
@@ -65,7 +68,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     attendanceRecords,
     getFacultyCorrectionRequests,
     getPublishedTimetable,
-    getFacultyTimetable
+    getFacultyTimetable,
+    classCoordinatorAssignments,
+    getFacultyCoordinatorAssignments,
+    refreshCoordinatorAssignments,
+    refreshData
   } = useAcademic();
 
   const currentFaculty = facultyList.find(
@@ -79,6 +86,53 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
 
+  // Fast-loading scoped faculty dashboard payload from Supabase
+  const [scopedDashboardData, setScopedDashboardData] = useState<FacultyDashboardPayload | null>(null);
+  const [isScopedLoading, setIsScopedLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!facultyId) {
+      setIsScopedLoading(false);
+      return;
+    }
+
+    const loadScoped = async () => {
+      try {
+        const payload = await supabaseService.fetchFacultyDashboardData(facultyId);
+        if (isMounted && payload) {
+          setScopedDashboardData(payload);
+        }
+      } catch (err) {
+        console.error('Failed to load scoped faculty dashboard data:', err);
+      } finally {
+        if (isMounted) setIsScopedLoading(false);
+      }
+    };
+
+    loadScoped();
+
+    // Subscribe to realtime updates for this faculty member
+    const channel = supabase
+      .channel(`faculty-dashboard-${facultyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries', filter: `faculty_id=eq.${facultyId}` }, () => {
+        loadScoped();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments', filter: `faculty_id=eq.${facultyId}` }, () => {
+        loadScoped();
+        refreshCoordinatorAssignments(facultyId);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions', filter: `faculty_id=eq.${facultyId}` }, () => {
+        loadScoped();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [facultyId, refreshCoordinatorAssignments]);
+
   const todayDay = getISTDayOfWeek();
   const [selectedScheduleDay, setSelectedScheduleDay] = useState<DayOfWeek>(
     todayDay === 'SUN' ? 'MON' : todayDay
@@ -86,17 +140,23 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
   // Authoritative timetable entries for this faculty (filtering out breaks and entries without subject)
   const myTt = useMemo(() => {
+    if (scopedDashboardData?.timetable && scopedDashboardData.timetable.length > 0) {
+      return scopedDashboardData.timetable;
+    }
     return getFacultyTimetable(facultyId).filter(t => !t.is_break && t.subject_id);
-  }, [getFacultyTimetable, facultyId]);
+  }, [scopedDashboardData, getFacultyTimetable, facultyId]);
 
   // Today's classes for this faculty strictly from Supabase timetable
   const todaySchedule = useMemo(() => {
+    if (scopedDashboardData?.todaySchedule) {
+      return scopedDashboardData.todaySchedule;
+    }
     return todayDay === 'SUN' 
       ? [] 
       : myTt
           .filter(t => t.day_of_week === todayDay)
           .sort((a, b) => a.period_number - b.period_number);
-  }, [myTt, todayDay]);
+  }, [scopedDashboardData, myTt, todayDay]);
 
   // Schedule for the selected day filter
   const displayedSchedule = useMemo(() => {
@@ -122,6 +182,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
   // Enriched section details with authoritative academic year from database hierarchy
   const enrichedAssignedSections = useMemo(() => {
+    if (scopedDashboardData?.sections && scopedDashboardData.sections.length > 0) {
+      return scopedDashboardData.sections;
+    }
     return mySectionIds
       .map(secId => {
         const sec = sections.find(s => s.id === secId);
@@ -170,7 +233,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         studentCount: number;
         subjectsInSec: typeof subjects;
       }>;
-  }, [mySectionIds, sections, semesters, years, students, myTt, assignments, facultyId, subjects]);
+  }, [scopedDashboardData, mySectionIds, sections, semesters, years, students, myTt, assignments, facultyId, subjects]);
 
   // Distinct academic years for filtering (only years where faculty is actually assigned)
   const distinctAssignedYears = useMemo(() => {
@@ -216,17 +279,29 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
   // Authoritative assigned subjects: distinct subjects taught across these sections
   const mySubjects = useMemo(() => {
+    if (scopedDashboardData?.subjects && scopedDashboardData.subjects.length > 0) {
+      return scopedDashboardData.subjects;
+    }
     const subIds = new Set<string>();
     enrichedAssignedSections.forEach(item => {
       item.subjectsInSec.forEach(s => subIds.add(s.id));
     });
     return subjects.filter(s => subIds.has(s.id) && s.active);
-  }, [enrichedAssignedSections, subjects]);
+  }, [scopedDashboardData, enrichedAssignedSections, subjects]);
 
   // Pending correction requests assigned strictly to this faculty
   const myPendingCorrections = useMemo(() => {
+    if (scopedDashboardData?.pendingCorrections) {
+      return scopedDashboardData.pendingCorrections.filter(c => c.status === 'pending');
+    }
     return getFacultyCorrectionRequests(facultyId).filter(c => c.status === 'pending');
-  }, [getFacultyCorrectionRequests, facultyId]);
+  }, [scopedDashboardData, getFacultyCorrectionRequests, facultyId]);
+
+  const todayClassesCount = scopedDashboardData?.todayClassesCount ?? todaySchedule.length;
+  const weeklyLoadCount = scopedDashboardData?.weeklyLoad ?? myTt.length;
+  const assignedSubjectsCount = scopedDashboardData?.assignedSubjectsCount ?? mySubjects.length;
+  const assignedSectionsCount = scopedDashboardData?.assignedSectionsCount ?? enrichedAssignedSections.length;
+  const pendingCorrectionsCount = scopedDashboardData?.pendingCorrectionsCount ?? myPendingCorrections.length;
 
   const dept = departments.find(d => d.id === currentFaculty?.department_id) || departments[0];
 
@@ -262,7 +337,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Today's Classes</p>
             <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {todaySchedule.length}
+              {todayClassesCount}
             </h3>
             <span className="text-[10px] text-emerald-400 font-medium">{todayDay} Timetable</span>
           </div>
@@ -276,7 +351,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Weekly Teaching Load</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {myTt.length}
+              {weeklyLoadCount}
             </h3>
             <span className="text-[10px] text-[#00ff88] font-medium">Lectures / Week</span>
           </div>
@@ -290,7 +365,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Assigned Subjects</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {mySubjects.length}
+              {assignedSubjectsCount}
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">Theory & Labs</span>
           </div>
@@ -304,7 +379,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Assigned Sections</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {mySections.length}
+              {assignedSectionsCount}
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">Active Sections</span>
           </div>
@@ -318,7 +393,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           <div>
             <p className="text-xs font-semibold text-slate-400">Pending Requests</p>
             <h3 className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
-              {myPendingCorrections.length}
+              {pendingCorrectionsCount}
             </h3>
             <span className="text-[10px] text-amber-400/80 font-medium">Requires Review</span>
           </div>
@@ -481,82 +556,146 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
       {/* 2.6 CLASS COORDINATOR PORTAL (IF DESIGNATED) */}
       {(() => {
-        const coordinatedSection = sections.find(sec => sec.class_coordinator_id === facultyId);
-        if (!coordinatedSection) return null;
+        // Collect coordinator assignments strictly from relational table or scoped payload
+        const rawCoordinatorList = (scopedDashboardData?.coordinatorAssignments && scopedDashboardData.coordinatorAssignments.length > 0)
+          ? scopedDashboardData.coordinatorAssignments
+          : getFacultyCoordinatorAssignments(facultyId);
 
-        const coordSem = semesters.find(s => s.id === coordinatedSection.semester_id);
-        const coordYear = years.find(y => y.id === coordSem?.academic_year_id);
-        const coordYearName = coordYear?.name || 'Academic Year';
+        // Map and hydrate coordinator items
+        const coordinatorItems = rawCoordinatorList.length > 0
+          ? rawCoordinatorList.map(c => {
+              const secObj = sections.find(s => s.id === c.section_id) || (c.section as any);
+              const semObj = semesters.find(s => s.id === secObj?.semester_id) || (c.section as any)?.semester;
+              const yrObj = years.find(y => y.id === semObj?.academic_year_id) || (c.section as any)?.semester?.academic_year;
+              const yrName = (c as any).academic_year_name || yrObj?.name || 'Academic Year';
+              const yrNumber = (c as any).academic_year_number || yrObj?.year_number || 0;
+              const secName = (c as any).section_name || secObj?.name || '';
+              const secId = c.section_id || secObj?.id || '';
+              const rawRoom = (c as any).room_number || secObj?.room_number || '';
+              const cleanCoordRoom = rawRoom 
+                ? rawRoom.replace(/^Room\s*(No\.?\s*)?/i, '').trim()
+                : `Section ${secName}`;
+              const secStudentsCount = (c as any).student_count ?? students.filter(s => s.section_id === secId && s.active).length;
+              const weeklyLecturesCount = (c as any).weekly_lectures ?? getPublishedTimetable({ sectionId: secId }).length;
 
-        const secStudents = students.filter(s => s.section_id === coordinatedSection.id && s.active);
-        const secTotalLectures = getPublishedTimetable({ sectionId: coordinatedSection.id });
-        const cleanCoordRoom = coordinatedSection.room_number 
-          ? coordinatedSection.room_number.replace(/^Room\s*(No\.?\s*)?/i, '').trim()
-          : `Section ${coordinatedSection.name}`;
+              return {
+                id: c.id,
+                secId,
+                secName,
+                yrName,
+                yrNumber,
+                cleanCoordRoom,
+                secStudentsCount,
+                weeklyLecturesCount,
+              };
+            }).filter(item => item.yrNumber !== 1) // Strictly exclude 1st year
+          : sections
+              .filter(sec => sec.class_coordinator_id === facultyId && sec.active)
+              .map(sec => {
+                const coordSem = semesters.find(s => s.id === sec.semester_id);
+                const coordYear = years.find(y => y.id === coordSem?.academic_year_id);
+                if (coordYear?.year_number === 1) return null;
+                const coordYearName = coordYear?.name || 'Academic Year';
+                const secStudents = students.filter(s => s.section_id === sec.id && s.active);
+                const secTotalLectures = getPublishedTimetable({ sectionId: sec.id });
+                const cleanCoordRoom = sec.room_number 
+                  ? sec.room_number.replace(/^Room\s*(No\.?\s*)?/i, '').trim()
+                  : `Section ${sec.name}`;
+
+                return {
+                  id: sec.id,
+                  secId: sec.id,
+                  secName: sec.name,
+                  yrName: coordYearName,
+                  yrNumber: coordYear?.year_number || 0,
+                  cleanCoordRoom,
+                  secStudentsCount: secStudents.length,
+                  weeklyLecturesCount: secTotalLectures.length,
+                };
+              })
+              .filter(Boolean) as Array<{
+                id: string;
+                secId: string;
+                secName: string;
+                yrName: string;
+                yrNumber: number;
+                cleanCoordRoom: string;
+                secStudentsCount: number;
+                weeklyLecturesCount: number;
+              }>;
+
+        if (coordinatorItems.length === 0) return null;
 
         return (
-          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-                  <GraduationCap className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
-                      OFFICIAL CLASS COORDINATOR
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono">
-                      {coordYearName} • {cleanCoordRoom}
-                    </span>
+          <div className="space-y-4">
+            {coordinatorItems.map(item => (
+              <div 
+                key={item.id} 
+                className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-2xl"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+                      <GraduationCap className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                          OFFICIAL CLASS COORDINATOR
+                        </span>
+                        <span className="text-xs text-slate-400 font-mono">
+                          {item.yrName} • {item.cleanCoordRoom}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-black text-white mt-1">
+                        Class Coordinator Portal — {item.yrName} Section {item.secName}
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-0.5">
+                        Coordinating {item.secStudentsCount} enrolled students and complete weekly timetable oversight ({item.weeklyLecturesCount} weekly periods)
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-base font-black text-white mt-1">
-                    Class Coordinator Portal — {coordYearName} Section {coordinatedSection.name}
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    Coordinating {secStudents.length} enrolled students and complete weekly timetable oversight ({secTotalLectures.length} weekly periods)
-                  </p>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="neon"
+                      size="sm"
+                      onClick={() => onNavigate('timetable')}
+                      leftIcon={<Calendar className="w-3.5 h-3.5 text-slate-950" />}
+                    >
+                      View Complete Section Timetable
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onNavigate('students')}
+                      leftIcon={<Users className="w-3.5 h-3.5" />}
+                    >
+                      Section Students
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-emerald-500/15 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                    <span className="text-slate-400 text-[10px] block font-semibold">Enrolled Section Students</span>
+                    <span className="text-lg font-black text-white block mt-0.5">{item.secStudentsCount}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                    <span className="text-slate-400 text-[10px] block font-semibold">Weekly Lecture Periods</span>
+                    <span className="text-lg font-black text-[#00ff88] block mt-0.5">{item.weeklyLecturesCount}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                    <span className="text-slate-400 text-[10px] block font-semibold">Department & Year</span>
+                    <span className="text-sm font-bold text-white block mt-0.5 truncate">{dept?.name || 'CSE'} ({item.yrName})</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
+                    <span className="text-slate-400 text-[10px] block font-semibold">Coordinator Role</span>
+                    <span className="text-sm font-bold text-emerald-400 block mt-0.5">{item.yrName} Sec {item.secName} Lead</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  variant="neon"
-                  size="sm"
-                  onClick={() => onNavigate('timetable')}
-                  leftIcon={<Calendar className="w-3.5 h-3.5 text-slate-950" />}
-                >
-                  View Complete Section Timetable
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onNavigate('students')}
-                  leftIcon={<Users className="w-3.5 h-3.5" />}
-                >
-                  Section Students
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-emerald-500/15 text-xs">
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                <span className="text-slate-400 text-[10px] block font-semibold">Enrolled Section Students</span>
-                <span className="text-lg font-black text-white block mt-0.5">{secStudents.length}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                <span className="text-slate-400 text-[10px] block font-semibold">Weekly Lecture Periods</span>
-                <span className="text-lg font-black text-[#00ff88] block mt-0.5">{secTotalLectures.length}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                <span className="text-slate-400 text-[10px] block font-semibold">Department & Year</span>
-                <span className="text-sm font-bold text-white block mt-0.5 truncate">{dept?.name || 'CSE'} ({coordYearName})</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                <span className="text-slate-400 text-[10px] block font-semibold">Coordinator Role</span>
-                <span className="text-sm font-bold text-emerald-400 block mt-0.5">{coordYearName} Sec {coordinatedSection.name} Lead</span>
-              </div>
-            </div>
+            ))}
           </div>
         );
       })()}

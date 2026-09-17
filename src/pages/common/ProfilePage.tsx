@@ -35,6 +35,8 @@ export const ProfilePage: React.FC = () => {
     subjects, 
     faculty, 
     assignments,
+    classCoordinatorAssignments,
+    getFacultyCoordinatorAssignments,
     timetable,
     students,
     getStudentAttendance,
@@ -58,7 +60,27 @@ export const ProfilePage: React.FC = () => {
 
   // Faculty specific calculations
   const facId = currentFaculty?.id || user?.faculty_id || user?.id || '';
-  const coordinatedSections = sections.filter(s => s.class_coordinator_id === facId);
+  const coordinatorRecords = getFacultyCoordinatorAssignments 
+    ? getFacultyCoordinatorAssignments(facId) 
+    : [];
+  const coordinatedSections = coordinatorRecords.length > 0
+    ? coordinatorRecords.map(cr => {
+        const secObj = sections.find(s => s.id === cr.section_id);
+        const semObj = semesters.find(s => s.id === secObj?.semester_id);
+        const yrObj = years.find(y => y.id === semObj?.academic_year_id);
+        return {
+          ...(secObj || (cr.section as any)),
+          year_name: yrObj?.name || (cr.section as any)?.semester?.academic_year?.name || 'Academic Year',
+        };
+      })
+    : sections.filter(s => s.class_coordinator_id === facId).map(s => {
+        const semObj = semesters.find(sem => sem.id === s.semester_id);
+        const yrObj = years.find(y => y.id === semObj?.academic_year_id);
+        return {
+          ...s,
+          year_name: yrObj?.name || 'Academic Year',
+        };
+      });
   const myFsa = (assignments || []).filter(fsa => fsa.faculty_id === facId && fsa.active);
   const myTaughtSubjectIds = Array.from(new Set(myFsa.map(a => a.subject_id)));
   const myTaughtSectionIds = Array.from(new Set(myFsa.map(a => a.section_id)));
@@ -713,7 +735,7 @@ export const ProfilePage: React.FC = () => {
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Coordinator</span>
                       <h4 className="text-sm font-bold text-white mt-0.5">
-                        B.Tech CSE — Second Year — Section {cSec.name}
+                        {branchName} — {cSec.year_name || 'Academic Year'} — Section {cSec.name}
                       </h4>
                     </div>
                     <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-900 border border-emerald-500/30 text-[#00ff88]">

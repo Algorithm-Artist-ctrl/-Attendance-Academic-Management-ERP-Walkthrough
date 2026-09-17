@@ -140,6 +140,19 @@ export interface FacultySubjectAssignment {
   updated_at?: string;
 }
 
+export interface ClassCoordinatorAssignment {
+  id: string;
+  faculty_id: string;
+  section_id: string;
+  academic_session_id?: string;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  faculty?: Faculty;
+  section?: Section;
+  academic_session?: AcademicSession;
+}
+
 export interface Student {
   id: string;
   auth_user_id?: string;
@@ -457,6 +470,33 @@ export interface MarksHistory {
   reason?: string;
   student?: Student;
   subject?: Subject;
+}
+
+export interface FacultyDashboardPayload {
+  faculty: Faculty;
+  assignments: FacultySubjectAssignment[];
+  coordinatorAssignments: ClassCoordinatorAssignment[];
+  timetable: TimetableEntry[];
+  sections: Array<{
+    sec: Section;
+    sem?: Semester;
+    year?: AcademicYear;
+    yearName: string;
+    yearNumber: number;
+    cleanSecName: string;
+    cleanRoom: string;
+    studentCount: number;
+    subjectsInSec: Subject[];
+  }>;
+  subjects: Subject[];
+  todaySchedule: TimetableEntry[];
+  todayClassesCount: number;
+  weeklyLoad: number;
+  assignedSectionsCount: number;
+  assignedSubjectsCount: number;
+  pendingCorrectionsCount: number;
+  pendingCorrections: AttendanceCorrection[];
+  attendanceSessions: AttendanceSession[];
 }
 
 

@@ -31,7 +31,8 @@ import {
   Classroom,
   AdmissionType,
   AccountStatus,
-  AdminAccountDirectoryEntry
+  AdminAccountDirectoryEntry,
+  ClassCoordinatorAssignment
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -99,6 +100,7 @@ interface AcademicContextType {
   subjects: Subject[];
   faculty: Faculty[];
   assignments: FacultySubjectAssignment[];
+  classCoordinatorAssignments: ClassCoordinatorAssignment[];
   students: Student[];
   timetable: TimetableEntry[];
   attendanceSessions: AttendanceSession[];
@@ -118,6 +120,8 @@ interface AcademicContextType {
   setClaimWindowDays: (days: number) => void;
   refreshData: (forceRefreshMaster?: boolean) => Promise<void>;
   refreshAdminAccounts: () => Promise<void>;
+  getFacultyCoordinatorAssignments: (facultyId: string) => ClassCoordinatorAssignment[];
+  refreshCoordinatorAssignments: (facultyId?: string) => Promise<ClassCoordinatorAssignment[]>;
   updateAccountStatus: (userId: string, status: AccountStatus, reason?: string) => Promise<{ success: boolean; error?: string }>;
   updateAccountCredentials: (
     targetUserId: string,
@@ -399,6 +403,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [subjects, setSubjects] = useState<Subject[]>(() => erpStorage.getSubjects());
   const [faculty, setFaculty] = useState<Faculty[]>(() => erpStorage.getFaculty());
   const [assignments, setAssignments] = useState<FacultySubjectAssignment[]>(() => erpStorage.getAssignments());
+  const [classCoordinatorAssignments, setClassCoordinatorAssignments] = useState<ClassCoordinatorAssignment[]>([]);
   const [students, setStudents] = useState<Student[]>(() => erpStorage.getStudents());
   const [timetable, setTimetable] = useState<TimetableEntry[]>(() => erpStorage.getTimetable());
   const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>([]);
@@ -634,10 +639,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSessionalMarks(enrichedSessionalMarks);
         setMarksHistory(enrichedMarksHistory);
 
-        // Fetch unified Admin Account Directory only for super_admin
-        const currentSession = erpStorage.getCurrentSessionUser();
-        if (currentSession?.role === 'super_admin') {
-          supabaseService.fetchAdminAccounts().then(accs => setAdminAccounts(accs)).catch(() => {});
+        // Fetch Class Coordinator Assignments (Section-Specific)
+        try {
+          const rawCoordAssignments = await supabaseService.fetchClassCoordinatorAssignments();
+          const enrichedCoordAssignments = rawCoordAssignments.filter(c => {
+            const yrNum = (c.section as any)?.semester?.academic_year?.year_number;
+            return yrNum !== 1;
+          });
+          setClassCoordinatorAssignments(enrichedCoordAssignments);
+        } catch (coordErr) {
+          console.warn('Could not load class coordinator assignments:', coordErr);
         }
       }
     } catch (err) {
@@ -894,6 +905,26 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  const refreshCoordinatorAssignments = useCallback(async (facultyId?: string) => {
+    try {
+      const raw = await supabaseService.fetchClassCoordinatorAssignments(facultyId);
+      const filtered = raw.filter(c => {
+        const yrNum = (c.section as any)?.semester?.academic_year?.year_number;
+        return yrNum !== 1;
+      });
+      setClassCoordinatorAssignments(filtered);
+      return filtered;
+    } catch (err) {
+      console.error('Failed to refresh coordinator assignments:', err);
+      return [];
+    }
+  }, []);
+
+  const getFacultyCoordinatorAssignments = useCallback((facultyId: string) => {
+    if (!facultyId) return [];
+    return classCoordinatorAssignments.filter(c => c.faculty_id === facultyId && c.active);
+  }, [classCoordinatorAssignments]);
+
   // Table-specific debouncing to prevent event storms while remaining responsive
   const debounceTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -906,9 +937,24 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, delay);
   }, []);
 
-  // Initial load
+  // Initial load & automatic refresh on auth state changes (no manual browser refresh needed)
   useEffect(() => {
     loadDataFromSupabase(true);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        loadDataFromSupabase(true);
+      } else if (event === 'SIGNED_OUT') {
+        setAttendanceSessions([]);
+        setAttendanceRecords([]);
+        setCorrections([]);
+        setAdminAccounts([]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [loadDataFromSupabase]);
 
   // Realtime Supabase Channel Subscription with granular event handlers
@@ -984,13 +1030,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
         debounceTableSync('assessments', () => refreshAssessments());
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
+        debounceTableSync('class_coordinator_assignments', () => refreshCoordinatorAssignments());
+      })
       .subscribe();
 
     return () => {
       Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
       supabase.removeChannel(channel);
     };
-  }, [debounceTableSync, refreshStudents, refreshTimetable, refreshAttendance, refreshCorrections, refreshFaculty, refreshSections, refreshSubjects, refreshAssignments, refreshAssessments]);
+  }, [debounceTableSync, refreshStudents, refreshTimetable, refreshAttendance, refreshCorrections, refreshFaculty, refreshSections, refreshSubjects, refreshAssignments, refreshAssessments, refreshCoordinatorAssignments]);
 
   const refreshData = async (forceRefreshMaster = false) => {
     await loadDataFromSupabase(forceRefreshMaster);
@@ -2390,6 +2439,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         subjects,
         faculty,
         assignments,
+        classCoordinatorAssignments,
         students,
         timetable,
         attendanceSessions,
@@ -2418,6 +2468,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         refreshAssignments,
         refreshAssessments,
         refreshAdminAccounts,
+        getFacultyCoordinatorAssignments,
+        refreshCoordinatorAssignments,
         updateAccountStatus,
         updateAccountCredentials,
         requestPasswordReset,
