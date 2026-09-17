@@ -114,10 +114,11 @@ export class TimetableConflictEngine {
     const getSectionDisplayName = (secId: string): string => {
       const sec = sectionMap.get(secId);
       if (!sec) return 'another section';
-      const sem = semesters.find(s => s.id === sec.semester_id);
-      const yr = sem ? academicYears.find(y => y.id === sem.academic_year_id) : undefined;
-      const yrPrefix = yr?.name ? `${yr.name} ` : (sem?.name ? `${sem.name} ` : (sem?.semester_number ? `Sem ${sem.semester_number} ` : ''));
-      return `${yrPrefix}Section ${sec.name} (${sec.room_number || 'Room TBD'})`;
+      const sem = (sec as any).semesters || (sec as any).semester || semesters.find(s => s.id === sec.semester_id);
+      const yr = (sem as any)?.academic_years || (sem as any)?.academic_year || (sem ? academicYears.find(y => y.id === sem.academic_year_id) : undefined);
+      const yrPrefix = yr?.name || (sem?.semester_number ? `${Math.ceil(sem.semester_number / 2)}th Year` : '');
+      const semSuffix = sem?.semester_number ? ` (Sem ${sem.semester_number})` : '';
+      return yrPrefix ? `${yrPrefix} Section ${sec.name}${semSuffix}` : `Section ${sec.name}${semSuffix}`;
     };
 
     // Verify Rule E: Target section exists and active

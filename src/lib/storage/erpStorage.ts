@@ -137,7 +137,7 @@ class ERPStorageService {
     auditLogs: AuditLog[];
     timetableVersions?: TimetableVersion[];
   }) {
-    saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions[0] || DEFAULT_INSTITUTION);
+    saveToStorage(STORAGE_KEYS.INSTITUTION, data.institutions?.[0] || DEFAULT_INSTITUTION);
     saveToStorage(STORAGE_KEYS.DEPARTMENTS, data.departments || []);
     saveToStorage(STORAGE_KEYS.PROGRAMS, data.programs || []);
     saveToStorage(STORAGE_KEYS.SESSIONS, data.sessions || []);
@@ -589,6 +589,20 @@ class ERPStorageService {
       return true;
     });
 
+    const sections = this.getSections();
+    const semesters = this.getSemesters();
+    const years = this.getYears();
+    const formatSectionName = (secId?: string) => {
+      if (!secId) return 'Another Section';
+      const sec = sections.find(s => s.id === secId);
+      if (!sec) return 'Another Section';
+      const sem = semesters.find(sm => sm.id === sec.semester_id);
+      const yr = years.find(y => y.id === sem?.academic_year_id);
+      const yrPrefix = yr?.name || (sem?.semester_number ? `${Math.ceil(sem.semester_number / 2)}th Year` : '');
+      const semSuffix = sem?.semester_number ? ` (Sem ${sem.semester_number})` : '';
+      return yrPrefix ? `${yrPrefix} Section ${sec.name}${semSuffix}` : `Section ${sec.name}${semSuffix}`;
+    };
+
     // 1. Faculty Conflict: same faculty at same day & period (skipped for non-instructional)
     if (entry.faculty_id && !isNonInstructional(entry.lecture_type, entry.period_number)) {
       const facultyConflict = entries.find(
@@ -601,7 +615,7 @@ class ERPStorageService {
       if (facultyConflict) {
         return {
           type: 'faculty',
-          message: `Faculty conflict: ${facultyConflict.faculty?.full_name || 'Faculty'} is already scheduled for Section ${facultyConflict.section?.name || ''} in Period ${entry.period_number} on ${entry.day_of_week}.`,
+          message: `Faculty conflict: ${facultyConflict.faculty?.full_name || 'Faculty'} is already scheduled for ${formatSectionName(facultyConflict.section_id)} in Period ${entry.period_number} on ${entry.day_of_week}.`,
           conflictingEntry: facultyConflict
         };
       }
@@ -621,7 +635,7 @@ class ERPStorageService {
       if (roomConflict) {
         return {
           type: 'room',
-          message: `Room conflict: ${entry.room_number} is already booked for Section ${roomConflict.section?.name || ''} in Period ${entry.period_number} on ${entry.day_of_week}.`,
+          message: `Room conflict: ${entry.room_number} is already booked for ${formatSectionName(roomConflict.section_id)} in Period ${entry.period_number} on ${entry.day_of_week}.`,
           conflictingEntry: roomConflict
         };
       }
@@ -637,7 +651,7 @@ class ERPStorageService {
       if (sectionConflict) {
         return {
           type: 'section',
-          message: `Section conflict: Section ${sectionConflict.section?.name || ''} already has ${sectionConflict.subject?.subject_name || 'a lecture'} scheduled in Period ${entry.period_number} on ${entry.day_of_week}.`,
+          message: `Section conflict: ${formatSectionName(sectionConflict.section_id)} already has ${sectionConflict.subject?.subject_name || 'a lecture'} scheduled in Period ${entry.period_number} on ${entry.day_of_week}.`,
           conflictingEntry: sectionConflict
         };
       }

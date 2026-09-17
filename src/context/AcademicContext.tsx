@@ -1677,7 +1677,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!sec) return 'Another Section';
       const sem = semesters.find(sm => sm.id === sec.semester_id);
       const yr = years.find(y => y.id === sem?.academic_year_id);
-      return yr ? `${yr.name} Section ${sec.name}` : `Section ${sec.name}`;
+      const yrPrefix = yr?.name || (sem?.semester_number ? `${Math.ceil(sem.semester_number / 2)}th Year` : '');
+      const semSuffix = sem?.semester_number ? ` (Sem ${sem.semester_number})` : '';
+      return yrPrefix ? `${yrPrefix} Section ${sec.name}${semSuffix}` : `Section ${sec.name}${semSuffix}`;
     };
 
     // Filter active entries: strictly exclude current slot by ID and slot coordinates

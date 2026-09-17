@@ -321,8 +321,14 @@ export class TimetableIngestionService {
           }
         }
 
-        if (!subId) subId = allSubjects[0]?.id;
-        if (!facId) facId = report.classCoordinator?.id || allFaculty[0]?.id;
+        const isBreakSlot = slot.is_break || slot.lecture_type === 'Lunch' || (slot.lecture_type as string) === 'Break' || slot.period_number === 5;
+        if (isBreakSlot) {
+          subId = null;
+          facId = null;
+        } else {
+          subId = subId || null;
+          facId = facId || null;
+        }
 
         const key = `${daySchedule.day}-${slot.period_number}`;
         if (addedKeys.has(key)) continue;
@@ -337,7 +343,7 @@ export class TimetableIngestionService {
           start_time: slot.start_time || '09:00',
           end_time: slot.end_time || '09:50',
           room_number: slot.room_number || doc.room_number || `Room ${doc.section_name || ''}`,
-          lecture_type: slot.lecture_type || 'Theory',
+          lecture_type: slot.lecture_type || (isBreakSlot ? 'Lunch' : 'Theory'),
           active: true,
         });
       }
@@ -347,16 +353,13 @@ export class TimetableIngestionService {
     for (const diff of report.diffs) {
       if (diff.status === 'REMOVED' || !diff.new_entry) continue;
       const newSlot = diff.new_entry;
-      if (newSlot.is_break || newSlot.lecture_type === 'Break') continue;
+      if (newSlot.is_break || newSlot.lecture_type === 'Break' || diff.period_number === 5) continue;
 
       const key = `${diff.day_of_week}-${diff.period_number}`;
       if (addedKeys.has(key)) continue;
 
-      let subId = newSlot.resolvedSubject?.id || resolveSubId(newSlot.subject_code);
-      let facId = newSlot.resolvedFaculty?.id || resolveFacId(newSlot.faculty_code || '');
-
-      if (!subId) subId = allSubjects[0]?.id;
-      if (!facId) facId = report.classCoordinator?.id || allFaculty[0]?.id;
+      let subId = newSlot.resolvedSubject?.id || resolveSubId(newSlot.subject_code) || null;
+      let facId = newSlot.resolvedFaculty?.id || resolveFacId(newSlot.faculty_code || '') || null;
 
       addedKeys.add(key);
 

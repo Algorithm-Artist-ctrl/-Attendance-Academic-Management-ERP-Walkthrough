@@ -142,10 +142,34 @@ export const TimetableManagerPage: React.FC = () => {
     }
   }, [activeYears, selectedYearId]);
 
-  // Current Section and Year objects
+  // Reset all editor, modal, and transient conflict states whenever selectedSectionId changes
+  useEffect(() => {
+    setEditingSlot(null);
+    setSlotModalError(null);
+    setIsManualFaculty(false);
+    setIsManualSubject(false);
+    setIsManualRoom(false);
+    setFacultySearchTerm('');
+    setManualFacultyName('');
+    setManualFacultyCode('');
+    setManualFacultyEmpCode('');
+    setManualFacultyDesignation('Assistant Professor');
+    setManualFacultyEmail('');
+    setManualFacultyPhone('');
+    setManualSubjectName('');
+    setManualSubjectCode('');
+    setManualRoomNumber('');
+    setDetectedConflicts([]);
+    setCrossSectionWarnings([]);
+    setFacultyConflicts([]);
+    setPublishSuccessMsg(null);
+    setPublishError(null);
+  }, [selectedSectionId]);
+
+  // Current Section strictly matching selectedSectionId (NO cross-section fallback)
   const currentSection = useMemo(() => {
-    return filteredSections.find(s => s.id === selectedSectionId) || filteredSections[0] || null;
-  }, [filteredSections, selectedSectionId]);
+    return sections.find(s => s.id === selectedSectionId) || null;
+  }, [sections, selectedSectionId]);
 
   const currentYear = useMemo(() => {
     const sem = semesters.find(s => s.id === currentSection?.semester_id);
@@ -709,6 +733,11 @@ export const TimetableManagerPage: React.FC = () => {
       return;
     }
 
+    if (!currentSection) {
+      setCsvError('Please select a valid section before fetching or importing a timetable.');
+      return;
+    }
+
     setIsAnalyzingCSV(true);
     setCsvError(null);
     setPublishSuccessMsg(null);
@@ -760,6 +789,11 @@ export const TimetableManagerPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!currentSection) {
+      setCsvError('Please select a valid section before uploading a timetable file.');
+      return;
+    }
+
     const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
     setSelectedFileName(file.name);
     setCsvSourceType(isPdf ? 'PDF_FILE_UPLOAD' : 'CSV_FILE_UPLOAD');
@@ -774,7 +808,7 @@ export const TimetableManagerPage: React.FC = () => {
     const handleParsedContent = (content: string) => {
       try {
         const validation = csvTimetableService.parseAndValidateCSV(content, {
-          targetSection: currentSection,
+          targetSection: currentSection!,
           subjects,
           faculty,
           classrooms,
@@ -2222,7 +2256,7 @@ export const TimetableManagerPage: React.FC = () => {
                           const isAssigned = assignedFacultyIds.has(f.id);
                           return (
                             <option key={f.id} value={f.id}>
-                              {isAssigned ? '★ [ASSIGNED TO THIS SECTION & SUBJECT] ' : ''}{f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
+                              {isAssigned ? `★ [Assigned to Section ${currentSection?.name || ''}] ` : ''}{f.full_name} ({f.faculty_code ? `${f.faculty_code} • ` : ''}{f.employee_code ? `${f.employee_code} • ` : ''}{f.designation || 'Faculty'})
                             </option>
                           );
                         })}
