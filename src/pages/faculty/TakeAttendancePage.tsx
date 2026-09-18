@@ -40,6 +40,7 @@ import {
   isDateToday, 
   isDateInPast 
 } from '../../lib/utils/dateUtils';
+import { supabaseService } from '../../lib/services/supabaseService';
 import { clsx } from 'clsx';
 
 interface TakeAttendancePageProps {
@@ -171,7 +172,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const existingSession = useMemo(() => {
     if (!activeClass || !activeSection) return undefined;
     return attendanceSessions.find(
-      s => s.session_date === sessionDate &&
+      s => (s.session_date?.split('T')[0] || s.session_date) === sessionDate &&
            (s.timetable_entry_id === activeClass.id || 
             (s.section_id === activeSection.id && 
              s.subject_id === activeClass.subject_id && 
@@ -183,6 +184,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   const currentSelectionKey = `${activeClassId || ''}_${sessionDate}`;
   const prevSelectionKeyRef = useRef<string>('');
   const hasUnsavedChangesRef = useRef<boolean>(false);
+  const isSavingRef = useRef<boolean>(false);
 
   // Initialize attendance when an active class or date is selected
   useEffect(() => {
@@ -199,6 +201,11 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       ? attendanceRecords.filter(r => r.attendance_session_id === existingSession.id)
       : [];
     const hasAnySavedRecords = records.length > 0;
+
+    // Defensive: If not a new selection and we already have marks in savedAttendanceMap, but background records are temporarily empty, do NOT overwrite with Unmarked
+    if (!isNewSelection && !hasAnySavedRecords && Object.values(savedAttendanceMap).some(st => st === 'Present' || st === 'Absent')) {
+      return;
+    }
 
     const initialMap: Record<string, MarkState> = {};
     sectionStudents.forEach(s => {
@@ -219,6 +226,30 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
     setSaveStatus(hasAnySavedRecords ? 'saved' : 'idle');
   }, [activeClassId, sessionDate, activeSection?.id, existingSession, attendanceRecords, sectionStudents, currentSelectionKey]);
+
+  // Fallback: If session exists in DB but attendanceRecords does not contain records for it yet, fetch directly
+  useEffect(() => {
+    let isCancelled = false;
+    if (existingSession?.id && activeClass && activeSection) {
+      const records = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
+      if (records.length === 0) {
+        supabaseService.fetchSessionAttendanceRecords(existingSession.id).then(directRecords => {
+          if (isCancelled || !directRecords || directRecords.length === 0) return;
+          const directMap: Record<string, MarkState> = {};
+          sectionStudents.forEach(s => {
+            const found = directRecords.find(r => r.student_id === s.id);
+            directMap[s.id] = found ? (found.status as MarkState) : 'Unmarked';
+          });
+          setAttendanceMap(directMap);
+          setSavedAttendanceMap(directMap);
+          setSaveStatus('saved');
+        }).catch(err => {
+          console.warn('Error fetching session attendance directly:', err);
+        });
+      }
+    }
+    return () => { isCancelled = true; };
+  }, [existingSession?.id, sectionStudents]);
 
   // Undo helper
   const pushState = useCallback((newMap: Record<string, MarkState>) => {
@@ -530,6 +561,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   };
 
   const executeSave = async (finalMap: Record<string, MarkState>) => {
+    if (isSavingRef.current) return;
+
     if (!activeClass || !activeSection || !activeSubject) {
       setSaveError('Please select a valid assigned class to take attendance.');
       setSaveStatus('error');
@@ -542,6 +575,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       return;
     }
 
+    isSavingRef.current = true;
     setIsSaving(true);
     setSaveStatus('saving');
     setSaveError(null);
@@ -581,6 +615,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       setSaveStatus('error');
       setSaveError(err?.message || 'Attendance could not be saved. Check connection and retry.');
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -785,7 +820,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
               // Look up live session strictly for sessionDate and class/slot
               const existingSess = attendanceSessions.find(
-                s => s.session_date === sessionDate && 
+                s => (s.session_date?.split('T')[0] || s.session_date) === sessionDate && 
                      (s.timetable_entry_id === cls.id || 
                       (s.section_id === sec?.id && 
                        s.subject_id === cls.subject_id && 

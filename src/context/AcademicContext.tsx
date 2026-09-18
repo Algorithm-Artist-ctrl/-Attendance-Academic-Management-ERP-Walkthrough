@@ -1233,12 +1233,60 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }>;
   }) => {
     const result = await supabaseService.saveAttendance(params);
+
+    // Immediately enrich and upsert saved session and records into local state
+    if (result?.session && result?.records) {
+      const curFaculty = facultyRef.current;
+      const curSubjects = subjectsRef.current;
+      const curSections = sectionsRef.current;
+      const curStudents = studentsRef.current;
+
+      const enrichedSession: AttendanceSession = {
+        ...result.session,
+        faculty: curFaculty.find(f => f.id === result.session.faculty_id),
+        subject: curSubjects.find(s => s.id === result.session.subject_id),
+        section: curSections.find(sec => sec.id === result.session.section_id),
+      };
+
+      const enrichedNewRecords: AttendanceRecord[] = result.records.map(rec => ({
+        ...rec,
+        student: curStudents.find(s => s.id === rec.student_id),
+        session: enrichedSession,
+      }));
+
+      // Upsert session in local state & erpStorage
+      setAttendanceSessions(prev => {
+        const filtered = prev.filter(s => s.id !== enrichedSession.id);
+        const next = [enrichedSession, ...filtered];
+        erpStorage.setAttendanceSessions(next);
+        return next;
+      });
+
+      // Upsert records in local state & erpStorage (replacing any existing records for this session)
+      setAttendanceRecords(prev => {
+        const filtered = prev.filter(r => r.attendance_session_id !== enrichedSession.id);
+        const next = [...enrichedNewRecords, ...filtered];
+        erpStorage.setAttendanceRecords(next);
+        return next;
+      });
+    }
+
     await refreshAttendance();
     return result;
   };
 
   const deleteAttendanceSession = async (sessionId: string) => {
     const result = await supabaseService.deleteAttendanceSession(sessionId);
+    setAttendanceSessions(prev => {
+      const next = prev.filter(s => s.id !== sessionId);
+      erpStorage.setAttendanceSessions(next);
+      return next;
+    });
+    setAttendanceRecords(prev => {
+      const next = prev.filter(r => r.attendance_session_id !== sessionId);
+      erpStorage.setAttendanceRecords(next);
+      return next;
+    });
     await refreshAttendance();
     return result;
   };

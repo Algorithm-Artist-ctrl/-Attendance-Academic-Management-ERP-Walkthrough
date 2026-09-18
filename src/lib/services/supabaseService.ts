@@ -319,14 +319,91 @@ export const supabaseService = {
     });
   },
 
+  async fetchAllAttendanceRecords(): Promise<AttendanceRecord[]> {
+    const PAGE_SIZE = 1000;
+    let allRecords: AttendanceRecord[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error('Error fetching paginated attendance records:', error.message);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allRecords = allRecords.concat(data as unknown as AttendanceRecord[]);
+        if (data.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+    return allRecords;
+  },
+
+  async fetchAllAttendanceSessions(): Promise<AttendanceSession[]> {
+    const PAGE_SIZE = 1000;
+    let allSessions: AttendanceSession[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('attendance_sessions')
+        .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at')
+        .order('session_date', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error('Error fetching paginated attendance sessions:', error.message);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allSessions = allSessions.concat(data as unknown as AttendanceSession[]);
+        if (data.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+    return allSessions;
+  },
+
+  async fetchSessionAttendanceRecords(sessionId: string): Promise<AttendanceRecord[]> {
+    if (!sessionId) return [];
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('attendance_session_id', sessionId);
+    if (error) {
+      console.error(`Error fetching records for session ${sessionId}:`, error.message);
+      return [];
+    }
+    return (data as AttendanceRecord[]) || [];
+  },
+
   async fetchAttendance(): Promise<{ attendanceSessions: AttendanceSession[]; attendanceRecords: AttendanceRecord[] }> {
-    const [sessRes, recRes] = await Promise.all([
-      supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
-      supabase.from('attendance_records').select('*'),
+    const [attendanceSessions, attendanceRecords] = await Promise.all([
+      this.fetchAllAttendanceSessions(),
+      this.fetchAllAttendanceRecords(),
     ]);
     return {
-      attendanceSessions: (sessRes.data as AttendanceSession[]) || [],
-      attendanceRecords: (recRes.data as AttendanceRecord[]) || [],
+      attendanceSessions,
+      attendanceRecords,
     };
   },
 
@@ -377,8 +454,8 @@ export const supabaseService = {
     try {
       const [
         { data: timetable },
-        { data: attendanceSessions },
-        { data: attendanceRecords },
+        attendanceSessions,
+        attendanceRecords,
         { data: corrections },
         { data: auditLogs },
         { data: timetableVersions },
@@ -391,8 +468,8 @@ export const supabaseService = {
         { data: sessionalAssessmentsList },
       ] = await Promise.all([
         supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
-        supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').order('session_date', { ascending: false }),
-        supabase.from('attendance_records').select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at'),
+        this.fetchAllAttendanceSessions(),
+        this.fetchAllAttendanceRecords(),
         supabase.from('attendance_corrections').select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))').order('created_at', { ascending: false }),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(50),

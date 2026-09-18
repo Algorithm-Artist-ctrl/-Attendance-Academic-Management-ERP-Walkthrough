@@ -793,7 +793,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
                 // Look up live session for this specific calendar date
                 const existingSess = attendanceSessions.find(
-                  s => s.session_date === selectedScheduleDate &&
+                  s => (s.session_date?.split('T')[0] || s.session_date) === selectedScheduleDate &&
                        (s.timetable_entry_id === entry.id ||
                         (s.section_id === entry.section_id &&
                          s.subject_id === entry.subject_id &&
