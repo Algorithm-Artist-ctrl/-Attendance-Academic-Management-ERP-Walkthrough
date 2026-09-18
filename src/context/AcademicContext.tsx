@@ -569,10 +569,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   semestersRef.current = semesters;
   const yearsRef = useRef(years);
   yearsRef.current = years;
+  const lastFullLoadRef = useRef<number>(0);
 
   // Function to load and enrich latest records from Supabase
   const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
     try {
+      lastFullLoadRef.current = Date.now();
       const data = await supabaseService.fetchAllData(forceRefreshMaster);
       if (data) {
         const loadedInst = data.institutions[0] || erpStorage.getInstitution();
@@ -1142,7 +1144,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        loadDataFromSupabase(true);
+        if (Date.now() - lastFullLoadRef.current > 5000) {
+          loadDataFromSupabase(false);
+        }
         refreshNotifications();
         refreshConversations();
       } else if (event === 'SIGNED_OUT') {
@@ -1159,26 +1163,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       subscription.unsubscribe();
     };
   }, [loadDataFromSupabase, refreshNotifications, refreshConversations]);
-
-  // Offline & Online Network Synchronization (Phase 22)
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      loadDataFromSupabase(false);
-      refreshNotifications();
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [loadDataFromSupabase, refreshNotifications]);
 
   // Stable ref for realtime event handlers to eliminate channel resubscription churn
   const realtimeHandlersRef = useRef({
@@ -1539,7 +1523,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
     }
 
-    await refreshAttendance();
     return result;
   };
 
@@ -1555,7 +1538,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       erpStorage.setAttendanceRecords(next);
       return next;
     });
-    await refreshAttendance();
     return result;
   };
 
@@ -1587,8 +1569,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       reason: params.reason,
     });
 
-    await Promise.all([refreshCorrections(), refreshAttendance()]);
-    return {
+    const newCorrection: AttendanceCorrection = {
       id: claimRes.claimId || '',
       attendance_record_id: claimRes.recordId || params.attendanceRecordId || '',
       student_id: params.studentId,
@@ -1596,8 +1577,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       reason: params.reason,
       status: 'pending' as const,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    } as AttendanceCorrection;
+    };
+
+    setCorrections(prev => [newCorrection, ...prev.filter(c => c.id !== newCorrection.id)]);
+    return newCorrection;
   };
 
   // 3. Review Correction Request (Approve / Reject)
@@ -1639,7 +1622,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }));
     }
 
-    await Promise.all([refreshCorrections(), refreshAttendance()]);
     return res;
   };
 
@@ -2789,7 +2771,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [...res, ...filtered];
       });
     }
-    await refreshAssessments();
     return res;
   };
 

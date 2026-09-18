@@ -338,68 +338,32 @@ export const supabaseService = {
     });
   },
 
-  async fetchAllAttendanceRecords(): Promise<AttendanceRecord[]> {
-    const PAGE_SIZE = 1000;
-    let allRecords: AttendanceRecord[] = [];
-    let from = 0;
-    let hasMore = true;
+  async fetchAllAttendanceRecords(limit = 2500): Promise<AttendanceRecord[]> {
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('attendance_records')
-        .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
-        .order('created_at', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error) {
-        console.error('Error fetching paginated attendance records:', error.message);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        allRecords = allRecords.concat(data as unknown as AttendanceRecord[]);
-        if (data.length < PAGE_SIZE) {
-          hasMore = false;
-        } else {
-          from += PAGE_SIZE;
-        }
-      } else {
-        hasMore = false;
-      }
+    if (error) {
+      console.error('Error fetching paginated attendance records:', error.message);
+      return [];
     }
-    return allRecords;
+    return (data as unknown as AttendanceRecord[]) || [];
   },
 
-  async fetchAllAttendanceSessions(): Promise<AttendanceSession[]> {
-    const PAGE_SIZE = 1000;
-    let allSessions: AttendanceSession[] = [];
-    let from = 0;
-    let hasMore = true;
+  async fetchAllAttendanceSessions(limit = 500): Promise<AttendanceSession[]> {
+    const { data, error } = await supabase
+      .from('attendance_sessions')
+      .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at')
+      .order('session_date', { ascending: false })
+      .limit(limit);
 
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('attendance_sessions')
-        .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at')
-        .order('session_date', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error) {
-        console.error('Error fetching paginated attendance sessions:', error.message);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        allSessions = allSessions.concat(data as unknown as AttendanceSession[]);
-        if (data.length < PAGE_SIZE) {
-          hasMore = false;
-        } else {
-          from += PAGE_SIZE;
-        }
-      } else {
-        hasMore = false;
-      }
+    if (error) {
+      console.error('Error fetching paginated attendance sessions:', error.message);
+      return [];
     }
-    return allSessions;
+    return (data as unknown as AttendanceSession[]) || [];
   },
 
   async fetchSessionAttendanceRecords(sessionId: string): Promise<AttendanceRecord[]> {
@@ -426,11 +390,12 @@ export const supabaseService = {
     };
   },
 
-  async fetchCorrections(): Promise<AttendanceCorrection[]> {
+  async fetchCorrections(limit = 200): Promise<AttendanceCorrection[]> {
     const { data, error } = await supabase
       .from('attendance_corrections')
-      .select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))')
-      .order('created_at', { ascending: false });
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
     if (error) {
       console.error('Error fetching corrections:', error.message);
       return [];
@@ -448,13 +413,13 @@ export const supabaseService = {
       { data: marksHistory },
       { data: sessionalAssessments },
     ] = await Promise.all([
-      supabase.from('assignments').select('*').order('created_at', { ascending: false }),
-      supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
-      supabase.from('quizzes').select('*').order('created_at', { ascending: false }),
-      supabase.from('quiz_results').select('*').order('created_at', { ascending: false }),
-      supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
-      supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
-      supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }),
+      supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
+      supabase.from('quizzes').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase.from('quiz_results').select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }).limit(1000),
+      supabase.from('marks_history').select('*').order('updated_at', { ascending: false }).limit(200),
+      supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }).limit(100),
     ]);
 
     return {
@@ -475,7 +440,7 @@ export const supabaseService = {
         { data: timetable },
         attendanceSessions,
         attendanceRecords,
-        { data: corrections },
+        corrections,
         { data: auditLogs },
         { data: timetableVersions },
         { data: assignmentsList },
@@ -489,16 +454,16 @@ export const supabaseService = {
         supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
         this.fetchAllAttendanceSessions(),
         this.fetchAllAttendanceRecords(),
-        supabase.from('attendance_corrections').select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))').order('created_at', { ascending: false }),
+        this.fetchCorrections(200),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('assignments').select('*').order('created_at', { ascending: false }),
-        supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
-        supabase.from('quizzes').select('*').order('created_at', { ascending: false }),
-        supabase.from('quiz_results').select('*').order('created_at', { ascending: false }),
-        supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }),
-        supabase.from('marks_history').select('*').order('updated_at', { ascending: false }),
-        supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }),
+        supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
+        supabase.from('quizzes').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('quiz_results').select('*').order('created_at', { ascending: false }).limit(300),
+        supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }).limit(1000),
+        supabase.from('marks_history').select('*').order('updated_at', { ascending: false }).limit(200),
+        supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }).limit(100),
       ]);
 
       return {
@@ -523,8 +488,8 @@ export const supabaseService = {
   },
 
   // 1E. Fetch All Master & Operational Data (Composed in parallel with Promise deduplication)
-  async fetchAllData(forceRefreshMaster = false): Promise<FullERPData | null> {
-    if (!forceRefreshMaster && _inFlightFetchAll) {
+  fetchAllData(forceRefreshMaster = false): Promise<FullERPData | null> {
+    if (_inFlightFetchAll) {
       return _inFlightFetchAll;
     }
 

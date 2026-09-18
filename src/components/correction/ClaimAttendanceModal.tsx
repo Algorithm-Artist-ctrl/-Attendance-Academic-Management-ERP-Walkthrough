@@ -117,13 +117,13 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
         reason: finalReason,
       });
 
-      setSuccessMessage('Attendance claim submitted successfully! It has been routed to your assigned faculty member.');
+      setSuccessMessage('Attendance claim submitted successfully! Routed to assigned faculty.');
       setTimeout(() => {
         setIsSubmitting(false);
         setSuccessMessage(null);
         if (onClaimSubmitted) onClaimSubmitted();
         onClose();
-      }, 1800);
+      }, 500);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to submit attendance claim to Supabase.');
       setIsSubmitting(false);

@@ -40,7 +40,9 @@ export const ProfilePage: React.FC = () => {
     timetable,
     students,
     getStudentAttendance,
-    refreshData
+    refreshData,
+    refreshStudents,
+    refreshFaculty
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
@@ -218,7 +220,7 @@ export const ProfilePage: React.FC = () => {
           setTimeout(() => setSaveSuccess(false), 3500);
           return;
         }
-        await refreshData(true);
+        await refreshStudents();
         setIsEditing(false);
         setSuccessBannerText('Student Profile & Academic Credentials Successfully Updated in Supabase!');
         setSaveSuccess(true);
@@ -235,7 +237,7 @@ export const ProfilePage: React.FC = () => {
           setTimeout(() => setSaveSuccess(false), 3500);
           return;
         }
-        await refreshData(true);
+        await refreshFaculty();
         setIsEditing(false);
         setSuccessBannerText('Profile Information Updated and Synchronized College-wide!');
         setSaveSuccess(true);

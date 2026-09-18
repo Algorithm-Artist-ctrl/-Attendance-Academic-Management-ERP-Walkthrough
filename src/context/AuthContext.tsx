@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, Student, Faculty, Section, AdmissionType } from '../types/database.types';
 import { AuthState, LoginCredentials, SignUpData } from '../types/auth.types';
 import { supabase } from '../lib/supabase/supabaseClient';
@@ -33,20 +33,46 @@ export interface AuthContextType extends AuthState {
   verifyEmailOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
   updateUserProfile: (updates: UserProfileUpdates) => Promise<{ success: boolean; error?: string }>;
   resolveUserEmail: (rawIdentifier: string) => Promise<string | null>;
+  adminUpdateAccountCredentials?: (params: {
+    targetUserId: string;
+    email?: string;
+    password?: string;
+    isDefaultPassword?: boolean;
+    actorId?: string;
+    actorName?: string;
+    actorRole?: string;
+  }) => Promise<{ success: boolean; data?: any; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    role: null,
-    isAuthenticated: false,
-    isLoading: true,
-    error: null,
-    isPasswordRecovery: false,
-    pendingNewEmail: null,
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    const cached = erpStorage.getCurrentSessionUser();
+    if (cached && cached.id && cached.role) {
+      return {
+        user: cached,
+        role: cached.role,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        isPasswordRecovery: false,
+        pendingNewEmail: null,
+      };
+    }
+    return {
+      user: null,
+      role: null,
+      isAuthenticated: false,
+      isLoading: true,
+      error: null,
+      isPasswordRecovery: false,
+      pendingNewEmail: null,
+    };
   });
+
+  const emailCacheRef = useRef<Map<string, string>>(new Map());
+  const inFlightProfileRef = useRef<Map<string, Promise<UserProfile | null>>>(new Map());
 
   // Helper to resolve official email from any identifier (Roll Number, Employee ID, Faculty Code, 'admin')
   const resolveUserEmail = async (rawIdentifier: string): Promise<string | null> => {
@@ -59,6 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const clean = trimmed.toLowerCase();
+    const cached = emailCacheRef.current.get(clean);
+    if (cached) return cached;
+
     if (clean === 'admin') {
       try {
         const { data: adminProf } = await supabase
@@ -68,44 +97,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .limit(1)
           .maybeSingle();
         if (adminProf?.email) {
-          return adminProf.email.toLowerCase().trim();
+          const res = adminProf.email.toLowerCase().trim();
+          emailCacheRef.current.set(clean, res);
+          return res;
         }
       } catch (err) {
         console.warn('Failed to dynamically resolve super_admin email:', err);
       }
+      emailCacheRef.current.set(clean, 'admin@vctm.in');
       return 'admin@vctm.in';
     }
 
     try {
       const cleanRoll = trimmed.replace(/[\s\-_]/g, '');
 
-      // 2. Search student roll number
-      const { data: student } = await supabase
-        .from('students')
-        .select('id, email, roll_number')
-        .or(`roll_number.ilike.${cleanRoll},roll_number.ilike.${trimmed}`)
-        .maybeSingle();
+      // 2 & 3. Search student roll number and faculty code in parallel for 2x faster lookup
+      const [studentRes, facultyRes] = await Promise.all([
+        supabase
+          .from('students')
+          .select('id, email, roll_number')
+          .or(`roll_number.ilike.${cleanRoll},roll_number.ilike.${trimmed}`)
+          .maybeSingle(),
+        supabase
+          .from('faculty')
+          .select('email, employee_code, faculty_code')
+          .or(`employee_code.ilike.${trimmed},employee_code.ilike.${cleanRoll},faculty_code.ilike.${trimmed},faculty_code.ilike.${cleanRoll}`)
+          .maybeSingle(),
+      ]);
 
-      if (student) {
-        if (student.email) return student.email.toLowerCase().trim();
+      if (studentRes.data) {
+        const student = studentRes.data;
+        if (student.email) {
+          const res = student.email.toLowerCase().trim();
+          emailCacheRef.current.set(clean, res);
+          return res;
+        }
         const { data: prof } = await supabase
           .from('profiles')
           .select('email')
           .eq('student_id', student.id)
           .maybeSingle();
-        if (prof?.email) return prof.email.toLowerCase().trim();
-        return `${cleanRoll.toLowerCase()}@student.vctm.in`;
+        if (prof?.email) {
+          const res = prof.email.toLowerCase().trim();
+          emailCacheRef.current.set(clean, res);
+          return res;
+        }
+        const res = `${cleanRoll.toLowerCase()}@student.vctm.in`;
+        emailCacheRef.current.set(clean, res);
+        return res;
       }
 
-      // 3. Search faculty by employee code or faculty code
-      const { data: facultyMember } = await supabase
-        .from('faculty')
-        .select('email, employee_code, faculty_code')
-        .or(`employee_code.ilike.${trimmed},employee_code.ilike.${cleanRoll},faculty_code.ilike.${trimmed},faculty_code.ilike.${cleanRoll}`)
-        .maybeSingle();
-
-      if (facultyMember?.email) {
-        return facultyMember.email.toLowerCase().trim();
+      if (facultyRes.data?.email) {
+        const res = facultyRes.data.email.toLowerCase().trim();
+        emailCacheRef.current.set(clean, res);
+        return res;
       }
 
       // 4. Search profiles directly
@@ -116,12 +161,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (profile?.email) {
-        return profile.email.toLowerCase().trim();
+        const res = profile.email.toLowerCase().trim();
+        emailCacheRef.current.set(clean, res);
+        return res;
       }
 
       // 5. If purely numeric, assume student roll number pattern
       if (/^\d+$/.test(cleanRoll)) {
-        return `${cleanRoll.toLowerCase()}@student.vctm.in`;
+        const res = `${cleanRoll.toLowerCase()}@student.vctm.in`;
+        emailCacheRef.current.set(clean, res);
+        return res;
       }
     } catch (err) {
       console.warn('Error resolving identifier to email:', err);
@@ -130,223 +179,223 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
-  // Helper to load and deeply hydrate user profile from authenticated Supabase identity
-  const loadHydratedProfile = async (authUserId: string, authUserEmail?: string, authUser?: any): Promise<UserProfile | null> => {
-    try {
-      // 1. Query profile by authenticated UUID or email
-      let { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUserId)
-        .maybeSingle();
+  // Helper to load and deeply hydrate user profile from authenticated Supabase identity (Deduplicated Single Flight)
+  const loadHydratedProfile = (authUserId: string, authUserEmail?: string, authUser?: any): Promise<UserProfile | null> => {
+    if (!authUserId) return Promise.resolve(null);
+    const existing = inFlightProfileRef.current.get(authUserId);
+    if (existing) {
+      return existing;
+    }
 
-      if (!profile && authUserEmail) {
-        const { data: profByEmail } = await supabase
+    const fetchPromise = (async (): Promise<UserProfile | null> => {
+      try {
+        // 1. Query profile by authenticated UUID or email
+        let { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('email', authUserEmail.toLowerCase().trim())
+          .eq('id', authUserId)
           .maybeSingle();
-        profile = profByEmail;
-      }
 
-      // Auto-heal missing profile if user authenticated in auth.users
-      if (!profile) {
-        // Try finding student by auth_user_id or email
-        let studentRecord: any = null;
-        const { data: stByAuth } = await supabase
-          .from('students')
-          .select('*')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
-        studentRecord = stByAuth;
-
-        if (!studentRecord && authUserEmail) {
-          const cleanEmail = authUserEmail.toLowerCase().trim();
-          const rollCandidate = cleanEmail.split('@')[0];
-          const { data: stByEmail } = await supabase
-            .from('students')
+        if (!profile && authUserEmail) {
+          const { data: profByEmail } = await supabase
+            .from('profiles')
             .select('*')
-            .or(`email.ilike.${cleanEmail},roll_number.ilike.${rollCandidate}`)
+            .eq('email', authUserEmail.toLowerCase().trim())
             .maybeSingle();
-          studentRecord = stByEmail;
+          profile = profByEmail;
         }
 
-        if (studentRecord) {
-          const targetEmail = authUserEmail || studentRecord.email || `${studentRecord.roll_number}@student.vctm.in`;
-          const healedProfile = {
-            id: authUserId,
-            email: targetEmail.toLowerCase().trim(),
-            full_name: studentRecord.full_name,
-            role: 'student' as UserRole,
-            department_id: studentRecord.department_id,
-            student_id: studentRecord.id,
-            phone: studentRecord.phone,
-            status: studentRecord.status || 'ACTIVE',
-          };
-          try {
-            await supabase.from('profiles').upsert(healedProfile, { onConflict: 'id' });
-            if (!studentRecord.auth_user_id) {
-              await supabase.from('students').update({ auth_user_id: authUserId }).eq('id', studentRecord.id);
-            }
-          } catch (e) {
-            console.warn('Student profile auto-heal notice:', e);
-          }
-          profile = healedProfile as any;
-        }
-
-        // Try finding faculty by auth_user_id or email
+        // Auto-heal missing profile if user authenticated in auth.users
         if (!profile) {
-          let facRecord: any = null;
-          const { data: fByAuth } = await supabase
-            .from('faculty')
+          // Try finding student by auth_user_id or email
+          let studentRecord: any = null;
+          const { data: stByAuth } = await supabase
+            .from('students')
             .select('*')
             .eq('auth_user_id', authUserId)
             .maybeSingle();
-          facRecord = fByAuth;
+          studentRecord = stByAuth;
 
-          if (!facRecord && authUserEmail) {
+          if (!studentRecord && authUserEmail) {
             const cleanEmail = authUserEmail.toLowerCase().trim();
-            const { data: fByEmail } = await supabase
-              .from('faculty')
+            const rollCandidate = cleanEmail.split('@')[0];
+            const { data: stByEmail } = await supabase
+              .from('students')
               .select('*')
-              .ilike('email', cleanEmail)
+              .or(`email.ilike.${cleanEmail},roll_number.ilike.${rollCandidate}`)
               .maybeSingle();
-            facRecord = fByEmail;
+            studentRecord = stByEmail;
           }
 
-          if (facRecord) {
-            const isHOD = facRecord.designation?.toLowerCase().includes('hod') || facRecord.faculty_code === 'WSM';
-            const targetEmail = authUserEmail || facRecord.email;
+          if (studentRecord) {
+            const targetEmail = authUserEmail || studentRecord.email || `${studentRecord.roll_number}@student.vctm.in`;
             const healedProfile = {
               id: authUserId,
               email: targetEmail.toLowerCase().trim(),
-              full_name: facRecord.full_name,
-              role: (isHOD ? 'hod' : 'faculty') as UserRole,
-              department_id: facRecord.department_id,
-              faculty_id: facRecord.id,
-              phone: facRecord.phone,
-              status: facRecord.status || 'ACTIVE',
+              full_name: studentRecord.full_name,
+              role: 'student' as UserRole,
+              department_id: studentRecord.department_id,
+              student_id: studentRecord.id,
+              phone: studentRecord.phone,
+              status: studentRecord.status || 'ACTIVE',
             };
             try {
               await supabase.from('profiles').upsert(healedProfile, { onConflict: 'id' });
-              if (!facRecord.auth_user_id) {
-                await supabase.from('faculty').update({ auth_user_id: authUserId }).eq('id', facRecord.id);
+              if (!studentRecord.auth_user_id) {
+                await supabase.from('students').update({ auth_user_id: authUserId }).eq('id', studentRecord.id);
               }
             } catch (e) {
-              console.warn('Faculty profile auto-heal notice:', e);
+              console.warn('Student profile auto-heal notice:', e);
             }
             profile = healedProfile as any;
           }
+
+          // Try finding faculty by auth_user_id or email
+          if (!profile) {
+            let facRecord: any = null;
+            const { data: fByAuth } = await supabase
+              .from('faculty')
+              .select('*')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
+            facRecord = fByAuth;
+
+            if (!facRecord && authUserEmail) {
+              const cleanEmail = authUserEmail.toLowerCase().trim();
+              const { data: fByEmail } = await supabase
+                .from('faculty')
+                .select('*')
+                .eq('email', cleanEmail)
+                .maybeSingle();
+              facRecord = fByEmail;
+            }
+
+            if (facRecord) {
+              const targetEmail = authUserEmail || facRecord.email || `${facRecord.faculty_code?.toLowerCase()}@faculty.vctm.in`;
+              const healedProfile = {
+                id: authUserId,
+                email: targetEmail.toLowerCase().trim(),
+                full_name: facRecord.full_name,
+                role: (facRecord.is_hod ? 'hod' : 'faculty') as UserRole,
+                department_id: facRecord.department_id,
+                faculty_id: facRecord.id,
+                phone: facRecord.phone,
+                status: facRecord.status || 'ACTIVE',
+              };
+              try {
+                await supabase.from('profiles').upsert(healedProfile, { onConflict: 'id' });
+                if (!facRecord.auth_user_id) {
+                  await supabase.from('faculty').update({ auth_user_id: authUserId }).eq('id', facRecord.id);
+                }
+              } catch (e) {
+                console.warn('Faculty profile auto-heal notice:', e);
+              }
+              profile = healedProfile as any;
+            }
+          }
         }
 
-        // Check if Super Admin fallback
         if (!profile) {
-          const isKnownAdmin = authUserEmail?.toLowerCase().trim() === 'admin@vctm.in' ||
-                               authUserEmail?.toLowerCase().trim() === 'tarunkushwah798@gmail.com';
-          if (isKnownAdmin) {
-            const adminProf = {
-              id: authUserId,
-              email: authUserEmail ? authUserEmail.toLowerCase().trim() : 'admin@vctm.in',
-              full_name: 'Tarun Kushwah',
-              role: 'super_admin' as UserRole,
-              status: 'ACTIVE',
-            };
-            try {
-              await supabase.from('profiles').upsert(adminProf, { onConflict: 'id' });
-            } catch {}
-            profile = adminProf as any;
-          }
+          console.warn(`No public.profiles entry found or healable for auth UID: ${authUserId}`);
+          return null;
         }
-      }
 
-      if (!profile) return null;
-
-      // 2. Check if email was confirmed & changed in Supabase Auth (authoritative synchronization)
-      if (authUser?.email && profile.email && authUser.email.toLowerCase().trim() !== profile.email.toLowerCase().trim()) {
-        const confirmedNewEmail = authUser.email.toLowerCase().trim();
-        try {
-          await supabase
-            .from('profiles')
-            .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
-            .eq('id', profile.id);
-
-          if (profile.student_id || profile.role === 'student') {
-            const sid = profile.student_id || profile.id;
+        // 2. Authoritative sync of confirmed new email across institutional records
+        if (authUser?.email && profile.email !== authUser.email) {
+          const confirmedNewEmail = authUser.email.toLowerCase().trim();
+          try {
             await supabase
-              .from('students')
+              .from('profiles')
               .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
-              .eq('id', sid);
-          }
+              .eq('id', profile.id);
 
-          if (profile.faculty_id || profile.role === 'faculty' || profile.role === 'hod') {
-            if (profile.faculty_id) {
+            if (profile.student_id || profile.role === 'student') {
+              if (profile.student_id) {
+                await supabase
+                  .from('students')
+                  .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
+                  .eq('id', profile.student_id);
+              }
+              await supabase
+                .from('students')
+                .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
+                .or(`auth_user_id.eq.${profile.id},id.eq.${profile.id}`);
+            }
+
+            if (profile.faculty_id || profile.role === 'faculty' || profile.role === 'hod') {
+              if (profile.faculty_id) {
+                await supabase
+                  .from('faculty')
+                  .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
+                  .eq('id', profile.faculty_id);
+              }
               await supabase
                 .from('faculty')
                 .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
-                .eq('id', profile.faculty_id);
+                .or(`auth_user_id.eq.${profile.id},id.eq.${profile.id}`);
             }
-            // Also sync by auth_user_id or id if faculty_id differed
-            await supabase
-              .from('faculty')
-              .update({ email: confirmedNewEmail, updated_at: new Date().toISOString() })
-              .or(`auth_user_id.eq.${profile.id},id.eq.${profile.id}`);
+
+            profile.email = confirmedNewEmail;
+          } catch (syncErr) {
+            console.warn('Notice: Background sync of confirmed email to database tables:', syncErr);
           }
-
-          profile.email = confirmedNewEmail;
-        } catch (syncErr) {
-          console.warn('Notice: Background sync of confirmed email to database tables:', syncErr);
         }
-      }
 
-      // Attach authoritative Supabase Auth verification state
-      profile.email_confirmed_at = authUser?.email_confirmed_at || null;
-      profile.new_email = authUser?.new_email || null;
-      profile.pending_email = authUser?.new_email || null;
+        // Attach authoritative Supabase Auth verification state
+        profile.email_confirmed_at = authUser?.email_confirmed_at || null;
+        profile.new_email = authUser?.new_email || null;
+        profile.pending_email = authUser?.new_email || null;
 
-      // 3. Deeply hydrate student profile with section authority
-      if (profile.role === 'student' || profile.student_id) {
-        const studId = profile.student_id || profile.id;
-        const { data: student } = await supabase
-          .from('students')
-          .select('*, section:sections(*)')
-          .or(`id.eq.${studId},auth_user_id.eq.${authUserId}`)
-          .maybeSingle();
+        // 3. Deeply hydrate student profile with section authority
+        if (profile.role === 'student' || profile.student_id) {
+          const studId = profile.student_id || profile.id;
+          const { data: student } = await supabase
+            .from('students')
+            .select('*, section:sections(*)')
+            .or(`id.eq.${studId},auth_user_id.eq.${authUserId}`)
+            .maybeSingle();
 
-        if (student) {
-          return {
-            ...profile,
-            student_id: student.id,
-            student: {
-              ...student,
-              section_id: (student.section as any)?.id || student.section_id,
-            },
-          };
+          if (student) {
+            return {
+              ...profile,
+              student_id: student.id,
+              student: {
+                ...student,
+                section_id: (student.section as any)?.id || student.section_id,
+              },
+            };
+          }
         }
-      }
 
-      // 4. Deeply hydrate faculty profile
-      if (profile.role === 'faculty' || profile.role === 'hod' || profile.faculty_id) {
-        const facId = profile.faculty_id || profile.id;
-        const { data: fac } = await supabase
-          .from('faculty')
-          .select('*')
-          .or(`id.eq.${facId},auth_user_id.eq.${authUserId}`)
-          .maybeSingle();
+        // 4. Deeply hydrate faculty profile
+        if (profile.role === 'faculty' || profile.role === 'hod' || profile.faculty_id) {
+          const facId = profile.faculty_id || profile.id;
+          const { data: fac } = await supabase
+            .from('faculty')
+            .select('*')
+            .or(`id.eq.${facId},auth_user_id.eq.${authUserId}`)
+            .maybeSingle();
 
-        if (fac) {
-          return {
-            ...profile,
-            faculty_id: fac.id,
-            faculty: fac,
-          };
+          if (fac) {
+            return {
+              ...profile,
+              faculty_id: fac.id,
+              faculty: fac,
+            };
+          }
         }
-      }
 
-      return profile;
-    } catch (err) {
-      console.error('Failed to load hydrated profile:', err);
-      return null;
-    }
+        return profile;
+      } catch (err) {
+        console.error('Failed to load hydrated profile:', err);
+        return null;
+      } finally {
+        inFlightProfileRef.current.delete(authUserId);
+      }
+    })();
+
+    inFlightProfileRef.current.set(authUserId, fetchPromise);
+    return fetchPromise;
   };
 
   useEffect(() => {
@@ -1321,6 +1370,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmailOtp,
         updateUserProfile,
         resolveUserEmail,
+        adminUpdateAccountCredentials: (params) => supabaseService.adminUpdateAccountCredentials(params),
       }}
     >
       {children}

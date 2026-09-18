@@ -122,6 +122,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   } | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [messageSendError, setMessageSendError] = useState<string | null>(null);
 
   // Mobile layout state
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
@@ -328,6 +329,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     if (!selectedGroup || !groupInputMessage.trim() || groupSending) return;
 
     setGroupSending(true);
+    setMessageSendError(null);
     try {
       const res = await sendGroupMessage({
         academicYearId: selectedGroup.academic_year_id,
@@ -346,14 +348,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setGroupInputTitle('');
         setShowTitleInput(false);
         setGroupAttachment(null);
+        setMessageSendError(null);
         // Refresh local group messages
         const updatedMsgs = await supabaseService.fetchGroupMessages(selectedGroup.id);
         setGroupMessages(updatedMsgs);
       } else {
-        alert(`Failed to send message: ${res.error?.message || 'Unauthorized or server error'}`);
+        setMessageSendError(res.error?.message || 'Failed to send group message. Please check connection and retry.');
       }
     } catch (err: any) {
-      alert(`Error sending message: ${err.message}`);
+      setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
     } finally {
       setGroupSending(false);
     }
@@ -365,6 +368,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     if (!selectedConvId || !directInputMessage.trim() || directSending) return;
 
     setDirectSending(true);
+    setMessageSendError(null);
     try {
       const res = await sendMessage({
         conversationId: selectedConvId,
@@ -378,13 +382,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       if (!res.error) {
         setDirectInputMessage('');
         setDirectAttachment(null);
+        setMessageSendError(null);
         const updated = await supabaseService.fetchConversationMessages(selectedConvId);
         setDirectMessages(updated);
       } else {
-        alert(`Failed to send message: ${res.error?.message || 'Error'}`);
+        setMessageSendError(res.error?.message || 'Failed to send direct message. Please check connection and retry.');
       }
     } catch (err: any) {
-      alert(`Error sending message: ${err.message}`);
+      setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
     } finally {
       setDirectSending(false);
     }
@@ -891,6 +896,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 {/* Group Message Composer */}
                 {(isFacultyOrAdmin || selectedGroup.allow_student_replies) ? (
                   <form onSubmit={handleSendGroupMessage} className="p-3 border-t border-emerald-500/15 bg-slate-950/80 space-y-2 shrink-0">
+                    {/* Error Alert if send fails */}
+                    {messageSendError && (
+                      <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                        <span className="flex-1 font-medium">{messageSendError}</span>
+                        <button
+                          type="button"
+                          onClick={() => setMessageSendError(null)}
+                          className="text-rose-400 hover:text-white p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                     {/* Optional Title input for Faculty */}
                     {isFacultyOrAdmin && showTitleInput && (
                       <div className="flex items-center gap-2">
@@ -1088,6 +1106,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Direct Message Composer */}
                 <form onSubmit={handleSendDirectMessage} className="p-3 border-t border-emerald-500/15 bg-slate-950/80 space-y-2 shrink-0">
+                  {/* Error Alert if send fails */}
+                  {messageSendError && (
+                    <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                      <span className="flex-1 font-medium">{messageSendError}</span>
+                      <button
+                        type="button"
+                        onClick={() => setMessageSendError(null)}
+                        className="text-rose-400 hover:text-white p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                   {directAttachment && (
                     <div className="flex items-center gap-2 bg-emerald-500/15 text-[#00ff88] text-xs px-2.5 py-1.5 rounded-xl border border-emerald-500/30 w-fit">
                       <FileText className="w-3.5 h-3.5 shrink-0" />

@@ -156,6 +156,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
   // History Modal State
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+  const [saveMarksError, setSaveMarksError] = useState('');
 
   const handleSubjectChange = (subId: string) => {
     setSelectedSubjectId(subId);
@@ -273,6 +274,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
 
     try {
       setIsSavingMarks(true);
+      setSaveMarksError('');
       await saveSessionalMarks({
         sessionalAssessmentId: activeAssessmentForMarks.id,
         facultyId: currentFacultyId,
@@ -287,7 +289,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
       setSuccessToast(`Saved marks for ${studentList.length} students in "${activeAssessmentForMarks.title}"!`);
       setTimeout(() => setSuccessToast(''), 4000);
     } catch (err: any) {
-      alert(err.message || 'Failed to save sessional marks.');
+      setSaveMarksError(err.message || 'Failed to save sessional marks. Entered marks have been preserved.');
     } finally {
       setIsSavingMarks(false);
     }
@@ -618,6 +620,18 @@ export const FacultySessionalMarksPage: React.FC = () => {
         title={`Marks Entry — ${activeAssessmentForMarks?.title || ''}`}
       >
         <div className="space-y-4">
+          {saveMarksError && (
+            <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <span className="font-medium">{saveMarksError}</span>
+              <button
+                type="button"
+                onClick={() => setSaveMarksError('')}
+                className="text-rose-400 hover:text-white p-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div>
               <span className="text-slate-400">Subject: </span>
