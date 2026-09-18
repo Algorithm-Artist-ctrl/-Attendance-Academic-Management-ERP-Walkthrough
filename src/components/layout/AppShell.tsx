@@ -113,6 +113,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         setActiveConversationId(_refId);
       }
       onTabChange('messages');
+    } else if (t.includes('LEAVE') || rt.includes('LEAVE')) {
+      onTabChange('leave');
     } else if (t.includes('MARKS') || rt.includes('MARKS') || rt.includes('SESSIONAL')) {
       onTabChange('marks');
     } else if (t.includes('ASSIGNMENT') || rt.includes('ASSIGNMENT')) {
@@ -132,6 +134,13 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   const renderNotificationIcon = (type: string) => {
     const t = (type || '').toUpperCase();
+    if (t.includes('LEAVE')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+          <FileText className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
     if (t.includes('MESSAGE') || t.includes('CONVERSATION')) {
       return (
         <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
@@ -229,6 +238,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
           },
           { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
+          { id: 'leave', label: 'Leave Applications', icon: FileText },
           { id: 'notices', label: 'Notices', icon: Bell },
           { 
             id: 'messages', 
@@ -258,6 +268,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
             },
             { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
+            { id: 'leave', label: 'Leave Applications', icon: FileText },
             { id: 'notices', label: 'Notices', icon: Bell },
             { 
               id: 'messages', 
@@ -283,6 +294,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             icon: RotateCcw, 
             badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
           },
+          { id: 'leave', label: 'Leave Approvals', icon: FileText },
           { id: 'notices', label: 'Notices', icon: Bell },
           { 
             id: 'messages', 
@@ -304,6 +316,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'faculty_assignments', label: 'Faculty Assignments', icon: CheckSquare },
           { id: 'import', label: 'Student Data / CSV Import', icon: FileSpreadsheet },
           { id: 'timetable', label: 'Timetable Overview', icon: Calendar },
+          { id: 'leave', label: 'Leave Oversight', icon: FileText },
           { id: 'notices', label: 'Notices', icon: Bell },
           { id: 'audit_logs', label: 'Audit Logs', icon: ShieldCheck },
           { id: 'settings', label: 'Settings', icon: Settings },

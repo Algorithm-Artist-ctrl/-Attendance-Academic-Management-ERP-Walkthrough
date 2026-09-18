@@ -1230,6 +1230,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           realtimeHandlersRef.current.refreshNotifications();
         });
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_applications' }, () => {
+        debounceTableSync('leave_applications', () => {
+          realtimeHandlersRef.current.refreshNotifications();
+        });
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
         const newNotif = payload?.new as StudentNotification;
         if (newNotif) {

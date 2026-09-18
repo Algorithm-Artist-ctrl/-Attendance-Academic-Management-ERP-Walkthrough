@@ -38,6 +38,7 @@ const FacultySectionWorkspacePage = lazy(() => import('./pages/faculty/FacultySe
 // Lazy Loaded HOD Pages
 const HODDashboard = lazy(() => import('./pages/hod/HODDashboard').then(m => ({ default: m.HODDashboard })));
 const HODAcademicOversightPage = lazy(() => import('./pages/hod/HODAcademicOversightPage').then(m => ({ default: m.HODAcademicOversightPage })));
+const LeaveManagementPage = lazy(() => import('./pages/leave/LeaveManagementPage').then(m => ({ default: m.LeaveManagementPage })));
 
 // Lazy Loaded Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -207,6 +208,8 @@ export const AppContent: React.FC = () => {
           return <NoticesPage />;
         case 'messages':
           return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+        case 'leave':
+          return <LeaveManagementPage />;
         case 'corrections':
           return <ReviewCorrectionsPage />;
         case 'settings':
@@ -317,6 +320,9 @@ export const AppContent: React.FC = () => {
             break;
           case 'messages':
             facultyModeComponent = <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+            break;
+          case 'leave':
+            facultyModeComponent = <LeaveManagementPage />;
             break;
           case 'corrections':
             facultyModeComponent = <ReviewCorrectionsPage forceFacultyMode={true} />;
@@ -429,6 +435,8 @@ export const AppContent: React.FC = () => {
           return <NoticesPage />;
         case 'messages':
           return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+        case 'leave':
+          return <LeaveManagementPage />;
         case 'reports':
           return <ReportsPage />;
         case 'corrections':
@@ -472,6 +480,8 @@ export const AppContent: React.FC = () => {
           return <NoticesPage />;
         case 'messages':
           return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+        case 'leave':
+          return <LeaveManagementPage />;
         case 'audit_logs':
           return <AuditLogsPage />;
         case 'settings':

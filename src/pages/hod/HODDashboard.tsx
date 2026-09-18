@@ -18,7 +18,8 @@ import {
   Filter,
   RefreshCw,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -87,6 +88,16 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
   const [dateValidationError, setDateValidationError] = useState<string | null>(null);
   const [studentHistoryData, setStudentHistoryData] = useState<StudentAttendanceHistorySummary | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+  const [pendingLeavesCount, setPendingLeavesCount] = useState<number>(0);
+
+  // Fetch pending leaves count for HOD
+  useEffect(() => {
+    supabaseService.fetchHODLeaveApplications(dept?.id)
+      .then(apps => {
+        setPendingLeavesCount(apps.filter(a => a.status === 'PENDING_HOD').length);
+      })
+      .catch(() => {});
+  }, [dept?.id]);
 
   // Supported academic years (2nd, 3rd, 4th strictly — NO 1st Year)
   const supportedYears = useMemo(() => {
@@ -489,6 +500,36 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
           </Button>
         </div>
       </div>
+
+      {/* Pending Leave Applications Alert Banner */}
+      {pendingLeavesCount > 0 && (
+        <div className="glass-panel p-4 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in zoom-in-95 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-white flex items-center gap-2">
+                Pending Leave Applications
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-mono">
+                  {pendingLeavesCount} Awaiting Review
+                </span>
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                Student leave requests forwarded by Class Coordinators awaiting your final sanction.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="neon"
+            size="sm"
+            onClick={() => onNavigate?.('leave')}
+            leftIcon={<FileText className="w-3.5 h-3.5 text-slate-950" />}
+          >
+            Review Leaves
+          </Button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

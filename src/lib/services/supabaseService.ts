@@ -44,7 +44,11 @@ import {
   ConversationStatus,
   Message,
   EligibleFacultyForStudent,
-  EligibleStudentForFaculty
+  EligibleStudentForFaculty,
+  LeaveApplication,
+  LeaveApprovalAuditLog,
+  LeaveStatus,
+  LeaveType
 } from '../../types/database.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -5271,6 +5275,279 @@ export const supabaseService = {
     } catch (err) {
       console.error('Error fetching eligible students for faculty:', err);
       return [];
+    }
+  },
+
+  // ============================================================================
+  // LEAVE APPLICATION WORKFLOW METHODS
+  // ============================================================================
+
+  async fetchStudentLeaveApplications(studentId?: string): Promise<LeaveApplication[]> {
+    try {
+      let q = supabase
+        .from('leave_applications')
+        .select(`
+          *,
+          student:students(id, full_name, roll_number, email, phone, section_id),
+          department:departments(id, name, code),
+          academic_year:academic_years(id, year_number, name),
+          section:sections(id, name),
+          coordinator:coordinator_id(id, full_name, designation, email),
+          hod:hod_id(id, full_name, designation, email),
+          coordinator_approver:coordinator_approved_by(id, full_name, designation),
+          hod_approver:hod_approved_by(id, full_name, designation),
+          rejecter:rejected_by(id, full_name, designation)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (studentId) {
+        q = q.eq('student_id', studentId);
+      }
+
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as LeaveApplication[];
+    } catch (err) {
+      console.error('Error fetching student leave applications:', err);
+      return [];
+    }
+  },
+
+  async fetchCoordinatorLeaveApplications(facultyId?: string): Promise<LeaveApplication[]> {
+    try {
+      let q = supabase
+        .from('leave_applications')
+        .select(`
+          *,
+          student:students(id, full_name, roll_number, email, phone, section_id),
+          department:departments(id, name, code),
+          academic_year:academic_years(id, year_number, name),
+          section:sections(id, name),
+          coordinator:coordinator_id(id, full_name, designation, email),
+          hod:hod_id(id, full_name, designation, email),
+          coordinator_approver:coordinator_approved_by(id, full_name, designation),
+          hod_approver:hod_approved_by(id, full_name, designation),
+          rejecter:rejected_by(id, full_name, designation)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (facultyId) {
+        // Find coordinated sections
+        const { data: cca } = await supabase
+          .from('class_coordinator_assignments')
+          .select('section_id')
+          .eq('faculty_id', facultyId)
+          .eq('active', true);
+
+        const { data: sec } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('class_coordinator_id', facultyId);
+
+        const secIds = Array.from(new Set([
+          ...(cca || []).map(c => c.section_id),
+          ...(sec || []).map(s => s.id)
+        ])).filter(Boolean);
+
+        if (secIds.length > 0) {
+          q = q.or(`coordinator_id.eq.${facultyId},section_id.in.(${secIds.join(',')})`);
+        } else {
+          q = q.eq('coordinator_id', facultyId);
+        }
+      }
+
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as LeaveApplication[];
+    } catch (err) {
+      console.error('Error fetching coordinator leave applications:', err);
+      return [];
+    }
+  },
+
+  async fetchHODLeaveApplications(departmentId?: string): Promise<LeaveApplication[]> {
+    try {
+      let q = supabase
+        .from('leave_applications')
+        .select(`
+          *,
+          student:students(id, full_name, roll_number, email, phone, section_id),
+          department:departments(id, name, code),
+          academic_year:academic_years(id, year_number, name),
+          section:sections(id, name),
+          coordinator:coordinator_id(id, full_name, designation, email),
+          hod:hod_id(id, full_name, designation, email),
+          coordinator_approver:coordinator_approved_by(id, full_name, designation),
+          hod_approver:hod_approved_by(id, full_name, designation),
+          rejecter:rejected_by(id, full_name, designation)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (departmentId) {
+        q = q.eq('department_id', departmentId);
+      }
+
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as LeaveApplication[];
+    } catch (err) {
+      console.error('Error fetching HOD leave applications:', err);
+      return [];
+    }
+  },
+
+  async submitLeaveApplication(params: {
+    leaveType: string;
+    fromDate: string;
+    toDate: string;
+    numberOfDays: number;
+    reason: string;
+    attachmentUrl?: string | null;
+    attachmentName?: string | null;
+  }): Promise<{ success: boolean; data?: LeaveApplication; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('submit_leave_application', {
+        p_leave_type: params.leaveType,
+        p_from_date: params.fromDate,
+        p_to_date: params.toDate,
+        p_number_of_days: params.numberOfDays,
+        p_reason: params.reason,
+        p_attachment_url: params.attachmentUrl || null,
+        p_attachment_name: params.attachmentName || null
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: data as LeaveApplication };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to submit leave application' };
+    }
+  },
+
+  async coordinatorReviewLeave(params: {
+    applicationId: string;
+    action: 'APPROVE' | 'REJECT';
+    remarks?: string;
+  }): Promise<{ success: boolean; data?: LeaveApplication; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('coordinator_review_leave', {
+        p_application_id: params.applicationId,
+        p_action: params.action,
+        p_remarks: params.remarks || null
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: data as LeaveApplication };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to review leave application' };
+    }
+  },
+
+  async hodReviewLeave(params: {
+    applicationId: string;
+    action: 'APPROVE' | 'REJECT';
+    remarks?: string;
+  }): Promise<{ success: boolean; data?: LeaveApplication; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('hod_review_leave', {
+        p_application_id: params.applicationId,
+        p_action: params.action,
+        p_remarks: params.remarks || null
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: data as LeaveApplication };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to review leave application' };
+    }
+  },
+
+  async fetchLeaveAuditLogs(applicationId: string): Promise<LeaveApprovalAuditLog[]> {
+    try {
+      const { data, error } = await supabase
+        .from('leave_approval_audit_logs')
+        .select('*')
+        .eq('application_id', applicationId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return (data || []) as LeaveApprovalAuditLog[];
+    } catch (err) {
+      console.error('Error fetching leave audit logs:', err);
+      return [];
+    }
+  },
+
+  async resolveStudentCoordinatorAndHOD(studentId: string): Promise<{
+    coordinator?: { id: string; name: string; designation?: string; email?: string } | null;
+    hod?: { id: string; name: string; designation?: string; email?: string } | null;
+    sectionName?: string;
+    yearName?: string;
+    departmentName?: string;
+  }> {
+    try {
+      const { data: student } = await supabase
+        .from('students')
+        .select(`
+          id,
+          full_name,
+          section_id,
+          department_id,
+          academic_year_id,
+          section:sections(id, name, class_coordinator_id, class_coordinator:class_coordinator_id(id, full_name, designation, email)),
+          department:departments(id, name, hod_faculty_id, hod:hod_faculty_id(id, full_name, designation, email)),
+          academic_year:academic_years(id, year_number, name)
+        `)
+        .eq('id', studentId)
+        .maybeSingle();
+
+      if (!student) return {};
+
+      // Check CCA table for coordinator
+      let coord = (student.section as any)?.class_coordinator;
+      if (!coord && student.section_id) {
+        const { data: cca } = await supabase
+          .from('class_coordinator_assignments')
+          .select('faculty:faculty(id, full_name, designation, email)')
+          .eq('section_id', student.section_id)
+          .eq('active', true)
+          .maybeSingle();
+
+        if (cca?.faculty) {
+          coord = cca.faculty;
+        }
+      }
+
+      const hod = (student.department as any)?.hod;
+
+      return {
+        coordinator: coord ? {
+          id: coord.id,
+          name: coord.full_name,
+          designation: coord.designation,
+          email: coord.email
+        } : null,
+        hod: hod ? {
+          id: hod.id,
+          name: hod.full_name,
+          designation: hod.designation,
+          email: hod.email
+        } : null,
+        sectionName: (student.section as any)?.name,
+        yearName: (student.academic_year as any)?.name,
+        departmentName: (student.department as any)?.name
+      };
+    } catch (err) {
+      console.error('Error resolving student coordinator and HOD:', err);
+      return {};
     }
   }
 };

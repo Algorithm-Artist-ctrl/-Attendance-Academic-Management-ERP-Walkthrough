@@ -559,6 +559,10 @@ export type NotificationType =
   | 'ACCOUNT_UPDATE'
   | 'NEW_MESSAGE'
   | 'ISSUE_STATUS_UPDATE'
+  | 'LEAVE_APPLICATION_SUBMITTED'
+  | 'LEAVE_FORWARDED_HOD'
+  | 'LEAVE_APPROVED'
+  | 'LEAVE_REJECTED'
   | 'GENERAL';
 
 export interface StudentNotification {
@@ -659,6 +663,88 @@ export interface EligibleStudentForFaculty {
   subject_code: string;
   academic_year_id: string;
   year_name?: string;
+}
+
+export type LeaveStatus = 
+  | 'PENDING_COORDINATOR'
+  | 'PENDING_HOD'
+  | 'APPROVED'
+  | 'REJECTED_BY_COORDINATOR'
+  | 'REJECTED_BY_HOD';
+
+export type LeaveType = 
+  | 'Medical Leave'
+  | 'Duty Leave (OD)'
+  | 'Casual Leave'
+  | 'Semester Break'
+  | 'Other';
+
+export interface LeaveApplication {
+  id: string;
+  application_number: string;
+  student_id: string;
+  department_id: string;
+  academic_year_id: string;
+  section_id: string;
+  coordinator_id?: string | null;
+  hod_id?: string | null;
+  leave_type: LeaveType | string;
+  from_date: string;
+  to_date: string;
+  number_of_days: number;
+  reason: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  status: LeaveStatus;
+  
+  // Coordinator Approval Details
+  coordinator_approved_by?: string | null;
+  coordinator_approved_at?: string | null;
+  coordinator_remarks?: string | null;
+
+  // HOD Approval Details
+  hod_approved_by?: string | null;
+  hod_approved_at?: string | null;
+  hod_remarks?: string | null;
+
+  // Rejection Details
+  rejected_by?: string | null;
+  rejected_by_role?: 'coordinator' | 'hod' | string | null;
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
+
+  // Verification & Security
+  verification_code: string;
+  approved_pdf_url?: string | null;
+
+  created_at: string;
+  updated_at: string;
+
+  // Expanded relations / joins
+  student?: Student;
+  department?: Department;
+  academic_year?: AcademicYear;
+  section?: Section;
+  coordinator?: Faculty;
+  hod?: Faculty;
+  coordinator_approver?: Faculty;
+  hod_approver?: Faculty;
+  rejecter?: Faculty;
+}
+
+export interface LeaveApprovalAuditLog {
+  id: string;
+  application_id: string;
+  actor_user_id?: string | null;
+  actor_faculty_id?: string | null;
+  actor_student_id?: string | null;
+  actor_role: string;
+  action: 'SUBMITTED' | 'COORDINATOR_APPROVED' | 'COORDINATOR_REJECTED' | 'HOD_APPROVED' | 'HOD_REJECTED' | string;
+  old_status?: LeaveStatus | string | null;
+  new_status: LeaveStatus | string;
+  remarks?: string | null;
+  created_at: string;
+  actor_name?: string;
 }
 
 
