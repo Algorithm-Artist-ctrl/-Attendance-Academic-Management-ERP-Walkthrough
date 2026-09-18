@@ -40,6 +40,8 @@ export const FacultyDirectoryPage: React.FC = () => {
     timetable,
     years,
     semesters,
+    classCoordinatorAssignments,
+    classrooms,
     createFacultyWithAssignments,
     updateFacultyWithAssignments,
     setFacultyStatus,
@@ -52,6 +54,83 @@ export const FacultyDirectoryPage: React.FC = () => {
 
   const isSuperAdmin = role === 'super_admin';
   const isHOD = role === 'hod';
+
+  // Helper to resolve all active Class Coordinator assignments for a faculty member
+  const getFacultyCoordinations = (fId: string) => {
+    const coordMap = new Map<string, {
+      sectionId: string;
+      yearName: string;
+      sectionName: string;
+      room?: string;
+    }>();
+
+    // 1. Check direct classCoordinatorAssignments from relational table
+    const directAssignments = (classCoordinatorAssignments || []).filter(
+      cca => cca.active && cca.faculty_id === fId
+    );
+
+    // 2. Check direct sections.class_coordinator_id pointer
+    const directSecs = (sections || []).filter(
+      s => s.active && s.class_coordinator_id === fId
+    );
+
+    const processSection = (secId: string, fallbackSec?: any) => {
+      if (!secId || coordMap.has(secId)) return;
+      const sec = sections.find(s => s.id === secId) || fallbackSec;
+      if (!sec) return;
+
+      // 1. Resolve Semester and Academic Year via UUID relations
+      const sem = semesters.find(sm => sm.id === sec.semester_id) || sec.semester;
+      const yr = sem ? (years.find(y => y.id === sem.academic_year_id) || sem.academic_year) : undefined;
+      
+      // Fallback: check assignments if semester/year was not directly linked
+      const fallbackYr = !yr ? (
+        assignments.find(a => a.section_id === sec.id && a.academic_year)?.academic_year ||
+        years.find(y => y.id === assignments.find(a => a.section_id === sec.id)?.academic_year_id)
+      ) : undefined;
+
+      const finalYr = yr || fallbackYr;
+      const yearName = finalYr?.name || (finalYr?.year_number ? `${finalYr.year_number} Year` : 'Academic Year');
+      const cleanSecName = (sec.name || '').replace(/^section\s*/i, '').trim() || 'A';
+
+      // 2. Resolve Room (only if an actual room exists in database)
+      let rawRoom = sec.room_number ? sec.room_number.trim() : '';
+      if (!rawRoom && sec.classroom_id) {
+        const cr = classrooms?.find(c => c.id === sec.classroom_id);
+        if (cr?.room_number) rawRoom = cr.room_number.trim();
+      }
+      if (!rawRoom && (sec.classroom as any)?.room_number) {
+        rawRoom = (sec.classroom as any).room_number.trim();
+      }
+      if (!rawRoom) {
+        const ttWithRoom = timetable?.find(t => t.section_id === sec.id && t.room_number);
+        if (ttWithRoom?.room_number) rawRoom = ttWithRoom.room_number.trim();
+      }
+
+      // Format room: e.g. "Room A-302"
+      let room: string | undefined = undefined;
+      if (rawRoom) {
+        room = rawRoom.toLowerCase().startsWith('room') ? rawRoom : `Room ${rawRoom}`;
+      }
+
+      coordMap.set(sec.id, {
+        sectionId: sec.id,
+        yearName,
+        sectionName: cleanSecName,
+        room
+      });
+    };
+
+    directAssignments.forEach(cca => {
+      processSection(cca.section_id, cca.section);
+    });
+
+    directSecs.forEach(s => {
+      processSection(s.id, s);
+    });
+
+    return Array.from(coordMap.values());
+  };
 
   // Active academic years strictly excluding 1st Year (year_number === 1)
   const activeCohorts = useMemo(() => {
@@ -511,7 +590,7 @@ export const FacultyDirectoryPage: React.FC = () => {
             });
             const assignedSecList = Array.from(sectionYearSet);
 
-            const coordinatedSec = sections.find(s => s.class_coordinator_id === f.id);
+            const coordinatedAssignments = getFacultyCoordinations(f.id);
 
             return (
               <div
@@ -656,12 +735,29 @@ export const FacultyDirectoryPage: React.FC = () => {
                   </div>
 
                   {/* Class Coordinator Badge */}
-                  {coordinatedSec && (
-                    <div className="mt-2 p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-[11px]">
-                      <span className="text-[#00ff88] font-bold">Class Coordinator</span>
-                      <span className="text-white font-bold font-mono">
-                        Section {coordinatedSec.name} {coordinatedSec.room_number ? `(${coordinatedSec.room_number})` : ''}
-                      </span>
+                  {coordinatedAssignments.length > 0 && (
+                    <div className="mt-2.5 p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-[#00ff88] font-bold text-[11px] uppercase tracking-wider">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88] shrink-0" />
+                        <span>Class Coordinator</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {coordinatedAssignments.map(coord => (
+                          <div 
+                            key={coord.sectionId} 
+                            className="flex flex-wrap items-center justify-between gap-1 text-xs pt-1 border-t border-emerald-500/10 first:border-0 first:pt-0"
+                          >
+                            <span className="text-white font-bold">
+                              {coord.yearName} • Section {coord.sectionName}
+                            </span>
+                            {coord.room && (
+                              <span className="text-emerald-400 font-mono text-[11px] font-semibold bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                                {coord.room}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

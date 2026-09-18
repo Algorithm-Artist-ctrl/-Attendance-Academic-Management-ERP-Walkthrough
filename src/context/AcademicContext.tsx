@@ -1434,7 +1434,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           debounceTableSync('faculty', () => realtimeHandlersRef.current.refreshFaculty());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => {
-          debounceTableSync('sections', () => realtimeHandlersRef.current.refreshSections());
+          debounceTableSync('sections', () => {
+            realtimeHandlersRef.current.refreshSections();
+            realtimeHandlersRef.current.refreshCoordinatorAssignments();
+          });
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
           debounceTableSync('subjects', () => realtimeHandlersRef.current.refreshSubjects());
