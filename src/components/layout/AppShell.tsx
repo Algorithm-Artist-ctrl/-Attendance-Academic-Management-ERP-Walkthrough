@@ -22,7 +22,9 @@ import {
   MessageSquare,
   Sparkles,
   UserCheck,
-  Award
+  Award,
+  WifiOff,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -55,6 +57,9 @@ export const AppShell: React.FC<AppShellProps> = ({
     subjects,
     notifications,
     unreadNotificationCount,
+    activeToast,
+    dismissToast,
+    isOnline,
     markNotificationAsRead,
     markAllNotificationsAsRead
   } = useAcademic();
@@ -96,6 +101,70 @@ export const AppShell: React.FC<AppShellProps> = ({
     // super_admin
     return corrections.filter(c => c.status === 'pending').length;
   }, [corrections, role, user, currentFaculty, isTeachingMode, getFacultyCorrectionRequests, attendanceRecords, attendanceSessions, subjects, faculty]);
+
+  const handleNotificationNavigation = (type: string, refType?: string, _refId?: string) => {
+    const t = (type || '').toUpperCase();
+    const rt = (refType || '').toUpperCase();
+    if (t.includes('MARKS') || rt.includes('MARKS') || rt.includes('SESSIONAL')) {
+      onTabChange('marks');
+    } else if (t.includes('ASSIGNMENT') || rt.includes('ASSIGNMENT')) {
+      onTabChange(role === 'student' ? 'student_assignments' : 'assignments');
+    } else if (t.includes('QUIZ') || rt.includes('QUIZ')) {
+      onTabChange('quizzes');
+    } else if (t.includes('ATTENDANCE') || rt.includes('ATTENDANCE')) {
+      onTabChange(role === 'student' ? 'attendance' : 'corrections');
+    } else if (t.includes('TIMETABLE') || rt.includes('TIMETABLE')) {
+      onTabChange('timetable');
+    } else if (t.includes('ACCOUNT') || rt.includes('ACCOUNT')) {
+      onTabChange('profile');
+    } else {
+      onTabChange('notices');
+    }
+  };
+
+  const renderNotificationIcon = (type: string) => {
+    const t = (type || '').toUpperCase();
+    if (t.includes('MARKS')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+          <Award className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
+    if (t.includes('ASSIGNMENT')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+          <FileText className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
+    if (t.includes('QUIZ')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+          <Sparkles className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
+    if (t.includes('ATTENDANCE')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+          <ClipboardCheck className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
+    if (t.includes('TIMETABLE')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+          <Calendar className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
+    return (
+      <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center">
+        <Bell className="w-3.5 h-3.5" />
+      </div>
+    );
+  };
 
   // Build navigation items based on role (matching Screen 2, 6, 9)
   const getNavItems = () => {
@@ -415,6 +484,14 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* MAIN VIEWPORT AREA */}
       {/* ======================================================== */}
       <div className="flex-1 flex flex-col min-w-0 max-w-full">
+        {/* Offline Reconnection Alert Banner */}
+        {!isOnline && (
+          <aside role="status" className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-center gap-2 shadow-md z-30 sticky top-0">
+            <WifiOff className="w-4 h-4 text-slate-950 shrink-0" />
+            <span>Connection interrupted. Working offline — updates will synchronize with Supabase automatically once restored.</span>
+          </aside>
+        )}
+
         {/* Top Navbar */}
         <header className="sticky top-0 z-20 bg-[#07111e]/90 border-b border-emerald-500/15 backdrop-blur-xl px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 max-w-full">
           {/* Mobile Menu Toggle & Title */}
@@ -532,13 +609,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                             key={n.id}
                             onClick={() => {
                               if (!n.is_read) markNotificationAsRead(n.id);
-                              if (n.type.includes('MARKS')) {
-                                onTabChange('marks');
-                                setIsNotifOpen(false);
-                              } else if (n.type.includes('ASSIGNMENT')) {
-                                onTabChange(role === 'student' ? 'student_assignments' : 'assignments');
-                                setIsNotifOpen(false);
-                              }
+                              handleNotificationNavigation(n.type, n.reference_type, n.reference_id);
+                              setIsNotifOpen(false);
                             }}
                             className={clsx(
                               "p-3 transition-colors cursor-pointer flex gap-3 text-left",
@@ -546,19 +618,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                             )}
                           >
                             <div className="mt-0.5 shrink-0">
-                              {n.type.includes('MARKS') ? (
-                                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
-                                  <Award className="w-3.5 h-3.5" />
-                                </div>
-                              ) : n.type.includes('ASSIGNMENT') ? (
-                                <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                                  <FileText className="w-3.5 h-3.5" />
-                                </div>
-                              ) : (
-                                <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center">
-                                  <Bell className="w-3.5 h-3.5" />
-                                </div>
-                              )}
+                              {renderNotificationIcon(n.type)}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1">
@@ -803,6 +863,62 @@ export const AppShell: React.FC<AppShellProps> = ({
         <footer className="hidden md:block border-t border-emerald-500/10 bg-[#060c18] py-4 px-6 text-center text-xs text-slate-500">
           © 2026 <strong className="text-slate-300">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
         </footer>
+
+        {/* Realtime Floating Non-Blocking Live Toast Banner */}
+        {activeToast && (
+          <aside
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-50 max-w-sm sm:max-w-md w-[calc(100vw-24px)] sm:w-auto p-4 rounded-2xl bg-slate-900/95 border border-[#00ff88]/50 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200"
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0">
+                {renderNotificationIcon(activeToast.type)}
+              </div>
+              <div className="flex-1 min-w-0 pr-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#00ff88]">
+                    Live Notification
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-ping" />
+                </div>
+                <h5 className="text-xs font-bold text-white mt-0.5 truncate">{activeToast.title}</h5>
+                <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
+                  {activeToast.message}
+                </p>
+                <div className="flex items-center gap-2 mt-2 pt-1 border-t border-emerald-500/15">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeToast.id) markNotificationAsRead(activeToast.id);
+                      handleNotificationNavigation(activeToast.type, activeToast.referenceType, activeToast.referenceId);
+                      dismissToast();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-[#00ff88] text-slate-950 text-[11px] font-black hover:bg-emerald-400 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>View Now</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissToast}
+                    className="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={dismissToast}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer shrink-0"
+                aria-label="Close notification"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

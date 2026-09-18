@@ -119,6 +119,16 @@ interface AcademicContextType {
   adminAccounts: AdminAccountDirectoryEntry[];
   notifications: StudentNotification[];
   unreadNotificationCount: number;
+  activeToast: {
+    id: string;
+    title: string;
+    message: string;
+    type: string;
+    referenceType?: string;
+    referenceId?: string;
+  } | null;
+  dismissToast: () => void;
+  isOnline: boolean;
   isLoading: boolean;
   claimWindowDays: number;
   setClaimWindowDays: (days: number) => void;
@@ -427,6 +437,30 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [adminAccounts, setAdminAccounts] = useState<AdminAccountDirectoryEntry[]>([]);
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
   const unreadNotificationCount = notifications.filter(n => !n.is_read).length;
+  const [activeToast, setActiveToast] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    type: string;
+    referenceType?: string;
+    referenceId?: string;
+  } | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  const dismissToast = useCallback(() => {
+    setActiveToast(null);
+  }, []);
+
+  // Auto-dismiss notification toast after 7 seconds
+  useEffect(() => {
+    if (!activeToast) return;
+    const timer = setTimeout(() => {
+      setActiveToast(null);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [activeToast]);
 
   // Stable refs for cross-table joins to eliminate stale closures in granular callbacks
   const sectionsRef = useRef(sections);
@@ -939,14 +973,35 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const activeUser = erpStorage.getCurrentSessionUser();
       const stId = studentId || activeUser?.student_id || activeUser?.student?.id;
       const uId = userId || activeUser?.id;
-      if (stId || uId) {
-        const notifs = await supabaseService.fetchStudentNotifications(stId || '', uId);
+      const role = activeUser?.role;
+      if (stId || uId || role) {
+        const notifs = await supabaseService.fetchStudentNotifications(stId || '', uId, role);
         setNotifications(notifs);
       }
     } catch (err) {
       console.warn('Notice: Error refreshing notifications:', err);
     }
   }, []);
+
+  // Network online/offline listener with automatic reconnection and refresh
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      loadDataFromSupabase(false);
+      refreshNotifications();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [loadDataFromSupabase, refreshNotifications]);
 
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
@@ -994,7 +1049,38 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [loadDataFromSupabase, refreshNotifications]);
 
-  // Realtime Supabase Channel Subscription with granular event handlers
+  // Stable ref for realtime event handlers to eliminate channel resubscription churn
+  const realtimeHandlersRef = useRef({
+    refreshStudents,
+    refreshTimetable,
+    refreshAttendance,
+    refreshCorrections,
+    refreshFaculty,
+    refreshSections,
+    refreshSubjects,
+    refreshAssignments,
+    refreshAssessments,
+    refreshCoordinatorAssignments,
+    refreshNotifications,
+  });
+
+  useEffect(() => {
+    realtimeHandlersRef.current = {
+      refreshStudents,
+      refreshTimetable,
+      refreshAttendance,
+      refreshCorrections,
+      refreshFaculty,
+      refreshSections,
+      refreshSubjects,
+      refreshAssignments,
+      refreshAssessments,
+      refreshCoordinatorAssignments,
+      refreshNotifications,
+    };
+  });
+
+  // Realtime Supabase Channel Subscription with granular event handlers (subscribed once)
   useEffect(() => {
     const channel = supabase
       .channel('vctm-erp-realtime-channel')
@@ -1013,71 +1099,108 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return rem;
           });
         }
-        refreshTimetable(secId);
+        realtimeHandlersRef.current.refreshTimetable(secId);
         if (action === 'DELETED') {
-          refreshAssignments();
+          realtimeHandlersRef.current.refreshAssignments();
         }
       })
       .on('broadcast', { event: 'attendance_updated' }, () => {
-        refreshAttendance();
+        realtimeHandlersRef.current.refreshAttendance();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        debounceTableSync('students', () => refreshStudents());
+        debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
         const secId = payload?.new?.section_id || payload?.old?.section_id;
-        debounceTableSync('timetable_entries', () => refreshTimetable(secId));
+        debounceTableSync('timetable_entries', () => realtimeHandlersRef.current.refreshTimetable(secId));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
-        debounceTableSync('attendance', () => refreshAttendance());
+        debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
         debounceTableSync('attendance', () => {
-          refreshAttendance();
-          refreshCorrections();
+          realtimeHandlersRef.current.refreshAttendance();
+          realtimeHandlersRef.current.refreshCorrections();
         });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
         debounceTableSync('attendance_corrections', () => {
-          refreshCorrections();
-          refreshAttendance();
+          realtimeHandlersRef.current.refreshCorrections();
+          realtimeHandlersRef.current.refreshAttendance();
         });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty' }, () => {
-        debounceTableSync('faculty', () => refreshFaculty());
+        debounceTableSync('faculty', () => realtimeHandlersRef.current.refreshFaculty());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => {
-        debounceTableSync('sections', () => refreshSections());
+        debounceTableSync('sections', () => realtimeHandlersRef.current.refreshSections());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
-        debounceTableSync('subjects', () => refreshSubjects());
+        debounceTableSync('subjects', () => realtimeHandlersRef.current.refreshSubjects());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
-        debounceTableSync('faculty_subject_assignments', () => refreshAssignments());
+        debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
-        debounceTableSync('assessments', () => refreshAssessments());
+        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
-        debounceTableSync('assessments', () => refreshAssessments());
+        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
-        debounceTableSync('assessments', () => refreshAssessments());
+        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
-        debounceTableSync('assessments', () => refreshAssessments());
+        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
-        debounceTableSync('assessments', () => refreshAssessments());
+        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
-        debounceTableSync('assessments', () => refreshAssessments());
+        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
-        debounceTableSync('class_coordinator_assignments', () => refreshCoordinatorAssignments());
+        debounceTableSync('class_coordinator_assignments', () => realtimeHandlersRef.current.refreshCoordinatorAssignments());
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-        debounceTableSync('notifications', () => refreshNotifications());
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
+        const newNotif = payload?.new as StudentNotification;
+        if (newNotif) {
+          const activeUser = erpStorage.getCurrentSessionUser();
+          const currentUserId = activeUser?.id;
+          const currentStudentId = activeUser?.student_id || activeUser?.student?.id;
+          const currentRole = activeUser?.role;
+
+          const targetStudId = newNotif.recipient_student_id || newNotif.student_id;
+          const targetUserId = newNotif.recipient_user_id || newNotif.user_id;
+          const isTargetUser = 
+            (targetStudId && targetStudId === currentStudentId) ||
+            (targetUserId && targetUserId === currentUserId) ||
+            (newNotif.recipient_role && currentRole && newNotif.recipient_role.toUpperCase() === currentRole.toUpperCase()) ||
+            (!targetStudId && !targetUserId && !newNotif.recipient_role);
+
+          if (isTargetUser) {
+            setNotifications(prev => {
+              if (prev.some(n => n.id === newNotif.id)) return prev;
+              return [newNotif, ...prev];
+            });
+
+            setActiveToast({
+              id: newNotif.id,
+              title: newNotif.title,
+              message: newNotif.message,
+              type: newNotif.type,
+              referenceType: newNotif.reference_type,
+              referenceId: newNotif.reference_id,
+            });
+          }
+        }
+        debounceTableSync('notifications', () => realtimeHandlersRef.current.refreshNotifications());
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload: any) => {
+        const updated = payload?.new as StudentNotification;
+        if (updated) {
+          setNotifications(prev => prev.map(n => n.id === updated.id ? { ...n, ...updated } : n));
+        }
       })
       .subscribe();
 
@@ -1085,7 +1208,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
       supabase.removeChannel(channel);
     };
-  }, [debounceTableSync, refreshStudents, refreshTimetable, refreshAttendance, refreshCorrections, refreshFaculty, refreshSections, refreshSubjects, refreshAssignments, refreshAssessments, refreshCoordinatorAssignments, refreshNotifications]);
+  }, [debounceTableSync]);
 
   const refreshData = async (forceRefreshMaster = false) => {
     await loadDataFromSupabase(forceRefreshMaster);
@@ -2586,6 +2709,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         adminAccounts,
         notifications,
         unreadNotificationCount,
+        activeToast,
+        dismissToast,
+        isOnline,
         isLoading,
         claimWindowDays,
         setClaimWindowDays,

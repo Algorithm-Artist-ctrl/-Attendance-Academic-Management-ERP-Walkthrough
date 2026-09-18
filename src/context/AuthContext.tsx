@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole, Student, Faculty, Section, AdmissionType } from '../types/database.types';
 import { AuthState, LoginCredentials, SignUpData } from '../types/auth.types';
 import { supabase } from '../lib/supabase/supabaseClient';
+import { supabaseService } from '../lib/services/supabaseService';
 import { erpStorage } from '../lib/storage/erpStorage';
 
 export interface UserProfileUpdates {
@@ -855,16 +856,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // 1. Proactively verify and ensure an active Supabase session before updating credentials
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      let { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       let session = sessionData?.session;
 
       if (!session || !session.access_token || sessionErr) {
         // Attempt session refresh if token is expired or missing in memory
-        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
-        if (refreshErr || !refreshData.session) {
-          return { success: false, error: 'Your session has expired. Please log in again.' };
+        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession().catch(() => ({ data: { session: null }, error: null }));
+        if (refreshData?.session) {
+          session = refreshData.session;
+        } else {
+          // Attempt local storage token restoration into GoTrue client
+          try {
+            if (typeof window !== 'undefined') {
+              const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+              if (storageKey) {
+                const raw = localStorage.getItem(storageKey);
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  if (parsed.access_token && parsed.refresh_token) {
+                    const { data: setRes } = await supabase.auth.setSession({
+                      access_token: parsed.access_token,
+                      refresh_token: parsed.refresh_token,
+                    });
+                    if (setRes?.session) {
+                      session = setRes.session;
+                    }
+                  }
+                }
+              }
+            }
+          } catch {}
         }
-        session = refreshData.session;
+      }
+
+      // If user is Super Admin, utilize atomic server-side admin credential procedure
+      if (authState.user.role === 'super_admin') {
+        const adminRes = await supabaseService.adminUpdateAccountCredentials({
+          targetUserId: authState.user.id,
+          email: cleanEmail,
+          actorId: authState.user.id,
+          actorName: authState.user.full_name,
+          actorRole: 'super_admin',
+        });
+
+        if (adminRes.success) {
+          setAuthState(prev => ({
+            ...prev,
+            pendingNewEmail: null,
+            user: prev.user ? {
+              ...prev.user,
+              email: cleanEmail,
+            } : null,
+          }));
+          return { success: true, pendingVerification: false };
+        } else if (adminRes.error && !adminRes.error.includes('Unauthorized')) {
+          return { success: false, error: adminRes.error };
+        }
+      }
+
+      if (!session || !session.access_token) {
+        return { success: false, error: 'Your session has expired or is invalid. Please log in again.' };
       }
 
       const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
@@ -887,16 +938,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: authErr.message };
       }
 
-      // Record pending verification state in React auth state without prematurely overwriting DB records
+      // Record pending verification state in React auth state
       const isPending = Boolean(data?.user?.new_email || (data?.user?.email !== cleanEmail));
+
+      if (!isPending) {
+        // Immediate email update (confirmation was bypassed or immediate)
+        try {
+          await supabase.from('profiles').update({ email: cleanEmail, updated_at: new Date().toISOString() }).eq('id', authState.user.id);
+          if (authState.user.faculty_id || authState.user.role === 'faculty') {
+            const facId = authState.user.faculty_id || authState.user.id;
+            await supabase.from('faculty').update({ email: cleanEmail, updated_at: new Date().toISOString() }).eq('id', facId);
+          }
+        } catch {}
+      }
 
       setAuthState(prev => ({
         ...prev,
-        pendingNewEmail: cleanEmail,
+        pendingNewEmail: isPending ? cleanEmail : null,
         user: prev.user ? {
           ...prev.user,
-          new_email: cleanEmail,
-          pending_email: cleanEmail,
+          email: !isPending ? cleanEmail : prev.user.email,
+          new_email: isPending ? cleanEmail : undefined,
+          pending_email: isPending ? cleanEmail : undefined,
         } : null,
       }));
 

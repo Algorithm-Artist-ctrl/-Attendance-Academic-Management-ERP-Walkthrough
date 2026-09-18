@@ -13,11 +13,12 @@ import {
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
+import { MarksSkeleton } from '../../components/common/SkeletonLoader';
 import { clsx } from 'clsx';
 
 export const StudentMarksPage: React.FC = () => {
   const { user } = useAuth();
-  const { students, getStudentAcademicScorecard } = useAcademic();
+  const { students, getStudentAcademicScorecard, isLoading } = useAcademic();
 
   const currentStudent = useMemo(() => {
     return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
@@ -58,7 +59,9 @@ export const StudentMarksPage: React.FC = () => {
 
       {/* Scorecard Subject Cards */}
       <div className="space-y-5">
-        {scorecard.length === 0 ? (
+        {isLoading ? (
+          <MarksSkeleton count={3} />
+        ) : scorecard.length === 0 ? (
           <div className="py-16 text-center bg-slate-900/50 border border-slate-800/60 rounded-2xl">
             <GraduationCap className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
             <h3 className="text-lg font-semibold text-slate-300">No Assessment Records Yet</h3>
@@ -104,7 +107,7 @@ export const StudentMarksPage: React.FC = () => {
                       </div>
                     ) : (
                       <div className="text-xs font-semibold text-slate-400 mt-1">
-                        Not Evaluated
+                        Marks not published yet
                       </div>
                     )}
                   </div>

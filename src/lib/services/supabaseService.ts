@@ -390,9 +390,9 @@ export const supabaseService = {
         { data: marksHistoryList },
         { data: sessionalAssessmentsList },
       ] = await Promise.all([
-        supabase.from('timetable_entries').select('*').eq('active', true).order('period_number', { ascending: true }),
-        supabase.from('attendance_sessions').select('*').order('session_date', { ascending: false }),
-        supabase.from('attendance_records').select('*'),
+        supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
+        supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').order('session_date', { ascending: false }),
+        supabase.from('attendance_records').select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at'),
         supabase.from('attendance_corrections').select('*, student:students(*), record:attendance_records(*, session:attendance_sessions(*, subject:subjects(*), section:sections(*), faculty:faculty(*)))').order('created_at', { ascending: false }),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(50),
@@ -406,9 +406,9 @@ export const supabaseService = {
       ]);
 
       return {
-        timetable: (timetable as TimetableEntry[]) || [],
-        attendanceSessions: (attendanceSessions as AttendanceSession[]) || [],
-        attendanceRecords: (attendanceRecords as AttendanceRecord[]) || [],
+        timetable: (timetable as unknown as TimetableEntry[]) || [],
+        attendanceSessions: (attendanceSessions as unknown as AttendanceSession[]) || [],
+        attendanceRecords: (attendanceRecords as unknown as AttendanceRecord[]) || [],
         corrections: (corrections as AttendanceCorrection[]) || [],
         auditLogs: (auditLogs as AuditLog[]) || [],
         timetableVersions: (timetableVersions as TimetableVersion[]) || [],
@@ -895,6 +895,28 @@ export const supabaseService = {
       throw err;
     }
 
+    // Notify student of claim approval
+    try {
+      if (res?.studentId) {
+        const { data: st } = await supabase.from('students').select('auth_user_id').eq('id', res.studentId).maybeSingle();
+        await supabase.from('notifications').insert([{
+          recipient_user_id: st?.auth_user_id || null,
+          recipient_student_id: res.studentId,
+          recipient_role: 'student',
+          type: 'ATTENDANCE_CLAIM' as NotificationType,
+          title: 'Attendance Claim Approved',
+          message: `Your attendance claim was approved by faculty. Marked as Present.${params.remarks ? ` Remarks: ${params.remarks}` : ''}`,
+          reference_type: 'attendance_claim',
+          reference_id: params.claimId,
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }]);
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for claim approval:', notifErr);
+    }
+
     return res;
   },
 
@@ -925,6 +947,28 @@ export const supabaseService = {
       const err = new Error(res?.message || 'Rejection failed.') as any;
       err.code = res?.code || 'CLAIM_REJECTION_FAILED';
       throw err;
+    }
+
+    // Notify student of claim rejection
+    try {
+      if (res?.studentId) {
+        const { data: st } = await supabase.from('students').select('auth_user_id').eq('id', res.studentId).maybeSingle();
+        await supabase.from('notifications').insert([{
+          recipient_user_id: st?.auth_user_id || null,
+          recipient_student_id: res.studentId,
+          recipient_role: 'student',
+          type: 'ATTENDANCE_CLAIM' as NotificationType,
+          title: 'Attendance Claim Rejected',
+          message: `Your attendance claim was reviewed and rejected.${params.remarks ? ` Reason: ${params.remarks}` : ''}`,
+          reference_type: 'attendance_claim',
+          reference_id: params.claimId,
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }]);
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for claim rejection:', notifErr);
     }
 
     return res;
@@ -981,6 +1025,37 @@ export const supabaseService = {
 
     if (error) {
       throw new Error(`Failed to submit correction request: ${error.message}`);
+    }
+
+    // Notify assigned faculty
+    try {
+      const { data: rec } = await supabase
+        .from('attendance_records')
+        .select('attendance_session_id, session:attendance_sessions(faculty_id, section_id, subject_id, subject:subjects(subject_name))')
+        .eq('id', params.attendanceRecordId)
+        .maybeSingle();
+
+      const facId = (rec?.session as any)?.faculty_id;
+      const subName = (rec?.session as any)?.subject?.subject_name || 'Class';
+      if (facId) {
+        const { data: fac } = await supabase.from('faculty').select('auth_user_id').eq('id', facId).maybeSingle();
+        if (fac?.auth_user_id) {
+          await supabase.from('notifications').insert([{
+            recipient_user_id: fac.auth_user_id,
+            recipient_role: 'faculty',
+            type: 'ATTENDANCE_CLAIM' as NotificationType,
+            title: 'New Attendance Claim Submitted',
+            message: `A student has submitted an attendance claim for ${subName}. Reason: ${params.reason}`,
+            reference_type: 'attendance_correction',
+            reference_id: data.id,
+            is_read: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }]);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for correction request:', notifErr);
     }
 
     return data as AttendanceCorrection;
@@ -3007,6 +3082,34 @@ export const supabaseService = {
           });
         } catch {}
 
+        // Notify enrolled students in target section
+        try {
+          const { data: secStudents } = await supabase
+            .from('students')
+            .select('id, auth_user_id')
+            .eq('section_id', params.sectionId)
+            .eq('active', true);
+
+          if (secStudents && secStudents.length > 0) {
+            const notifs = secStudents.map(st => ({
+              recipient_user_id: st.auth_user_id || null,
+              recipient_student_id: st.id,
+              recipient_role: 'student',
+              type: 'TIMETABLE_UPDATE' as NotificationType,
+              title: 'Timetable Published',
+              message: `Official timetable for Section ${sectionData?.name || ''} has been updated (Version ${rpcResult.version_number}).`,
+              reference_type: 'timetable',
+              reference_id: params.sectionId,
+              is_read: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }));
+            await supabase.from('notifications').insert(notifs);
+          }
+        } catch (notifErr) {
+          console.warn('Notice: Background notification dispatch for timetable:', notifErr);
+        }
+
         return {
           success: true,
           count: rpcResult.period_count,
@@ -3656,6 +3759,41 @@ export const supabaseService = {
       new_values: { title: quiz.title, max_marks: quiz.max_marks, url: quiz.google_form_url }
     });
 
+    // Notify enrolled students in target section
+    try {
+      if (data && quiz.section_id) {
+        const { data: secStudents } = await supabase
+          .from('students')
+          .select('id, auth_user_id')
+          .eq('section_id', quiz.section_id)
+          .eq('active', true);
+
+        if (secStudents && secStudents.length > 0) {
+          let subName = 'Course Subject';
+          if (quiz.subject_id) {
+            const { data: sub } = await supabase.from('subjects').select('subject_name').eq('id', quiz.subject_id).maybeSingle();
+            if (sub?.subject_name) subName = sub.subject_name;
+          }
+          const notifs = secStudents.map(st => ({
+            recipient_user_id: st.auth_user_id || null,
+            recipient_student_id: st.id,
+            recipient_role: 'student',
+            type: 'QUIZ_POSTED' as NotificationType,
+            title: 'New Quiz Posted',
+            message: `${subName}: ${quiz.title} (Max Marks: ${quiz.max_marks})`,
+            reference_type: 'quiz',
+            reference_id: data.id,
+            is_read: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+          await supabase.from('notifications').insert(notifs);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for quiz:', notifErr);
+    }
+
     return data as Quiz;
   },
 
@@ -3712,6 +3850,39 @@ export const supabaseService = {
         updated_by: params.facultyId,
         reason: 'Quiz Marks Recorded'
       });
+    }
+
+    // Notify students of evaluated quiz marks
+    try {
+      const studentIds = params.studentMarks.map(sm => sm.studentId);
+      const { data: stData } = await supabase.from('students').select('id, auth_user_id').in('id', studentIds);
+      const stMap = new Map((stData || []).map(s => [s.id, s.auth_user_id]));
+
+      let subName = 'Quiz';
+      if (quiz.subject_id) {
+        const { data: s } = await supabase.from('subjects').select('subject_name').eq('id', quiz.subject_id).maybeSingle();
+        if (s?.subject_name) subName = s.subject_name;
+      }
+
+      const notifs = params.studentMarks.map(sm => ({
+        recipient_user_id: stMap.get(sm.studentId) || null,
+        recipient_student_id: sm.studentId,
+        recipient_role: 'student',
+        type: 'QUIZ_GRADED' as NotificationType,
+        title: 'Quiz Evaluated',
+        message: `${subName} — ${quiz.title}: ${sm.marksObtained}/${quiz.max_marks}`,
+        reference_type: 'quiz',
+        reference_id: params.quizId,
+        is_read: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      if (notifs.length > 0) {
+        await supabase.from('notifications').insert(notifs);
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for quiz marks:', notifErr);
     }
 
     return data as QuizResult[];
@@ -3856,18 +4027,21 @@ export const supabaseService = {
         if (subData?.subject_name) subjectName = subData.subject_name;
       }
 
-      const notifRows: any[] = [];
-      for (const sm of params.studentMarks) {
-        const { data: stData } = await supabase
-          .from('students')
-          .select('auth_user_id')
-          .eq('id', sm.studentId)
-          .maybeSingle();
+      // Batch fetch all student auth user IDs in a single query (N+1 query elimination)
+      const studentIds = params.studentMarks.map(sm => sm.studentId);
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select('id, auth_user_id')
+        .in('id', studentIds);
 
+      const studentMap = new Map((studentsData || []).map(s => [s.id, s.auth_user_id]));
+
+      const notifRows: any[] = params.studentMarks.map(sm => {
         const isUpdate = sm.oldMarks !== undefined && sm.oldMarks !== null;
-        notifRows.push({
-          recipient_user_id: stData?.auth_user_id || null,
+        return {
+          recipient_user_id: studentMap.get(sm.studentId) || null,
           recipient_student_id: sm.studentId,
+          recipient_role: 'student',
           type: (isUpdate ? 'MARKS_UPDATED' : 'MARKS_PUBLISHED') as NotificationType,
           title: isUpdate ? 'Marks Updated' : 'New Marks Published',
           message: `${subjectName} — ${params.sessionalType || 'Sessional'}: ${sm.marksObtained}/${params.maxMarks}`,
@@ -3876,8 +4050,8 @@ export const supabaseService = {
           is_read: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
-      }
+        };
+      });
 
       if (notifRows.length > 0) {
         await supabase.from('notifications').insert(notifRows);
@@ -4559,7 +4733,7 @@ export const supabaseService = {
   // ==========================================
   // REAL-TIME NOTIFICATIONS ENGINE
   // ==========================================
-  async fetchStudentNotifications(studentId: string, userId?: string): Promise<StudentNotification[]> {
+  async fetchStudentNotifications(studentId?: string, userId?: string, userRole?: string): Promise<StudentNotification[]> {
     try {
       let query = supabase
         .from('notifications')
@@ -4567,22 +4741,23 @@ export const supabaseService = {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (userId && studentId) {
-        query = query.or(`recipient_user_id.eq.${userId},recipient_student_id.eq.${studentId}`);
-      } else if (userId) {
-        query = query.eq('recipient_user_id', userId);
-      } else if (studentId) {
-        query = query.eq('recipient_student_id', studentId);
+      const conditions: string[] = [];
+      if (userId) conditions.push(`recipient_user_id.eq.${userId}`);
+      if (studentId) conditions.push(`recipient_student_id.eq.${studentId}`);
+      if (userRole) conditions.push(`recipient_role.eq.${userRole}`);
+
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
       }
 
       const { data, error } = await query;
       if (error) {
-        console.warn('Notice: Error fetching student notifications:', error.message);
+        console.warn('Notice: Error fetching notifications:', error.message);
         return [];
       }
       return (data || []) as StudentNotification[];
     } catch (err) {
-      console.warn('Notice: Exception fetching student notifications:', err);
+      console.warn('Notice: Exception fetching notifications:', err);
       return [];
     }
   },
@@ -4596,7 +4771,7 @@ export const supabaseService = {
         // Fallback to direct update if RPC fails
         await supabase
           .from('notifications')
-          .update({ is_read: true, updated_at: new Date().toISOString() })
+          .update({ is_read: true, read_at: new Date().toISOString(), updated_at: new Date().toISOString() })
           .eq('id', notificationId);
       }
     } catch (err) {
@@ -4604,22 +4779,23 @@ export const supabaseService = {
     }
   },
 
-  async markAllNotificationsAsRead(userId?: string, studentId?: string): Promise<void> {
+  async markAllNotificationsAsRead(userId?: string, studentId?: string, userRole?: string): Promise<void> {
     try {
       const { error } = await supabase.rpc('mark_all_notifications_as_read');
-      if (error && (userId || studentId)) {
+      if (error && (userId || studentId || userRole)) {
         // Fallback to direct update
         let query = supabase
           .from('notifications')
-          .update({ is_read: true, updated_at: new Date().toISOString() })
+          .update({ is_read: true, read_at: new Date().toISOString(), updated_at: new Date().toISOString() })
           .eq('is_read', false);
 
-        if (userId && studentId) {
-          query = query.or(`recipient_user_id.eq.${userId},recipient_student_id.eq.${studentId}`);
-        } else if (userId) {
-          query = query.eq('recipient_user_id', userId);
-        } else if (studentId) {
-          query = query.eq('recipient_student_id', studentId);
+        const conditions: string[] = [];
+        if (userId) conditions.push(`recipient_user_id.eq.${userId}`);
+        if (studentId) conditions.push(`recipient_student_id.eq.${studentId}`);
+        if (userRole) conditions.push(`recipient_role.eq.${userRole}`);
+
+        if (conditions.length > 0) {
+          query = query.or(conditions.join(','));
         }
         await query;
       }
@@ -4634,6 +4810,7 @@ export const supabaseService = {
       const cleanRows = notifications.map(n => ({
         recipient_user_id: n.recipient_user_id || null,
         recipient_student_id: n.recipient_student_id || null,
+        recipient_role: n.recipient_role || null,
         type: n.type || 'GENERAL',
         title: n.title,
         message: n.message,

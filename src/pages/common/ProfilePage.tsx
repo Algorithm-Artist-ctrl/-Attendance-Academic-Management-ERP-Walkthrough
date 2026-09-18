@@ -901,6 +901,28 @@ export const ProfilePage: React.FC = () => {
         </div>
       )}
 
+      {/* Student Credential Policy Banner */}
+      {role === 'student' && (
+        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 bg-slate-900/40 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] shrink-0 mt-0.5">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white tracking-wide">
+                Institutional Credential Policy & Security Protection
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Student login credentials (official roll number, institutional login email, and initial access passwords) are centrally administered and protected by the Academic Registrar and Super Admin.
+              </p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Students cannot self-alter institutional passwords. If you need a password reset or credential update, please contact the Super Admin or Academic Administration office.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 3. MODALS */}
       {/* ======================================================== */}

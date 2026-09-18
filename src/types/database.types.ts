@@ -548,21 +548,30 @@ export type NotificationType =
   | 'MARKS_UPDATED'
   | 'ASSIGNMENT_POSTED'
   | 'ASSIGNMENT_UPDATED'
+  | 'QUIZ_POSTED'
+  | 'QUIZ_GRADED'
   | 'ATTENDANCE_CLAIM'
   | 'ATTENDANCE_UPDATE'
   | 'TIMETABLE_UPDATE'
+  | 'NOTICE'
+  | 'ACCOUNT_UPDATE'
   | 'GENERAL';
 
 export interface StudentNotification {
   id: string;
   recipient_user_id?: string;
   recipient_student_id?: string;
+  user_id?: string;
+  student_id?: string;
+  recipient_role?: string;
   type: NotificationType;
   title: string;
   message: string;
   reference_type?: string;
+  referenceId?: string;
   reference_id?: string;
   is_read: boolean;
+  read_at?: string | null;
   created_at: string;
   updated_at: string;
 }
