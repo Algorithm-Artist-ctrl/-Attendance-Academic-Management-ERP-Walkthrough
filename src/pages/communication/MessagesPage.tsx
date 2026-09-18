@@ -423,14 +423,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto p-2 sm:p-4 gap-3">
       {/* Top Header Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="glass-panel border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.2)]">
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">Communication Center</h1>
-            <p className="text-xs text-slate-500">
+            <h1 className="text-lg font-bold text-white leading-tight">Communication Center</h1>
+            <p className="text-xs text-slate-400">
               Official Class/Subject Groups & Direct Academic Conversations
             </p>
           </div>
@@ -438,7 +438,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
         {/* Top Action Tabs */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
+          <div className="bg-slate-950/80 border border-emerald-500/20 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
@@ -447,14 +447,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               }}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                 activeTab === 'GROUPS'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] shadow-sm'
+                  : 'text-slate-400 hover:text-white border border-transparent'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
               <span>Class Groups</span>
               {totalGroupUnread > 0 && (
-                <span className="px-1.5 py-0.2 text-[10px] font-bold bg-blue-600 text-white rounded-full">
+                <span className="px-1.5 py-0.2 text-[10px] font-bold bg-[#00ff88] text-slate-950 rounded-full">
                   {totalGroupUnread}
                 </span>
               )}
@@ -468,14 +468,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               }}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                 activeTab === 'DIRECT'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] shadow-sm'
+                  : 'text-slate-400 hover:text-white border border-transparent'
               }`}
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span>Direct Messages</span>
               {totalDirectUnread > 0 && (
-                <span className="px-1.5 py-0.2 text-[10px] font-bold bg-indigo-600 text-white rounded-full">
+                <span className="px-1.5 py-0.2 text-[10px] font-bold bg-[#00ff88] text-slate-950 rounded-full">
                   {totalDirectUnread}
                 </span>
               )}
@@ -487,7 +487,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             <button
               type="button"
               onClick={() => setIsNewGroupModalOpen(true)}
-              className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm flex items-center gap-1.5 transition-colors shrink-0"
+              className="px-3.5 py-2 text-xs font-bold text-slate-950 bg-[#00ff88] hover:bg-[#00e67a] rounded-xl shadow-[0_0_15px_rgba(0,255,136,0.25)] flex items-center gap-1.5 transition-all shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">New Group Announcement</span>
@@ -499,7 +499,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             <button
               type="button"
               onClick={() => setIsNewDirectModalOpen(true)}
-              className="px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm flex items-center gap-1.5 transition-colors shrink-0"
+              className="px-3.5 py-2 text-xs font-bold text-slate-950 bg-[#00ff88] hover:bg-[#00e67a] rounded-xl shadow-[0_0_15px_rgba(0,255,136,0.25)] flex items-center gap-1.5 transition-all shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">New Direct Message</span>
@@ -510,15 +510,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       </div>
 
       {/* Main Two-Column Layout */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 glass-panel border border-emerald-500/20 rounded-2xl overflow-hidden shadow-2xl">
         {/* ========================================================================= */}
         {/* LEFT COLUMN: Groups or Direct Conversations List */}
         {/* ========================================================================= */}
-        <div className={`md:col-span-4 border-r border-slate-200 flex flex-col min-h-0 bg-slate-50/40 ${
+        <div className={`md:col-span-4 border-r border-emerald-500/15 flex flex-col min-h-0 bg-slate-950/60 ${
           mobileThreadOpen ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Filter / Search Bar */}
-          <div className="p-3 border-b border-slate-200 bg-white space-y-2.5">
+          <div className="p-3 border-b border-emerald-500/15 bg-slate-950/80 space-y-2.5">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -529,7 +529,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   if (activeTab === 'GROUPS') setGroupSearchQuery(e.target.value);
                   else setDirectSearchQuery(e.target.value);
                 }}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-900/90 border border-emerald-500/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] transition-all"
               />
             </div>
 
@@ -541,12 +541,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   onClick={() => setUnreadOnlyGroups(!unreadOnlyGroups)}
                   className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors flex items-center gap-1 ${
                     unreadOnlyGroups
-                      ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88] font-semibold'
+                      : 'bg-slate-900/80 border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
                 >
                   <span>Unread Only</span>
-                  {unreadOnlyGroups && <Check className="w-3 h-3" />}
+                  {unreadOnlyGroups && <Check className="w-3 h-3 text-[#00ff88]" />}
                 </button>
               </div>
             ) : (
@@ -559,8 +559,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     onClick={() => setDirectStatusFilter(st)}
                     className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors ${
                       directStatusFilter === st
-                        ? 'bg-indigo-600 text-white font-semibold shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        ? 'bg-[#00ff88] text-slate-950 font-bold shadow-xs'
+                        : 'bg-slate-900/80 border border-slate-700 text-slate-400 hover:text-white'
                     }`}
                   >
                     {st === 'ALL' ? 'All' : st === 'UNREAD' ? 'Unread' : st === 'OPEN' ? 'Open' : 'Resolved'}
@@ -571,14 +571,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           </div>
 
           {/* List Content */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 min-h-0">
+          <div className="flex-1 overflow-y-auto divide-y divide-emerald-500/10 min-h-0">
             {activeTab === 'GROUPS' ? (
               /* GROUPS LIST */
               filteredGroups.length === 0 ? (
-                <div className="py-16 px-4 text-center text-xs text-slate-500 space-y-2">
-                  <Users className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="font-semibold text-slate-700">No class groups found</p>
-                  <p className="text-slate-400 max-w-xs mx-auto">
+                <div className="py-16 px-4 text-center text-xs text-slate-400 space-y-2">
+                  <Users className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="font-semibold text-slate-300">No class groups found</p>
+                  <p className="text-slate-500 max-w-xs mx-auto">
                     {groupSearchQuery 
                       ? 'No groups match your search query.' 
                       : 'You will see class groups for subjects and sections assigned to you.'}
@@ -597,44 +597,44 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       }}
                       className={`p-3.5 cursor-pointer transition-all border-l-4 ${
                         isSelected
-                          ? 'bg-blue-50/70 border-blue-600'
+                          ? 'bg-emerald-500/10 border-[#00ff88]'
                           : hasUnread
-                          ? 'bg-white border-blue-400 hover:bg-slate-50'
-                          : 'bg-white border-transparent hover:bg-slate-50/80'
+                          ? 'bg-slate-900/80 border-emerald-400/70 hover:bg-slate-900'
+                          : 'bg-transparent border-transparent hover:bg-slate-900/40'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <h3 className={`text-xs truncate ${isSelected || hasUnread ? 'font-bold text-slate-900' : 'font-medium text-slate-800'}`}>
+                            <h3 className={`text-xs truncate ${isSelected || hasUnread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
                               {group.subject?.subject_name || 'Academic Subject'}
                             </h3>
                           </div>
 
-                          <p className="text-[11px] font-semibold text-blue-600 mt-0.5">
+                          <p className="text-[11px] font-semibold text-[#00ff88] mt-0.5">
                             {group.academic_year?.year_number || '1'}th Year • Section {group.section?.name || 'A'}
                             {group.section?.room_number ? ` (Room ${group.section.room_number})` : ''}
                           </p>
 
-                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          <p className="text-[11px] text-slate-400 mt-0.5 truncate">
                             Faculty: {group.faculty?.full_name || 'Assigned Instructor'}
                           </p>
                         </div>
 
                         <div className="text-right shrink-0 flex flex-col items-end gap-1">
                           {group.last_message_at && (
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-500">
                               {new Date(group.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
 
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 bg-slate-900 border border-slate-700 text-slate-300 rounded-full">
                               {group.members_count || 0} Members
                             </span>
 
                             {hasUnread && (
-                              <span className="px-1.5 py-0.2 text-[10px] font-bold bg-blue-600 text-white rounded-full shadow-xs">
+                              <span className="px-1.5 py-0.2 text-[10px] font-bold bg-[#00ff88] text-slate-950 rounded-full shadow-xs">
                                 {group.unread_count}
                               </span>
                             )}
@@ -643,7 +643,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       </div>
 
                       {group.last_message_preview && (
-                        <p className={`text-[11px] mt-1.5 line-clamp-1 ${hasUnread ? 'font-semibold text-slate-800' : 'text-slate-500'}`}>
+                        <p className={`text-[11px] mt-1.5 line-clamp-1 ${hasUnread ? 'font-semibold text-slate-200' : 'text-slate-400'}`}>
                           {group.last_message_preview}
                         </p>
                       )}
@@ -654,10 +654,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             ) : (
               /* DIRECT CONVERSATIONS LIST */
               filteredConversations.length === 0 ? (
-                <div className="py-16 px-4 text-center text-xs text-slate-500 space-y-2">
-                  <MessageCircle className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="font-semibold text-slate-700">No direct messages found</p>
-                  <p className="text-slate-400 max-w-xs mx-auto">
+                <div className="py-16 px-4 text-center text-xs text-slate-400 space-y-2">
+                  <MessageCircle className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="font-semibold text-slate-300">No direct messages found</p>
+                  <p className="text-slate-500 max-w-xs mx-auto">
                     Start a private discussion with an authorized student or faculty member.
                   </p>
                 </div>
@@ -675,15 +675,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       }}
                       className={`p-3.5 cursor-pointer transition-all border-l-4 ${
                         isSelected
-                          ? 'bg-indigo-50/70 border-indigo-600'
+                          ? 'bg-emerald-500/10 border-[#00ff88]'
                           : hasUnread
-                          ? 'bg-white border-indigo-400 hover:bg-slate-50'
-                          : 'bg-white border-transparent hover:bg-slate-50/80'
+                          ? 'bg-slate-900/80 border-emerald-400/70 hover:bg-slate-900'
+                          : 'bg-transparent border-transparent hover:bg-slate-900/40'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <h3 className={`text-xs truncate ${isSelected || hasUnread ? 'font-bold text-slate-900' : 'font-medium text-slate-800'}`}>
+                          <h3 className={`text-xs truncate ${isSelected || hasUnread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
                             {otherPerson?.full_name || 'User'}
                           </h3>
 
@@ -693,23 +693,23 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             </p>
                           )}
 
-                          <p className="text-[11px] font-semibold text-indigo-600 mt-0.5 truncate">
+                          <p className="text-[11px] font-semibold text-[#00ff88] mt-0.5 truncate">
                             {conv.subject?.subject_name}
                           </p>
                         </div>
 
                         <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                            conv.status === 'OPEN' ? 'bg-amber-100 text-amber-800' :
-                            conv.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                            conv.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' :
-                            'bg-slate-100 text-slate-600'
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                            conv.status === 'OPEN' ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' :
+                            conv.status === 'IN_PROGRESS' ? 'bg-blue-500/15 border-blue-500/30 text-blue-300' :
+                            conv.status === 'RESOLVED' ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]' :
+                            'bg-slate-800 border-slate-700 text-slate-400'
                           }`}>
                             {conv.status}
                           </span>
 
                           {hasUnread && (
-                            <span className="px-1.5 py-0.2 text-[10px] font-bold bg-indigo-600 text-white rounded-full shadow-xs">
+                            <span className="px-1.5 py-0.2 text-[10px] font-bold bg-[#00ff88] text-slate-950 rounded-full shadow-xs">
                               {conv.unread_count}
                             </span>
                           )}
@@ -717,7 +717,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       </div>
 
                       {conv.last_message_preview && (
-                        <p className={`text-[11px] mt-1.5 line-clamp-1 ${hasUnread ? 'font-semibold text-slate-800' : 'text-slate-500'}`}>
+                        <p className={`text-[11px] mt-1.5 line-clamp-1 ${hasUnread ? 'font-semibold text-slate-200' : 'text-slate-400'}`}>
                           {conv.last_message_preview}
                         </p>
                       )}
@@ -732,48 +732,48 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         {/* ========================================================================= */}
         {/* RIGHT COLUMN: Active Thread (Group or Direct) */}
         {/* ========================================================================= */}
-        <div className={`md:col-span-8 flex flex-col min-h-0 bg-white ${
+        <div className={`md:col-span-8 flex flex-col min-h-0 bg-slate-950/40 ${
           !mobileThreadOpen ? 'hidden md:flex' : 'flex'
         }`}>
           {activeTab === 'GROUPS' ? (
             /* GROUP THREAD VIEW */
             !selectedGroup ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400">
-                <Users className="w-12 h-12 text-slate-200 mb-3" />
-                <h3 className="text-sm font-bold text-slate-700">No Class Group Selected</h3>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500">
+                <Users className="w-12 h-12 text-slate-700 mb-3" />
+                <h3 className="text-sm font-bold text-slate-300">No Class Group Selected</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm">
                   Select an academic class group from the left panel to inspect messages, announcements, and student rosters.
                 </p>
               </div>
             ) : (
               <>
                 {/* Group Header */}
-                <div className="p-3.5 px-4 border-b border-slate-200 bg-white flex items-center justify-between gap-3 shrink-0">
+                <div className="p-3.5 px-4 border-b border-emerald-500/15 bg-slate-950/80 flex items-center justify-between gap-3 shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
                       onClick={() => setMobileThreadOpen(false)}
-                      className="md:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+                      className="md:hidden p-1.5 -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900"
                     >
                       <ArrowLeft className="w-4 h-4" />
                     </button>
 
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0 font-bold text-sm">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-[#00ff88] flex items-center justify-center shrink-0 font-bold text-sm">
                       <GraduationCap className="w-5 h-5" />
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-bold text-slate-900 truncate">
+                        <h2 className="text-sm font-bold text-white truncate">
                           {selectedGroup.subject?.subject_name}
                         </h2>
-                        <span className="px-2 py-0.2 text-[10px] font-semibold bg-blue-100 text-blue-800 rounded-full shrink-0">
+                        <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] rounded-full shrink-0">
                           {selectedGroup.academic_year?.year_number}th Year • Sec {selectedGroup.section?.name}
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                        Faculty: <span className="font-medium text-slate-700">{selectedGroup.faculty?.full_name || 'Assigned Instructor'}</span>
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                        Faculty: <span className="font-medium text-slate-200">{selectedGroup.faculty?.full_name || 'Assigned Instructor'}</span>
                         {selectedGroup.section?.room_number && ` • Room ${selectedGroup.section.room_number}`}
                       </p>
                     </div>
@@ -784,11 +784,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsMembersModalOpen(true)}
-                      className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500/30 rounded-xl transition-colors flex items-center gap-1.5"
                     >
-                      <Users className="w-3.5 h-3.5 text-blue-600" />
+                      <Users className="w-3.5 h-3.5 text-[#00ff88]" />
                       <span className="hidden sm:inline">View Members</span>
-                      <span className="text-[10px] px-1.5 py-0.2 bg-white text-slate-700 font-bold rounded-full shadow-xs">
+                      <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 border border-slate-700 text-[#00ff88] font-bold rounded-full shadow-xs">
                         {selectedGroup.members_count || 0}
                       </span>
                     </button>
@@ -797,24 +797,24 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Announcement-only Policy Banner if student */}
                 {isStudent && !selectedGroup.allow_student_replies && (
-                  <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2 text-xs text-amber-800">
-                    <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/25 flex items-center gap-2 text-xs text-amber-300">
+                    <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                     <span>Official Announcements Only — Student replies are disabled for this group.</span>
                   </div>
                 )}
 
                 {/* Group Messages Thread */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-slate-50/50">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-[#050b14]/70">
                   {loadingGroupMessages ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                      <span className="text-xs text-slate-500 font-medium">Loading group communication thread...</span>
+                      <Loader2 className="w-6 h-6 text-[#00ff88] animate-spin" />
+                      <span className="text-xs text-slate-400 font-medium">Loading group communication thread...</span>
                     </div>
                   ) : groupMessages.length === 0 ? (
                     <div className="py-20 text-center text-xs text-slate-400 space-y-2">
-                      <Megaphone className="w-8 h-8 text-slate-300 mx-auto" />
-                      <p className="font-semibold text-slate-700">No announcements yet</p>
-                      <p className="max-w-xs mx-auto text-slate-400">
+                      <Megaphone className="w-8 h-8 text-slate-600 mx-auto" />
+                      <p className="font-semibold text-slate-300">No announcements yet</p>
+                      <p className="max-w-xs mx-auto text-slate-500">
                         {isFacultyOrAdmin 
                           ? 'Send an announcement to broadcast it to all enrolled students in this class.' 
                           : 'Announcements posted by your faculty will appear here.'}
@@ -831,27 +831,29 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                         >
                           <div className="flex items-center gap-2 mb-1 px-1 text-[11px]">
-                            <span className="font-bold text-slate-800">{msg.sender_name}</span>
-                            <span className={`px-1.5 py-0.2 text-[9px] font-bold rounded-md ${
-                              isFacultySender ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
+                            <span className="font-bold text-slate-200">{msg.sender_name}</span>
+                            <span className={`px-1.5 py-0.2 text-[9px] font-bold rounded-md border ${
+                              isFacultySender 
+                                ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]' 
+                                : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
                             }`}>
                               {msg.sender_role.toUpperCase()}
                             </span>
-                            <span className="text-slate-400">
+                            <span className="text-slate-500 text-[10px]">
                               {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
 
                           <div className={`max-w-[85%] sm:max-w-xl p-3.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
                             isMe
-                              ? 'bg-blue-600 text-white rounded-tr-none'
+                              ? 'bg-[#00ff88] text-slate-950 font-medium rounded-tr-none shadow-[0_0_20px_rgba(0,255,136,0.15)]'
                               : isFacultySender
-                              ? 'bg-white border border-blue-100 text-slate-900 rounded-tl-none ring-1 ring-blue-500/10'
-                              : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
+                              ? 'bg-slate-900/95 border border-emerald-500/30 text-slate-100 rounded-tl-none shadow-sm'
+                              : 'bg-slate-900/80 border border-slate-800 text-slate-200 rounded-tl-none'
                           }`}>
                             {msg.title && (
                               <h4 className={`text-xs font-bold mb-1.5 pb-1 border-b ${
-                                isMe ? 'border-blue-500 text-blue-50' : 'border-slate-100 text-slate-900'
+                                isMe ? 'border-emerald-700/30 text-slate-950' : 'border-emerald-500/20 text-[#00ff88]'
                               }`}>
                                 {msg.title}
                               </h4>
@@ -861,7 +863,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                             {msg.attachment_url && (
                               <div className={`mt-2.5 p-2 rounded-xl flex items-center justify-between gap-2 text-[11px] ${
-                                isMe ? 'bg-blue-700/80 text-white' : 'bg-slate-100 text-slate-800'
+                                isMe ? 'bg-black/15 text-slate-950 font-semibold' : 'bg-slate-950/80 border border-emerald-500/20 text-[#00ff88]'
                               }`}>
                                 <div className="flex items-center gap-2 truncate">
                                   <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -872,7 +874,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                                   download={msg.attachment_name || 'download'}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-1 hover:bg-black/10 rounded transition-colors shrink-0"
+                                  className="p-1 hover:bg-white/10 rounded transition-colors shrink-0"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </a>
@@ -888,7 +890,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Group Message Composer */}
                 {(isFacultyOrAdmin || selectedGroup.allow_student_replies) ? (
-                  <form onSubmit={handleSendGroupMessage} className="p-3 border-t border-slate-200 bg-white space-y-2 shrink-0">
+                  <form onSubmit={handleSendGroupMessage} className="p-3 border-t border-emerald-500/15 bg-slate-950/80 space-y-2 shrink-0">
                     {/* Optional Title input for Faculty */}
                     {isFacultyOrAdmin && showTitleInput && (
                       <div className="flex items-center gap-2">
@@ -897,7 +899,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           placeholder="Announcement Title (Optional)..."
                           value={groupInputTitle}
                           onChange={(e) => setGroupInputTitle(e.target.value)}
-                          className="w-full text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium"
+                          className="w-full text-xs px-3 py-1.5 bg-slate-900/90 border border-emerald-500/25 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88] font-medium"
                         />
                         <button
                           type="button"
@@ -905,7 +907,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             setShowTitleInput(false);
                             setGroupInputTitle('');
                           }}
-                          className="text-slate-400 hover:text-slate-600 text-xs p-1"
+                          className="text-slate-400 hover:text-slate-200 text-xs p-1"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -914,13 +916,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                     {/* Attachment preview */}
                     {groupAttachment && (
-                      <div className="flex items-center gap-2 bg-blue-50 text-blue-800 text-xs px-2.5 py-1.5 rounded-xl border border-blue-200 w-fit">
+                      <div className="flex items-center gap-2 bg-emerald-500/15 text-[#00ff88] text-xs px-2.5 py-1.5 rounded-xl border border-emerald-500/30 w-fit">
                         <FileText className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate max-w-[200px] font-medium">{groupAttachment.file.name}</span>
                         <button
                           type="button"
                           onClick={() => setGroupAttachment(null)}
-                          className="hover:text-red-600 transition-colors ml-1"
+                          className="hover:text-red-400 transition-colors ml-1"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -939,7 +941,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+                        className="p-2 text-slate-400 hover:text-[#00ff88] rounded-xl hover:bg-emerald-500/10 transition-colors"
                         title="Add attachment"
                       >
                         <Paperclip className="w-4 h-4" />
@@ -950,7 +952,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowTitleInput(true)}
-                          className="px-2 py-1 text-[11px] text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium shrink-0"
+                          className="px-2 py-1 text-[11px] text-slate-400 hover:text-[#00ff88] hover:bg-emerald-500/10 rounded-lg transition-colors font-medium shrink-0 border border-transparent hover:border-emerald-500/20"
                         >
                           + Title
                         </button>
@@ -965,13 +967,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         }
                         value={groupInputMessage}
                         onChange={(e) => setGroupInputMessage(e.target.value)}
-                        className="flex-1 text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                        className="flex-1 text-xs px-3 py-2 bg-slate-900/90 border border-emerald-500/25 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88] transition-all"
                       />
 
                       <button
                         type="submit"
                         disabled={groupSending || !groupInputMessage.trim()}
-                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        className="p-2 bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.25)] font-bold disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                       >
                         {groupSending ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -982,7 +984,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     </div>
                   </form>
                 ) : (
-                  <div className="p-3 border-t border-slate-100 bg-slate-50 text-center text-xs text-slate-500">
+                  <div className="p-3 border-t border-emerald-500/10 bg-slate-950/80 text-center text-xs text-slate-400">
                     Replies are disabled by faculty for this announcement channel.
                   </div>
                 )}
@@ -991,47 +993,47 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           ) : (
             /* DIRECT MESSAGE THREAD VIEW */
             !selectedConversation ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400">
-                <MessageCircle className="w-12 h-12 text-slate-200 mb-3" />
-                <h3 className="text-sm font-bold text-slate-700">No Direct Conversation Selected</h3>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500">
+                <MessageCircle className="w-12 h-12 text-slate-700 mb-3" />
+                <h3 className="text-sm font-bold text-slate-300">No Direct Conversation Selected</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm">
                   Select a private academic inquiry from the left panel to message directly.
                 </p>
               </div>
             ) : (
               <>
                 {/* Direct Header */}
-                <div className="p-3.5 px-4 border-b border-slate-200 bg-white flex items-center justify-between gap-3 shrink-0">
+                <div className="p-3.5 px-4 border-b border-emerald-500/15 bg-slate-950/80 flex items-center justify-between gap-3 shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
                       onClick={() => setMobileThreadOpen(false)}
-                      className="md:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+                      className="md:hidden p-1.5 -ml-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900"
                     >
                       <ArrowLeft className="w-4 h-4" />
                     </button>
 
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shrink-0 font-bold text-sm">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-[#00ff88] flex items-center justify-center shrink-0 font-bold text-sm">
                       <User className="w-5 h-5" />
                     </div>
 
                     <div className="min-w-0">
-                      <h2 className="text-sm font-bold text-slate-900 truncate">
+                      <h2 className="text-sm font-bold text-white truncate">
                         {isStudent ? selectedConversation.faculty?.full_name : selectedConversation.student?.full_name}
                       </h2>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {selectedConversation.subject?.subject_name} • Category: <span className="font-semibold">{selectedConversation.category}</span>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {selectedConversation.subject?.subject_name} • Category: <span className="font-semibold text-slate-200">{selectedConversation.category}</span>
                       </p>
                     </div>
                   </div>
 
                   {/* Status Dropdown */}
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                      selectedConversation.status === 'OPEN' ? 'bg-amber-100 text-amber-800' :
-                      selectedConversation.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                      selectedConversation.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' :
-                      'bg-slate-100 text-slate-600'
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
+                      selectedConversation.status === 'OPEN' ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' :
+                      selectedConversation.status === 'IN_PROGRESS' ? 'bg-blue-500/15 border-blue-500/30 text-blue-300' :
+                      selectedConversation.status === 'RESOLVED' ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]' :
+                      'bg-slate-800 border-slate-700 text-slate-400'
                     }`}>
                       {selectedConversation.status}
                     </span>
@@ -1039,14 +1041,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 </div>
 
                 {/* Direct Messages Thread */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-slate-50/50">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[#050b14]/70">
                   {loadingDirectMessages ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
-                      <span className="text-xs text-slate-500">Loading conversation...</span>
+                      <Loader2 className="w-6 h-6 text-[#00ff88] animate-spin" />
+                      <span className="text-xs text-slate-400">Loading conversation...</span>
                     </div>
                   ) : directMessages.length === 0 ? (
-                    <div className="py-20 text-center text-xs text-slate-400">
+                    <div className="py-20 text-center text-xs text-slate-500">
                       No messages yet in this direct conversation.
                     </div>
                   ) : (
@@ -1059,20 +1061,22 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         >
                           <div className={`max-w-[85%] sm:max-w-md p-3 rounded-2xl text-xs leading-relaxed ${
                             isMe 
-                              ? 'bg-indigo-600 text-white rounded-tr-none' 
-                              : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
+                              ? 'bg-[#00ff88] text-slate-950 font-medium rounded-tr-none shadow-[0_0_20px_rgba(0,255,136,0.15)]' 
+                              : 'bg-slate-900/90 border border-emerald-500/20 text-slate-100 rounded-tl-none'
                           }`}>
                             <p className="whitespace-pre-wrap">{m.message}</p>
                             {m.attachment_url && (
-                              <div className="mt-2 p-1.5 bg-black/10 rounded flex items-center justify-between gap-2 text-[10px]">
+                              <div className={`mt-2 p-1.5 rounded flex items-center justify-between gap-2 text-[10px] ${
+                                isMe ? 'bg-black/15 text-slate-950 font-semibold' : 'bg-slate-950/80 border border-emerald-500/20 text-[#00ff88]'
+                              }`}>
                                 <span className="truncate">{m.attachment_name || 'Attachment'}</span>
-                                <a href={m.attachment_url} target="_blank" rel="noreferrer" download>
+                                <a href={m.attachment_url} target="_blank" rel="noreferrer" download className="p-1 hover:bg-white/10 rounded transition-colors shrink-0">
                                   <Download className="w-3.5 h-3.5" />
                                 </a>
                               </div>
                             )}
                           </div>
-                          <span className="text-[10px] text-slate-400 mt-1 px-1">
+                          <span className="text-[10px] text-slate-500 mt-1 px-1">
                             {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -1083,12 +1087,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 </div>
 
                 {/* Direct Message Composer */}
-                <form onSubmit={handleSendDirectMessage} className="p-3 border-t border-slate-200 bg-white space-y-2 shrink-0">
+                <form onSubmit={handleSendDirectMessage} className="p-3 border-t border-emerald-500/15 bg-slate-950/80 space-y-2 shrink-0">
                   {directAttachment && (
-                    <div className="flex items-center gap-2 bg-indigo-50 text-indigo-800 text-xs px-2.5 py-1.5 rounded-xl border border-indigo-200 w-fit">
+                    <div className="flex items-center gap-2 bg-emerald-500/15 text-[#00ff88] text-xs px-2.5 py-1.5 rounded-xl border border-emerald-500/30 w-fit">
                       <FileText className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate max-w-[200px] font-medium">{directAttachment.file.name}</span>
-                      <button type="button" onClick={() => setDirectAttachment(null)} className="ml-1 text-slate-400 hover:text-red-600">
+                      <button type="button" onClick={() => setDirectAttachment(null)} className="ml-1 text-slate-400 hover:text-red-400">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -1105,7 +1109,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     <button
                       type="button"
                       onClick={() => directFileInputRef.current?.click()}
-                      className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+                      className="p-2 text-slate-400 hover:text-[#00ff88] rounded-xl hover:bg-emerald-500/10 transition-colors"
                       title="Add attachment"
                     >
                       <Paperclip className="w-4 h-4" />
@@ -1116,13 +1120,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       placeholder="Type a direct message..."
                       value={directInputMessage}
                       onChange={(e) => setDirectInputMessage(e.target.value)}
-                      className="flex-1 text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      className="flex-1 text-xs px-3 py-2 bg-slate-900/90 border border-emerald-500/25 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88]"
                     />
 
                     <button
                       type="submit"
                       disabled={directSending || !directInputMessage.trim()}
-                      className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors shadow-xs disabled:opacity-50"
+                      className="p-2 bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.25)] font-bold disabled:opacity-50"
                     >
                       {directSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
