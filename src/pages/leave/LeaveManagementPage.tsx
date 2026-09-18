@@ -25,15 +25,36 @@ import { useAcademic } from '../../context/AcademicContext';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { supabase } from '../../lib/supabase/supabaseClient';
 import { generateApprovedLeavePdf } from '../../lib/utils/leavePdfGenerator';
-import { LeaveApplication, LeaveStatus } from '../../types/database.types';
+import { LeaveApplication, LeaveStatus, Section, AcademicYear } from '../../types/database.types';
 
 export const LeaveManagementPage: React.FC = () => {
   const { user } = useAuth();
-  const { sections, departments, years, faculty } = useAcademic();
+  const { 
+    sections, 
+    departments, 
+    programs,
+    years, 
+    semesters, 
+    faculty, 
+    classCoordinatorAssignments 
+  } = useAcademic();
 
   const role = user?.role || 'faculty';
-  const facultyId = user?.faculty_id || user?.faculty?.id || (role === 'faculty' ? user?.id : null);
-  const departmentId = user?.department_id || user?.faculty?.department_id;
+  
+  // Resolve effective faculty record from auth user
+  const currentFaculty = useMemo(() => {
+    return faculty.find(
+      f => f.id === user?.faculty_id || 
+           f.id === user?.faculty?.id || 
+           f.id === user?.id ||
+           (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
+           (user?.full_name && f.full_name?.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
+           (user?.email && f.email?.toLowerCase().trim() === user.email.toLowerCase().trim())
+    ) || user?.faculty;
+  }, [faculty, user]);
+
+  const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || (role === 'faculty' ? user?.id : null);
+  const departmentId = user?.department_id || user?.faculty?.department_id || currentFaculty?.department_id;
 
   // Applications list state
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
@@ -117,6 +138,175 @@ export const LeaveManagementPage: React.FC = () => {
     return applications.filter(a => a.status.startsWith('REJECTED')).length;
   }, [applications]);
 
+  // Helper to resolve an AcademicYear for any section
+  const getSectionYear = useCallback((section: Section): AcademicYear | undefined => {
+    // 1. Resolve via semester -> academic_year_id
+    if (section.semester_id) {
+      const sem = semesters.find(s => s.id === section.semester_id);
+      if (sem?.academic_year_id) {
+        const yr = years.find(y => y.id === sem.academic_year_id);
+        if (yr) return yr;
+      }
+    }
+    // 2. Resolve via leave application records that already matched this section
+    const appWithSec = applications.find(a => a.section_id === section.id && (a.academic_year || a.academic_year_id));
+    if (appWithSec?.academic_year) {
+      return appWithSec.academic_year as AcademicYear;
+    }
+    if (appWithSec?.academic_year_id) {
+      const yr = years.find(y => y.id === appWithSec.academic_year_id);
+      if (yr) return yr;
+    }
+    return undefined;
+  }, [semesters, years, applications]);
+
+  // Identify coordinator's assigned/relevant section IDs
+  const coordinatorSectionIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (role === 'faculty' && facultyId) {
+      // Direct class coordinator assignments table
+      classCoordinatorAssignments
+        .filter(cca => cca.active && (cca.faculty_id === facultyId || cca.faculty?.auth_user_id === user?.id))
+        .forEach(cca => {
+          if (cca.section_id) ids.add(cca.section_id);
+        });
+
+      // Sections table direct class_coordinator_id pointer
+      sections
+        .filter(s => s.class_coordinator_id === facultyId)
+        .forEach(s => ids.add(s.id));
+
+      // Leave applications assigned to or fetched for this coordinator
+      applications.forEach(app => {
+        if (app.section_id) ids.add(app.section_id);
+      });
+    }
+    return ids;
+  }, [role, facultyId, classCoordinatorAssignments, sections, applications, user?.id]);
+
+  // Scoped sections based on user role and institutional context
+  const scopedBaseSections = useMemo(() => {
+    let pool: Section[] = [];
+
+    if (role === 'faculty') {
+      if (coordinatorSectionIds.size > 0) {
+        pool = sections.filter(s => coordinatorSectionIds.has(s.id));
+        // Add any section present in applications that might not be in the global sections array
+        applications.forEach(app => {
+          if (app.section_id && !pool.some(s => s.id === app.section_id)) {
+            pool.push({
+              id: app.section_id,
+              name: app.section?.name || 'Section',
+              semester_id: '',
+              room_number: '',
+              active: true
+            });
+          }
+        });
+      } else {
+        // Fallback if no specific coordinator assignments exist
+        pool = sections.filter(s => s.active);
+      }
+    } else if (role === 'hod') {
+      if (departmentId) {
+        const deptProgramIds = new Set(programs.filter(p => p.department_id === departmentId).map(p => p.id));
+        const deptYearIds = new Set(years.filter(y => deptProgramIds.has(y.program_id)).map(y => y.id));
+        const deptSemesterIds = new Set(semesters.filter(sm => deptYearIds.has(sm.academic_year_id)).map(sm => sm.id));
+
+        pool = sections.filter(s => 
+          deptSemesterIds.has(s.semester_id) || 
+          applications.some(a => a.section_id === s.id)
+        );
+      } else {
+        pool = sections.filter(s => s.active);
+      }
+    } else {
+      // super_admin
+      pool = sections.filter(s => s.active);
+    }
+
+    return pool;
+  }, [role, coordinatorSectionIds, sections, applications, departmentId, programs, years, semesters]);
+
+  // Scoped & Deduplicated Academic Years
+  const availableYears = useMemo(() => {
+    const yearMap = new Map<string, AcademicYear>();
+
+    // 1. Years present in scoped base sections
+    scopedBaseSections.forEach(sec => {
+      const yr = getSectionYear(sec);
+      if (yr?.id && !yearMap.has(yr.id)) {
+        yearMap.set(yr.id, yr);
+      }
+    });
+
+    // 2. Years present in fetched applications
+    applications.forEach(app => {
+      if (app.academic_year?.id && !yearMap.has(app.academic_year.id)) {
+        yearMap.set(app.academic_year.id, app.academic_year as AcademicYear);
+      } else if (app.academic_year_id && !yearMap.has(app.academic_year_id)) {
+        const yr = years.find(y => y.id === app.academic_year_id);
+        if (yr && !yearMap.has(yr.id)) {
+          yearMap.set(yr.id, yr);
+        }
+      }
+    });
+
+    // 3. Fallback to all active years if nothing gathered
+    if (yearMap.size === 0) {
+      years.filter(y => y.active).forEach(y => {
+        if (!yearMap.has(y.id)) {
+          yearMap.set(y.id, y);
+        }
+      });
+    }
+
+    return Array.from(yearMap.values()).sort((a, b) => (a.year_number || 0) - (b.year_number || 0));
+  }, [scopedBaseSections, applications, getSectionYear, years]);
+
+  // Scoped, Filtered by Year, and Strictly Deduplicated Sections
+  const availableSectionOptions = useMemo(() => {
+    let list = scopedBaseSections;
+
+    // Filter by selected year if active
+    if (selectedYear !== 'ALL') {
+      list = list.filter(sec => {
+        const secYear = getSectionYear(sec);
+        if (secYear?.id) {
+          return secYear.id === selectedYear;
+        }
+        return applications.some(a => a.section_id === sec.id && (a.academic_year_id === selectedYear || a.academic_year?.id === selectedYear));
+      });
+    }
+
+    // Strictly deduplicate by section.id (UUID)
+    const uniqueMap = new Map<string, Section>();
+    for (const sec of list) {
+      if (sec?.id && !uniqueMap.has(sec.id)) {
+        uniqueMap.set(sec.id, sec);
+      }
+    }
+
+    // Sort options: by year (if across all years) then alphanumeric by section name
+    return Array.from(uniqueMap.values()).sort((a, b) => {
+      if (selectedYear === 'ALL') {
+        const yearA = getSectionYear(a)?.year_number || 0;
+        const yearB = getSectionYear(b)?.year_number || 0;
+        if (yearA !== yearB) return yearA - yearB;
+      }
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [scopedBaseSections, selectedYear, getSectionYear, applications]);
+
+  // Auto-reset section filter when selectedYear changes and previous section is no longer available
+  useEffect(() => {
+    if (selectedSection === 'ALL') return;
+    const isStillValid = availableSectionOptions.some(s => s.id === selectedSection);
+    if (!isStillValid) {
+      setSelectedSection('ALL');
+    }
+  }, [selectedYear, availableSectionOptions, selectedSection]);
+
   // Filtered applications
   const filteredApplications = useMemo(() => {
     return applications.filter(app => {
@@ -141,8 +331,17 @@ export const LeaveManagementPage: React.FC = () => {
       }
 
       // Year filter
-      if (selectedYear !== 'ALL' && app.academic_year_id !== selectedYear) {
-        return false;
+      if (selectedYear !== 'ALL') {
+        const appYrId = app.academic_year_id || app.academic_year?.id;
+        if (appYrId) {
+          if (appYrId !== selectedYear) return false;
+        } else {
+          const sec = sections.find(s => s.id === app.section_id);
+          const secYr = sec ? getSectionYear(sec) : undefined;
+          if (secYr?.id !== selectedYear) {
+            return false;
+          }
+        }
       }
 
       // Search term
@@ -159,7 +358,7 @@ export const LeaveManagementPage: React.FC = () => {
 
       return true;
     });
-  }, [applications, activeTab, role, selectedSection, selectedYear, searchTerm]);
+  }, [applications, activeTab, role, selectedSection, selectedYear, searchTerm, sections, getSectionYear]);
 
   // Execute Approve or Reject
   const handleExecuteReview = async () => {
@@ -400,26 +599,38 @@ export const LeaveManagementPage: React.FC = () => {
             <span>Filters:</span>
           </div>
 
-          <select
-            value={selectedSection}
-            onChange={(e) => setSelectedSection(e.target.value)}
-            className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none"
-          >
-            <option value="ALL">All Sections</option>
-            {sections.map(s => (
-              <option key={s.id} value={s.id}>Section {s.name}</option>
-            ))}
-          </select>
-
+          {/* Academic Year Filter */}
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none"
+            className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-[#00ff88] transition-colors"
           >
-            <option value="ALL">All Academic Years</option>
-            {years.map(y => (
-              <option key={y.id} value={y.id}>{y.name || `${y.year_number} Year`}</option>
+            <option value="ALL" className="bg-slate-950 text-white">All Academic Years</option>
+            {availableYears.map(y => (
+              <option key={y.id} value={y.id} className="bg-slate-950 text-white">
+                {y.name || `${y.year_number} Year`}
+              </option>
             ))}
+          </select>
+
+          {/* Section Filter - Scoped to Coordinator & Strictly Deduplicated */}
+          <select
+            value={selectedSection}
+            onChange={(e) => setSelectedSection(e.target.value)}
+            className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-[#00ff88] transition-colors"
+          >
+            <option value="ALL" className="bg-slate-950 text-white">All Sections</option>
+            {availableSectionOptions.map(s => {
+              const secYear = getSectionYear(s);
+              const label = selectedYear === 'ALL' && secYear?.name
+                ? `Section ${s.name} (${secYear.name})`
+                : `Section ${s.name}`;
+              return (
+                <option key={s.id} value={s.id} className="bg-slate-950 text-white">
+                  {label}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
