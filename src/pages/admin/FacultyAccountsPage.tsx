@@ -93,6 +93,7 @@ export const FacultyAccountsPage: React.FC = () => {
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isSettingDefaultPass, setIsSettingDefaultPass] = useState(false);
+  const [showDefaultPassConfirm, setShowDefaultPassConfirm] = useState(false);
 
   // Combine unified directory data with faculty data
   const accountsData = useMemo(() => {
@@ -163,6 +164,7 @@ export const FacultyAccountsPage: React.FC = () => {
     setBlockReason('');
     setShowBlockConfirm(false);
     setShowArchiveConfirm(false);
+    setShowDefaultPassConfirm(false);
   };
 
   const handleUpdateEmail = async () => {
@@ -771,30 +773,63 @@ export const FacultyAccountsPage: React.FC = () => {
                   </Button>
                 </div>
 
-                {/* Quick Action Buttons */}
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSetDefaultPassword}
-                    isLoading={isSettingDefaultPass}
-                    className="text-xs border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/40"
-                    leftIcon={<Sparkles className="w-3 h-3 text-cyan-400" />}
-                  >
-                    Apply Default ("faculty@123")
-                  </Button>
+                {/* Default Password Reset with Confirmation */}
+                {showDefaultPassConfirm ? (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Confirm Password Reset</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Are you sure you want to reset the password for <strong className="text-white">{selectedAccount.full_name}</strong> to institutional default (<code className="text-cyan-300 font-mono">faculty@123</code>)?
+                    </p>
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDefaultPassConfirm(false)}
+                        className="text-xs text-slate-400 hover:text-white"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          await handleSetDefaultPassword();
+                          setShowDefaultPassConfirm(false);
+                        }}
+                        isLoading={isSettingDefaultPass}
+                        className="text-xs border-amber-500/40 text-amber-300 hover:bg-amber-950/40"
+                      >
+                        Confirm Reset to Default
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDefaultPassConfirm(true)}
+                      className="text-xs border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/40"
+                      leftIcon={<Sparkles className="w-3 h-3 text-cyan-400" />}
+                    >
+                      Reset to Default ("faculty@123")
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePasswordReset}
-                    isLoading={actionLoading}
-                    className="text-xs text-slate-400 hover:text-white"
-                    leftIcon={<Mail className="w-3 h-3 text-slate-400" />}
-                  >
-                    Send Reset Link
-                  </Button>
-                </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handlePasswordReset}
+                      isLoading={actionLoading}
+                      className="text-xs text-slate-400 hover:text-white"
+                      leftIcon={<Mail className="w-3 h-3 text-slate-400" />}
+                    >
+                      Send Reset Link
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[10px] text-slate-400 space-y-1">

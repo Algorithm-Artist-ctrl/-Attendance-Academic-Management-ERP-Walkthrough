@@ -1664,30 +1664,26 @@ export const supabaseService = {
   async updateFacultyCredentials(facultyId: string, email: string) {
     const cleanEmail = email.trim().toLowerCase();
     
-    // 1. Update faculty table
+    // Atomically synchronize Supabase Auth identity, profiles, and faculty records via adminUpdateAccountCredentials
+    // without touching password
+    const res = await this.adminUpdateAccountCredentials({
+      targetUserId: facultyId,
+      email: cleanEmail,
+      actorName: 'Faculty Credential Manager',
+      actorRole: 'super_admin',
+    });
+
+    if (!res.success) {
+      throw new Error(res.error || 'Failed to update faculty credentials');
+    }
+
     const { data: facData, error: facErr } = await supabase
       .from('faculty')
-      .update({ email: cleanEmail, updated_at: new Date().toISOString() })
+      .select('*')
       .eq('id', facultyId)
-      .select()
       .single();
+
     if (facErr) throw new Error(facErr.message);
-
-    // 2. Update profiles table
-    await supabase
-      .from('profiles')
-      .update({ email: cleanEmail, updated_at: new Date().toISOString() })
-      .or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
-
-    // 3. Audit log
-    await supabase.from('audit_logs').insert({
-      action: 'FACULTY_CREDENTIALS_UPDATED',
-      actor_name: facData.full_name,
-      actor_role: 'faculty',
-      entity_type: 'faculty',
-      entity_id: facultyId,
-      new_values: { email: cleanEmail }
-    });
 
     this.invalidateMasterCache();
     return facData as Faculty;

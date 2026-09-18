@@ -60,6 +60,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const clean = trimmed.toLowerCase();
     if (clean === 'admin') {
+      try {
+        const { data: adminProf } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('role', 'super_admin')
+          .limit(1)
+          .maybeSingle();
+        if (adminProf?.email) {
+          return adminProf.email.toLowerCase().trim();
+        }
+      } catch (err) {
+        console.warn('Failed to dynamically resolve super_admin email:', err);
+      }
       return 'admin@vctm.in';
     }
 
@@ -226,19 +239,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // Check if Super Admin
-        if (!profile && authUserEmail?.toLowerCase().trim() === 'admin@vctm.in') {
-          const adminProf = {
-            id: authUserId,
-            email: 'admin@vctm.in',
-            full_name: 'Tarun Kushwah',
-            role: 'super_admin' as UserRole,
-            status: 'ACTIVE',
-          };
-          try {
-            await supabase.from('profiles').upsert(adminProf, { onConflict: 'id' });
-          } catch {}
-          profile = adminProf as any;
+        // Check if Super Admin fallback
+        if (!profile) {
+          const isKnownAdmin = authUserEmail?.toLowerCase().trim() === 'admin@vctm.in' ||
+                               authUserEmail?.toLowerCase().trim() === 'tarunkushwah798@gmail.com';
+          if (isKnownAdmin) {
+            const adminProf = {
+              id: authUserId,
+              email: authUserEmail ? authUserEmail.toLowerCase().trim() : 'admin@vctm.in',
+              full_name: 'Tarun Kushwah',
+              role: 'super_admin' as UserRole,
+              status: 'ACTIVE',
+            };
+            try {
+              await supabase.from('profiles').upsert(adminProf, { onConflict: 'id' });
+            } catch {}
+            profile = adminProf as any;
+          }
         }
       }
 
@@ -889,30 +906,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // If user is Super Admin, utilize atomic server-side admin credential procedure
-      if (authState.user.role === 'super_admin') {
-        const adminRes = await supabaseService.adminUpdateAccountCredentials({
-          targetUserId: authState.user.id,
-          email: cleanEmail,
-          actorId: authState.user.id,
-          actorName: authState.user.full_name,
-          actorRole: 'super_admin',
-        });
 
-        if (adminRes.success) {
-          setAuthState(prev => ({
-            ...prev,
-            pendingNewEmail: null,
-            user: prev.user ? {
-              ...prev.user,
-              email: cleanEmail,
-            } : null,
-          }));
-          return { success: true, pendingVerification: false };
-        } else if (adminRes.error && !adminRes.error.includes('Unauthorized')) {
-          return { success: false, error: adminRes.error };
-        }
-      }
 
       if (!session || !session.access_token) {
         return { success: false, error: 'Your session has expired or is invalid. Please log in again.' };

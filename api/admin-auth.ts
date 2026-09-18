@@ -27,6 +27,12 @@ function sendJson(res: any, status: number, data: any) {
 }
 
 async function readJsonBody(req: any): Promise<any> {
+  if (req._parsedBody !== undefined) return req._parsedBody;
+  if (req.body && typeof req.body === 'object') return req.body;
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk: any) => {
@@ -37,12 +43,23 @@ async function readJsonBody(req: any): Promise<any> {
     });
     req.on('end', () => {
       try {
-        resolve(body ? JSON.parse(body) : {});
+        const parsed = body ? JSON.parse(body) : {};
+        req._parsedBody = parsed;
+        resolve(parsed);
       } catch (err) {
         reject(new Error('Invalid JSON payload'));
       }
     });
     req.on('error', reject);
+    if (req.readableEnded) {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        req._parsedBody = parsed;
+        resolve(parsed);
+      } catch {
+        resolve({});
+      }
+    }
   });
 }
 
@@ -54,6 +71,15 @@ export default async function handleAdminAuth(req: any, res: any) {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     });
     return res.end();
+  }
+
+  // Pre-parse JSON body immediately on request entry to prevent stream consumption deadlock
+  if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+    try {
+      req._parsedBody = await readJsonBody(req);
+    } catch {
+      req._parsedBody = {};
+    }
   }
 
   const urlObj = new URL(req.url || '', `http://${req.headers?.host || 'localhost'}`);
