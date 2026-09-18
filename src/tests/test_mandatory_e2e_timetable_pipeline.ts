@@ -38,14 +38,22 @@ async function runMandatoryE2ETests() {
   console.log('================================================================================\n');
 
   // Authenticate as Super Admin for production management operations
+  const { data: adminProf } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('role', 'super_admin')
+    .limit(1)
+    .maybeSingle();
+
+  const adminEmail = adminProf?.email || 'tarunkushwah798@gmail.com';
   const { error: authErr } = await supabase.auth.signInWithPassword({
-    email: 'admin@vctm.in',
+    email: adminEmail,
     password: 'VctmAdmin@2026',
   });
   if (authErr) {
     console.warn('  ⚠️ Admin authentication warning:', authErr.message);
   } else {
-    console.log('  ✓ Authenticated as Super Admin (admin@vctm.in)');
+    console.log(`  ✓ Authenticated as Super Admin (${adminEmail})`);
   }
 
   // STEP 1: Select B.Tech CSE -> 2nd Year -> Section A
