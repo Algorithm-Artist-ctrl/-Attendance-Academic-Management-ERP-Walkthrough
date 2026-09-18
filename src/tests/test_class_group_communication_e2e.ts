@@ -2,7 +2,11 @@ import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { Client } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.obssoojzryqiudllnlkh:Tarun%40759977@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required.');
+}
 
 async function runClassGroupCommunicationE2ETests() {
   console.log('========================================================================');

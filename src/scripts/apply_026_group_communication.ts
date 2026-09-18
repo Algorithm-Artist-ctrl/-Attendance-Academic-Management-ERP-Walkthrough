@@ -2,7 +2,11 @@ import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.obssoojzryqiudllnlkh:Tarun%40759977@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required.');
+}
 
 async function applyMigration026() {
   console.log('Connecting to Supabase PostgreSQL...');
