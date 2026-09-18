@@ -38,7 +38,13 @@ import {
   StudentAttendanceHistoryRecord,
   StudentAttendanceHistorySummary,
   StudentNotification,
-  NotificationType
+  NotificationType,
+  Conversation,
+  ConversationCategory,
+  ConversationStatus,
+  Message,
+  EligibleFacultyForStudent,
+  EligibleStudentForFaculty
 } from '../../types/database.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -4896,6 +4902,375 @@ export const supabaseService = {
       await supabase.from('notifications').insert(cleanRows);
     } catch (err) {
       console.warn('Notice: Error inserting notifications:', err);
+    }
+  },
+
+  // ==========================================
+  // REAL-TIME COMMUNICATION CENTER (MESSAGES)
+  // ==========================================
+
+  async fetchUserConversations(userId: string, role: string): Promise<Conversation[]> {
+    try {
+      let studentId: string | null = null;
+      let facultyId: string | null = null;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role, student_id, faculty_id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile) {
+        studentId = profile.student_id || null;
+        facultyId = profile.faculty_id || null;
+      }
+
+      if (!studentId && role === 'student') {
+        const { data: stu } = await supabase
+          .from('students')
+          .select('id')
+          .eq('auth_user_id', userId)
+          .maybeSingle();
+        if (stu) studentId = stu.id;
+      }
+
+      if (!facultyId && role === 'faculty') {
+        const { data: fac } = await supabase
+          .from('faculty')
+          .select('id')
+          .eq('auth_user_id', userId)
+          .maybeSingle();
+        if (fac) facultyId = fac.id;
+      }
+
+      let query = supabase
+        .from('conversations')
+        .select(`
+          *,
+          student:students(id, full_name, roll_number, section_id, email),
+          faculty:faculty(id, full_name, email, designation),
+          subject:subjects(id, subject_name, subject_code),
+          section:sections(id, name),
+          academic_year:academic_years(id, year_number, name)
+        `)
+        .order('last_message_at', { ascending: false });
+
+      if (role === 'student' && studentId) {
+        query = query.eq('student_id', studentId);
+      } else if (role === 'faculty' && facultyId) {
+        query = query.eq('faculty_id', facultyId);
+      } else if (role === 'student' && !studentId) {
+        return [];
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error fetching conversations:', error);
+        return [];
+      }
+
+      const conversations = (data || []) as Conversation[];
+      if (conversations.length > 0) {
+        const convIds = conversations.map(c => c.id);
+        const { data: unreadMsgs } = await supabase
+          .from('messages')
+          .select('conversation_id')
+          .in('conversation_id', convIds)
+          .eq('receiver_user_id', userId)
+          .is('read_at', null);
+
+        if (unreadMsgs) {
+          const counts: Record<string, number> = {};
+          unreadMsgs.forEach(m => {
+            counts[m.conversation_id] = (counts[m.conversation_id] || 0) + 1;
+          });
+          conversations.forEach(c => {
+            c.unread_count = counts[c.id] || 0;
+          });
+        }
+      }
+
+      return conversations;
+    } catch (err) {
+      console.error('Exception in fetchUserConversations:', err);
+      return [];
+    }
+  },
+
+  async fetchConversationMessages(conversationId: string, limit: number = 100): Promise<Message[]> {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return [];
+      }
+
+      return (data || []) as Message[];
+    } catch (err) {
+      console.error('Exception in fetchConversationMessages:', err);
+      return [];
+    }
+  },
+
+  async getOrCreateConversation(params: {
+    facultyId: string;
+    subjectId: string;
+    category?: ConversationCategory;
+    topic?: string;
+  }): Promise<{ data: Conversation | null; error: any }> {
+    try {
+      const { data, error } = await supabase.rpc('get_or_create_conversation', {
+        p_faculty_id: params.facultyId,
+        p_subject_id: params.subjectId,
+        p_category: params.category || 'General',
+        p_topic: params.topic || null,
+      });
+
+      if (error) {
+        return { data: null, error };
+      }
+
+      if (data && data.id) {
+        const { data: fullConv, error: fetchErr } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            student:students(id, full_name, roll_number, section_id, email),
+            faculty:faculty(id, full_name, email, designation),
+            subject:subjects(id, subject_name, subject_code),
+            section:sections(id, name),
+            academic_year:academic_years(id, year_number, name)
+          `)
+          .eq('id', data.id)
+          .single();
+
+        return { data: (fullConv || data) as Conversation, error: fetchErr };
+      }
+
+      return { data: data as Conversation, error: null };
+    } catch (err: any) {
+      console.error('Exception in getOrCreateConversation:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async sendMessage(params: {
+    conversationId: string;
+    message: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+  }): Promise<{ data: Message | null; error: any }> {
+    try {
+      const { data, error } = await supabase.rpc('send_message', {
+        p_conversation_id: params.conversationId,
+        p_message: params.message,
+        p_attachment_url: params.attachmentUrl || null,
+        p_attachment_name: params.attachmentName || null,
+        p_attachment_type: params.attachmentType || null,
+        p_attachment_size: params.attachmentSize || null,
+      });
+
+      if (error) {
+        return { data: null, error };
+      }
+
+      return { data: data as Message, error: null };
+    } catch (err: any) {
+      console.error('Exception in sendMessage:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async markConversationRead(conversationId: string): Promise<void> {
+    try {
+      await supabase.rpc('mark_conversation_read', {
+        p_conversation_id: conversationId,
+      });
+    } catch (err) {
+      console.warn('Error marking conversation read:', err);
+    }
+  },
+
+  async updateConversationStatus(
+    conversationId: string,
+    status: ConversationStatus
+  ): Promise<{ data: Conversation | null; error: any }> {
+    try {
+      const { data, error } = await supabase.rpc('update_conversation_status', {
+        p_conversation_id: conversationId,
+        p_status: status,
+      });
+
+      if (error) {
+        return { data: null, error };
+      }
+
+      return { data: data as Conversation, error: null };
+    } catch (err: any) {
+      console.error('Exception in updateConversationStatus:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async fetchEligibleFacultyForStudent(studentId: string): Promise<EligibleFacultyForStudent[]> {
+    try {
+      const { data: student, error: stuErr } = await supabase
+        .from('students')
+        .select('id, section_id, academic_year_id, sections:section_id(id, name), academic_years:academic_year_id(id, year_number, name)')
+        .eq('id', studentId)
+        .single();
+
+      if (stuErr || !student || !student.section_id) {
+        return [];
+      }
+
+      const sectionId = student.section_id;
+      const sectionName = (student.sections as any)?.name || 'Section';
+      const academicYearId = student.academic_year_id;
+      const yearName = (student.academic_years as any)?.name || '';
+
+      const { data: fsaData, error: fsaErr } = await supabase
+        .from('faculty_subject_assignments')
+        .select(`
+          faculty_id,
+          subject_id,
+          faculty:faculty(id, full_name, email, designation),
+          subject:subjects(id, subject_name, subject_code)
+        `)
+        .eq('section_id', sectionId)
+        .eq('active', true);
+
+      const { data: ttData, error: ttErr } = await supabase
+        .from('timetable_entries')
+        .select(`
+          faculty_id,
+          subject_id,
+          faculty:faculty(id, full_name, email, designation),
+          subject:subjects(id, subject_name, subject_code)
+        `)
+        .eq('section_id', sectionId)
+        .eq('active', true);
+
+      const map = new Map<string, EligibleFacultyForStudent>();
+
+      const addEntry = (fac: any, sub: any) => {
+        if (!fac || !sub || !fac.id || !sub.id) return;
+        const key = `${fac.id}_${sub.id}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            faculty_id: fac.id,
+            faculty_name: fac.full_name,
+            faculty_email: fac.email,
+            faculty_designation: fac.designation,
+            subject_id: sub.id,
+            subject_name: sub.subject_name,
+            subject_code: sub.subject_code,
+            section_id: sectionId,
+            section_name: sectionName,
+            academic_year_id: academicYearId,
+            year_name: yearName,
+          });
+        }
+      };
+
+      if (!fsaErr && fsaData) {
+        fsaData.forEach((row: any) => addEntry(row.faculty, row.subject));
+      }
+      if (!ttErr && ttData) {
+        ttData.forEach((row: any) => addEntry(row.faculty, row.subject));
+      }
+
+      return Array.from(map.values()).sort((a, b) => a.faculty_name.localeCompare(b.faculty_name));
+    } catch (err) {
+      console.error('Error fetching eligible faculty for student:', err);
+      return [];
+    }
+  },
+
+  async fetchEligibleStudentsForFaculty(facultyId: string): Promise<EligibleStudentForFaculty[]> {
+    try {
+      const { data: fsaData } = await supabase
+        .from('faculty_subject_assignments')
+        .select('section_id, subject_id, section:sections(id, name, semester_id, semesters:semester_id(academic_year_id, academic_years:academic_year_id(id, name))), subject:subjects(id, subject_name, subject_code)')
+        .eq('faculty_id', facultyId)
+        .eq('active', true);
+
+      const { data: ttData } = await supabase
+        .from('timetable_entries')
+        .select('section_id, subject_id, section:sections(id, name, semester_id, semesters:semester_id(academic_year_id, academic_years:academic_year_id(id, name))), subject:subjects(id, subject_name, subject_code)')
+        .eq('faculty_id', facultyId)
+        .eq('active', true);
+
+      const sectionSubjectPairs = new Map<string, { sectionId: string; sectionName: string; subjectId: string; subjectName: string; subjectCode: string; academicYearId: string; yearName: string }>();
+
+      const registerPair = (item: any) => {
+        if (!item?.section_id || !item?.subject_id) return;
+        const key = `${item.section_id}_${item.subject_id}`;
+        if (!sectionSubjectPairs.has(key)) {
+          const sec = item.section;
+          const sub = item.subject;
+          const year = sec?.semesters?.academic_years;
+          sectionSubjectPairs.set(key, {
+            sectionId: item.section_id,
+            sectionName: sec?.name || 'Section',
+            subjectId: item.subject_id,
+            subjectName: sub?.subject_name || 'Subject',
+            subjectCode: sub?.subject_code || '',
+            academicYearId: year?.id || '',
+            yearName: year?.name || '',
+          });
+        }
+      };
+
+      if (fsaData) fsaData.forEach(registerPair);
+      if (ttData) ttData.forEach(registerPair);
+
+      const pairs = Array.from(sectionSubjectPairs.values());
+      if (pairs.length === 0) return [];
+
+      const sectionIds = Array.from(new Set(pairs.map(p => p.sectionId)));
+
+      const { data: students, error: stuErr } = await supabase
+        .from('students')
+        .select('id, full_name, roll_number, section_id, academic_year_id')
+        .in('section_id', sectionIds)
+        .order('full_name', { ascending: true });
+
+      if (stuErr || !students) return [];
+
+      const results: EligibleStudentForFaculty[] = [];
+
+      for (const stu of students) {
+        const matchingPairs = pairs.filter(p => p.sectionId === stu.section_id);
+        for (const pair of matchingPairs) {
+          results.push({
+            student_id: stu.id,
+            student_name: stu.full_name,
+            roll_number: stu.roll_number,
+            admission_number: stu.roll_number,
+            section_id: pair.sectionId,
+            section_name: pair.sectionName,
+            subject_id: pair.subjectId,
+            subject_name: pair.subjectName,
+            subject_code: pair.subjectCode,
+            academic_year_id: stu.academic_year_id || pair.academicYearId,
+            year_name: pair.yearName,
+          });
+        }
+      }
+
+      return results;
+    } catch (err) {
+      console.error('Error fetching eligible students for faculty:', err);
+      return [];
     }
   }
 };

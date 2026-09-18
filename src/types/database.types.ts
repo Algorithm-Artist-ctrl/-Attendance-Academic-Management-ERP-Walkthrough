@@ -164,11 +164,13 @@ export interface Student {
   semester_id: string;
   section_id: string;
   roll_number: string;
+  admission_number?: string;
   full_name: string;
   admission_type: AdmissionType;
   mentor_faculty_id?: string;
   email?: string;
   phone?: string;
+  avatar_url?: string;
   active: boolean;
   status?: AccountStatus;
   created_at: string;
@@ -555,6 +557,8 @@ export type NotificationType =
   | 'TIMETABLE_UPDATE'
   | 'NOTICE'
   | 'ACCOUNT_UPDATE'
+  | 'NEW_MESSAGE'
+  | 'ISSUE_STATUS_UPDATE'
   | 'GENERAL';
 
 export interface StudentNotification {
@@ -574,6 +578,87 @@ export interface StudentNotification {
   read_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type ConversationCategory =
+  | 'General'
+  | 'Attendance'
+  | 'Timetable'
+  | 'Assignment'
+  | 'Subject'
+  | 'Class'
+  | 'Other';
+
+export type ConversationStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
+export interface Conversation {
+  id: string;
+  student_id: string;
+  faculty_id: string;
+  subject_id: string;
+  section_id: string;
+  academic_year_id: string;
+  category: ConversationCategory;
+  subject_topic?: string | null;
+  status: ConversationStatus;
+  last_message_at: string;
+  last_message_preview?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joins / expanded relations
+  student?: Student;
+  faculty?: Faculty;
+  subject?: Subject;
+  section?: Section;
+  academic_year?: AcademicYear;
+  unread_count?: number;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_user_id: string;
+  receiver_user_id: string;
+  student_id: string;
+  faculty_id: string;
+  subject_id: string;
+  sender_role: 'student' | 'faculty' | 'hod' | 'super_admin';
+  message: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  attachment_size?: number | null;
+  read_at?: string | null;
+  created_at: string;
+  sender_name?: string;
+}
+
+export interface EligibleFacultyForStudent {
+  faculty_id: string;
+  faculty_name: string;
+  faculty_email?: string;
+  faculty_designation?: string;
+  subject_id: string;
+  subject_name: string;
+  subject_code: string;
+  section_id: string;
+  section_name: string;
+  academic_year_id: string;
+  year_name?: string;
+}
+
+export interface EligibleStudentForFaculty {
+  student_id: string;
+  student_name: string;
+  roll_number?: string;
+  admission_number?: string;
+  section_id: string;
+  section_name: string;
+  subject_id: string;
+  subject_name: string;
+  subject_code: string;
+  academic_year_id: string;
+  year_name?: string;
 }
 
 

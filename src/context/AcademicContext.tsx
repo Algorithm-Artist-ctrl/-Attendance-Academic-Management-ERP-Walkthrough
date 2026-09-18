@@ -33,7 +33,13 @@ import {
   AccountStatus,
   AdminAccountDirectoryEntry,
   ClassCoordinatorAssignment,
-  StudentNotification
+  StudentNotification,
+  Conversation,
+  ConversationCategory,
+  ConversationStatus,
+  Message,
+  EligibleFacultyForStudent,
+  EligibleStudentForFaculty
 } from '../types/database.types';
 import {
   StudentOverallAttendance,
@@ -120,6 +126,32 @@ interface AcademicContextType {
   adminAccounts: AdminAccountDirectoryEntry[];
   notifications: StudentNotification[];
   unreadNotificationCount: number;
+  conversations: Conversation[];
+  unreadMessagesCount: number;
+  activeConversationId: string | null;
+  setActiveConversationId: (id: string | null) => void;
+  refreshConversations: () => Promise<void>;
+  sendMessage: (params: {
+    conversationId: string;
+    message: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+  }) => Promise<{ data: Message | null; error: any }>;
+  getOrCreateConversation: (params: {
+    facultyId: string;
+    subjectId: string;
+    category?: ConversationCategory;
+    topic?: string;
+  }) => Promise<{ data: Conversation | null; error: any }>;
+  markConversationRead: (conversationId: string) => Promise<void>;
+  updateConversationStatus: (
+    conversationId: string,
+    status: ConversationStatus
+  ) => Promise<{ data: Conversation | null; error: any }>;
+  fetchEligibleFacultyForStudent: (studentId: string) => Promise<EligibleFacultyForStudent[]>;
+  fetchEligibleStudentsForFaculty: (facultyId: string) => Promise<EligibleStudentForFaculty[]>;
   activeToast: {
     id: string;
     title: string;
@@ -440,6 +472,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [adminAccounts, setAdminAccounts] = useState<AdminAccountDirectoryEntry[]>([]);
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
   const unreadNotificationCount = notifications.filter(n => !n.is_read).length;
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const activeConversationIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+  const unreadMessagesCount = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
   const [activeToast, setActiveToast] = useState<{
     id: string;
     title: string;
@@ -986,12 +1025,24 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  const refreshConversations = useCallback(async () => {
+    try {
+      const activeUser = erpStorage.getCurrentSessionUser();
+      if (!activeUser?.id) return;
+      const convs = await supabaseService.fetchUserConversations(activeUser.id, activeUser.role || '');
+      setConversations(convs);
+    } catch (err) {
+      console.warn('Notice: Error refreshing conversations:', err);
+    }
+  }, []);
+
   // Network online/offline listener with automatic reconnection and refresh
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
       loadDataFromSupabase(false);
       refreshNotifications();
+      refreshConversations();
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -1004,7 +1055,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [loadDataFromSupabase, refreshNotifications]);
+  }, [loadDataFromSupabase, refreshNotifications, refreshConversations]);
 
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
@@ -1033,24 +1084,27 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     loadDataFromSupabase(true);
     refreshNotifications();
+    refreshConversations();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         loadDataFromSupabase(true);
         refreshNotifications();
+        refreshConversations();
       } else if (event === 'SIGNED_OUT') {
         setAttendanceSessions([]);
         setAttendanceRecords([]);
         setCorrections([]);
         setAdminAccounts([]);
         setNotifications([]);
+        setConversations([]);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [loadDataFromSupabase, refreshNotifications]);
+  }, [loadDataFromSupabase, refreshNotifications, refreshConversations]);
 
   // Stable ref for realtime event handlers to eliminate channel resubscription churn
   const realtimeHandlersRef = useRef({
@@ -1065,6 +1119,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshAssessments,
     refreshCoordinatorAssignments,
     refreshNotifications,
+    refreshConversations,
   });
 
   useEffect(() => {
@@ -1080,6 +1135,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       refreshAssessments,
       refreshCoordinatorAssignments,
       refreshNotifications,
+      refreshConversations,
     };
   });
 
@@ -1165,6 +1221,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
         debounceTableSync('class_coordinator_assignments', () => realtimeHandlersRef.current.refreshCoordinatorAssignments());
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+        debounceTableSync('conversations', () => realtimeHandlersRef.current.refreshConversations());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        debounceTableSync('messages', () => {
+          realtimeHandlersRef.current.refreshConversations();
+          realtimeHandlersRef.current.refreshNotifications();
+        });
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
         const newNotif = payload?.new as StudentNotification;
         if (newNotif) {
@@ -1187,14 +1252,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return [newNotif, ...prev];
             });
 
-            setActiveToast({
-              id: newNotif.id,
-              title: newNotif.title,
-              message: newNotif.message,
-              type: newNotif.type,
-              referenceType: newNotif.reference_type,
-              referenceId: newNotif.reference_id,
-            });
+            // Suppress toast if user is currently inside the active conversation thread
+            const isViewingThisConversation = 
+              newNotif.reference_type === 'conversation' && 
+              newNotif.reference_id && 
+              newNotif.reference_id === activeConversationIdRef.current;
+
+            if (!isViewingThisConversation) {
+              setActiveToast({
+                id: newNotif.id,
+                title: newNotif.title,
+                message: newNotif.message,
+                type: newNotif.type,
+                referenceType: newNotif.reference_type,
+                referenceId: newNotif.reference_id,
+              });
+            }
           }
         }
         debounceTableSync('notifications', () => realtimeHandlersRef.current.refreshNotifications());
@@ -2751,6 +2824,63 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   }, []);
 
+  const sendMessage = useCallback(async (params: {
+    conversationId: string;
+    message: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+  }) => {
+    const res = await supabaseService.sendMessage(params);
+    if (!res.error) {
+      await refreshConversations();
+    }
+    return res;
+  }, [refreshConversations]);
+
+  const getOrCreateConversation = useCallback(async (params: {
+    facultyId: string;
+    subjectId: string;
+    category?: ConversationCategory;
+    topic?: string;
+  }) => {
+    const res = await supabaseService.getOrCreateConversation(params);
+    if (res.data) {
+      await refreshConversations();
+    }
+    return res;
+  }, [refreshConversations]);
+
+  const markConversationRead = useCallback(async (conversationId: string) => {
+    await supabaseService.markConversationRead(conversationId);
+    setConversations(prev =>
+      prev.map(c => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
+    );
+    refreshNotifications();
+  }, [refreshNotifications]);
+
+  const updateConversationStatus = useCallback(async (
+    conversationId: string,
+    status: ConversationStatus
+  ) => {
+    const res = await supabaseService.updateConversationStatus(conversationId, status);
+    if (res.data) {
+      setConversations(prev =>
+        prev.map(c => (c.id === conversationId ? { ...c, status } : c))
+      );
+    }
+    return res;
+  }, []);
+
+  const fetchEligibleFacultyForStudent = useCallback(async (studentId: string) => {
+    return await supabaseService.fetchEligibleFacultyForStudent(studentId);
+  }, []);
+
+  const fetchEligibleStudentsForFaculty = useCallback(async (facultyId: string) => {
+    return await supabaseService.fetchEligibleStudentsForFaculty(facultyId);
+  }, []);
+
   const resetToInitialSeed = () => {
     erpStorage.init(true);
     refreshData();
@@ -2787,6 +2917,17 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         adminAccounts,
         notifications,
         unreadNotificationCount,
+        conversations,
+        unreadMessagesCount,
+        activeConversationId,
+        setActiveConversationId,
+        refreshConversations,
+        sendMessage,
+        getOrCreateConversation,
+        markConversationRead,
+        updateConversationStatus,
+        fetchEligibleFacultyForStudent,
+        fetchEligibleStudentsForFaculty,
         activeToast,
         dismissToast,
         isOnline,

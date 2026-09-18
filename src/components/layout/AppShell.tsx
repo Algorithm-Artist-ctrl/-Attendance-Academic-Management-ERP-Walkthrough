@@ -20,6 +20,7 @@ import {
   Settings,
   FileText,
   MessageSquare,
+  MessageCircle,
   Sparkles,
   UserCheck,
   Award,
@@ -57,6 +58,8 @@ export const AppShell: React.FC<AppShellProps> = ({
     subjects,
     notifications,
     unreadNotificationCount,
+    unreadMessagesCount,
+    setActiveConversationId,
     activeToast,
     dismissToast,
     isOnline,
@@ -105,7 +108,12 @@ export const AppShell: React.FC<AppShellProps> = ({
   const handleNotificationNavigation = (type: string, refType?: string, _refId?: string) => {
     const t = (type || '').toUpperCase();
     const rt = (refType || '').toUpperCase();
-    if (t.includes('MARKS') || rt.includes('MARKS') || rt.includes('SESSIONAL')) {
+    if (t.includes('MESSAGE') || rt.includes('CONVERSATION')) {
+      if (_refId) {
+        setActiveConversationId(_refId);
+      }
+      onTabChange('messages');
+    } else if (t.includes('MARKS') || rt.includes('MARKS') || rt.includes('SESSIONAL')) {
       onTabChange('marks');
     } else if (t.includes('ASSIGNMENT') || rt.includes('ASSIGNMENT')) {
       onTabChange(role === 'student' ? 'student_assignments' : 'assignments');
@@ -124,6 +132,13 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   const renderNotificationIcon = (type: string) => {
     const t = (type || '').toUpperCase();
+    if (t.includes('MESSAGE') || t.includes('CONVERSATION')) {
+      return (
+        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+          <MessageSquare className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
     if (t.includes('MARKS')) {
       return (
         <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
@@ -174,13 +189,19 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
           { id: 'profile', label: 'My Profile', icon: GraduationCap },
           { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
-          { id: 'quizzes', label: 'Quizzes', icon: Sparkles },
-          { id: 'student_assignments', label: 'Assignments', icon: FileText },
-          { id: 'marks', label: 'My Marks & Sessional', icon: Award },
           { id: 'timetable', label: 'Time Table', icon: Calendar },
+          { id: 'student_assignments', label: 'Assignments', icon: FileText },
+          { id: 'quizzes', label: 'Quizzes', icon: Sparkles },
+          { id: 'marks', label: 'My Marks & Sessional', icon: Award },
           { id: 'notices', label: 'Notices', icon: Bell },
-          { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+          { 
+            id: 'messages', 
+            label: 'Messages', 
+            icon: MessageSquare, 
+            badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined 
+          },
           { id: 'leave', label: 'Leave Application', icon: FileText },
+          { id: 'feedback', label: 'Feedback', icon: MessageCircle },
           { 
             id: 'corrections', 
             label: 'My Requests', 
@@ -209,6 +230,12 @@ export const AppShell: React.FC<AppShellProps> = ({
           },
           { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
           { id: 'notices', label: 'Notices', icon: Bell },
+          { 
+            id: 'messages', 
+            label: 'Messages', 
+            icon: MessageSquare, 
+            badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined 
+          },
           { id: 'settings', label: 'Settings', icon: Settings },
         ];
 
@@ -232,6 +259,12 @@ export const AppShell: React.FC<AppShellProps> = ({
             },
             { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
             { id: 'notices', label: 'Notices', icon: Bell },
+            { 
+              id: 'messages', 
+              label: 'Messages', 
+              icon: MessageSquare, 
+              badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined 
+            },
             { id: 'settings', label: 'Settings', icon: Settings },
           ];
         }
@@ -249,6 +282,13 @@ export const AppShell: React.FC<AppShellProps> = ({
             label: 'Correction Reviews', 
             icon: RotateCcw, 
             badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
+          },
+          { id: 'notices', label: 'Notices', icon: Bell },
+          { 
+            id: 'messages', 
+            label: 'Messages', 
+            icon: MessageSquare, 
+            badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined 
           },
           { id: 'settings', label: 'Settings', icon: Settings },
         ];

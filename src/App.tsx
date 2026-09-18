@@ -10,6 +10,7 @@ import { GraduationCap, RotateCcw, AlertTriangle } from 'lucide-react';
 // Lazy Loaded Common Pages
 const ProfilePage = lazy(() => import('./pages/common/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const NoticesPage = lazy(() => import('./pages/common/NoticesPage').then(m => ({ default: m.NoticesPage })));
+const MessagesPage = lazy(() => import('./pages/communication/MessagesPage').then(m => ({ default: m.MessagesPage })));
 const SettingsPage = lazy(() => import('./pages/common/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 // Lazy Loaded Student Pages
@@ -141,6 +142,8 @@ export const AppContent: React.FC = () => {
           return <StudentTimetablePage />;
         case 'notices':
           return <NoticesPage />;
+        case 'messages':
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
         case 'feedback':
           return <FeedbackPage />;
         case 'leave':
@@ -202,6 +205,8 @@ export const AppContent: React.FC = () => {
           return <ReportsPage />;
         case 'notices':
           return <NoticesPage />;
+        case 'messages':
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
         case 'corrections':
           return <ReviewCorrectionsPage />;
         case 'settings':
@@ -309,6 +314,9 @@ export const AppContent: React.FC = () => {
             break;
           case 'notices':
             facultyModeComponent = <NoticesPage />;
+            break;
+          case 'messages':
+            facultyModeComponent = <MessagesPage initialConversationId={navigationParams?.conversationId} />;
             break;
           case 'corrections':
             facultyModeComponent = <ReviewCorrectionsPage forceFacultyMode={true} />;
@@ -419,6 +427,8 @@ export const AppContent: React.FC = () => {
           return <FacultyDirectoryPage />;
         case 'notices':
           return <NoticesPage />;
+        case 'messages':
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
         case 'reports':
           return <ReportsPage />;
         case 'corrections':
@@ -460,6 +470,8 @@ export const AppContent: React.FC = () => {
           return <ReviewCorrectionsPage />;
         case 'notices':
           return <NoticesPage />;
+        case 'messages':
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
         case 'audit_logs':
           return <AuditLogsPage />;
         case 'settings':
