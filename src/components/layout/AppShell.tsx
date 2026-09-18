@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import vctmOfficialLogo from '../../assets/vctm-logo.png';
 import { clsx } from 'clsx';
+import { NotificationSkeleton } from '../common/SkeletonLoader';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -63,6 +64,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     activeToast,
     dismissToast,
     isOnline,
+    isLoading,
     markNotificationAsRead,
     markAllNotificationsAsRead
   } = useAcademic();
@@ -116,7 +118,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     } else if (t.includes('LEAVE') || rt.includes('LEAVE')) {
       onTabChange('leave');
     } else if (t.includes('MARKS') || rt.includes('MARKS') || rt.includes('SESSIONAL')) {
-      onTabChange('marks');
+      onTabChange(role === 'student' ? 'marks' : 'sessional_marks');
     } else if (t.includes('ASSIGNMENT') || rt.includes('ASSIGNMENT')) {
       onTabChange(role === 'student' ? 'student_assignments' : 'assignments');
     } else if (t.includes('QUIZ') || rt.includes('QUIZ')) {
@@ -650,7 +652,9 @@ export const AppShell: React.FC<AppShellProps> = ({
                     </div>
 
                     <div className="max-h-80 overflow-y-auto divide-y divide-emerald-500/10 custom-scrollbar">
-                      {notifications.length === 0 ? (
+                      {isLoading && notifications.length === 0 ? (
+                        <NotificationSkeleton count={4} />
+                      ) : notifications.length === 0 ? (
                         <div className="p-6 text-center text-slate-400 space-y-1">
                           <Bell className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-40" />
                           <p className="text-xs font-semibold text-slate-300">No Notifications</p>

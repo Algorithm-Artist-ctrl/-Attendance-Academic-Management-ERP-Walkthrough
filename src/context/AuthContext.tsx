@@ -872,13 +872,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // 1. Proactively verify and ensure an active Supabase session before updating credentials
+      // 1. Proactively verify and ensure an active, unexpired Supabase session before updating credentials
       let { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       let session = sessionData?.session;
 
-      if (!session || !session.access_token || sessionErr) {
+      const isTokenExpired = !session?.expires_at || (session.expires_at - 60 < Math.floor(Date.now() / 1000));
+      if (!session || !session.access_token || sessionErr || isTokenExpired) {
         // Attempt session refresh if token is expired or missing in memory
-        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession().catch(() => ({ data: { session: null }, error: null }));
+        const { data: refreshData } = await supabase.auth.refreshSession().catch(() => ({ data: { session: null }, error: null }));
         if (refreshData?.session) {
           session = refreshData.session;
         } else {
@@ -906,22 +907,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-
-
       if (!session || !session.access_token) {
         return { success: false, error: 'Your session has expired or is invalid. Please log in again.' };
       }
 
       const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
-      const { data, error: authErr } = await supabase.auth.updateUser(
+      let updateRes = await supabase.auth.updateUser(
         { email: cleanEmail },
         { emailRedirectTo: redirectUrl }
       );
 
+      // Proactive retry: If GoTrue reports session missing or expired token, refresh session and retry once
+      if (updateRes.error) {
+        const msg = updateRes.error.message || '';
+        if (msg.includes('Auth session missing') || msg.toLowerCase().includes('session missing') || msg.toLowerCase().includes('jwt expired')) {
+          const { data: refData } = await supabase.auth.refreshSession().catch(() => ({ data: { session: null }, error: null }));
+          if (refData?.session) {
+            updateRes = await supabase.auth.updateUser(
+              { email: cleanEmail },
+              { emailRedirectTo: redirectUrl }
+            );
+          }
+        }
+      }
+
+      const { data, error: authErr } = updateRes;
+
       if (authErr) {
         const msg = authErr.message || '';
         if (msg.includes('Auth session missing') || msg.toLowerCase().includes('session missing') || msg.toLowerCase().includes('jwt expired')) {
-          return { success: false, error: 'Your session has expired. Please log in again.' };
+          return { success: false, error: 'Your authentication session could not be refreshed. Please log out and sign back in.' };
         }
         if (msg.includes('over_email_send_rate_limit') || msg.toLowerCase().includes('rate limit')) {
           return { success: false, error: 'Email verification rate limit reached. Please wait a few minutes before trying again.' };

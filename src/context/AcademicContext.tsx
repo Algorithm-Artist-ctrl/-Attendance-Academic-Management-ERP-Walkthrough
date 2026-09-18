@@ -52,6 +52,7 @@ import {
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { erpStorage } from '../lib/storage/erpStorage';
+import { useAuth } from './AuthContext';
 import { 
   getCollegeToday,
   getISTTodayDate, 
@@ -440,8 +441,10 @@ interface AcademicContextType {
 const AcademicContext = createContext<AcademicContextType | undefined>(undefined);
 
 export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, role } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [claimWindowDays, setClaimWindowDays] = useState<number>(7);
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
 
   // State populated from Supabase
   const [institution, setInstitution] = useState<Institution>(() => erpStorage.getInstitution());
@@ -1106,6 +1109,26 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [loadDataFromSupabase, refreshNotifications, refreshConversations]);
 
+  // Offline & Online Network Synchronization (Phase 22)
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      loadDataFromSupabase(false);
+      refreshNotifications();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [loadDataFromSupabase, refreshNotifications]);
+
   // Stable ref for realtime event handlers to eliminate channel resubscription churn
   const realtimeHandlersRef = useRef({
     refreshStudents,
@@ -1139,10 +1162,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   });
 
-  // Realtime Supabase Channel Subscription with granular event handlers (subscribed once)
+  // Realtime Supabase Channel Subscription with role-scoped event handlers and idempotency protection
   useEffect(() => {
-    const channel = supabase
-      .channel('vctm-erp-realtime-channel')
+    const activeUserId = user?.id || erpStorage.getCurrentSessionUser()?.id;
+    const activeRole = role || erpStorage.getCurrentSessionUser()?.role;
+    const activeStudentId = user?.student_id || user?.student?.id || erpStorage.getCurrentSessionUser()?.student_id;
+    const activeFacultyId = user?.faculty_id || user?.faculty?.id || erpStorage.getCurrentSessionUser()?.faculty_id;
+    const activeSectionId = user?.student?.section_id || erpStorage.getCurrentSessionUser()?.student?.section_id;
+
+    const channelName = activeUserId ? `vctm-erp-realtime-${activeRole || 'user'}-${activeUserId}` : 'vctm-erp-realtime-public';
+
+    let builder = supabase
+      .channel(channelName)
       .on('broadcast', { event: 'timetable_updated' }, (payload: any) => {
         const secId = payload?.payload?.section_id;
         const action = payload?.payload?.action;
@@ -1166,89 +1197,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .on('broadcast', { event: 'attendance_updated' }, () => {
         realtimeHandlersRef.current.refreshAttendance();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
-        const secId = payload?.new?.section_id || payload?.old?.section_id;
-        debounceTableSync('timetable_entries', () => realtimeHandlersRef.current.refreshTimetable(secId));
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
-        debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
-        debounceTableSync('attendance', () => {
-          realtimeHandlersRef.current.refreshAttendance();
-          realtimeHandlersRef.current.refreshCorrections();
-        });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
-        debounceTableSync('attendance_corrections', () => {
-          realtimeHandlersRef.current.refreshCorrections();
-          realtimeHandlersRef.current.refreshAttendance();
-        });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty' }, () => {
-        debounceTableSync('faculty', () => realtimeHandlersRef.current.refreshFaculty());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => {
-        debounceTableSync('sections', () => realtimeHandlersRef.current.refreshSections());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
-        debounceTableSync('subjects', () => realtimeHandlersRef.current.refreshSubjects());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
-        debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
-        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
-        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
-        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
-        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
-        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
-        debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
-        debounceTableSync('class_coordinator_assignments', () => realtimeHandlersRef.current.refreshCoordinatorAssignments());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
-        debounceTableSync('conversations', () => realtimeHandlersRef.current.refreshConversations());
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        debounceTableSync('messages', () => {
-          realtimeHandlersRef.current.refreshConversations();
-          realtimeHandlersRef.current.refreshNotifications();
-        });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_applications' }, () => {
-        debounceTableSync('leave_applications', () => {
-          realtimeHandlersRef.current.refreshNotifications();
-        });
-      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
         const newNotif = payload?.new as StudentNotification;
-        if (newNotif) {
-          const activeUser = erpStorage.getCurrentSessionUser();
-          const currentUserId = activeUser?.id;
-          const currentStudentId = activeUser?.student_id || activeUser?.student?.id;
-          const currentRole = activeUser?.role;
+        if (newNotif && newNotif.id) {
+          if (seenNotificationIdsRef.current.has(newNotif.id)) return;
+          seenNotificationIdsRef.current.add(newNotif.id);
+
+          const curUserId = user?.id || erpStorage.getCurrentSessionUser()?.id;
+          const curStudentId = user?.student_id || user?.student?.id || erpStorage.getCurrentSessionUser()?.student_id;
+          const curRole = role || erpStorage.getCurrentSessionUser()?.role;
 
           const targetStudId = newNotif.recipient_student_id || newNotif.student_id;
           const targetUserId = newNotif.recipient_user_id || newNotif.user_id;
           const isTargetUser = 
-            (targetStudId && targetStudId === currentStudentId) ||
-            (targetUserId && targetUserId === currentUserId) ||
-            (newNotif.recipient_role && currentRole && newNotif.recipient_role.toUpperCase() === currentRole.toUpperCase()) ||
+            (targetStudId && targetStudId === curStudentId) ||
+            (targetUserId && targetUserId === curUserId) ||
+            (newNotif.recipient_role && curRole && newNotif.recipient_role.toUpperCase() === curRole.toUpperCase()) ||
             (!targetStudId && !targetUserId && !newNotif.recipient_role);
 
           if (isTargetUser) {
@@ -1257,7 +1221,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return [newNotif, ...prev];
             });
 
-            // Suppress toast if user is currently inside the active conversation thread
             const isViewingThisConversation = 
               newNotif.reference_type === 'conversation' && 
               newNotif.reference_id && 
@@ -1283,13 +1246,170 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setNotifications(prev => prev.map(n => n.id === updated.id ? { ...n, ...updated } : n));
         }
       })
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+        debounceTableSync('conversations', () => realtimeHandlersRef.current.refreshConversations());
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        debounceTableSync('messages', () => {
+          realtimeHandlersRef.current.refreshConversations();
+          realtimeHandlersRef.current.refreshNotifications();
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_applications' }, () => {
+        debounceTableSync('leave_applications', () => {
+          realtimeHandlersRef.current.refreshNotifications();
+        });
+      });
+
+    // Role-specific granular table subscriptions
+    if (activeRole === 'student') {
+      builder = builder
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
+          const secId = payload?.new?.section_id || payload?.old?.section_id;
+          if (!activeSectionId || secId === activeSectionId) {
+            debounceTableSync('timetable_entries', () => realtimeHandlersRef.current.refreshTimetable(secId));
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, (payload: any) => {
+          const studId = payload?.new?.student_id || payload?.old?.student_id;
+          if (!activeStudentId || studId === activeStudentId) {
+            debounceTableSync('attendance', () => {
+              realtimeHandlersRef.current.refreshAttendance();
+              realtimeHandlersRef.current.refreshCorrections();
+            });
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, (payload: any) => {
+          const studId = payload?.new?.student_id || payload?.old?.student_id;
+          if (!activeStudentId || studId === activeStudentId) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
+          debounceTableSync('attendance_corrections', () => {
+            realtimeHandlersRef.current.refreshCorrections();
+            realtimeHandlersRef.current.refreshAttendance();
+          });
+        });
+    } else if (activeRole === 'faculty') {
+      builder = builder
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
+          const facId = payload?.new?.faculty_id || payload?.old?.faculty_id;
+          const secId = payload?.new?.section_id || payload?.old?.section_id;
+          if (!activeFacultyId || facId === activeFacultyId) {
+            debounceTableSync('timetable_entries', () => realtimeHandlersRef.current.refreshTimetable(secId));
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
+          debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
+          debounceTableSync('attendance', () => {
+            realtimeHandlersRef.current.refreshAttendance();
+            realtimeHandlersRef.current.refreshCorrections();
+          });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
+          debounceTableSync('attendance_corrections', () => {
+            realtimeHandlersRef.current.refreshCorrections();
+            realtimeHandlersRef.current.refreshAttendance();
+          });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+          debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+        });
+    } else {
+      // HOD and Super Admin have oversight across academic and administrative entities
+      builder = builder
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+          debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
+          const secId = payload?.new?.section_id || payload?.old?.section_id;
+          debounceTableSync('timetable_entries', () => realtimeHandlersRef.current.refreshTimetable(secId));
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
+          debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
+          debounceTableSync('attendance', () => {
+            realtimeHandlersRef.current.refreshAttendance();
+            realtimeHandlersRef.current.refreshCorrections();
+          });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
+          debounceTableSync('attendance_corrections', () => {
+            realtimeHandlersRef.current.refreshCorrections();
+            realtimeHandlersRef.current.refreshAttendance();
+          });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty' }, () => {
+          debounceTableSync('faculty', () => realtimeHandlersRef.current.refreshFaculty());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => {
+          debounceTableSync('sections', () => realtimeHandlersRef.current.refreshSections());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
+          debounceTableSync('subjects', () => realtimeHandlersRef.current.refreshSubjects());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
+          debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
+          debounceTableSync('class_coordinator_assignments', () => realtimeHandlersRef.current.refreshCoordinatorAssignments());
+        });
+    }
+
+    const channel = builder.subscribe();
 
     return () => {
       Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
       supabase.removeChannel(channel);
     };
-  }, [debounceTableSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, role, debounceTableSync]);
 
   const refreshData = async (forceRefreshMaster = false) => {
     await loadDataFromSupabase(forceRefreshMaster);
@@ -2574,6 +2694,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
   }) => {
     const res = await supabaseService.saveSessionalMarks(params);
+    if (res && res.length > 0) {
+      setSessionalMarks(prev => {
+        const updatedStudentIds = new Set(params.studentMarks.map(sm => sm.studentId));
+        const filtered = prev.filter(
+          m => !(m.sessional_assessment_id === params.sessionalAssessmentId && updatedStudentIds.has(m.student_id))
+        );
+        return [...res, ...filtered];
+      });
+    }
     await refreshAssessments();
     return res;
   };
