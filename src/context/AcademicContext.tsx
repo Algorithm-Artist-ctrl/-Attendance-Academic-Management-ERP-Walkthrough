@@ -43,7 +43,8 @@ import {
   MessageGroup,
   GroupMessage,
   GroupMember,
-  DetailedStudentProfile
+  DetailedStudentProfile,
+  SectionReferenceCheckResult
 } from '../types/database.types';
 
 import {
@@ -258,6 +259,9 @@ interface AcademicContextType {
   addSection: (sec: Omit<Section, 'id' | 'created_at' | 'updated_at'>) => Promise<Section>;
   updateSection: (id: string, updates: Partial<Section>) => Promise<Section>;
   deleteSection: (id: string) => Promise<{ success: boolean; archived: boolean } | boolean>;
+  archiveSection: (id: string) => Promise<Section>;
+  restoreSection: (id: string) => Promise<Section>;
+  checkSectionReferences: (id: string) => Promise<SectionReferenceCheckResult>;
   addAcademicYear: (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => Promise<AcademicYear>;
   updateAcademicYear: (id: string, updates: Partial<AcademicYear>) => Promise<AcademicYear>;
   deleteAcademicYear: (id: string) => Promise<boolean>;
@@ -1800,6 +1804,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const archiveSection = async (id: string) => {
+    const res = await supabaseService.archiveSection(id);
+    await refreshSections();
+    return res;
+  };
+
+  const restoreSection = async (id: string) => {
+    const res = await supabaseService.restoreSection(id);
+    await refreshSections();
+    return res;
+  };
+
+  const checkSectionReferences = async (id: string) => {
+    return await supabaseService.checkSectionReferences(id);
+  };
+
   const addAcademicYear = async (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addAcademicYear(year);
     await refreshData(true);
@@ -3219,6 +3239,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addSection,
         updateSection,
         deleteSection,
+        archiveSection,
+        restoreSection,
+        checkSectionReferences,
         addAcademicYear,
         updateAcademicYear,
         deleteAcademicYear,

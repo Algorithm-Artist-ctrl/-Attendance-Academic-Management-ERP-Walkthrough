@@ -53,6 +53,7 @@ const ReportsPage = lazy(() => import('./pages/admin/ReportsPage').then(m => ({ 
 const AuditLogsPage = lazy(() => import('./pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
 const FacultyAccountsPage = lazy(() => import('./pages/admin/FacultyAccountsPage').then(m => ({ default: m.FacultyAccountsPage })));
 const StudentAccountsPage = lazy(() => import('./pages/admin/StudentAccountsPage').then(m => ({ default: m.StudentAccountsPage })));
+const AcademicManagementPage = lazy(() => import('./pages/admin/AcademicManagementPage').then(m => ({ default: m.AcademicManagementPage })));
 
 // Lightweight Cyber Skeleton Loader for Fast Transitions
 const PageSkeletonLoader: React.FC = () => (
@@ -397,6 +398,8 @@ export const AppContent: React.FC = () => {
           );
         case 'timetable':
           return <TimetableManagerPage />;
+        case 'academic_management':
+          return <AcademicManagementPage onNavigate={handleNavigate} />;
         case 'academic_setup':
           return <AcademicSetupPage />;
         case 'subjects':
@@ -458,6 +461,8 @@ export const AppContent: React.FC = () => {
           return <FacultyAccountsPage />;
         case 'student_accounts':
           return <StudentAccountsPage />;
+        case 'academic_management':
+          return <AcademicManagementPage onNavigate={handleNavigate} />;
         case 'academic_setup':
           return <AcademicSetupPage />;
         case 'students':

@@ -52,7 +52,12 @@ import {
   MessageGroup,
   GroupMessage,
   GroupMember,
-  DetailedStudentProfile
+  DetailedStudentProfile,
+  PromotionBatch,
+  StudentAcademicHistory,
+  SectionReferenceCheckResult,
+  BulkPromotionPayload,
+  BulkPromotionResult
 } from '../../types/database.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -2446,17 +2451,64 @@ export const supabaseService = {
     return data as Section;
   },
 
+  async archiveSection(id: string) {
+    const { data, error } = await supabase.from('sections').update({ active: false }).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Section;
+  },
+
+  async restoreSection(id: string) {
+    const { data, error } = await supabase.from('sections').update({ active: true }).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Section;
+  },
+
+  async checkSectionReferences(sectionId: string): Promise<SectionReferenceCheckResult> {
+    try {
+      const { data, error } = await supabase.rpc('check_section_references', { p_section_id: sectionId });
+      if (!error && data) {
+        return data as SectionReferenceCheckResult;
+      }
+    } catch (e) {
+      console.warn('check_section_references RPC error, falling back to direct check:', e);
+    }
+
+    // Direct fallback
+    const [{ count: studentCount }, { count: timetableCount }, { count: attendanceCount }, { count: assignmentCount }] = await Promise.all([
+      supabase.from('students').select('id', { count: 'exact', head: true }).eq('section_id', sectionId),
+      supabase.from('timetable_entries').select('id', { count: 'exact', head: true }).eq('section_id', sectionId),
+      supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }).eq('section_id', sectionId),
+      supabase.from('faculty_subject_assignments').select('id', { count: 'exact', head: true }).eq('section_id', sectionId),
+    ]);
+
+    const sc = studentCount || 0;
+    const tc = timetableCount || 0;
+    const ac = attendanceCount || 0;
+    const fsa = assignmentCount || 0;
+    const total = sc + tc + ac + fsa;
+
+    return {
+      section_id: sectionId,
+      student_count: sc,
+      attendance_count: ac,
+      timetable_count: tc,
+      assignment_count: fsa,
+      leave_count: 0,
+      message_count: 0,
+      total_references: total,
+      can_hard_delete: total === 0,
+    };
+  },
+
   async deleteSection(id: string) {
     // Check if section has associated historical records
-    const [{ count: studentCount }, { count: timetableCount }, { count: attendanceCount }] = await Promise.all([
-      supabase.from('students').select('id', { count: 'exact', head: true }).eq('section_id', id),
-      supabase.from('timetable_entries').select('id', { count: 'exact', head: true }).eq('section_id', id),
-      supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }).eq('section_id', id),
-    ]);
+    const check = await this.checkSectionReferences(id);
 
     let isArchived = false;
     // If historical data exists, soft-archive by setting active = false to safeguard relational integrity
-    if ((studentCount || 0) > 0 || (timetableCount || 0) > 0 || (attendanceCount || 0) > 0) {
+    if (!check.can_hard_delete || check.total_references > 0) {
       const { error } = await supabase.from('sections').update({ active: false }).eq('id', id);
       if (error) throw new Error(error.message);
       isArchived = true;
@@ -2471,6 +2523,56 @@ export const supabaseService = {
     }
     this.invalidateMasterCache();
     return { success: true, archived: isArchived };
+  },
+
+  // ── Bulk Student Promotion & Academic Lifecycle Transitions ──
+  async promoteStudentsBulk(payload: BulkPromotionPayload, adminId?: string, adminName?: string): Promise<BulkPromotionResult> {
+    const { data, error } = await supabase.rpc('promote_students_bulk', {
+      p_payload: payload,
+      p_admin_id: adminId || null,
+      p_admin_name: adminName || 'Super Admin'
+    });
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as BulkPromotionResult;
+  },
+
+  async fetchPromotionBatches(): Promise<PromotionBatch[]> {
+    const { data, error } = await supabase
+      .from('promotion_batches')
+      .select(`
+        *,
+        source_year:source_academic_year_id(id, name, year_number),
+        target_year:target_academic_year_id(id, name, year_number),
+        source_session:source_academic_session_id(id, name),
+        target_session:target_academic_session_id(id, name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return (data || []) as PromotionBatch[];
+  },
+
+  async fetchStudentAcademicHistory(studentId?: string): Promise<StudentAcademicHistory[]> {
+    let query = supabase
+      .from('student_academic_history')
+      .select(`
+        *,
+        academic_session:academic_session_id(id, name),
+        academic_year:academic_year_id(id, name, year_number),
+        semester:semester_id(id, name, semester_number),
+        section:section_id(id, name, room_number),
+        student:student_id(id, roll_number, full_name, email, avatar_url)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (studentId) {
+      query = query.eq('student_id', studentId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data || []) as StudentAcademicHistory[];
   },
 
   // ── Academic Year CRUD ──

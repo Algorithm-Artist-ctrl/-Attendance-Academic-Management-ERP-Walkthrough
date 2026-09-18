@@ -1,6 +1,6 @@
 export type UserRole = 'super_admin' | 'hod' | 'faculty' | 'student';
 
-export type AccountStatus = 'ACTIVE' | 'BLOCKED' | 'ARCHIVED' | 'PENDING' | 'SUSPENDED';
+export type AccountStatus = 'ACTIVE' | 'BLOCKED' | 'ARCHIVED' | 'PENDING' | 'SUSPENDED' | 'GRADUATED' | 'ALUMNI';
 
 export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports' | 'Lunch' | 'Other' | 'Break';
 
@@ -840,5 +840,89 @@ export interface DetailedStudentProfile {
   created_at: string;
 }
 
+export interface PromotionBatch {
+  id: string;
+  batch_number: number;
+  source_academic_year_id?: string | null;
+  target_academic_year_id?: string | null;
+  source_academic_session_id?: string | null;
+  target_academic_session_id?: string | null;
+  total_students: number;
+  promoted_count: number;
+  held_count: number;
+  graduated_count: number;
+  excluded_count: number;
+  performed_by_user_id?: string | null;
+  performed_by_name: string;
+  notes?: string | null;
+  metadata?: any;
+  created_at: string;
+  source_year?: AcademicYear;
+  target_year?: AcademicYear;
+  source_session?: AcademicSession;
+  target_session?: AcademicSession;
+}
 
+export type AcademicPromotionAction = 'INITIAL_ENROLLMENT' | 'PROMOTED' | 'HELD_BACK' | 'REASSIGNED_SECTION' | 'GRADUATED';
 
+export interface StudentAcademicHistory {
+  id: string;
+  student_id: string;
+  academic_session_id?: string | null;
+  academic_year_id?: string | null;
+  semester_id?: string | null;
+  section_id?: string | null;
+  status: string;
+  promotion_action: AcademicPromotionAction;
+  promotion_batch_id?: string | null;
+  remarks?: string | null;
+  created_at: string;
+  academic_session?: AcademicSession;
+  academic_year?: AcademicYear;
+  semester?: Semester;
+  section?: Section;
+  student?: Student;
+}
+
+export interface SectionReferenceCheckResult {
+  section_id: string;
+  student_count: number;
+  attendance_count: number;
+  timetable_count: number;
+  assignment_count: number;
+  leave_count: number;
+  message_count: number;
+  total_references: number;
+  can_hard_delete: boolean;
+}
+
+export type StudentPromotionActionType = 'PROMOTE' | 'HOLD' | 'GRADUATE' | 'EXCLUDE' | 'REASSIGN';
+
+export interface BulkPromotionStudentItem {
+  student_id: string;
+  action: StudentPromotionActionType;
+  target_section_id?: string | null;
+  target_semester_id?: string | null;
+  target_academic_year_id?: string | null;
+  remarks?: string | null;
+}
+
+export interface BulkPromotionPayload {
+  source_academic_year_id?: string | null;
+  target_academic_year_id?: string | null;
+  source_academic_session_id?: string | null;
+  target_academic_session_id?: string | null;
+  target_semester_id?: string | null;
+  notes?: string | null;
+  students: BulkPromotionStudentItem[];
+}
+
+export interface BulkPromotionResult {
+  success: boolean;
+  batch_id: string;
+  total_students: number;
+  promoted_count: number;
+  held_count: number;
+  graduated_count: number;
+  excluded_count: number;
+}
