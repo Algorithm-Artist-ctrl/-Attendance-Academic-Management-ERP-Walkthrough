@@ -48,7 +48,11 @@ import {
   LeaveApplication,
   LeaveApprovalAuditLog,
   LeaveStatus,
-  LeaveType
+  LeaveType,
+  MessageGroup,
+  GroupMessage,
+  GroupMember,
+  DetailedStudentProfile
 } from '../../types/database.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -5549,7 +5553,275 @@ export const supabaseService = {
       console.error('Error resolving student coordinator and HOD:', err);
       return {};
     }
+  },
+
+  // ============================================================================
+  // CLASS / SUBJECT GROUP COMMUNICATION METHODS
+  // ============================================================================
+
+  async fetchUserMessageGroups(userId: string, role: string): Promise<MessageGroup[]> {
+    try {
+      let facultyId: string | null = null;
+      let studentSectionId: string | null = null;
+      let studentYearId: string | null = null;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role, student_id, faculty_id, department_id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile) {
+        facultyId = profile.faculty_id || null;
+      }
+
+      if (role === 'faculty' && !facultyId) {
+        const { data: fac } = await supabase
+          .from('faculty')
+          .select('id')
+          .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
+          .maybeSingle();
+        if (fac) facultyId = fac.id;
+      }
+
+      if (role === 'student') {
+        const { data: stu } = await supabase
+          .from('students')
+          .select('id, section_id, academic_year_id')
+          .or(`auth_user_id.eq.${userId},id.eq.${profile?.student_id || '00000000-0000-0000-0000-000000000000'}`)
+          .limit(1)
+          .maybeSingle();
+        if (stu) {
+          studentSectionId = stu.section_id;
+          studentYearId = stu.academic_year_id;
+        }
+      }
+
+      // Base query for groups
+      let query = supabase
+        .from('message_groups')
+        .select(`
+          *,
+          subject:subjects(id, subject_name, subject_code),
+          section:sections(id, name, room_number),
+          academic_year:academic_years(id, year_number, name),
+          department:departments(id, name, code)
+        `)
+        .order('last_message_at', { ascending: false });
+
+      if (role === 'student') {
+        if (!studentSectionId || !studentYearId) return [];
+        query = query.eq('section_id', studentSectionId).eq('academic_year_id', studentYearId);
+      }
+
+      const { data: groups, error } = await query;
+      if (error || !groups) {
+        console.error('Error fetching message groups:', error);
+        return [];
+      }
+
+      let filteredGroups = groups as MessageGroup[];
+
+      // For faculty, refine by assigned combinations
+      if (role === 'faculty' && facultyId) {
+        const { data: fsaList } = await supabase
+          .from('faculty_subject_assignments')
+          .select('section_id, subject_id')
+          .eq('faculty_id', facultyId)
+          .eq('active', true);
+
+        const { data: teList } = await supabase
+          .from('timetable_entries')
+          .select('section_id, subject_id')
+          .eq('faculty_id', facultyId)
+          .eq('active', true);
+
+        const validPairs = new Set<string>();
+        (fsaList || []).forEach(f => validPairs.add(`${f.section_id}_${f.subject_id}`));
+        (teList || []).forEach(t => {
+          if (t.section_id && t.subject_id) validPairs.add(`${t.section_id}_${t.subject_id}`);
+        });
+
+        filteredGroups = filteredGroups.filter(g => validPairs.has(`${g.section_id}_${g.subject_id}`));
+      }
+
+      if (filteredGroups.length === 0) return [];
+
+      const groupIds = filteredGroups.map(g => g.id);
+
+      // Fetch member counts (students count per section & year)
+      const { data: studentCounts } = await supabase
+        .from('students')
+        .select('section_id, academic_year_id')
+        .eq('active', true);
+
+      const countMap: Record<string, number> = {};
+      (studentCounts || []).forEach(s => {
+        const key = `${s.section_id}_${s.academic_year_id}`;
+        countMap[key] = (countMap[key] || 0) + 1;
+      });
+
+      // Fetch user's read state for these groups
+      const { data: readStates } = await supabase
+        .from('group_member_read_state')
+        .select('group_id, last_read_at')
+        .eq('user_id', userId)
+        .in('group_id', groupIds);
+
+      const readMap: Record<string, string> = {};
+      (readStates || []).forEach(r => {
+        readMap[r.group_id] = r.last_read_at;
+      });
+
+      // Fetch unread message counts
+      const { data: allMessages } = await supabase
+        .from('group_messages')
+        .select('id, group_id, created_at, sender_user_id')
+        .in('group_id', groupIds)
+        .neq('sender_user_id', userId);
+
+      const unreadCountMap: Record<string, number> = {};
+      (allMessages || []).forEach(m => {
+        const lastRead = readMap[m.group_id] ? new Date(readMap[m.group_id]).getTime() : 0;
+        const msgTime = new Date(m.created_at).getTime();
+        if (msgTime > lastRead) {
+          unreadCountMap[m.group_id] = (unreadCountMap[m.group_id] || 0) + 1;
+        }
+      });
+
+      // Fetch faculty assigned for each group (to display assigned faculty name to students)
+      const { data: fsaAssignments } = await supabase
+        .from('faculty_subject_assignments')
+        .select('section_id, subject_id, faculty:faculty(id, full_name, designation, email)')
+        .eq('active', true);
+
+      const facultyMap: Record<string, any> = {};
+      (fsaAssignments || []).forEach((f: any) => {
+        const key = `${f.section_id}_${f.subject_id}`;
+        if (f.faculty && !facultyMap[key]) {
+          facultyMap[key] = f.faculty;
+        }
+      });
+
+      return filteredGroups.map(g => {
+        const countKey = `${g.section_id}_${g.academic_year_id}`;
+        const facKey = `${g.section_id}_${g.subject_id}`;
+        const subName = (g.subject as any)?.subject_name || (g.subject as any)?.name || 'Class';
+        const subCode = (g.subject as any)?.subject_code || (g.subject as any)?.code || '';
+        return {
+          ...g,
+          name: `${subName} • Sec ${g.section?.name || ''}`,
+          subject: g.subject ? {
+            id: g.subject.id,
+            name: subName,
+            subject_name: subName,
+            code: subCode,
+            subject_code: subCode
+          } as any : undefined,
+          members_count: countMap[countKey] || 0,
+          unread_count: unreadCountMap[g.id] || 0,
+          faculty: facultyMap[facKey] || g.faculty
+        };
+      });
+    } catch (err) {
+      console.error('Exception in fetchUserMessageGroups:', err);
+      return [];
+    }
+  },
+
+  async fetchGroupMessages(groupId: string, limit: number = 100): Promise<GroupMessage[]> {
+    try {
+      const { data, error } = await supabase
+        .from('group_messages')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: true })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching group messages:', error);
+        return [];
+      }
+
+      return (data || []) as GroupMessage[];
+    } catch (err) {
+      console.error('Exception in fetchGroupMessages:', err);
+      return [];
+    }
+  },
+
+  async sendGroupMessage(params: {
+    academicYearId: string;
+    sectionId: string;
+    subjectId: string;
+    message: string;
+    title?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+    allowStudentReplies?: boolean;
+  }): Promise<{ success: boolean; data?: any; error?: any }> {
+    try {
+      const { data, error } = await supabase.rpc('send_group_message', {
+        p_academic_year_id: params.academicYearId,
+        p_section_id: params.sectionId,
+        p_subject_id: params.subjectId,
+        p_message: params.message,
+        p_title: params.title || null,
+        p_attachment_url: params.attachmentUrl || null,
+        p_attachment_name: params.attachmentName || null,
+        p_attachment_type: params.attachmentType || null,
+        p_attachment_size: params.attachmentSize || null,
+        p_allow_student_replies: params.allowStudentReplies !== undefined ? params.allowStudentReplies : null,
+      });
+
+      if (error) {
+        return { success: false, error };
+      }
+
+      return { success: true, data };
+    } catch (err) {
+      console.error('Exception in sendGroupMessage:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  async markGroupAsRead(groupId: string): Promise<void> {
+    try {
+      await supabase.rpc('mark_group_as_read', { p_group_id: groupId });
+    } catch (err) {
+      console.error('Error in markGroupAsRead:', err);
+    }
+  },
+
+  async fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_group_members', { p_group_id: groupId });
+      if (error) {
+        console.error('Error in fetchGroupMembers:', error);
+        return [];
+      }
+      return (data || []) as GroupMember[];
+    } catch (err) {
+      console.error('Exception in fetchGroupMembers:', err);
+      return [];
+    }
+  },
+
+  async fetchStudentProfile(studentId: string): Promise<{ data: DetailedStudentProfile | null; error: any }> {
+    try {
+      const { data, error } = await supabase.rpc('get_student_profile', { p_student_id: studentId });
+      if (error) {
+        return { data: null, error };
+      }
+      return { data: data as DetailedStudentProfile, error: null };
+    } catch (err) {
+      console.error('Exception in fetchStudentProfile:', err);
+      return { data: null, error: err };
+    }
   }
 };
+
 
 

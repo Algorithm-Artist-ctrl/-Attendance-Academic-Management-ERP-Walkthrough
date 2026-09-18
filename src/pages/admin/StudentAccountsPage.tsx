@@ -31,6 +31,7 @@ import { Modal } from '../../components/common/Modal';
 import { AccountStatus } from '../../types/database.types';
 import { formatTimeAgo } from '../../lib/utils/dateUtils';
 import { supabaseService } from '../../lib/services/supabaseService';
+import { StudentProfileModal } from '../../components/student/StudentProfileModal';
 
 export const StudentAccountsPage: React.FC = () => {
   const { user: currentSessionUser } = useAuth();
@@ -59,6 +60,8 @@ export const StudentAccountsPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleReconcile = async () => {
     setIsReconciling(true);
@@ -520,22 +523,39 @@ export const StudentAccountsPage: React.FC = () => {
                     >
                       {/* Name & Admission Type */}
                       <td className="py-3 px-4">
-                        <div className="font-bold text-white flex items-center gap-2">
-                          <span>{acc.full_name}</span>
+                        <div 
+                          className="font-bold text-white flex items-center gap-2 cursor-pointer group"
+                          onClick={() => {
+                            setProfileStudentId(acc.id);
+                            setIsProfileModalOpen(true);
+                          }}
+                        >
+                          <span className="group-hover:text-[#00ff88] transition-colors">{acc.full_name}</span>
                           {acc.admission_type && (
                             <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400">
                               {acc.admission_type}
                             </span>
                           )}
+                          <span className="text-[10px] text-[#00ff88] opacity-0 group-hover:opacity-100 transition-opacity font-normal">
+                            Profile →
+                          </span>
                         </div>
                         <p className="text-[11px] text-slate-400">{acc.department_name}</p>
                       </td>
 
                       {/* Roll Number */}
                       <td className="py-3 px-4">
-                        <span className="font-mono text-[#00ff88] bg-[#00ff88]/10 px-2 py-0.5 rounded border border-[#00ff88]/30 font-bold">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileStudentId(acc.id);
+                            setIsProfileModalOpen(true);
+                          }}
+                          className="font-mono text-[#00ff88] bg-[#00ff88]/10 hover:bg-[#00ff88]/20 px-2 py-0.5 rounded border border-[#00ff88]/30 font-bold transition-colors cursor-pointer"
+                          title="View detailed student profile"
+                        >
                           {acc.roll_number}
-                        </span>
+                        </button>
                       </td>
 
                       {/* Year & Section */}
@@ -975,6 +995,16 @@ export const StudentAccountsPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Student Profile Modal */}
+      <StudentProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setProfileStudentId(null);
+        }}
+        studentId={profileStudentId}
+      />
     </div>
   );
 };

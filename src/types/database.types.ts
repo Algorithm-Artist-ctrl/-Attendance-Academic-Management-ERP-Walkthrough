@@ -747,4 +747,98 @@ export interface LeaveApprovalAuditLog {
   actor_name?: string;
 }
 
+// ============================================================================
+// CLASS / SUBJECT GROUP COMMUNICATION & STUDENT PROFILE TYPES
+// ============================================================================
+
+export interface MessageGroup {
+  id: string;
+  department_id: string;
+  academic_year_id: string;
+  section_id: string;
+  subject_id: string;
+  created_by_faculty_id?: string | null;
+  allow_student_replies: boolean;
+  last_message_at: string;
+  last_message_preview?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relational joins
+  subject?: Subject;
+  section?: Section;
+  academic_year?: AcademicYear;
+  department?: Department;
+  faculty?: Faculty;
+  members_count?: number;
+  unread_count?: number;
+}
+
+export interface GroupMessage {
+  id: string;
+  group_id: string;
+  sender_user_id: string;
+  sender_role: 'faculty' | 'student' | 'hod' | 'super_admin';
+  sender_name: string;
+  sender_avatar_url?: string | null;
+  title?: string | null;
+  message: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  attachment_size?: number | null;
+  created_at: string;
+}
+
+export interface GroupMember {
+  id: string;
+  roll_number: string;
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  admission_type: string;
+  status: string;
+  active: boolean;
+  section_name?: string;
+  year_number?: number;
+}
+
+export interface DetailedStudentProfile {
+  id: string;
+  roll_number: string;
+  admission_number?: string | null;
+  full_name: string;
+  admission_type: string;
+  status: string;
+  active: boolean;
+  phone?: string | null;
+  email?: string | null;
+  father_name?: string | null;
+  father_contact_number?: string | null;
+  mother_name?: string | null;
+  mother_contact_number?: string | null;
+  blood_group?: string | null;
+  address?: string | null;
+  department_name: string;
+  department_code?: string;
+  program_name: string;
+  year_number: number;
+  year_name: string;
+  section_name: string;
+  room_number?: string;
+  semester_number?: number;
+  mentor_name?: string | null;
+  coordinator_name?: string | null;
+  attendance_percentage: number;
+  total_sessions: number;
+  attended_sessions: number;
+  subjects?: Array<{
+    id: string;
+    subject_name: string;
+    subject_code: string;
+    faculty_name?: string;
+  }>;
+  created_at: string;
+}
+
+
 

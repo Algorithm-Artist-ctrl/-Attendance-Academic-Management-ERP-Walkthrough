@@ -27,6 +27,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AdmissionType, Student } from '../../types/database.types';
 import { studentSyncService, StudentSyncResult } from '../../lib/services/studentSyncService';
+import { StudentProfileModal } from '../../components/student/StudentProfileModal';
 import { clsx } from 'clsx';
 
 interface StudentDirectoryPageProps {
@@ -162,6 +163,15 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   const [yearFilter, setYearFilter] = useState<string>('ALL');
   const [sectionFilter, setSectionFilter] = useState<string>('ALL');
   const [admissionFilter, setAdmissionFilter] = useState<string>('ALL');
+
+  // Student Profile Modal State
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const handleOpenStudentProfile = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    setIsProfileModalOpen(true);
+  };
 
   // Dynamic sections based on yearFilter
   const availableSections = React.useMemo(() => {
@@ -580,20 +590,29 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
               {paginatedStudents.map((stud, idx) => (
                 <div 
                   key={stud.id}
-                  className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3"
+                  className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3 hover:border-emerald-500/40 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div 
+                      className="cursor-pointer group flex-1"
+                      onClick={() => handleOpenStudentProfile(stud.id)}
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-slate-500">#{(currentPage - 1) * pageSize + idx + 1}</span>
-                        <span className="font-mono text-xs font-black text-emerald-400">{stud.roll_number}</span>
+                        <span className="font-mono text-xs font-black text-emerald-400 group-hover:underline">{stud.roll_number}</span>
                       </div>
-                      <h3 className="text-sm font-bold text-white mt-0.5">{stud.full_name}</h3>
+                      <h3 className="text-sm font-bold text-white mt-0.5 group-hover:text-[#00ff88] transition-colors flex items-center gap-1.5">
+                        {stud.full_name}
+                        <span className="text-[10px] text-emerald-400 opacity-60 group-hover:opacity-100">→</span>
+                      </h3>
                     </div>
 
                     {(isSuperAdmin || isHOD) && (
                       <button
-                        onClick={() => handleDelete(stud.id, stud.full_name)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(stud.id, stud.full_name);
+                        }}
                         className="p-2 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer touch-target flex items-center justify-center"
                         title="Delete Student"
                       >
@@ -602,7 +621,10 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-500/10 text-xs">
+                  <div 
+                    className="flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-500/10 text-xs cursor-pointer"
+                    onClick={() => handleOpenStudentProfile(stud.id)}
+                  >
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
                       Section {stud.section?.name}
                     </span>
@@ -649,13 +671,22 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                     {paginatedStudents.map((stud, idx) => {
                       const yr = years.find(y => y.id === stud.academic_year_id);
                       return (
-                        <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
+                        <tr 
+                          key={stud.id} 
+                          onClick={() => handleOpenStudentProfile(stud.id)}
+                          className="hover:bg-emerald-500/10 transition-colors cursor-pointer group"
+                        >
                           <td className="px-5 py-3.5 font-mono text-slate-500">{(currentPage - 1) * pageSize + idx + 1}</td>
-                          <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm">
+                          <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm group-hover:underline">
                             {stud.roll_number}
                           </td>
-                          <td className="px-5 py-3.5 font-bold text-white text-sm">
-                            {stud.full_name}
+                          <td className="px-5 py-3.5 font-bold text-white text-sm group-hover:text-[#00ff88] transition-colors">
+                            <div className="flex items-center gap-2">
+                              <span>{stud.full_name}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-[#00ff88] opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                                View Profile
+                              </span>
+                            </div>
                           </td>
                           <td className="px-5 py-3.5 text-center font-semibold text-slate-300">
                             {yr?.name || '—'}
@@ -683,7 +714,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                               Active
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-right">
+                          <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => handleDelete(stud.id, stud.full_name)}
                               className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
@@ -879,6 +910,16 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
           </div>
         </form>
       </Modal>
+
+      {/* Student Profile Modal */}
+      <StudentProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedStudentId(null);
+        }}
+        studentId={selectedStudentId}
+      />
     </div>
   );
 };

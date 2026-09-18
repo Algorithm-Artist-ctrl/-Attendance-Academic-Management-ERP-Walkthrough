@@ -39,8 +39,13 @@ import {
   ConversationStatus,
   Message,
   EligibleFacultyForStudent,
-  EligibleStudentForFaculty
+  EligibleStudentForFaculty,
+  MessageGroup,
+  GroupMessage,
+  GroupMember,
+  DetailedStudentProfile
 } from '../types/database.types';
+
 import {
   StudentOverallAttendance,
   TodayLectureItem,
@@ -132,6 +137,25 @@ interface AcademicContextType {
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
   refreshConversations: () => Promise<void>;
+  messageGroups: MessageGroup[];
+  activeGroupId: string | null;
+  setActiveGroupId: (id: string | null) => void;
+  refreshMessageGroups: () => Promise<void>;
+  sendGroupMessage: (params: {
+    academicYearId: string;
+    sectionId: string;
+    subjectId: string;
+    message: string;
+    title?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+    allowStudentReplies?: boolean;
+  }) => Promise<{ success: boolean; data?: any; error?: any }>;
+  markGroupRead: (groupId: string) => Promise<void>;
+  fetchGroupMembers: (groupId: string) => Promise<GroupMember[]>;
+  fetchStudentProfile: (studentId: string) => Promise<{ data: DetailedStudentProfile | null; error: any }>;
   sendMessage: (params: {
     conversationId: string;
     message: string;
@@ -481,7 +505,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
   }, [activeConversationId]);
-  const unreadMessagesCount = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
+
+  const [messageGroups, setMessageGroups] = useState<MessageGroup[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const activeGroupIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeGroupIdRef.current = activeGroupId;
+  }, [activeGroupId]);
+
+  const unreadMessagesCount = 
+    conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0) +
+    messageGroups.reduce((acc, g) => acc + (g.unread_count || 0), 0);
+
   const [activeToast, setActiveToast] = useState<{
     id: string;
     title: string;
@@ -1039,6 +1074,17 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  const refreshMessageGroups = useCallback(async () => {
+    try {
+      const activeUser = erpStorage.getCurrentSessionUser() || user;
+      if (!activeUser?.id) return;
+      const groups = await supabaseService.fetchUserMessageGroups(activeUser.id, activeUser.role || '');
+      setMessageGroups(groups);
+    } catch (err) {
+      console.warn('Notice: Error refreshing message groups:', err);
+    }
+  }, [user]);
+
   // Network online/offline listener with automatic reconnection and refresh
   useEffect(() => {
     const handleOnline = () => {
@@ -1046,6 +1092,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       loadDataFromSupabase(false);
       refreshNotifications();
       refreshConversations();
+      refreshMessageGroups();
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -1143,6 +1190,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshCoordinatorAssignments,
     refreshNotifications,
     refreshConversations,
+    refreshMessageGroups,
   });
 
   useEffect(() => {
@@ -1159,6 +1207,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       refreshCoordinatorAssignments,
       refreshNotifications,
       refreshConversations,
+      refreshMessageGroups,
     };
   });
 
@@ -1226,7 +1275,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               newNotif.reference_id && 
               newNotif.reference_id === activeConversationIdRef.current;
 
-            if (!isViewingThisConversation) {
+            const isViewingThisGroup = 
+              newNotif.reference_type === 'group_message' && 
+              newNotif.reference_id && 
+              newNotif.reference_id === activeGroupIdRef.current;
+
+            if (!isViewingThisConversation && !isViewingThisGroup) {
               setActiveToast({
                 id: newNotif.id,
                 title: newNotif.title,
@@ -1254,6 +1308,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           realtimeHandlersRef.current.refreshConversations();
           realtimeHandlersRef.current.refreshNotifications();
         });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_messages' }, () => {
+        debounceTableSync('group_messages', () => {
+          realtimeHandlersRef.current.refreshMessageGroups();
+          realtimeHandlersRef.current.refreshNotifications();
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_groups' }, () => {
+        debounceTableSync('message_groups', () => realtimeHandlersRef.current.refreshMessageGroups());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_applications' }, () => {
         debounceTableSync('leave_applications', () => {
@@ -3015,6 +3078,41 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return await supabaseService.fetchEligibleStudentsForFaculty(facultyId);
   }, []);
 
+  const sendGroupMessage = useCallback(async (params: {
+    academicYearId: string;
+    sectionId: string;
+    subjectId: string;
+    message: string;
+    title?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+    allowStudentReplies?: boolean;
+  }) => {
+    const res = await supabaseService.sendGroupMessage(params);
+    if (res.success) {
+      await refreshMessageGroups();
+    }
+    return res;
+  }, [refreshMessageGroups]);
+
+  const markGroupRead = useCallback(async (groupId: string) => {
+    await supabaseService.markGroupAsRead(groupId);
+    setMessageGroups(prev =>
+      prev.map(g => (g.id === groupId ? { ...g, unread_count: 0 } : g))
+    );
+    refreshNotifications();
+  }, [refreshNotifications]);
+
+  const fetchGroupMembers = useCallback(async (groupId: string) => {
+    return await supabaseService.fetchGroupMembers(groupId);
+  }, []);
+
+  const fetchStudentProfile = useCallback(async (studentId: string) => {
+    return await supabaseService.fetchStudentProfile(studentId);
+  }, []);
+
   const resetToInitialSeed = () => {
     erpStorage.init(true);
     refreshData();
@@ -3056,6 +3154,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         activeConversationId,
         setActiveConversationId,
         refreshConversations,
+        messageGroups,
+        activeGroupId,
+        setActiveGroupId,
+        refreshMessageGroups,
+        sendGroupMessage,
+        markGroupRead,
+        fetchGroupMembers,
+        fetchStudentProfile,
         sendMessage,
         getOrCreateConversation,
         markConversationRead,

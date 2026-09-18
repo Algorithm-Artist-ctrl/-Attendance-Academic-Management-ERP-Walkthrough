@@ -144,7 +144,7 @@ export const AppContent: React.FC = () => {
         case 'notices':
           return <NoticesPage />;
         case 'messages':
-          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} initialGroupId={navigationParams?.groupId} />;
         case 'feedback':
           return <FeedbackPage />;
         case 'leave':
@@ -207,7 +207,7 @@ export const AppContent: React.FC = () => {
         case 'notices':
           return <NoticesPage />;
         case 'messages':
-          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} initialGroupId={navigationParams?.groupId} />;
         case 'leave':
           return <LeaveManagementPage />;
         case 'corrections':
@@ -319,7 +319,7 @@ export const AppContent: React.FC = () => {
             facultyModeComponent = <NoticesPage />;
             break;
           case 'messages':
-            facultyModeComponent = <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+            facultyModeComponent = <MessagesPage initialConversationId={navigationParams?.conversationId} initialGroupId={navigationParams?.groupId} />;
             break;
           case 'leave':
             facultyModeComponent = <LeaveManagementPage />;
@@ -434,7 +434,7 @@ export const AppContent: React.FC = () => {
         case 'notices':
           return <NoticesPage />;
         case 'messages':
-          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} initialGroupId={navigationParams?.groupId} />;
         case 'leave':
           return <LeaveManagementPage />;
         case 'reports':
@@ -479,7 +479,7 @@ export const AppContent: React.FC = () => {
         case 'notices':
           return <NoticesPage />;
         case 'messages':
-          return <MessagesPage initialConversationId={navigationParams?.conversationId} />;
+          return <MessagesPage initialConversationId={navigationParams?.conversationId} initialGroupId={navigationParams?.groupId} />;
         case 'leave':
           return <LeaveManagementPage />;
         case 'audit_logs':

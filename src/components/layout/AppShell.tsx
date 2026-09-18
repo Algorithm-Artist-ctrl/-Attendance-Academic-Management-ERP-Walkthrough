@@ -61,6 +61,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     unreadNotificationCount,
     unreadMessagesCount,
     setActiveConversationId,
+    setActiveGroupId,
     activeToast,
     dismissToast,
     isOnline,
@@ -110,8 +111,12 @@ export const AppShell: React.FC<AppShellProps> = ({
   const handleNotificationNavigation = (type: string, refType?: string, _refId?: string) => {
     const t = (type || '').toUpperCase();
     const rt = (refType || '').toUpperCase();
-    if (t.includes('MESSAGE') || rt.includes('CONVERSATION')) {
-      if (_refId) {
+    if (t.includes('MESSAGE') || rt.includes('CONVERSATION') || rt.includes('GROUP')) {
+      if (rt.includes('GROUP') || t.includes('GROUP')) {
+        if (_refId) {
+          setActiveGroupId(_refId);
+        }
+      } else if (_refId) {
         setActiveConversationId(_refId);
       }
       onTabChange('messages');
