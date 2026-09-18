@@ -22,8 +22,17 @@ import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicConte
 import { Button } from '../../components/common/Button';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
-import { getISTTodayDate, getISTDayOfWeek, formatDateDisplay, getClaimWindowStatus, ClaimWindowStatus } from '../../lib/utils/dateUtils';
 import { clsx } from 'clsx';
+import { 
+  getISTTodayDate, 
+  getISTDayOfWeek, 
+  formatDateDisplay, 
+  getClaimWindowStatus, 
+  getISTCurrentTimeString,
+  getClassTimingStatus,
+  isClassCompleted,
+  ClaimWindowStatus 
+} from '../../lib/utils/dateUtils';
 import { SubjectAttendanceStat } from '../../types/academic.types';
 import { DayOfWeek } from '../../types/database.types';
 
@@ -80,11 +89,13 @@ export const StudentAttendancePage: React.FC = () => {
   // Modal State for Claiming Attendance
   const [selectedLectureForClaim, setSelectedLectureForClaim] = useState<TodayAttendanceLecture | null>(null);
 
-  // Reactive Claim Window Status (09:00:00 AM - 03:40:00 PM IST)
+  // Reactive Time and Claim Window Status (IST)
+  const [currentTimeIST, setCurrentTimeIST] = useState<string>(() => getISTCurrentTimeString());
   const [claimWindowStatus, setClaimWindowStatus] = useState<ClaimWindowStatus>(() => getClaimWindowStatus());
 
   useEffect(() => {
     const checkStatus = () => {
+      setCurrentTimeIST(getISTCurrentTimeString());
       setClaimWindowStatus(getClaimWindowStatus());
     };
     const timer = setInterval(checkStatus, 10000);
@@ -422,7 +433,8 @@ export const StudentAttendancePage: React.FC = () => {
                           )}
 
                           {!isPresent && !hasPendingClaim && !hasApprovedClaim && (
-                            <div className="flex items-center gap-2.5">
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              {/* Scenario 5: When attendance was recorded by faculty as ABSENT, show Absent without Claim button */}
                               {isAbsent && (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 border border-rose-500/30 text-rose-400">
                                   <XCircle className="w-3.5 h-3.5" />
@@ -430,34 +442,66 @@ export const StudentAttendancePage: React.FC = () => {
                                 </span>
                               )}
 
-                              {isNotRecorded && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
-                                  <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-                                  Attendance Not Recorded
-                                </span>
-                              )}
+                              {/* Attendance Not Recorded: Only eligible for claim if class has ENDED */}
+                              {isNotRecorded && (() => {
+                                const timingStatus = getClassTimingStatus({
+                                  startTime: lec.startTime,
+                                  endTime: lec.endTime,
+                                  sessionDate: lec.sessionDate || todayDateStr,
+                                  currentTimeIST,
+                                  currentDateIST: todayDateStr,
+                                });
 
-                              {claimWindowStatus === 'OPEN' ? (
-                                <Button
-                                  variant="neon"
-                                  size="sm"
-                                  onClick={() => setSelectedLectureForClaim(lec)}
-                                  leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
-                                  className="text-xs font-bold"
-                                >
-                                  Claim Attendance
-                                </Button>
-                              ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300">
-                                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                                  Claim opens 9:00 AM
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 border border-rose-500/25 text-rose-300" title="Claims are only accepted between 09:00 AM and 03:40 PM IST">
-                                  <Clock className="w-3.5 h-3.5 text-rose-400" />
-                                  Claim Window Closed (3:40 PM)
-                                </span>
-                              )}
+                                return (
+                                  <>
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                                      <Clock className="w-3.5 h-3.5 text-amber-400/80" />
+                                      Attendance Not Recorded
+                                    </span>
+
+                                    {/* 1. Future Class: Show Scheduled indicator, NO Claim Attendance */}
+                                    {timingStatus === 'FUTURE' && (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-900/80 border border-slate-700/50 text-slate-400">
+                                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                        Starts at {lec.startTime}
+                                      </span>
+                                    )}
+
+                                    {/* 2. Ongoing Class: Show Class In Progress indicator, NO Claim Attendance */}
+                                    {timingStatus === 'ONGOING' && (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+                                        Class in progress (Ends {lec.endTime})
+                                      </span>
+                                    )}
+
+                                    {/* 3. Completed Class: Only after class has ended can student claim attendance */}
+                                    {timingStatus === 'COMPLETED' && (
+                                      claimWindowStatus === 'OPEN' ? (
+                                        <Button
+                                          variant="neon"
+                                          size="sm"
+                                          onClick={() => setSelectedLectureForClaim(lec)}
+                                          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                          className="text-xs font-bold"
+                                        >
+                                          Claim Attendance
+                                        </Button>
+                                      ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                          Claim opens 9:00 AM
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 border border-rose-500/25 text-rose-300" title="Claims are only accepted between 09:00 AM and 03:40 PM IST">
+                                          <Clock className="w-3.5 h-3.5 text-rose-400" />
+                                          Claim Window Closed (3:40 PM)
+                                        </span>
+                                      )
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           )}
                         </>
@@ -676,9 +720,21 @@ export const StudentAttendancePage: React.FC = () => {
                               </span>
                             )}
 
-                            {/* Only today's classes can be claimed within the open window! Past or future dates cannot be claimed */}
-                            {isToday && !isPresent && !hasPendingClaim && !hasApprovedClaim && (
-                              claimWindowStatus === 'OPEN' ? (
+                            {/* Only today's unrecorded classes can be claimed within the open window once class has ended */}
+                            {isToday && lec.status === 'Not Recorded' && !hasPendingClaim && !hasApprovedClaim && (() => {
+                              const timingStatus = getClassTimingStatus({
+                                startTime: lec.startTime,
+                                endTime: lec.endTime,
+                                sessionDate: lec.sessionDate || todayDateStr,
+                                currentTimeIST,
+                                currentDateIST: todayDateStr,
+                              });
+
+                              if (timingStatus !== 'COMPLETED') {
+                                return null;
+                              }
+
+                              return claimWindowStatus === 'OPEN' ? (
                                 <Button
                                   variant="neon"
                                   size="sm"
@@ -698,8 +754,8 @@ export const StudentAttendancePage: React.FC = () => {
                                   <Clock className="w-3.5 h-3.5 text-rose-400" />
                                   Claim Closed (3:40 PM)
                                 </span>
-                              )
-                            )}
+                              );
+                            })()}
                           </>
                         )}
                       </div>

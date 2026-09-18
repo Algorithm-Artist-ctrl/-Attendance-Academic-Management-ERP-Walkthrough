@@ -55,6 +55,8 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
       sessionDate: lecture.sessionDate,
       lectureType: lecture.lectureType,
       timetableEntryId: lecture.timetableEntryId,
+      startTime: lecture.startTime,
+      endTime: lecture.endTime,
     });
   }, [lecture, canSubmitClaim]);
 

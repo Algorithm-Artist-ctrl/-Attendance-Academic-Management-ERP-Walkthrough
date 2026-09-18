@@ -214,4 +214,66 @@ export function isClaimWindowOpen(customTimeOrDate?: Date | string): boolean {
   return getClaimWindowStatus(customTimeOrDate) === 'OPEN';
 }
 
+// Normalize time string to standard "HH:mm:ss" (24-hour)
+export function normalizeTimeHHMMSS(timeStr: string): string {
+  if (!timeStr) return '00:00:00';
+  const clean = timeStr.trim();
+  const parts = clean.split(':');
+  const h = (parts[0] || '0').padStart(2, '0');
+  const m = (parts[1] || '00').padStart(2, '0');
+  const s = (parts[2] || '00').padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
 
+export type ClassTimingStatus = 'FUTURE' | 'ONGOING' | 'COMPLETED';
+
+// Determines whether a lecture is in the future, ongoing, or completed relative to IST
+export function getClassTimingStatus(params: {
+  startTime: string;
+  endTime: string;
+  sessionDate?: string;
+  currentTimeIST?: string;
+  currentDateIST?: string;
+}): ClassTimingStatus {
+  const currentDate = params.currentDateIST || getCollegeToday();
+  const sessionDate = params.sessionDate || currentDate;
+
+  // Past dates are completed
+  if (sessionDate < currentDate) {
+    return 'COMPLETED';
+  }
+  // Future dates are upcoming
+  if (sessionDate > currentDate) {
+    return 'FUTURE';
+  }
+
+  // Same day (Today): compare times in Asia/Kolkata (IST)
+  const currentTime = params.currentTimeIST ? normalizeTimeHHMMSS(params.currentTimeIST) : getISTCurrentTimeString();
+  const startTime = normalizeTimeHHMMSS(params.startTime);
+  const endTime = normalizeTimeHHMMSS(params.endTime);
+
+  if (currentTime < startTime) {
+    return 'FUTURE';
+  }
+  if (currentTime >= endTime) {
+    return 'COMPLETED';
+  }
+  return 'ONGOING';
+}
+
+// Returns true only if the lecture has strictly reached or passed its end time
+export function isClassCompleted(params: {
+  startTime?: string;
+  endTime: string;
+  sessionDate?: string;
+  currentTimeIST?: string;
+  currentDateIST?: string;
+}): boolean {
+  return getClassTimingStatus({
+    startTime: params.startTime || '00:00:00',
+    endTime: params.endTime,
+    sessionDate: params.sessionDate,
+    currentTimeIST: params.currentTimeIST,
+    currentDateIST: params.currentDateIST,
+  }) === 'COMPLETED';
+}

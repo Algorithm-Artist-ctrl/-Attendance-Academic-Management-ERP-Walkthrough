@@ -51,7 +51,8 @@ import {
   getISTTodayDate, 
   getISTDayOfWeek, 
   isClaimWindowOpen, 
-  getClaimWindowStatus 
+  getClaimWindowStatus,
+  isClassCompleted
 } from '../lib/utils/dateUtils';
 
 export interface TodayAttendanceLecture {
@@ -372,6 +373,8 @@ interface AcademicContextType {
     lectureType?: string;
     isBreak?: boolean;
     timetableEntryId?: string;
+    startTime?: string;
+    endTime?: string;
   }) => { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection; code?: string };
   getStudentAttendance: (studentId: string) => StudentOverallAttendance & {
     notRecordedCount: number;
@@ -1324,13 +1327,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
-  // 4. Validate whether student can submit a claim (Strict 09:00 AM - 03:40 PM IST Window)
+  // 4. Validate whether student can submit a claim (Strict 09:00 AM - 03:40 PM IST Window & Class Completed)
   const canSubmitClaim = (params: {
     attendanceRecordId?: string;
     sessionDate: string;
     lectureType?: string;
     isBreak?: boolean;
     timetableEntryId?: string;
+    startTime?: string;
+    endTime?: string;
   }): { canSubmit: boolean; message?: string; existingClaim?: AttendanceCorrection; code?: string } => {
     // Check non-instructional slots (Lunch/Break)
     if (params.isBreak || params.lectureType === 'Lunch' || params.lectureType === 'Break') {
@@ -1373,6 +1378,31 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         code: 'ATTENDANCE_CLAIM_WINDOW_CLOSED',
         message: 'Attendance claim window closed at 03:40 PM. New claims cannot be submitted today.',
       };
+    }
+
+    // Class Completion Check: Attendance cannot be claimed for ongoing or future classes!
+    let effectiveEndTime = params.endTime;
+    let effectiveStartTime = params.startTime;
+    if (!effectiveEndTime && params.timetableEntryId) {
+      const entry = timetable.find((t: TimetableEntry) => t.id === params.timetableEntryId);
+      if (entry) {
+        effectiveEndTime = entry.end_time?.substring(0, 5) || entry.end_time;
+        effectiveStartTime = entry.start_time?.substring(0, 5) || entry.start_time;
+      }
+    }
+    if (effectiveEndTime) {
+      const classDone = isClassCompleted({
+        startTime: effectiveStartTime,
+        endTime: effectiveEndTime,
+        sessionDate: params.sessionDate,
+      });
+      if (!classDone) {
+        return {
+          canSubmit: false,
+          code: 'CLASS_NOT_ENDED',
+          message: `Attendance claim is not permitted while class is ongoing or scheduled for the future. Class ends at ${effectiveEndTime}.`,
+        };
+      }
     }
 
     // Duplicate claim check
