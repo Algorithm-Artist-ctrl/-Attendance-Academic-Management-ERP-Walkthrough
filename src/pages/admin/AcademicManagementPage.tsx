@@ -495,24 +495,23 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* ── HEADER PANEL ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#0a1120]/80 border border-slate-800 backdrop-blur-xl p-6 shadow-xl">
-        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-[#00ff88] border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 Super Admin Module
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800/80 text-slate-300 border border-slate-700">
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
                 Session: {currentSession?.name || '2026-2027'}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              <Layers className="w-7 h-7 text-[#00ff88]" />
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif-institutional text-slate-900 tracking-tight flex items-center gap-3">
+              <Layers className="w-7 h-7 text-slate-800" />
               Academic Management & Bulk Promotion
             </h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-2xl">
+            <p className="text-sm text-slate-500 mt-1 max-w-2xl">
               Configure academic cohorts, manage active & archived sections with relational safeguards, and execute atomic student promotions without account recreation.
             </p>
           </div>
@@ -525,7 +524,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 await refreshSections();
                 await refreshStudents();
               }}
-              className="border-slate-700 text-slate-300 hover:text-white hover:border-slate-600 flex items-center gap-1.5"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-xs"
             >
               <RefreshCw className="w-4 h-4" />
               Sync Data
@@ -534,7 +533,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               variant="primary"
               size="sm"
               onClick={() => setIsAddSectionModalOpen(true)}
-              className="bg-[#00ff88] hover:bg-[#00e67a] text-black font-semibold shadow-[0_0_15px_rgba(0,255,136,0.3)] flex items-center gap-1.5"
+              className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               New Section
@@ -543,14 +542,14 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
         </div>
 
         {/* ── NAVIGATION TABS ── */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800/80">
+        <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-100">
           <button
             onClick={() => setActiveTab('sections')}
             className={clsx(
               'px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2',
               activeTab === 'sections'
-                ? 'bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 shadow-[0_0_15px_rgba(0,255,136,0.1)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-[#0f172a] text-white shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             )}
           >
             <Layers className="w-4 h-4" />
@@ -564,8 +563,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
             className={clsx(
               'px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2',
               activeTab === 'promotion'
-                ? 'bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 shadow-[0_0_15px_rgba(0,255,136,0.1)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-[#0f172a] text-white shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             )}
           >
             <GraduationCap className="w-4 h-4" />
@@ -576,8 +575,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
             className={clsx(
               'px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2',
               activeTab === 'history'
-                ? 'bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 shadow-[0_0_15px_rgba(0,255,136,0.1)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-[#0f172a] text-white shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             )}
           >
             <Clock className="w-4 h-4" />
@@ -602,8 +601,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   className={clsx(
                     'p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden backdrop-blur-md',
                     isSelected
-                      ? 'bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_20px_rgba(0,255,136,0.15)] ring-1 ring-emerald-500/40'
-                      : 'bg-[#0a1120]/70 border-slate-800/80 hover:border-slate-700 hover:bg-[#0c1427]'
+                      ? 'bg-slate-50 border-slate-400 shadow-xs ring-1 ring-slate-400'
+                      : 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs'
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -613,20 +612,20 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     <span className={clsx(
                       'px-2 py-0.5 rounded-full text-[10px] font-bold border',
                       stat.activeSections > 0
-                        ? 'bg-emerald-500/10 text-[#00ff88] border-emerald-500/30'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
                     )}>
                       {stat.activeSections} Active Sec
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-white mt-1">{stat.year.name}</h3>
-                  <div className="flex items-center justify-between mt-4 text-xs text-slate-400 pt-3 border-t border-slate-800/60">
+                  <h3 className="text-lg font-bold font-serif-institutional text-slate-900 mt-1">{stat.year.name}</h3>
+                  <div className="flex items-center justify-between mt-4 text-xs text-slate-500 pt-3 border-t border-slate-100">
                     <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-[#00ff88]" />
-                      <span className="font-semibold text-slate-200">{stat.totalStudents}</span> Students
+                      <Users className="w-3.5 h-3.5 text-slate-600" />
+                      <span className="font-semibold text-slate-900">{stat.totalStudents}</span> Students
                     </div>
                     {stat.archivedSections > 0 && (
-                      <span className="text-amber-400/80">
+                      <span className="text-amber-700 font-medium">
                         {stat.archivedSections} Archived
                       </span>
                     )}
@@ -637,7 +636,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
           </div>
 
           {/* Section Filter and Search Bar */}
-          <div className="p-4 rounded-2xl bg-[#0a1120]/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               <div className="relative min-w-[220px]">
                 <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -646,7 +645,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   placeholder="Search section or coordinator..."
                   value={sectionSearchTerm}
                   onChange={(e) => setSectionSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                  className="w-full pl-10 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
               </div>
 
@@ -654,7 +653,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               <select
                 value={selectedYearFilter}
                 onChange={(e) => setSelectedYearFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
               >
                 <option value="ALL">All Academic Years</option>
                 {activeYears.map(y => (
@@ -663,12 +662,12 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </select>
 
               {/* Status Pill Toggle */}
-              <div className="flex items-center rounded-xl bg-slate-900/90 border border-slate-800 p-0.5">
+              <div className="flex items-center rounded-xl bg-slate-100 border border-slate-200/80 p-0.5">
                 <button
                   onClick={() => setStatusFilter('ACTIVE')}
                   className={clsx(
                     'px-3 py-1 rounded-lg text-xs font-medium transition-all',
-                    statusFilter === 'ACTIVE' ? 'bg-emerald-500/20 text-[#00ff88]' : 'text-slate-400 hover:text-white'
+                    statusFilter === 'ACTIVE' ? 'bg-[#0f172a] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
                   Active
@@ -677,7 +676,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   onClick={() => setStatusFilter('ARCHIVED')}
                   className={clsx(
                     'px-3 py-1 rounded-lg text-xs font-medium transition-all',
-                    statusFilter === 'ARCHIVED' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+                    statusFilter === 'ARCHIVED' ? 'bg-[#0f172a] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
                   Archived
@@ -686,7 +685,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   onClick={() => setStatusFilter('ALL')}
                   className={clsx(
                     'px-3 py-1 rounded-lg text-xs font-medium transition-all',
-                    statusFilter === 'ALL' ? 'bg-slate-700/60 text-white' : 'text-slate-400 hover:text-white'
+                    statusFilter === 'ALL' ? 'bg-[#0f172a] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
                   All
@@ -694,8 +693,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </div>
             </div>
 
-            <div className="text-xs text-slate-400 font-medium whitespace-nowrap">
-              Showing <span className="text-white font-bold">{filteredSections.length}</span> section{filteredSections.length !== 1 ? 's' : ''}
+            <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
+              Showing <span className="text-slate-900 font-bold">{filteredSections.length}</span> section{filteredSections.length !== 1 ? 's' : ''}
             </div>
           </div>
 
@@ -713,8 +712,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   className={clsx(
                     'rounded-2xl border p-5 transition-all flex flex-col justify-between backdrop-blur-md',
                     sec.active
-                      ? 'bg-[#0a1120]/80 border-slate-800/80 hover:border-slate-700 shadow-md'
-                      : 'bg-[#0c1017]/70 border-slate-800/40 opacity-75'
+                      ? 'bg-white border-slate-200/80 hover:border-slate-300 shadow-xs hover:shadow-sm'
+                      : 'bg-slate-50/70 border-slate-200/60 opacity-80'
                   )}
                 >
                   <div>
@@ -724,10 +723,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         <span className="text-xs font-semibold text-slate-400 tracking-wide uppercase">
                           {yr?.name || 'Academic Cohort'} • {sem?.name || 'Semester'}
                         </span>
-                        <h4 className="text-xl font-bold text-white mt-0.5 flex items-center gap-2">
+                        <h4 className="text-xl font-bold font-serif-institutional text-slate-900 mt-0.5 flex items-center gap-2">
                           Section {sec.name}
                           {!sec.active && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               ARCHIVED
                             </span>
                           )}
@@ -737,8 +736,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       <span className={clsx(
                         'px-2.5 py-1 rounded-full text-xs font-bold border',
                         sec.active
-                          ? 'bg-emerald-500/10 text-[#00ff88] border-emerald-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       )}>
                         {sec.active ? 'Active' : 'Inactive'}
                       </span>
@@ -746,20 +745,20 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
                     {/* Meta info: Room & Coordinator */}
                     <div className="space-y-2 mt-4 text-xs">
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                        <span className="text-slate-400">Classroom / Room:</span>
-                        <span className="font-semibold text-slate-200">{sec.room_number || 'TBD'}</span>
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <span className="text-slate-500 font-medium">Classroom / Room:</span>
+                        <span className="font-semibold text-slate-900">{sec.room_number || 'TBD'}</span>
                       </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                        <span className="text-slate-400">Class Coordinator:</span>
-                        <span className="font-semibold text-[#00ff88] truncate max-w-[180px]">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <span className="text-slate-500 font-medium">Class Coordinator:</span>
+                        <span className="font-semibold text-slate-900 truncate max-w-[180px]">
                           {coordinator?.full_name || 'Unassigned'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                        <span className="text-slate-400">Enrolled Students:</span>
-                        <span className="font-bold text-white flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-[#00ff88]" />
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <span className="text-slate-500 font-medium">Enrolled Students:</span>
+                        <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-slate-600" />
                           {studentCount}
                         </span>
                       </div>
@@ -767,13 +766,13 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   </div>
 
                   {/* Actions Grid */}
-                  <div className="pt-4 mt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                  <div className="pt-4 mt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setRosterSection(sec)}
-                        className="border-slate-700/80 text-xs text-slate-200 hover:text-white flex items-center gap-1 py-1 px-2.5"
+                        className="border-slate-200 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-1 py-1 px-2.5 shadow-xs"
                       >
                         <Users className="w-3.5 h-3.5" />
                         Roster
@@ -782,7 +781,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         variant="outline"
                         size="sm"
                         onClick={() => setCurriculumSection(sec)}
-                        className="border-slate-700/80 text-xs text-slate-200 hover:text-white flex items-center gap-1 py-1 px-2.5"
+                        className="border-slate-200 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-1 py-1 px-2.5 shadow-xs"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         Subjects
@@ -798,7 +797,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                           setEditSecRoom(sec.room_number || '');
                           setEditSecCoordinatorId(sec.class_coordinator_id || '');
                         }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -807,7 +806,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         <button
                           title="Archive Section"
                           onClick={() => handleOpenSafeguard(sec, 'archive')}
-                          className="p-1.5 rounded-lg text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                          className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-50 transition-colors"
                         >
                           <Archive className="w-3.5 h-3.5" />
                         </button>
@@ -815,7 +814,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         <button
                           title="Restore Section"
                           onClick={() => handleOpenSafeguard(sec, 'restore')}
-                          className="p-1.5 rounded-lg text-[#00ff88] hover:bg-emerald-500/10 transition-colors"
+                          className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
                         </button>
@@ -824,7 +823,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       <button
                         title="Safeguarded Delete"
                         onClick={() => handleOpenSafeguard(sec, 'delete')}
-                        className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+                        className="p-1.5 rounded-lg text-rose-700 hover:bg-rose-50 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -835,9 +834,9 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
             })}
 
             {filteredSections.length === 0 && (
-              <div className="col-span-full p-12 text-center rounded-2xl bg-[#0a1120]/60 border border-slate-800">
+              <div className="col-span-full p-12 text-center rounded-2xl bg-white border border-slate-200/80 shadow-xs">
                 <Layers className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                <h4 className="text-base font-semibold text-white">No Sections Match Filter</h4>
+                <h4 className="text-base font-semibold text-slate-900 font-serif-institutional">No Sections Match Filter</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
                   Try clearing your search query or selecting a different academic year or status.
                 </p>
@@ -849,7 +848,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     setStatusFilter('ACTIVE');
                     setSectionSearchTerm('');
                   }}
-                  className="mt-4 border-slate-700 text-slate-300"
+                  className="mt-4 border-slate-200 text-slate-700 shadow-xs"
                 >
                   Reset Filters
                 </Button>
@@ -865,7 +864,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
       {activeTab === 'promotion' && (
         <div className="space-y-6">
           {/* Wizard Step Progress Tracker */}
-          <div className="p-4 rounded-2xl bg-[#0a1120]/80 border border-slate-800 backdrop-blur-xl">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
               {[
                 { num: 1, label: 'Cohort' },
@@ -881,17 +880,17 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       className={clsx(
                         'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all',
                         promoStep === s.num
-                          ? 'bg-[#00ff88] text-black ring-4 ring-emerald-500/20 shadow-[0_0_15px_rgba(0,255,136,0.3)]'
+                          ? 'bg-[#0f172a] text-white ring-4 ring-slate-100 shadow-xs'
                           : promoStep > s.num
-                          ? 'bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-slate-100 text-slate-800 border border-slate-300'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200'
                       )}
                     >
                       {promoStep > s.num ? <Check className="w-4 h-4" /> : s.num}
                     </div>
                     <span className={clsx(
                       'text-xs font-semibold hidden md:inline',
-                      promoStep === s.num ? 'text-white' : 'text-slate-400'
+                      promoStep === s.num ? 'text-slate-900 font-bold' : 'text-slate-500'
                     )}>
                       {s.label}
                     </span>
@@ -899,7 +898,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   {idx < 5 && (
                     <div className={clsx(
                       'flex-1 h-0.5 mx-2',
-                      promoStep > s.num ? 'bg-emerald-500/50' : 'bg-slate-800'
+                      promoStep > s.num ? 'bg-[#0f172a]' : 'bg-slate-200'
                     )} />
                   )}
                 </React.Fragment>
@@ -909,10 +908,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* STEP 1: SELECT COHORT & SESSIONS */}
           {promoStep === 1 && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
               <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-[#00ff88]" />
+                <h3 className="text-xl font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-slate-800" />
                   Step 1: Select Cohort & Academic Session
                 </h3>
                 <p className="text-sm text-slate-400 mt-1">
@@ -922,18 +921,18 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Source Column */}
-                <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
-                  <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-4">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
                     Source (Current Placement)
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Source Academic Year</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Source Academic Year</label>
                     <select
                       value={sourceYearId}
                       onChange={(e) => setSourceYearId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                     >
                       {activeYears.map(y => (
                         <option key={y.id} value={y.id}>{y.name} (Cohort #{y.year_number})</option>
@@ -942,11 +941,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Source Academic Session</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Source Academic Session</label>
                     <select
                       value={sourceSessionId}
                       onChange={(e) => setSourceSessionId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                     >
                       {sessions.map(s => (
                         <option key={s.id} value={s.id}>{s.name} {s.is_current ? '(Current)' : ''}</option>
@@ -954,15 +953,15 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     </select>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-800 text-xs text-slate-300">
-                    Students currently enrolled in this source cohort: <span className="text-[#00ff88] font-bold">{eligibleSourceStudents.length}</span>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs text-slate-600 shadow-xs">
+                    Students currently enrolled in this source cohort: <span className="text-slate-900 font-bold">{eligibleSourceStudents.length}</span>
                   </div>
                 </div>
 
                 {/* Target Column */}
-                <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
-                  <div className="flex items-center gap-2 text-[#00ff88] font-semibold text-sm">
-                    <ArrowRight className="w-4 h-4 text-[#00ff88]" />
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-4">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                    <ArrowRight className="w-4 h-4 text-slate-900" />
                     Destination (Next Academic Placement)
                   </div>
 
@@ -979,11 +978,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   ) : (
                     <>
                       <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">Target Academic Year</label>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Target Academic Year</label>
                         <select
                           value={targetYearId}
                           onChange={(e) => setTargetYearId(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                         >
                           {activeYears.filter(y => {
                             const srcYr = activeYears.find(x => x.id === sourceYearId);
@@ -995,11 +994,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">Target Semester</label>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Target Semester</label>
                         <select
                           value={targetSemesterId}
                           onChange={(e) => setTargetSemesterId(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                         >
                           {semesters.filter(s => s.academic_year_id === targetYearId).map(s => (
                             <option key={s.id} value={s.id}>{s.name}</option>
@@ -1010,11 +1009,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   )}
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Target Academic Session</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Target Academic Session</label>
                     <select
                       value={targetSessionId}
                       onChange={(e) => setTargetSessionId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                     >
                       {sessions.map(s => (
                         <option key={s.id} value={s.id}>{s.name} {s.is_current ? '(Current Active Session)' : ''}</option>
@@ -1025,17 +1024,17 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Transition Batch Remarks / Notes (Optional)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Transition Batch Remarks / Notes (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. Annual Promotion Session 2026-27 to 2027-28"
                   value={transitionNotes}
                   onChange={(e) => setTransitionNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 />
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-slate-800">
+              <div className="flex justify-end pt-4 border-t border-slate-100">
                 <Button
                   variant="primary"
                   onClick={() => {
@@ -1045,7 +1044,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     }
                     setPromoStep(2);
                   }}
-                  className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a] flex items-center gap-1.5"
+                  className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
                 >
                   Next: Section Mapping
                   <ArrowRight className="w-4 h-4" />
@@ -1056,10 +1055,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* STEP 2: SECTION-TO-SECTION MAPPING */}
           {promoStep === 2 && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
               <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-[#00ff88]" />
+                <h3 className="text-xl font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-slate-800" />
                   Step 2: Section-to-Section Mapping
                 </h3>
                 <p className="text-sm text-slate-400 mt-1">
@@ -1082,16 +1081,16 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     return (
                       <div
                         key={srcSec.id}
-                        className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                        className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-white">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-900 shadow-xs">
                             {srcSec.name}
                           </div>
                           <div>
-                            <div className="font-semibold text-white">Source Section {srcSec.name}</div>
+                            <div className="font-semibold text-slate-900">Source Section {srcSec.name}</div>
                             <div className="text-xs text-slate-400">
-                              Room {srcSec.room_number || 'TBD'} • <span className="text-[#00ff88] font-semibold">{srcCount}</span> students
+                              Room {srcSec.room_number || 'TBD'} • <span className="text-slate-900 font-semibold">{srcCount}</span> students
                             </div>
                           </div>
                         </div>
@@ -1110,7 +1109,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                                   [srcSec.id]: e.target.value,
                                 });
                               }}
-                              className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500 min-w-[180px]"
+                              className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 min-w-[180px]"
                             >
                               {targetSections.map(tgtSec => (
                                 <option key={tgtSec.id} value={tgtSec.id}>
@@ -1125,25 +1124,25 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   })}
 
                   {sourceSections.length === 0 && (
-                    <div className="p-8 text-center rounded-xl bg-slate-900/60 border border-slate-800 text-slate-400 text-sm">
+                    <div className="p-8 text-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
                       No active sections found in selected source academic year.
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <Button
                   variant="outline"
                   onClick={() => setPromoStep(1)}
-                  className="border-slate-700 text-slate-300"
+                  className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
                 >
                   Back
                 </Button>
                 <Button
                   variant="primary"
                   onClick={() => setPromoStep(3)}
-                  className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a] flex items-center gap-1.5"
+                  className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
                 >
                   Next: Validation Pre-Check
                   <ArrowRight className="w-4 h-4" />
@@ -1154,10 +1153,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* STEP 3: PRE-CHECK & CONFLICT DETECTION */}
           {promoStep === 3 && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
               <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#00ff88]" />
+                <h3 className="text-xl font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-slate-800" />
                   Step 3: Pre-Check & Conflict Detection
                 </h3>
                 <p className="text-sm text-slate-400 mt-1">
@@ -1166,34 +1165,34 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </div>
 
               <div className="space-y-3">
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between shadow-xs">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
                       <Check className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="font-semibold text-white text-sm">Source Cohort Students Identified</div>
+                      <div className="font-semibold text-slate-900 text-sm">Source Cohort Students Identified</div>
                       <div className="text-xs text-slate-400">
                         {eligibleSourceStudents.length} students enrolled in source academic year
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-[#00ff88] bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                     PASSED
                   </span>
                 </div>
 
                 {!isGraduationCohort && (
-                  <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between shadow-xs">
                     <div className="flex items-center gap-3">
                       <div className={clsx(
                         'w-8 h-8 rounded-full flex items-center justify-center',
-                        targetSections.length > 0 ? 'bg-emerald-500/20 text-[#00ff88]' : 'bg-rose-500/20 text-rose-400'
+                        targetSections.length > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
                       )}>
                         {targetSections.length > 0 ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                       </div>
                       <div>
-                        <div className="font-semibold text-white text-sm">Target Active Sections Availability</div>
+                        <div className="font-semibold text-slate-900 text-sm">Target Active Sections Availability</div>
                         <div className="text-xs text-slate-400">
                           {targetSections.length} destination active sections available
                         </div>
@@ -1202,37 +1201,37 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     <span className={clsx(
                       'text-xs font-bold px-2.5 py-1 rounded-full border',
                       targetSections.length > 0
-                        ? 'text-[#00ff88] bg-emerald-500/10 border-emerald-500/30'
-                        : 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+                        ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                        : 'text-rose-800 bg-rose-50 border-rose-200'
                     )}>
                       {targetSections.length > 0 ? 'READY' : 'MISSING SECTIONS'}
                     </span>
                   </div>
                 )}
 
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between shadow-xs">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
                       <Check className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="font-semibold text-white text-sm">Permanent Student Identity Protection</div>
+                      <div className="font-semibold text-slate-900 text-sm">Permanent Student Identity Protection</div>
                       <div className="text-xs text-slate-400">
                         Zero accounts deleted. Student roll numbers, attendance, marks, and login credentials stay intact.
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-[#00ff88] bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                     PROTECTED
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <Button
                   variant="outline"
                   onClick={() => setPromoStep(2)}
-                  className="border-slate-700 text-slate-300"
+                  className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
                 >
                   Back
                 </Button>
@@ -1242,7 +1241,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     buildPromotionRoster();
                     setPromoStep(4);
                   }}
-                  className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a] flex items-center gap-1.5"
+                  className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
                 >
                   Next: Student Roster & Overrides
                   <ArrowRight className="w-4 h-4" />
@@ -1253,11 +1252,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* STEP 4: STUDENT ROSTER & INDIVIDUAL OVERRIDES */}
           {promoStep === 4 && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-[#00ff88]" />
+                  <h3 className="text-xl font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-slate-800" />
                     Step 4: Student Roster & Individual Overrides
                   </h3>
                   <p className="text-sm text-slate-400 mt-1">
@@ -1276,7 +1275,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         action: isGraduationCohort ? 'GRADUATE' : 'PROMOTE',
                       })));
                     }}
-                    className="border-slate-700 text-xs text-slate-300"
+                    className="border-slate-200 text-xs text-slate-700 hover:bg-slate-50 shadow-xs"
                   >
                     Promote All
                   </Button>
@@ -1290,7 +1289,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         remarks: 'Held back in current academic year',
                       })));
                     }}
-                    className="border-slate-700 text-xs text-amber-300"
+                    className="border-amber-200 text-xs text-amber-800 hover:bg-amber-50 shadow-xs"
                   >
                     Hold All
                   </Button>
@@ -1304,7 +1303,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         remarks: 'Excluded from this batch',
                       })));
                     }}
-                    className="border-slate-700 text-xs text-slate-400"
+                    className="border-slate-200 text-xs text-slate-500 hover:bg-slate-50 shadow-xs"
                   >
                     Exclude All
                   </Button>
@@ -1320,14 +1319,14 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     placeholder="Search by student name or roll number..."
                     value={rosterSearchTerm}
                     onChange={(e) => setRosterSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full pl-10 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
 
                 <select
                   value={rosterFilterSec}
                   onChange={(e) => setRosterFilterSec(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 >
                   <option value="ALL">All Source Sections</option>
                   {sourceSections.map(sec => (
@@ -1337,9 +1336,9 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </div>
 
               {/* Interactive Roster Table */}
-              <div className="overflow-x-auto rounded-xl border border-slate-800">
-                <table className="w-full text-left text-sm text-slate-300">
-                  <thead className="bg-slate-900/90 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <div className="overflow-x-auto rounded-xl border border-slate-200/80 shadow-xs">
+                <table className="w-full text-left text-sm text-slate-700">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-600 border-b border-slate-200 font-semibold">
                     <tr>
                       <th className="py-3 px-4">Roll Number</th>
                       <th className="py-3 px-4">Student Name</th>
@@ -1349,7 +1348,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       <th className="py-3 px-4">Remarks / Overrides</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 bg-[#0a1120]/40">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {promoRoster
                       .filter(row => {
                         if (rosterFilterSec !== 'ALL' && row.student.section_id !== rosterFilterSec) return false;
@@ -1365,16 +1364,16 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         const currentSec = sections.find(s => s.id === row.student.section_id);
 
                         return (
-                          <tr key={row.student.id} className="hover:bg-slate-800/30 transition-colors">
-                            <td className="py-3 px-4 font-mono font-medium text-white">
+                          <tr key={row.student.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-4 font-mono font-medium text-slate-900">
                               {row.student.roll_number}
                             </td>
                             <td className="py-3 px-4">
-                              <div className="font-semibold text-white">{row.student.full_name}</div>
+                              <div className="font-semibold text-slate-900">{row.student.full_name}</div>
                               <div className="text-[11px] text-slate-400">{row.student.admission_type || 'Regular'}</div>
                             </td>
                             <td className="py-3 px-4">
-                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-800 text-slate-200">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                                 {currentSec?.name || 'Unassigned'}
                               </span>
                             </td>
@@ -1389,10 +1388,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                                 }}
                                 className={clsx(
                                   'px-2.5 py-1 rounded-lg text-xs font-semibold border focus:outline-none',
-                                  row.action === 'PROMOTE' && 'bg-emerald-500/10 text-[#00ff88] border-emerald-500/30',
-                                  row.action === 'GRADUATE' && 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
-                                  row.action === 'HOLD' && 'bg-amber-500/10 text-amber-300 border-amber-500/30',
-                                  row.action === 'EXCLUDE' && 'bg-slate-800 text-slate-400 border-slate-700'
+                                  row.action === 'PROMOTE' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                                  row.action === 'GRADUATE' && 'bg-slate-100 text-slate-800 border-slate-200',
+                                  row.action === 'HOLD' && 'bg-amber-50 text-amber-800 border-amber-200',
+                                  row.action === 'EXCLUDE' && 'bg-slate-100 text-slate-600 border-slate-200'
                                 )}
                               >
                                 {!isGraduationCohort && <option value="PROMOTE">Promote</option>}
@@ -1416,7 +1415,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                                         item.student.id === row.student.id ? { ...item, targetSectionId: secId } : item
                                       ));
                                     }}
-                                    className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                    className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400"
                                   >
                                     {targetSections.map(tgt => (
                                       <option key={tgt.id} value={tgt.id}>Section {tgt.name}</option>
@@ -1437,7 +1436,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                                   ));
                                 }}
                                 placeholder="Notes..."
-                                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full px-2 py-1 rounded bg-white border border-slate-200 text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400"
                               />
                             </td>
                           </tr>
@@ -1447,18 +1446,18 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 </table>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <Button
                   variant="outline"
                   onClick={() => setPromoStep(3)}
-                  className="border-slate-700 text-slate-300"
+                  className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
                 >
                   Back
                 </Button>
                 <Button
                   variant="primary"
                   onClick={() => setPromoStep(5)}
-                  className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a] flex items-center gap-1.5"
+                  className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
                 >
                   Next: Review Preview
                   <ArrowRight className="w-4 h-4" />
@@ -1469,10 +1468,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* STEP 5: MULTI-STEP CONFIRMATION & PREVIEW */}
           {promoStep === 5 && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
               <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
+                <h3 className="text-xl font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-slate-800" />
                   Step 5: Final Review & Confirmation
                 </h3>
                 <p className="text-sm text-slate-400 mt-1">
@@ -1482,44 +1481,44 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
               {/* Summary Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 shadow-xs">
                   <span className="text-xs text-slate-400 font-medium">Total Roster</span>
-                  <div className="text-2xl font-bold text-white mt-1">{promoRoster.length}</div>
+                  <div className="text-2xl font-bold font-serif-institutional text-slate-900 mt-1">{promoRoster.length}</div>
                 </div>
-                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="text-xs text-emerald-400 font-medium">To Promote</span>
-                  <div className="text-2xl font-bold text-[#00ff88] mt-1">
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 shadow-xs">
+                  <span className="text-xs text-emerald-800 font-semibold">To Promote</span>
+                  <div className="text-2xl font-bold font-serif-institutional text-emerald-900 mt-1">
                     {promoRoster.filter(r => r.action === 'PROMOTE' || r.action === 'REASSIGN').length}
                   </div>
                 </div>
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                  <span className="text-xs text-amber-300 font-medium">Hold / Repeat</span>
-                  <div className="text-2xl font-bold text-amber-400 mt-1">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 shadow-xs">
+                  <span className="text-xs text-amber-800 font-semibold">Hold / Repeat</span>
+                  <div className="text-2xl font-bold font-serif-institutional text-amber-900 mt-1">
                     {promoRoster.filter(r => r.action === 'HOLD').length}
                   </div>
                 </div>
-                <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
-                  <span className="text-xs text-indigo-300 font-medium">Graduating</span>
-                  <div className="text-2xl font-bold text-indigo-400 mt-1">
+                <div className="p-4 rounded-xl bg-slate-100 border border-slate-200 shadow-xs">
+                  <span className="text-xs text-slate-600 font-semibold">Graduating</span>
+                  <div className="text-2xl font-bold font-serif-institutional text-slate-900 mt-1">
                     {promoRoster.filter(r => r.action === 'GRADUATE').length}
                   </div>
                 </div>
               </div>
 
               {/* Relational Safeguard Banner */}
-              <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-start gap-3">
-                <ShieldCheck className="w-6 h-6 text-[#00ff88] shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3 shadow-xs">
+                <ShieldCheck className="w-6 h-6 text-slate-700 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed text-slate-300">
-                  <div className="font-bold text-white mb-1">Guaranteed Permanent Student Identity</div>
-                  No student accounts or login credentials will be deleted or recreated. Every student retains their permanent UUID, roll number, attendance records, marks history, and leave applications. Baseline records and transition milestones are logged into <span className="font-mono text-[#00ff88]">public.student_academic_history</span>.
+                  <div className="font-bold text-slate-900 mb-1">Guaranteed Permanent Student Identity</div>
+                  No student accounts or login credentials will be deleted or recreated. Every student retains their permanent UUID, roll number, attendance records, marks history, and leave applications. Baseline records and transition milestones are logged into <span className="font-mono text-slate-900 font-semibold">public.student_academic_history</span>.
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <Button
                   variant="outline"
                   onClick={() => setPromoStep(4)}
-                  className="border-slate-700 text-slate-300"
+                  className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
                   disabled={isExecutingPromo}
                 >
                   Back
@@ -1528,7 +1527,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   variant="primary"
                   onClick={handleExecutePromotion}
                   disabled={isExecutingPromo}
-                  className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a] shadow-[0_0_20px_rgba(0,255,136,0.3)] flex items-center gap-2 px-6 py-2.5"
+                  className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs flex items-center gap-2 px-6 py-2.5"
                 >
                   {isExecutingPromo ? (
                     <>
@@ -1548,35 +1547,35 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* STEP 6: EXECUTION RESULTS & POST-PROMOTION CHECKLIST */}
           {promoStep === 6 && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
-              <div className="p-6 text-center rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-[#00ff88] flex items-center justify-center mx-auto mb-2">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
+              <div className="p-6 text-center rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 shadow-xs">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-2">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
-                <h3 className="text-2xl font-bold text-white">Promotion Completed Successfully!</h3>
-                <p className="text-sm text-emerald-300/80 max-w-lg mx-auto">
-                  Batch <span className="font-mono font-bold text-white">#{promoResult?.batch_id.slice(0, 8)}</span> has been committed atomically to PostgreSQL.
+                <h3 className="text-2xl font-bold font-serif-institutional text-slate-900">Promotion Completed Successfully!</h3>
+                <p className="text-sm text-slate-600 max-w-lg mx-auto">
+                  Batch <span className="font-mono font-bold text-slate-900">#{promoResult?.batch_id.slice(0, 8)}</span> has been committed atomically to PostgreSQL.
                 </p>
                 <div className="flex flex-wrap justify-center gap-4 text-xs font-semibold text-slate-300 pt-3">
-                  <span className="bg-slate-900/80 px-3 py-1 rounded-full border border-slate-800">
+                  <span className="bg-white px-3 py-1 rounded-full border border-slate-200 text-slate-700 shadow-xs">
                     Total: {promoResult?.total_students}
                   </span>
-                  <span className="bg-emerald-500/20 text-[#00ff88] px-3 py-1 rounded-full border border-emerald-500/30">
+                  <span className="bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
                     Promoted: {promoResult?.promoted_count}
                   </span>
-                  <span className="bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">
+                  <span className="bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
                     Held Back: {promoResult?.held_count}
                   </span>
-                  <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">
+                  <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200">
                     Graduated: {promoResult?.graduated_count}
                   </span>
                 </div>
               </div>
 
               {/* Post-Promotion Follow-up Checklist */}
-              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
-                <div className="font-bold text-white text-base flex items-center gap-2">
-                  <Award className="w-5 h-5 text-[#00ff88]" />
+              <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-4">
+                <div className="font-bold font-serif-institutional text-slate-900 text-base flex items-center gap-2">
+                  <Award className="w-5 h-5 text-slate-700" />
                   Post-Promotion Transition Checklist
                 </div>
                 <p className="text-xs text-slate-400">
@@ -1584,24 +1583,24 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 </p>
 
                 <div className="space-y-3">
-                  <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5 text-slate-200">
-                      <Check className="w-4 h-4 text-[#00ff88]" />
-                      <span>Students promoted and sections updated in database</span>
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 text-slate-700">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span className="text-slate-700">Students promoted and sections updated in database</span>
                     </div>
-                    <span className="text-[#00ff88] font-bold">COMPLETED</span>
+                    <span className="text-emerald-700 font-bold">COMPLETED</span>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5 text-slate-200">
-                      <Check className="w-4 h-4 text-[#00ff88]" />
-                      <span>Permanent academic career history records logged in <span className="font-mono">student_academic_history</span></span>
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 text-slate-700">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span className="text-slate-700">Permanent academic career history records logged in <span className="font-mono text-slate-900">student_academic_history</span></span>
                     </div>
-                    <span className="text-[#00ff88] font-bold">COMPLETED</span>
+                    <span className="text-emerald-700 font-bold">COMPLETED</span>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5 text-slate-200">
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 text-slate-700">
                       <BookOpen className="w-4 h-4 text-emerald-400" />
                       <span>Review & configure Subject Master for the new semester</span>
                     </div>
@@ -1610,15 +1609,15 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         variant="outline"
                         size="sm"
                         onClick={() => onNavigate('subjects')}
-                        className="border-slate-700 text-xs text-[#00ff88] hover:bg-emerald-500/10 py-1"
+                        className="border-slate-200 text-xs text-slate-900 hover:bg-slate-50 py-1 shadow-xs"
                       >
                         Open Subject Master
                       </Button>
                     )}
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5 text-slate-200">
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 text-slate-700">
                       <UserCheck className="w-4 h-4 text-emerald-400" />
                       <span>Assign Faculty to new section subjects in Faculty Assignments</span>
                     </div>
@@ -1627,15 +1626,15 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         variant="outline"
                         size="sm"
                         onClick={() => onNavigate('faculty_assignments')}
-                        className="border-slate-700 text-xs text-[#00ff88] hover:bg-emerald-500/10 py-1"
+                        className="border-slate-200 text-xs text-slate-900 hover:bg-slate-50 py-1 shadow-xs"
                       >
                         Open Assignments
                       </Button>
                     )}
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-800/60 border border-slate-700 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2.5 text-slate-200">
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 text-slate-700">
                       <Calendar className="w-4 h-4 text-emerald-400" />
                       <span>Create and publish weekly section timetable schedule</span>
                     </div>
@@ -1644,7 +1643,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         variant="outline"
                         size="sm"
                         onClick={() => onNavigate('timetable')}
-                        className="border-slate-700 text-xs text-[#00ff88] hover:bg-emerald-500/10 py-1"
+                        className="border-slate-200 text-xs text-slate-900 hover:bg-slate-50 py-1 shadow-xs"
                       >
                         Open Timetable
                       </Button>
@@ -1653,7 +1652,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <Button
                   variant="outline"
                   onClick={() => setActiveTab('history')}
@@ -1668,7 +1667,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     setPromoStep(1);
                     setPromoResult(null);
                   }}
-                  className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a]"
+                  className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs"
                 >
                   Promote Another Cohort
                 </Button>
@@ -1684,12 +1683,12 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
       {activeTab === 'history' && (
         <div className="space-y-6">
           {/* Subtabs: Batches vs Student Career Timeline */}
-          <div className="flex items-center gap-3 p-1.5 rounded-xl bg-slate-900 border border-slate-800 w-fit">
+          <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-100 border border-slate-200/80 w-fit">
             <button
               onClick={() => setHistorySubTab('batches')}
               className={clsx(
                 'px-4 py-1.5 rounded-lg text-xs font-semibold transition-all',
-                historySubTab === 'batches' ? 'bg-[#00ff88] text-black' : 'text-slate-400 hover:text-white'
+                historySubTab === 'batches' ? 'bg-[#0f172a] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               Promotion Batches Audit
@@ -1698,7 +1697,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               onClick={() => setHistorySubTab('student_timeline')}
               className={clsx(
                 'px-4 py-1.5 rounded-lg text-xs font-semibold transition-all',
-                historySubTab === 'student_timeline' ? 'bg-[#00ff88] text-black' : 'text-slate-400 hover:text-white'
+                historySubTab === 'student_timeline' ? 'bg-[#0f172a] text-white shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               Student Career Timeline Lookup
@@ -1707,11 +1706,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* Subtab 1: Batches Audit */}
           {historySubTab === 'batches' && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-4">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-[#00ff88]" />
+                  <h3 className="text-lg font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-slate-700" />
                     Promotion Batches Audit Trail
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -1731,7 +1730,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </div>
 
               {batches.length === 0 && !isLoadingBatches && (
-                <div className="p-12 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-slate-400 text-sm">
+                <div className="p-12 text-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
                   No bulk promotion batches have been executed yet.
                 </div>
               )}
@@ -1750,18 +1749,18 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   return (
                     <div
                       key={b.id}
-                      className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden transition-all"
+                      className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden transition-all"
                     >
                       <div
                         onClick={() => handleToggleExpandBatch(b.id)}
-                        className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-800/40 transition-colors"
+                        className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center font-bold text-[#00ff88]">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-900 shadow-xs">
                             #{b.batch_number}
                           </div>
                           <div>
-                            <div className="font-bold text-white text-sm flex items-center gap-2">
+                            <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
                               {b.source_year?.name || 'Cohort'} 
                               <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                               {b.target_year?.name || 'Graduated'}
@@ -1777,19 +1776,19 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
                         <div className="flex items-center gap-4 text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-1 rounded-full bg-slate-800 text-slate-200 border border-slate-700">
+                            <span className="px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
                               Total: {b.total_students}
                             </span>
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-[#00ff88] border border-emerald-500/30 font-semibold">
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
                               Promoted: {b.promoted_count}
                             </span>
                             {b.held_count > 0 && (
-                              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                              <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
                                 Held: {b.held_count}
                               </span>
                             )}
                             {b.graduated_count > 0 && (
-                              <span className="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+                              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                                 Graduated: {b.graduated_count}
                               </span>
                             )}
@@ -1804,7 +1803,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
                       {/* Expanded Student Roster in this batch */}
                       {isExpanded && (
-                        <div className="p-4 bg-slate-950/60 border-t border-slate-800 space-y-3">
+                        <div className="p-4 bg-slate-50 border-t border-slate-200/80 space-y-3">
                           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                             Batch Roster & Outcomes
                           </div>
@@ -1818,13 +1817,13 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                               {batchHistoryRecords.map(rec => (
                                 <div
                                   key={rec.id}
-                                  className="p-2 rounded-lg bg-slate-900 border border-slate-800/80 flex items-center justify-between"
+                                  className="p-2 rounded-lg bg-white border border-slate-200/80 flex items-center justify-between shadow-xs"
                                 >
                                   <div className="flex items-center gap-2.5">
-                                    <span className="font-mono font-bold text-white">
+                                    <span className="font-mono font-bold text-slate-900">
                                       {rec.student?.roll_number || 'STU'}
                                     </span>
-                                    <span className="text-slate-200">
+                                    <span className="text-slate-700 font-medium">
                                       {rec.student?.full_name || 'Student'}
                                     </span>
                                   </div>
@@ -1834,9 +1833,9 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                                     </span>
                                     <span className={clsx(
                                       'px-2 py-0.5 rounded text-[10px] font-bold border',
-                                      rec.promotion_action === 'PROMOTED' && 'bg-emerald-500/10 text-[#00ff88] border-emerald-500/30',
-                                      rec.promotion_action === 'GRADUATED' && 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
-                                      rec.promotion_action === 'HELD_BACK' && 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                      rec.promotion_action === 'PROMOTED' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                                      rec.promotion_action === 'GRADUATED' && 'bg-slate-100 text-slate-800 border-slate-200',
+                                      rec.promotion_action === 'HELD_BACK' && 'bg-amber-50 text-amber-800 border-amber-200'
                                     )}>
                                       {rec.promotion_action}
                                     </span>
@@ -1856,10 +1855,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
 
           {/* Subtab 2: Student Career Timeline Lookup */}
           {historySubTab === 'student_timeline' && (
-            <div className="p-6 rounded-2xl bg-[#0a1120]/80 border border-slate-800 space-y-6">
+            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-[#00ff88]" />
+                <h3 className="text-lg font-bold font-serif-institutional text-slate-900 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-slate-700" />
                   Student Academic Career Timeline
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -1875,13 +1874,13 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   placeholder="Enter Student Roll Number or Name..."
                   value={timelineSearchTerm}
                   onChange={(e) => setTimelineSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-10 pr-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 />
               </div>
 
               {/* Matching Student Candidates */}
               {timelineSearchTerm.trim().length >= 2 && !selectedTimelineStudent && (
-                <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-800 rounded-xl p-2 bg-slate-900/80">
+                <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-200 rounded-xl p-2 bg-white shadow-xs">
                   {students
                     .filter(s => {
                       const q = timelineSearchTerm.toLowerCase();
@@ -1892,11 +1891,11 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       <div
                         key={st.id}
                         onClick={() => handleSearchStudentTimeline(st)}
-                        className="p-2.5 rounded-lg hover:bg-slate-800/80 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                        className="p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition-colors"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-white">{st.roll_number}</span>
-                          <span className="text-slate-300">{st.full_name}</span>
+                          <span className="font-mono font-bold text-slate-900">{st.roll_number}</span>
+                          <span className="text-slate-700">{st.full_name}</span>
                         </div>
                         <span className="text-slate-400">View Career Timeline →</span>
                       </div>
@@ -1907,16 +1906,16 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               {/* Selected Student Profile & Career Timeline */}
               {selectedTimelineStudent && (
                 <div className="space-y-6">
-                  <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between shadow-xs">
                     <div>
-                      <div className="font-bold text-white text-base flex items-center gap-2">
+                      <div className="font-bold font-serif-institutional text-slate-900 text-base flex items-center gap-2">
                         {selectedTimelineStudent.full_name}
-                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-[#00ff88]">
+                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-white text-slate-900 border border-slate-200 shadow-xs">
                           {selectedTimelineStudent.roll_number}
                         </span>
                       </div>
                       <div className="text-xs text-slate-400 mt-0.5">
-                        Status: <span className="font-semibold text-emerald-400">{selectedTimelineStudent.status || 'ACTIVE'}</span> • Admission: {selectedTimelineStudent.admission_type || 'Regular'}
+                        Status: <span className="font-semibold text-emerald-700">{selectedTimelineStudent.status || 'ACTIVE'}</span> • Admission: {selectedTimelineStudent.admission_type || 'Regular'}
                       </div>
                     </div>
                     <Button
@@ -1926,17 +1925,17 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         setSelectedTimelineStudent(null);
                         setStudentHistoryLogs([]);
                       }}
-                      className="border-slate-700 text-xs text-slate-400"
+                      className="border-slate-200 text-xs text-slate-500 hover:bg-slate-50 shadow-xs"
                     >
                       Clear Selection
                     </Button>
                   </div>
 
                   {/* Vertical Timeline */}
-                  <div className="space-y-4 pl-4 relative border-l-2 border-slate-800">
+                  <div className="space-y-4 pl-4 relative border-l-2 border-slate-200">
                     {isLoadingStudentHistory ? (
                       <div className="text-xs text-slate-400 flex items-center gap-2 py-4">
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#00ff88]" />
+                        <RefreshCw className="w-4 h-4 animate-spin text-slate-600" />
                         Loading student history...
                       </div>
                     ) : studentHistoryLogs.length === 0 ? (
@@ -1946,18 +1945,18 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     ) : (
                       studentHistoryLogs.map((log, idx) => (
                         <div key={log.id} className="relative pl-6">
-                          <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#00ff88] ring-4 ring-emerald-950" />
-                          <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+                          <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#0f172a] ring-4 ring-slate-100" />
+                          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1 shadow-xs">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-white text-sm">
+                              <span className="font-bold text-slate-900 text-sm">
                                 {log.academic_year?.name || 'Academic Cohort'} • Section {log.section?.name || 'A'}
                               </span>
                               <span className={clsx(
                                 'px-2 py-0.5 rounded text-[10px] font-bold border',
-                                log.promotion_action === 'INITIAL_ENROLLMENT' && 'bg-slate-800 text-slate-300 border-slate-700',
-                                log.promotion_action === 'PROMOTED' && 'bg-emerald-500/10 text-[#00ff88] border-emerald-500/30',
-                                log.promotion_action === 'GRADUATED' && 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
-                                log.promotion_action === 'HELD_BACK' && 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                log.promotion_action === 'INITIAL_ENROLLMENT' && 'bg-slate-100 text-slate-700 border-slate-200',
+                                log.promotion_action === 'PROMOTED' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                                log.promotion_action === 'GRADUATED' && 'bg-slate-100 text-slate-800 border-slate-200',
+                                log.promotion_action === 'HELD_BACK' && 'bg-amber-50 text-amber-800 border-amber-200'
                               )}>
                                 {log.promotion_action}
                               </span>
@@ -2008,29 +2007,29 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
         >
           <div className="space-y-4 pt-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Section Name</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Section Name</label>
               <input
                 type="text"
                 value={editSecName}
                 onChange={(e) => setEditSecName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Room Number / Classroom</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Room Number / Classroom</label>
               <input
                 type="text"
                 value={editSecRoom}
                 onChange={(e) => setEditSecRoom(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Class Coordinator</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Class Coordinator</label>
               <select
                 value={editSecCoordinatorId}
                 onChange={(e) => setEditSecCoordinatorId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               >
                 <option value="">No Coordinator Assigned</option>
                 {faculty.map(f => (
@@ -2039,12 +2038,12 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
               </select>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setEditingSection(null)}
-                className="border-slate-700 text-slate-300"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
               >
                 Cancel
               </Button>
@@ -2053,7 +2052,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 size="sm"
                 onClick={handleSaveEditSection}
                 disabled={isSavingEdit}
-                className="bg-[#00ff88] text-black font-semibold hover:bg-[#00e67a]"
+                className="bg-[#0f172a] hover:bg-black text-white font-semibold rounded-xl shadow-xs"
               >
                 {isSavingEdit ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -2081,7 +2080,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
           <div className="space-y-4 pt-2">
             {isCheckingReferences ? (
               <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <RefreshCw className="w-4 h-4 animate-spin text-[#00ff88]" />
+                <RefreshCw className="w-4 h-4 animate-spin text-slate-600" />
                 Checking historical references...
               </div>
             ) : (
@@ -2098,16 +2097,16 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                           This section cannot be permanently deleted because it has active or historical relations in the academic database:
                         </p>
                         <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                          <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                          <div className="bg-white p-2 rounded border border-slate-200 text-slate-700">
                             Students: <span className="text-white font-bold">{referenceCheckResult.student_count}</span>
                           </div>
-                          <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                          <div className="bg-white p-2 rounded border border-slate-200 text-slate-700">
                             Attendance Sessions: <span className="text-white font-bold">{referenceCheckResult.attendance_count}</span>
                           </div>
-                          <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                          <div className="bg-white p-2 rounded border border-slate-200 text-slate-700">
                             Timetable Entries: <span className="text-white font-bold">{referenceCheckResult.timetable_count}</span>
                           </div>
-                          <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                          <div className="bg-white p-2 rounded border border-slate-200 text-slate-700">
                             Faculty Assignments: <span className="text-white font-bold">{referenceCheckResult.assignment_count}</span>
                           </div>
                         </div>
@@ -2116,8 +2115,8 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         </p>
                       </div>
                     ) : (
-                      <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 space-y-2">
-                        <div className="text-[#00ff88] font-bold text-sm">Zero References Found</div>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 space-y-2">
+                        <div className="text-emerald-700 font-bold text-sm">Zero References Found</div>
                         <p>
                           This section has no enrolled students, timetable entries, or attendance records. It can be safely deleted.
                         </p>
@@ -2145,7 +2144,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   </div>
                 )}
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <Button
                     variant="outline"
                     size="sm"
@@ -2153,7 +2152,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       setSafeguardSection(null);
                       setSafeguardMode(null);
                     }}
-                    className="border-slate-700 text-slate-300"
+                    className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
                   >
                     Cancel
                   </Button>
@@ -2177,7 +2176,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                       disabled={isProcessingSafeguard}
                       className={clsx(
                         'font-semibold',
-                        safeguardMode === 'delete' ? 'bg-rose-500 hover:bg-rose-600 text-white' : 'bg-[#00ff88] hover:bg-[#00e67a] text-black'
+                        safeguardMode === 'delete' ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-[#0f172a] hover:bg-black text-white'
                       )}
                     >
                       {isProcessingSafeguard
@@ -2211,7 +2210,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 placeholder="Search students in this section..."
                 value={rosterSearch}
                 onChange={(e) => setRosterSearch(e.target.value)}
-                className="w-full pl-10 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full pl-10 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
 
@@ -2227,10 +2226,10 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   <div
                     key={st.id}
                     onClick={() => setSelectedStudentForProfile(st)}
-                    className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-emerald-500/40 cursor-pointer transition-colors"
+                    className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-slate-300 cursor-pointer transition-colors shadow-xs"
                   >
                     <div>
-                      <div className="font-bold text-white text-sm flex items-center gap-2">
+                      <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
                         {st.full_name}
                         <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                           {st.roll_number}
@@ -2242,7 +2241,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-[#00ff88] border border-emerald-500/30">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                         {st.status || 'ACTIVE'}
                       </span>
                       <Eye className="w-4 h-4 text-slate-400 hover:text-white" />
@@ -2251,12 +2250,12 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 ))}
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-800">
+            <div className="flex justify-end pt-3 border-t border-slate-100">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setRosterSection(null)}
-                className="border-slate-700 text-slate-300"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
               >
                 Close
               </Button>
@@ -2287,7 +2286,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                   return (
                     <div
                       key={a.id}
-                      className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs"
+                      className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs shadow-xs"
                     >
                       <div>
                         <div className="font-bold text-white text-sm">
@@ -2298,7 +2297,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-[#00ff88] font-semibold">
+                        <span className="text-slate-900 font-semibold">
                           {fac?.full_name || 'Assigned Faculty'}
                         </span>
                         <div className="text-slate-500 text-[10px]">
@@ -2310,18 +2309,18 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
                 })}
 
               {assignments.filter(a => a.section_id === curriculumSection.id && a.active).length === 0 && (
-                <div className="p-8 text-center text-xs text-slate-400 bg-slate-900/40 rounded-xl border border-slate-800">
+                <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-slate-200/80">
                   No active faculty subject assignments for this section.
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-800">
+            <div className="flex justify-end pt-3 border-t border-slate-100">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurriculumSection(null)}
-                className="border-slate-700 text-slate-300"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
               >
                 Close
               </Button>

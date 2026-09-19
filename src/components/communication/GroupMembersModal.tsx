@@ -92,7 +92,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
         maxWidth="2xl"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             Official class roster derived from academic section enrollment. Click any student row to inspect their institutional profile and contact records.
           </p>
 
@@ -104,38 +104,38 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
               placeholder="Search by student name or roll number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-900/90 border border-emerald-500/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] transition-all"
+              className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs transition-all font-medium"
             />
           </div>
 
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2">
-              <Loader2 className="w-6 h-6 text-[#00ff88] animate-spin" />
-              <span className="text-xs text-slate-400 font-medium">Fetching enrolled students...</span>
+              <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
+              <span className="text-xs text-slate-500 font-medium">Fetching enrolled students...</span>
             </div>
           ) : error ? (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-300 text-xs">
-              <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-800 text-xs">
+              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{error}</span>
             </div>
           ) : filteredMembers.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-400">
+            <div className="py-10 text-center text-xs text-slate-500">
               {search ? 'No students found matching your search.' : 'No enrolled students found in this section.'}
             </div>
           ) : (
-            <div className="border border-emerald-500/20 rounded-xl divide-y divide-emerald-500/10 max-h-96 overflow-y-auto bg-slate-900/60">
+            <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-96 overflow-y-auto bg-white shadow-xs">
               {filteredMembers.map((student, idx) => (
                 <div
                   key={student.id}
                   onClick={() => handleRowClick(student.id)}
-                  className="p-3 flex items-center justify-between gap-3 hover:bg-emerald-500/5 cursor-pointer transition-colors group"
+                  className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50 cursor-pointer transition-colors group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xs font-mono text-slate-500 w-6 text-right shrink-0">
+                    <span className="text-xs font-mono text-slate-400 w-6 text-right shrink-0">
                       {idx + 1}.
                     </span>
 
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 group-hover:bg-emerald-500/20 text-[#00ff88] border border-emerald-500/20 flex items-center justify-center font-bold text-xs shrink-0 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-xs shrink-0 transition-colors">
                       {student.full_name
                         .split(' ')
                         .map(n => n[0])
@@ -146,18 +146,18 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white group-hover:text-[#00ff88] truncate block transition-colors">
+                        <span className="text-xs font-bold text-slate-900 group-hover:text-black truncate block transition-colors">
                           {student.full_name}
                         </span>
                         <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${
                           (student.status || 'ACTIVE').toUpperCase() === 'ACTIVE' 
-                            ? 'bg-emerald-500/15 text-[#00ff88] border-emerald-500/30' 
-                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
                         }`}>
                           {(student.status || 'ACTIVE').toUpperCase() === 'ACTIVE' ? 'Enrolled / Active' : (student.status || 'ACTIVE').toUpperCase()}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400 font-mono">
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 font-mono">
                         <span>Roll: {student.roll_number}</span>
                         {student.section_name && (
                           <span>• Sec {student.section_name}</span>
@@ -169,7 +169,7 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-[#00ff88] shrink-0">
+                  <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-slate-700 shrink-0">
                     <span className="text-[11px] font-medium hidden sm:inline">View Profile</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
@@ -178,11 +178,11 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
             </div>
           )}
 
-          <div className="pt-3 border-t border-emerald-500/15 flex justify-end">
+          <div className="pt-3 border-t border-slate-200 flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500/30 rounded-xl transition-all"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-xs"
             >
               Close
             </button>

@@ -145,51 +145,51 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <RotateCcw className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <RotateCcw className="w-6 h-6 text-slate-800" />
             Student Attendance Claims & Rectifications
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Review and adjudicate attendance claims submitted for your assigned lectures
           </p>
         </div>
 
-        <div className="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/25 text-[#00ff88]">
-          Reviewer: <strong className="text-white">{reviewerTitle}</strong>
+        <div className="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 shadow-xs">
+          Reviewer: <strong className="text-slate-900 font-bold">{reviewerTitle}</strong>
         </div>
       </div>
 
       {/* Success Notification */}
       {successToast && (
-        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-xs animate-in zoom-in-95">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{successToast}</span>
         </div>
       )}
 
       {/* Error Notification */}
       {actionError && (
-        <div className="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 shadow-xs animate-in zoom-in-95">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{actionError}</span>
         </div>
       )}
 
       {/* Tabs Row */}
-      <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 w-fit text-xs font-bold">
+      <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 w-fit text-xs font-semibold shadow-xs">
         <button
           onClick={() => setActiveTab('pending')}
           className={clsx(
             'px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer',
             activeTab === 'pending'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
           )}
         >
           <span>Pending Claims</span>
-          <span className={clsx('px-2 py-0.5 rounded-full text-[10px] font-black', activeTab === 'pending' ? 'bg-slate-950 text-[#00ff88]' : 'bg-amber-500/20 text-amber-300')}>
+          <span className={clsx('px-2 py-0.5 rounded-full text-[10px] font-mono font-bold', activeTab === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800')}>
             {pendingList.length}
           </span>
         </button>
@@ -199,8 +199,8 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
           className={clsx(
             'px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer',
             activeTab === 'approved'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
           )}
         >
           <span>Approved ({approvedList.length})</span>
@@ -211,8 +211,8 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
           className={clsx(
             'px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer',
             activeTab === 'rejected'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
           )}
         >
           <span>Rejected ({rejectedList.length})</span>
@@ -222,12 +222,12 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
       {/* Claims List Container (Dual-View: Cards on mobile, Table on desktop) */}
       <div>
         {currentList.length === 0 ? (
-          <div className="glass-panel rounded-3xl p-12 text-center space-y-3 border border-emerald-500/20">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#00ff88] mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
+          <div className="bg-white rounded-3xl p-12 text-center space-y-3 border border-slate-200/80 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 mx-auto">
+              <CheckCircle2 className="w-6 h-6 text-slate-600" />
             </div>
-            <h4 className="text-sm font-bold text-white">No {activeTab} attendance claims</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h4 className="text-sm font-bold text-slate-900">No {activeTab} attendance claims</h4>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {activeTab === 'pending' 
                 ? 'All student attendance claims for your classes have been reviewed.' 
                 : `No ${activeTab} claims found in this category.`}
@@ -248,41 +248,40 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                 return (
                   <div
                     key={item.id}
-                    className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3"
+                    className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="font-mono text-xs font-black text-emerald-400">{stud?.roll_number}</span>
-                        <h4 className="text-sm font-bold text-white mt-0.5">{stud?.full_name || 'Student'}</h4>
-                        <span className="text-[10px] text-slate-400">Section {sec?.name || stud?.section?.name || ''}</span>
+                        <span className="font-mono text-xs font-bold text-slate-600">{stud?.roll_number}</span>
+                        <h4 className="text-sm font-bold text-slate-900 mt-0.5">{stud?.full_name || 'Student'}</h4>
+                        <span className="text-[10px] text-slate-500">Section {sec?.name || stud?.section?.name || ''}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 shrink-0">
-                        <span className="text-rose-400">Absent</span>
-                        <span className="text-slate-500">→</span>
-                        <span className="text-[#00ff88]">Present</span>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 shrink-0 shadow-xs">
+                        <span className="text-rose-600">Absent</span>
+                        <span className="text-slate-400">→</span>
+                        <span className="text-emerald-700">Present</span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 text-xs pt-2 border-t border-emerald-500/10">
-                      <div className="text-white font-semibold">{sub?.subject_name}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">
+                    <div className="space-y-1 text-xs pt-2 border-t border-slate-100">
+                      <div className="text-slate-900 font-semibold">{sub?.subject_name}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">
                         Date: {session?.session_date || item.created_at?.split('T')[0] || '—'} {session?.start_time ? `(${session.start_time.substring(0, 5)} - ${session.end_time?.substring(0, 5) || ''})` : ''}
                       </div>
-                      <div className="text-slate-300 italic text-[11px] bg-slate-950/50 p-2 rounded-xl mt-1.5 border border-emerald-500/10">
+                      <div className="text-slate-600 italic text-[11px] bg-slate-50 p-2.5 rounded-xl mt-1.5 border border-slate-200">
                         "{item.reason}"
                       </div>
                     </div>
 
                     {item.status === 'pending' ? (
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-500/10">
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                         <Button
-                          variant="neon"
                           size="sm"
                           disabled={isProcessing}
                           onClick={() => handleApprove(item)}
-                          leftIcon={<Check className="w-3.5 h-3.5 text-slate-950" />}
-                          className="touch-target font-black"
+                          leftIcon={<Check className="w-3.5 h-3.5 text-white" />}
+                          className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl font-bold"
                         >
                           {isProcessing ? 'Saving...' : 'Approve'}
                         </Button>
@@ -295,24 +294,24 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                             setRejectModalItem(item);
                             setRejectRemarks('Attendance record verified; absence confirmed.');
                           }}
-                          leftIcon={<X className="w-3.5 h-3.5 text-rose-400" />}
-                          className="touch-target text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+                          leftIcon={<X className="w-3.5 h-3.5 text-rose-600" />}
+                          className="text-rose-700 border-rose-200 bg-rose-50 hover:bg-rose-100 shadow-xs rounded-xl"
                         >
                           Reject
                         </Button>
                       </div>
                     ) : (
-                      <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-xs">
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                         <span className={clsx(
-                          'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border',
+                          'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
                           item.status === 'approved' 
-                            ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                            : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            : 'bg-rose-50 border-rose-200 text-rose-800'
                         )}>
                           {item.status.toUpperCase()}
                         </span>
                         {item.review_remarks && (
-                          <span className="text-[11px] text-slate-400 truncate max-w-[60%]">
+                          <span className="text-[11px] text-slate-500 truncate max-w-[60%]">
                             {item.review_remarks}
                           </span>
                         )}
@@ -324,10 +323,10 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
             </div>
 
             {/* DESKTOP VIEW: Claims List Table */}
-            <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+            <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200">
                     <tr>
                       <th className="px-5 py-3.5">Student Details</th>
                       <th className="px-5 py-3.5">Subject & Lecture</th>
@@ -337,7 +336,7 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                       <th className="px-5 py-3.5 text-center">Action / Review Decision</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-emerald-500/10">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {currentList.map((item) => {
                       const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
                       const session = record?.session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
@@ -348,18 +347,18 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                       const isProcessing = processingId === item.id;
 
                       return (
-                        <tr key={item.id} className="hover:bg-emerald-500/5 transition-colors">
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="px-5 py-4">
-                            <div className="font-bold text-white">
+                            <div className="font-bold text-slate-900">
                               {stud?.full_name || 'Student'}
                             </div>
-                            <div className="text-[11px] text-emerald-400 font-mono font-semibold">
+                            <div className="text-[11px] text-slate-500 font-mono font-semibold">
                               Roll: {stud?.roll_number} • Sec {sec?.name || stud?.section?.name || ''}
                             </div>
                           </td>
 
                           <td className="px-5 py-4">
-                            <div className="font-bold text-white">
+                            <div className="font-bold text-slate-900">
                               {sub?.subject_name || 'Subject'}
                             </div>
                             <div className="text-[10px] text-slate-400 font-mono">
@@ -368,7 +367,7 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                           </td>
 
                           <td className="px-5 py-4 font-mono">
-                            <div className="font-bold text-slate-200">
+                            <div className="font-bold text-slate-700">
                               {session?.session_date || item.created_at?.split('T')[0] || '—'}
                             </div>
                             <div className="text-[10px] text-slate-400">
@@ -378,13 +377,13 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
 
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                              <span className="text-rose-400">Absent</span>
-                              <span className="text-slate-500">→</span>
-                              <span className="text-[#00ff88]">Present</span>
+                              <span className="text-rose-600">Absent</span>
+                              <span className="text-slate-400">→</span>
+                              <span className="text-emerald-700">Present</span>
                             </div>
                           </td>
 
-                          <td className="px-5 py-4 text-slate-300 italic max-w-xs truncate" title={item.reason}>
+                          <td className="px-5 py-4 text-slate-600 italic max-w-xs truncate" title={item.reason}>
                             "{item.reason}"
                           </td>
 
@@ -392,12 +391,11 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                             {item.status === 'pending' ? (
                               <div className="flex items-center justify-center gap-2">
                                 <Button
-                                  variant="neon"
                                   size="sm"
                                   disabled={isProcessing}
                                   onClick={() => handleApprove(item)}
-                                  leftIcon={<Check className="w-3.5 h-3.5 text-slate-950" />}
-                                  className="text-xs font-bold py-1 px-3 touch-target"
+                                  leftIcon={<Check className="w-3.5 h-3.5 text-white" />}
+                                  className="bg-[#0f172a] hover:bg-black text-white text-xs font-bold py-1 px-3 shadow-xs rounded-xl"
                                 >
                                   {isProcessing ? 'Saving...' : 'Approve'}
                                 </Button>
@@ -410,8 +408,8 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                                     setRejectModalItem(item);
                                     setRejectRemarks('Attendance record verified; absence confirmed.');
                                   }}
-                                  leftIcon={<X className="w-3.5 h-3.5 text-rose-400" />}
-                                  className="text-xs text-rose-400 border-rose-500/30 hover:bg-rose-500/10 py-1 px-3 touch-target"
+                                  leftIcon={<X className="w-3.5 h-3.5 text-rose-600" />}
+                                  className="text-xs text-rose-700 border-rose-200 bg-rose-50 hover:bg-rose-100 py-1 px-3 shadow-xs rounded-xl"
                                 >
                                   Reject
                                 </Button>
@@ -419,15 +417,15 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                             ) : (
                               <div className="text-left max-w-xs">
                                 <span className={clsx(
-                                  'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-block mb-1',
+                                  'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border inline-block mb-1',
                                   item.status === 'approved' 
-                                    ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                                    : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                    : 'bg-rose-50 border-rose-200 text-rose-800'
                                 )}>
                                   {item.status.toUpperCase()}
                                 </span>
                                 {item.review_remarks && (
-                                  <p className="text-[11px] text-slate-400 truncate" title={item.review_remarks}>
+                                  <p className="text-[11px] text-slate-500 truncate" title={item.review_remarks}>
                                     {item.review_remarks}
                                   </p>
                                 )}
@@ -451,44 +449,44 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
           isOpen={true}
           onClose={() => setRejectModalItem(null)}
           title={
-            <div className="flex items-center gap-2 text-white">
-              <XCircle className="w-5 h-5 text-rose-400" />
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              <XCircle className="w-5 h-5 text-rose-500" />
               <span>Reject Attendance Claim</span>
             </div>
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-slate-300">
-              You are rejecting the claim by <strong>{rejectModalItem.student?.full_name || 'Student'}</strong> (Roll: {rejectModalItem.student?.roll_number}) for lecture on {rejectModalItem.created_at?.split('T')[0]}.
+            <p className="text-xs text-slate-600">
+              You are rejecting the claim by <strong className="text-slate-900">{rejectModalItem.student?.full_name || 'Student'}</strong> (Roll: {rejectModalItem.student?.roll_number}) for lecture on {rejectModalItem.created_at?.split('T')[0]}.
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Reason / Remarks for Rejection
               </label>
               <textarea
                 rows={3}
                 value={rejectRemarks}
                 onChange={(e) => setRejectRemarks(e.target.value)}
-                className="w-full p-3 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 shadow-xs"
                 placeholder="State why this claim is being rejected..."
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-emerald-500/15">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setRejectModalItem(null)}
+                className="border-slate-200 text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </Button>
               <Button
-                variant="neon"
                 size="sm"
                 onClick={handleConfirmReject}
                 disabled={processingId === rejectModalItem.id}
-                className="bg-rose-500 hover:bg-rose-400 text-white border-rose-500"
+                className="bg-rose-600 hover:bg-rose-700 text-white border-none shadow-xs rounded-xl"
               >
                 {processingId === rejectModalItem.id ? 'Rejecting...' : 'Confirm Rejection'}
               </Button>
@@ -499,3 +497,4 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
     </div>
   );
 };
+

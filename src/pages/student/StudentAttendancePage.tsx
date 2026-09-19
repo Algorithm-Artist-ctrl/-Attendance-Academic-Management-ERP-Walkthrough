@@ -201,14 +201,14 @@ export const StudentAttendancePage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 1. TOP HEADER & SUMMARY METRICS */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <BookOpen className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-2.5">
+            <BookOpen className="w-6 h-6 text-slate-900" />
             Official Attendance Ledger & History
           </h1>
-          <p className="text-xs text-slate-300 mt-1">
-            {program?.name || 'B.Tech'} <span className="text-[#00ff88] font-bold">{branchName}</span>{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || '—'}</span>{session?.name ? ` • ${session.name}` : ''}
+          <p className="text-xs text-slate-600 mt-1">
+            {program?.name || 'B.Tech'} <span className="text-slate-900 font-bold">{branchName}</span>{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-slate-900 font-bold">{currentSection?.name || '—'}</span>{session?.name ? ` • ${session.name}` : ''}
           </p>
         </div>
 
@@ -216,62 +216,60 @@ export const StudentAttendancePage: React.FC = () => {
           variant="outline"
           size="sm"
           onClick={handleExportCSV}
-          leftIcon={<Download className="w-4 h-4 text-[#00ff88]" />}
+          leftIcon={<Download className="w-4 h-4 text-slate-700" />}
         >
           Download CSV Report
         </Button>
       </div>
 
       {/* 2. SUMMARY KPI STATS ROW (100% Real Supabase Calculation) */}
-      <div className="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/25">
-            <span className="text-slate-400">Overall Attendance: </span>
-            <span className="text-[#00ff88] font-black text-sm ml-1">
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="text-slate-500">Overall Attendance: </span>
+            <span className="text-slate-900 font-black text-sm ml-1">
               {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No data'}
             </span>
           </div>
 
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400">Recorded Lectures: </span>
-            <span className="text-white font-bold text-sm ml-1">{stats.totalLectures}</span>
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="text-slate-500">Recorded Lectures: </span>
+            <span className="text-slate-900 font-bold text-sm ml-1">{stats.totalLectures}</span>
           </div>
 
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400">Attended (Present): </span>
-            <span className="text-emerald-400 font-bold text-sm ml-1">{stats.presentLectures}</span>
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="text-slate-500">Attended (Present): </span>
+            <span className="text-emerald-700 font-bold text-sm ml-1">{stats.presentLectures}</span>
           </div>
 
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400">Missed (Absent): </span>
-            <span className="text-rose-400 font-bold text-sm ml-1">{totalAbsent}</span>
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="text-slate-500">Missed (Absent): </span>
+            <span className="text-rose-700 font-bold text-sm ml-1">{totalAbsent}</span>
           </div>
 
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400">Today Not Recorded: </span>
-            <span className="text-amber-300 font-bold text-sm ml-1">{stats.notRecordedCount}</span>
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="text-slate-500">Today Not Recorded: </span>
+            <span className="text-amber-700 font-bold text-sm ml-1">{stats.notRecordedCount}</span>
           </div>
 
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-emerald-500/20">
-            <span className="text-slate-400">Pending Claims: </span>
-            <span className="text-amber-400 font-bold text-sm ml-1">{stats.pendingClaimsCount}</span>
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="text-slate-500">Pending Claims: </span>
+            <span className="text-amber-700 font-bold text-sm ml-1">{stats.pendingClaimsCount}</span>
           </div>
         </div>
 
-        <div className="text-[11px] text-slate-400 font-medium italic">
+        <div className="text-[11px] text-slate-500 font-medium italic">
           Formula: Present ÷ (Present + Absent) × 100
         </div>
       </div>
 
       {/* 3. PRIMARY NAVIGATION TABS */}
-      <div className="bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 flex flex-wrap items-center gap-2 w-fit text-xs font-bold">
+      <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-2 w-fit text-xs font-bold">
         <button
           onClick={() => setActiveTab('today')}
           className={clsx(
             'px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer',
-            activeTab === 'today'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+            activeTab === 'today' ? 'bg-[#0f172a] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           )}
         >
           <Clock className="w-4 h-4" />
@@ -282,9 +280,7 @@ export const StudentAttendancePage: React.FC = () => {
           onClick={() => setActiveTab('history')}
           className={clsx(
             'px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer',
-            activeTab === 'history'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+            activeTab === 'history' ? 'bg-[#0f172a] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           )}
         >
           <CalendarIcon className="w-4 h-4" />
@@ -295,9 +291,7 @@ export const StudentAttendancePage: React.FC = () => {
           onClick={() => setActiveTab('table')}
           className={clsx(
             'px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer',
-            activeTab === 'table'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+            activeTab === 'table' ? 'bg-[#0f172a] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           )}
         >
           <TableIcon className="w-4 h-4" />
@@ -308,9 +302,7 @@ export const StudentAttendancePage: React.FC = () => {
           onClick={() => setActiveTab('claims')}
           className={clsx(
             'px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer',
-            activeTab === 'claims'
-              ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)]'
-              : 'text-slate-400 hover:text-white'
+            activeTab === 'claims' ? 'bg-[#0f172a] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           )}
         >
           <RotateCcw className="w-4 h-4" />
@@ -322,34 +314,34 @@ export const StudentAttendancePage: React.FC = () => {
       {/* TAB 1: TODAY'S CLASSES & LIVE ATTENDANCE */}
       {/* ======================================================== */}
       {activeTab === 'today' && (
-        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-              <h2 className="text-base font-black text-white">
+              <h2 className="text-base font-black text-slate-900 font-serif-institutional">
                 Scheduled Lectures for Today — {formattedTodayDate}
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Section {currentSection?.name} • Classroom: {currentSection?.room_number}
               </p>
             </div>
             <div className="flex items-center gap-2.5">
               {claimWindowStatus === 'OPEN' ? (
-                <span className="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] text-xs font-bold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                <span className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Claim Window Open (09:00 AM – 03:40 PM IST)
                 </span>
               ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
-                <span className="px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1.5">
+                <span className="px-3 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
                   Claim Window Opens at 09:00 AM IST
                 </span>
               ) : (
-                <span className="px-3 py-1 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center gap-1.5" title="Student claims close promptly at 03:40 PM IST">
+                <span className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1.5" title="Student claims close promptly at 03:40 PM IST">
                   <XCircle className="w-3.5 h-3.5 text-rose-400" />
                   Claim Window Closed for Today (03:40 PM IST)
                 </span>
               )}
-              <span className="hidden sm:inline-block px-3 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-slate-300 text-xs font-bold">
+              <span className="hidden sm:inline-block px-3 py-1 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-300 text-xs font-bold">
                 Live Sync
               </span>
             </div>
@@ -377,56 +369,52 @@ export const StudentAttendancePage: React.FC = () => {
                     key={lec.timetableEntryId}
                     className={clsx(
                       'p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4',
-                      isAbsent 
-                        ? 'bg-rose-950/20 border-rose-500/30' 
-                        : isPresent 
-                        ? 'bg-slate-950/60 border-emerald-500/20' 
-                        : 'bg-slate-950/40 border-slate-800'
+                      isAbsent ? 'bg-rose-50/60 border-rose-200' : isPresent ? 'bg-slate-50 border-slate-200/80' : 'bg-white border-slate-200'
                     )}
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-[#00ff88] font-mono text-xs font-bold shrink-0 min-w-[105px] text-center">
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 font-mono text-xs font-bold shrink-0 min-w-[105px] text-center shadow-2xs">
                         {lec.startTime} – {lec.endTime}
                         <span className="block text-[9px] text-slate-400 font-sans font-normal">Period {lec.periodNumber}</span>
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white">
+                          <h4 className="text-sm font-bold text-slate-900">
                             {lec.subjectName}
                           </h4>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
                             {lec.subjectCode}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                          {lec.facultyName} • <span className="text-slate-300">{lec.roomNumber}</span> • {lec.lectureType}
+                          {lec.facultyName} • <span className="text-slate-700">{lec.roomNumber}</span> • {lec.lectureType}
                         </p>
                       </div>
                     </div>
 
                     <div className="shrink-0 flex items-center gap-3">
                       {isLunchOrBreak ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-600">
                           Attendance Not Applicable
                         </span>
                       ) : (
                         <>
                           {isPresent && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-50 border border-emerald-200 text-emerald-700">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               PRESENT
                             </span>
                           )}
 
                           {hasPendingClaim && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800">
                               <Clock className="w-3.5 h-3.5 animate-spin" />
                               Claim Pending
                             </span>
                           )}
 
                           {hasApprovedClaim && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 text-[#00ff88]">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-700">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Claim Approved (Present)
                             </span>
@@ -436,7 +424,7 @@ export const StudentAttendancePage: React.FC = () => {
                             <div className="flex flex-wrap items-center gap-2.5">
                               {/* Scenario 5: When attendance was recorded by faculty as ABSENT, show Absent without Claim button */}
                               {isAbsent && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 border border-rose-500/30 text-rose-400">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-50 border border-rose-200 text-rose-700">
                                   <XCircle className="w-3.5 h-3.5" />
                                   ABSENT
                                 </span>
@@ -454,14 +442,14 @@ export const StudentAttendancePage: React.FC = () => {
 
                                 return (
                                   <>
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-600">
                                       <Clock className="w-3.5 h-3.5 text-amber-400/80" />
                                       Attendance Not Recorded
                                     </span>
 
                                     {/* 1. Future Class: Show Scheduled indicator, NO Claim Attendance */}
                                     {timingStatus === 'FUTURE' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-900/80 border border-slate-700/50 text-slate-400">
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 border border-slate-200 text-slate-600">
                                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                                         Starts at {lec.startTime}
                                       </span>
@@ -469,8 +457,8 @@ export const StudentAttendancePage: React.FC = () => {
 
                                     {/* 2. Ongoing Class: Show Class In Progress indicator, NO Claim Attendance */}
                                     {timingStatus === 'ONGOING' && (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-900 text-white shadow-xs">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                         Class in progress (Ends {lec.endTime})
                                       </span>
                                     )}
@@ -482,18 +470,18 @@ export const StudentAttendancePage: React.FC = () => {
                                           variant="neon"
                                           size="sm"
                                           onClick={() => setSelectedLectureForClaim(lec)}
-                                          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-white" />}
                                           className="text-xs font-bold"
                                         >
                                           Claim Attendance
                                         </Button>
                                       ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800">
                                           <Clock className="w-3.5 h-3.5 text-amber-400" />
                                           Claim opens 9:00 AM
                                         </span>
                                       ) : (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 border border-rose-500/25 text-rose-300" title="Claims are only accepted between 09:00 AM and 03:40 PM IST">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 border border-rose-200 text-rose-700" title="Claims are only accepted between 09:00 AM and 03:40 PM IST">
                                           <Clock className="w-3.5 h-3.5 text-rose-400" />
                                           Claim Window Closed (3:40 PM)
                                         </span>
@@ -521,9 +509,9 @@ export const StudentAttendancePage: React.FC = () => {
       {activeTab === 'history' && (
         <div className="space-y-6">
           {/* Month Selector Header */}
-          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <h2 className="text-base font-bold text-slate-900 font-serif-institutional tracking-wide">
                 Interactive Attendance Calendar
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -534,18 +522,18 @@ export const StudentAttendancePage: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={handlePrevMonth}
-                className="p-2 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <div className="px-4 py-2 rounded-xl bg-slate-950/80 border border-emerald-500/25 text-white font-bold text-xs min-w-[150px] text-center">
+              <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-white font-bold text-xs min-w-[150px] text-center">
                 {monthNames[selectedMonthIndex]} {selectedYear}
               </div>
 
               <button
                 onClick={handleNextMonth}
-                className="p-2 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -553,8 +541,8 @@ export const StudentAttendancePage: React.FC = () => {
           </div>
 
           {/* Calendar Grid */}
-          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20">
-            <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
+            <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
               <div>Sun</div>
               <div>Mon</div>
               <div>Tue</div>
@@ -567,7 +555,7 @@ export const StudentAttendancePage: React.FC = () => {
             <div className="grid grid-cols-7 gap-2">
               {calendarDays.map((item, idx) => {
                 if (!item) {
-                  return <div key={`empty-${idx}`} className="h-20 rounded-2xl bg-slate-950/20 border border-transparent" />;
+                  return <div key={`empty-${idx}`} className="h-20 rounded-2xl bg-slate-50/50 border border-transparent" />;
                 }
 
                 const isSelected = item.dateStr === selectedHistoryDate;
@@ -580,13 +568,11 @@ export const StudentAttendancePage: React.FC = () => {
                     onClick={() => setSelectedHistoryDate(item.dateStr)}
                     className={clsx(
                       'h-20 p-2 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between',
-                      isSelected
-                        ? 'bg-[#00ff88]/15 border-[#00ff88] shadow-[0_0_15px_rgba(0,255,136,0.25)]'
-                        : 'bg-slate-950/60 border-emerald-500/15 hover:border-emerald-500/40'
+                      isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50/60'
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={clsx('text-xs font-black', isSelected ? 'text-[#00ff88]' : 'text-white')}>
+                      <span className={clsx('text-xs font-black', isSelected ? 'text-white' : 'text-slate-900')}>
                         {item.dayNumber}
                       </span>
                       {item.isSunday && (
@@ -602,8 +588,8 @@ export const StudentAttendancePage: React.FC = () => {
                             <span>{item.absentCount} Absent</span>
                           </div>
                         ) : hasRecorded ? (
-                          <div className="flex items-center gap-1 text-[10px] text-[#00ff88] font-bold">
-                            <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+                          <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
                             <span>{item.presentCount} Present</span>
                           </div>
                         ) : (
@@ -621,15 +607,15 @@ export const StudentAttendancePage: React.FC = () => {
           </div>
 
           {/* Selected Date Detail Inspection */}
-          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-4">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white tracking-wide">
+                  <h3 className="text-sm font-bold text-slate-900 font-serif-institutional tracking-wide">
                     Lectures for {formattedHistoryDate}
                   </h3>
                   {selectedHistoryDate === todayDateStr && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#00ff88]/15 border border-[#00ff88]/30 text-[#00ff88]">
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-900 text-white">
                       Today
                     </span>
                   )}
@@ -640,17 +626,17 @@ export const StudentAttendancePage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 text-xs font-semibold">
-                <span className="text-emerald-400">Present: {historyData.presentCount}</span>
-                <span className="text-slate-600">|</span>
-                <span className="text-rose-400">Absent: {historyData.absentCount}</span>
-                <span className="text-slate-600">|</span>
-                <span className="text-amber-300">Not Recorded: {historyData.notRecordedCount}</span>
+                <span className="text-emerald-700">Present: {historyData.presentCount}</span>
+                <span className="text-slate-300">|</span>
+                <span className="text-rose-700">Absent: {historyData.absentCount}</span>
+                <span className="text-slate-300">|</span>
+                <span className="text-amber-700">Not Recorded: {historyData.notRecordedCount}</span>
               </div>
             </div>
 
             {historyData.lectures.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
-                <Calendar className="w-8 h-8 text-emerald-500/40 mx-auto mb-2" />
+              <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200/80">
+                <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-60" />
                 <p className="font-bold text-white text-sm">
                   {new Date(selectedHistoryDate).getDay() === 0 
                     ? 'Sunday — No Academic Classes Scheduled (Weekend / Holiday)' 
@@ -677,10 +663,10 @@ export const StudentAttendancePage: React.FC = () => {
                   return (
                     <div
                       key={lec.timetableEntryId}
-                      className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     >
                       <div className="flex items-center gap-3.5">
-                        <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-[#00ff88] font-mono text-xs font-bold shrink-0 min-w-[105px] text-center">
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 font-mono text-xs font-bold shrink-0 min-w-[105px] text-center shadow-2xs">
                           {lec.startTime} – {lec.endTime}
                           <span className="block text-[9px] text-slate-400 font-sans font-normal">Period {lec.periodNumber}</span>
                         </div>
@@ -689,7 +675,7 @@ export const StudentAttendancePage: React.FC = () => {
                             <h4 className="text-sm font-bold text-white">
                               {lec.subjectName}
                             </h4>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
                               {lec.subjectCode}
                             </span>
                           </div>
@@ -701,7 +687,7 @@ export const StudentAttendancePage: React.FC = () => {
 
                       <div className="shrink-0 flex items-center gap-3">
                         {isLunchOrBreak ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-600">
                             Attendance Not Applicable
                           </span>
                         ) : (
@@ -715,7 +701,7 @@ export const StudentAttendancePage: React.FC = () => {
                             )}
 
                             {hasApprovedClaim && (
-                              <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-[#00ff88] text-[11px] font-bold border border-emerald-500/30">
+                              <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
                                 Claim Approved
                               </span>
                             )}
@@ -739,7 +725,7 @@ export const StudentAttendancePage: React.FC = () => {
                                   variant="neon"
                                   size="sm"
                                   onClick={() => setSelectedLectureForClaim(lec)}
-                                  leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                  leftIcon={<RotateCcw className="w-3.5 h-3.5 text-white" />}
                                   className="text-xs font-bold"
                                 >
                                   Claim Attendance
@@ -773,13 +759,13 @@ export const StudentAttendancePage: React.FC = () => {
       {/* ======================================================== */}
       {activeTab === 'table' && (
         <div className="space-y-4">
-          <div className="glass-card rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-400">Filter Subject:</label>
+              <label className="text-xs font-semibold text-slate-600">Filter Subject:</label>
               <select
                 value={selectedSubjectFilter}
                 onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-semibold bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400"
               >
                 <option value="all">All Enrolled Subjects ({stats.subjectStats.length})</option>
                 {stats.subjectStats.map(s => (
@@ -788,13 +774,13 @@ export const StudentAttendancePage: React.FC = () => {
               </select>
             </div>
 
-            <span className="text-xs text-[#00ff88] font-bold">AKTU 75% Rule Enforced</span>
+            <span className="text-xs text-slate-900 font-bold">AKTU 75% Rule Enforced</span>
           </div>
 
-          <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+          <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <thead className="bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="px-5 py-3.5">Subject Code</th>
                     <th className="px-5 py-3.5">Subject Name</th>
@@ -811,27 +797,27 @@ export const StudentAttendancePage: React.FC = () => {
                     const isEligible = item.totalConducted > 0 && item.percentage !== null && item.percentage >= 75;
                     const itemAbsent = item.totalConducted - item.attended;
                     return (
-                      <tr key={item.subjectId} className="hover:bg-emerald-500/5 transition-colors">
-                        <td className="px-5 py-4 font-mono font-bold text-emerald-400">
+                      <tr key={item.subjectId} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-slate-900">
                           {item.subjectCode}
                         </td>
                         <td className="px-5 py-4 font-bold text-white">
                           {item.subjectName}
                         </td>
-                        <td className="px-5 py-4 text-slate-300 font-medium">
+                        <td className="px-5 py-4 text-slate-600 font-medium">
                           {item.facultyName}
                         </td>
-                        <td className="px-5 py-4 text-center font-semibold text-slate-200">
+                        <td className="px-5 py-4 text-center font-semibold text-slate-700">
                           {item.totalConducted}
                         </td>
-                        <td className="px-5 py-4 text-center font-bold text-emerald-400">
+                        <td className="px-5 py-4 text-center font-bold text-emerald-700">
                           {item.attended}
                         </td>
-                        <td className="px-5 py-4 text-center font-bold text-rose-400">
+                        <td className="px-5 py-4 text-center font-bold text-rose-700">
                           {itemAbsent}
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-slate-100 border border-slate-200 text-slate-900">
                             {item.totalConducted > 0 && item.percentage !== null ? `${item.percentage}%` : 'No Data'}
                           </span>
                         </td>
@@ -839,10 +825,10 @@ export const StudentAttendancePage: React.FC = () => {
                           <span className={clsx(
                             'px-2.5 py-1 rounded-full text-[10px] font-bold border',
                             item.totalConducted === 0 || item.percentage === null
-                              ? 'bg-slate-800 border-slate-700 text-slate-400'
+                              ? 'bg-slate-100 border-slate-200 text-slate-500'
                               : isEligible 
-                                ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                                : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-rose-50 border-rose-200 text-rose-700'
                           )}>
                             {item.totalConducted === 0 || item.percentage === null ? 'No attendance recorded' : isEligible ? 'Eligible' : 'Defaulter (<75%)'}
                           </span>
@@ -861,20 +847,20 @@ export const StudentAttendancePage: React.FC = () => {
       {/* TAB 4: MY ATTENDANCE CLAIMS HISTORY */}
       {/* ======================================================== */}
       {activeTab === 'claims' && (
-        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
-          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+        <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
             <div>
               <h3 className="text-sm font-bold text-white tracking-wide">
                 Submitted Attendance Claims & Rectifications
               </h3>
               <p className="text-xs text-slate-400">Claims are reviewed directly by the designated faculty coordinator</p>
             </div>
-            <span className="text-xs text-emerald-400 font-semibold">Real-Time Database Records</span>
+            <span className="text-xs text-slate-600 font-semibold">Real-Time Database Records</span>
           </div>
 
           {myClaims.length === 0 ? (
             <div className="p-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#00ff88] mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h4 className="text-sm font-bold text-white">No Attendance Claims Submitted</h4>
@@ -885,7 +871,7 @@ export const StudentAttendancePage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <thead className="bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="px-5 py-3.5">Lecture Date & Time</th>
                     <th className="px-5 py-3.5">Subject</th>
@@ -910,7 +896,7 @@ export const StudentAttendancePage: React.FC = () => {
                             {session?.start_time?.substring(0, 5) || '09:00'} – {session?.end_time?.substring(0, 5) || '09:50'}
                           </span>
                         </td>
-                        <td className="px-5 py-4 font-bold text-emerald-400">
+                        <td className="px-5 py-4 font-bold text-slate-900">
                           {sub?.subject_name || 'Subject'}
                         </td>
                         <td className="px-5 py-4 text-slate-300 font-medium">
@@ -926,10 +912,10 @@ export const StudentAttendancePage: React.FC = () => {
                           <span className={clsx(
                             'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border',
                             req.status === 'approved' 
-                              ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                               : req.status === 'rejected'
-                              ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                              : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                              ? 'bg-rose-50 border-rose-200 text-rose-700'
+                              : 'bg-amber-50 border-amber-200 text-amber-700'
                           )}>
                             {req.status.toUpperCase()}
                           </span>

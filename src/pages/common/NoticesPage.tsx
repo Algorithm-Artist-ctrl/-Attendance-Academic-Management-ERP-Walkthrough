@@ -293,26 +293,26 @@ export const NoticesPage: React.FC = () => {
 
   const getCategoryBadgeClass = (cat: NoticeItem['category']) => {
     switch (cat) {
-      case 'Urgent': return 'bg-rose-500/15 border-rose-500/30 text-rose-400';
-      case 'Examination': return 'bg-amber-500/15 border-amber-500/30 text-amber-300';
-      case 'Events': return 'bg-purple-500/15 border-purple-500/30 text-purple-300';
-      case 'Holidays': return 'bg-blue-500/15 border-blue-500/30 text-blue-300';
+      case 'Urgent': return 'bg-rose-50 border-rose-200 text-rose-800';
+      case 'Examination': return 'bg-amber-50 border-amber-200 text-amber-800';
+      case 'Events': return 'bg-purple-50 border-purple-200 text-purple-800';
+      case 'Holidays': return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'Academic':
       default:
-        return 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]';
+        return 'bg-emerald-50 border-emerald-200 text-emerald-800';
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Bell className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Bell className="w-6 h-6 text-slate-900" />
             Official Notices & Circulars
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Vivekananda College of Technology & Management, Aligarh bulletin board
             {user?.role === 'student' && mySection?.name ? ` • Section ${mySection.name}` : ''}
           </p>
@@ -321,10 +321,11 @@ export const NoticesPage: React.FC = () => {
         <div className="flex items-center gap-3">
           {canPublish && (
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+              leftIcon={<Plus className="w-4 h-4 text-white" />}
+              className="rounded-xl shadow-xs"
             >
               Publish Notice
             </Button>
@@ -333,7 +334,7 @@ export const NoticesPage: React.FC = () => {
       </div>
 
       {/* Category Filter Pills & Search */}
-      <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-200/80 shadow-xs">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -341,13 +342,13 @@ export const NoticesPage: React.FC = () => {
             placeholder="Search circulars, exams, or notices..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
           />
         </div>
 
         {/* Category Filter Pills & Archive Toggle */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
             {['ALL', 'Urgent', 'Examination', 'Academic', 'Events', 'Holidays'].map((cat) => (
               <button
                 key={cat}
@@ -355,8 +356,8 @@ export const NoticesPage: React.FC = () => {
                 className={clsx(
                   'px-3 py-1 rounded-xl transition-all cursor-pointer text-[11px]',
                   selectedCategory === cat
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 font-semibold'
                 )}
               >
                 {cat}
@@ -370,8 +371,8 @@ export const NoticesPage: React.FC = () => {
               className={clsx(
                 'px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer',
                 showArchived
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                  ? 'bg-amber-50 border-amber-200 text-amber-800'
+                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
               )}
             >
               {showArchived ? 'Hide Old Versions' : `Show Archived Versions (${archivedCount})`}
@@ -383,12 +384,12 @@ export const NoticesPage: React.FC = () => {
       {/* Notices List */}
       <div className="space-y-4">
         {filteredNotices.length === 0 ? (
-          <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20 space-y-2">
+          <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs space-y-2">
             <Bell className="w-12 h-12 text-slate-600 mx-auto mb-2" />
-            <p className="font-bold text-white text-base">
+            <p className="font-bold text-slate-900 text-base">
               {user?.role === 'student' ? 'No notices for your section.' : 'No circulars or notices found'}
             </p>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
               {user?.role === 'student'
                 ? `You are up to date! There are no published notices or circulars for Section ${mySection?.name || 'Assigned'} at this time.`
                 : 'There are no published notices matching your active filters.'}
@@ -399,16 +400,16 @@ export const NoticesPage: React.FC = () => {
             <div
               key={n.id}
               className={clsx(
-                'glass-panel rounded-3xl p-6 border transition-all space-y-3.5',
+                'bg-white rounded-3xl p-6 border transition-all space-y-3.5 shadow-xs hover:border-slate-300 hover:shadow-sm',
                 n.isPinned
-                  ? 'border-emerald-500/40 bg-slate-950/90 shadow-[0_0_20px_rgba(0,255,136,0.08)]'
-                  : 'border-emerald-500/20 hover:border-emerald-500/35'
+                  ? 'border-slate-300 bg-slate-50/50'
+                  : 'border-slate-200/80'
               )}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   {n.isPinned && (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#00ff88] bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
                       <Pin className="w-3 h-3" /> Pinned
                     </span>
                   )}
@@ -416,23 +417,23 @@ export const NoticesPage: React.FC = () => {
                     {n.category}
                   </span>
                   {n.targetAudience && n.targetAudience !== 'ALL' && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 border border-emerald-500/30 text-emerald-400">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700">
                       {n.targetAudience}
                     </span>
                   )}
-                  <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                  <span className="text-xs text-slate-500 font-mono flex items-center gap-1">
                     <Calendar className="w-3 h-3" /> {n.date}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-slate-400">
-                    Issued by: <strong className="text-white">{n.author}</strong>
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    Issued by: <strong className="text-slate-900">{n.author}</strong>
                   </span>
                   {canPublish && (
                     <button
                       onClick={() => handleDelete(n.id)}
-                      className="p-1 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                       title="Delete Notice"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -441,17 +442,17 @@ export const NoticesPage: React.FC = () => {
                 </div>
               </div>
 
-              <h3 className="text-base font-bold text-white tracking-tight leading-snug">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug">
                 {n.title}
               </h3>
 
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-700 leading-relaxed">
                 {n.content}
               </p>
 
               {n.attachment && (
-                <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-slate-800 font-mono font-semibold">
                     <Download className="w-3.5 h-3.5" />
                     <span>{n.attachment}</span>
                   </div>
@@ -494,7 +495,7 @@ export const NoticesPage: React.FC = () => {
             </div>
           )}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Circular Title <span className="text-rose-400">*</span>
             </label>
             <input
@@ -503,19 +504,19 @@ export const NoticesPage: React.FC = () => {
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="e.g. Mandatory 75% Attendance Requirement for AKTU Exams"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Category
               </label>
               <select
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value as any)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 <option value="Academic">Academic</option>
                 <option value="Urgent">Urgent</option>
@@ -526,7 +527,7 @@ export const NoticesPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Author / Office
               </label>
               <input
@@ -534,13 +535,13 @@ export const NoticesPage: React.FC = () => {
                 value={newAuthor}
                 onChange={(e) => setNewAuthor(e.target.value)}
                 placeholder="Office of Dean Academics"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Notice Content <span className="text-rose-400">*</span>
             </label>
             <textarea
@@ -549,12 +550,12 @@ export const NoticesPage: React.FC = () => {
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
               placeholder="Enter full announcement details, directives, guidelines..."
-              className="w-full p-3 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           {/* Target Audience Scope */}
-          <div className="space-y-2 pt-1 border-t border-emerald-500/15">
+          <div className="space-y-2 pt-1 border-t border-slate-100">
             <label className="block text-xs font-semibold text-slate-300">
               Notice Target Audience / Scope <span className="text-rose-400">*</span>
             </label>
@@ -572,8 +573,8 @@ export const NoticesPage: React.FC = () => {
                   className={clsx(
                     'px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer',
                     newTargetScope === scope.id
-                      ? 'bg-[#00ff88] text-slate-950 border-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                      : 'bg-slate-950/80 border-emerald-500/25 text-slate-300 hover:text-white'
+                      ? 'bg-[#0f172a] text-white border-slate-900 shadow-xs font-bold'
+                      : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900 font-semibold'
                   )}
                 >
                   {scope.label}
@@ -583,14 +584,14 @@ export const NoticesPage: React.FC = () => {
 
             {newTargetScope === 'SECTION' && (
               <div className="animate-in fade-in duration-150 pt-1">
-                <label className="block text-[11px] font-semibold text-emerald-400 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Select Target Section
                 </label>
                 <select
                   value={newTargetSectionId}
                   onChange={(e) => setNewTargetSectionId(e.target.value)}
                   required={newTargetScope === 'SECTION'}
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/35 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 >
                   <option value="">-- Choose Section --</option>
                   {sections.map((sec) => (
@@ -609,14 +610,14 @@ export const NoticesPage: React.FC = () => {
               id="isPinnedCheck"
               checked={newIsPinned}
               onChange={(e) => setNewIsPinned(e.target.checked)}
-              className="rounded bg-slate-950 border-emerald-500/30 text-[#00ff88] focus:ring-0"
+              className="rounded bg-white border-slate-300 text-slate-900 focus:ring-0"
             />
             <label htmlFor="isPinnedCheck" className="text-xs text-slate-300 font-semibold cursor-pointer">
               Pin to Top of Bulletin Board
             </label>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-emerald-500/15">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
               variant="outline"
               size="sm"
@@ -626,11 +627,11 @@ export const NoticesPage: React.FC = () => {
               Cancel
             </Button>
             <Button
-              variant={publishError ? "danger" : "neon"}
+              variant={publishError ? "danger" : "primary"}
               size="sm"
               type="submit"
               disabled={isPublishing || publishSuccess}
-              className={publishSuccess ? "!bg-emerald-500 !text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)] font-bold" : ""}
+              className={publishSuccess ? "!bg-emerald-600 !text-white font-bold" : ""}
             >
               {isPublishing ? (
                 <span className="flex items-center">

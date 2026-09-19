@@ -70,17 +70,16 @@ export const HODAcademicOversightPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 shadow-xs">
                 <BarChart3 className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Academic Oversight & Assessment Analytics</h1>
-                <p className="text-slate-400 text-sm mt-0.5">
+                <h1 className="text-2xl font-bold font-serif-institutional text-slate-900 tracking-tight">Academic Oversight & Assessment Analytics</h1>
+                <p className="text-slate-500 text-sm mt-0.5">
                   Departmental monitoring for assignments, continuous quizzes, sessional records, and grading rates.
                 </p>
               </div>
@@ -89,34 +88,34 @@ export const HODAcademicOversightPage: React.FC = () => {
         </div>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80">
-          <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-center">
-            <div className="text-2xl font-bold text-white">{courseAssignments.length}</div>
-            <div className="text-xs text-slate-400 mt-0.5">Total Assignments</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100">
+          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 text-center">
+            <div className="text-2xl font-bold font-serif-institutional text-slate-900">{courseAssignments.length}</div>
+            <div className="text-xs text-slate-500 font-medium mt-0.5">Total Assignments</div>
           </div>
-          <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-center">
-            <div className="text-2xl font-bold text-purple-400">{quizzes.length}</div>
-            <div className="text-xs text-slate-400 mt-0.5">Active Quizzes</div>
+          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 text-center">
+            <div className="text-2xl font-bold font-serif-institutional text-slate-900">{quizzes.length}</div>
+            <div className="text-xs text-slate-500 font-medium mt-0.5">Active Quizzes</div>
           </div>
-          <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-center">
-            <div className="text-2xl font-bold text-blue-400">{assignmentSubmissions.length}</div>
-            <div className="text-xs text-slate-400 mt-0.5">Total Submissions</div>
+          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 text-center">
+            <div className="text-2xl font-bold font-serif-institutional text-slate-900">{assignmentSubmissions.length}</div>
+            <div className="text-xs text-slate-500 font-medium mt-0.5">Total Submissions</div>
           </div>
-          <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-center">
-            <div className="text-2xl font-bold text-emerald-400">{sessionalMarks.length}</div>
-            <div className="text-xs text-slate-400 mt-0.5">Sessional Entries</div>
+          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 text-center">
+            <div className="text-2xl font-bold font-serif-institutional text-slate-900">{sessionalMarks.length}</div>
+            <div className="text-xs text-slate-500 font-medium mt-0.5">Sessional Entries</div>
           </div>
         </div>
       </div>
 
       {/* Filters and Navigation Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-xl">
+        <div className="flex bg-slate-100 border border-slate-200/80 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('assignments')}
             className={clsx(
               "px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all",
-              activeTab === 'assignments' ? "bg-blue-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+              activeTab === 'assignments' ? "bg-[#0f172a] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
             )}
           >
             <FileText className="w-3.5 h-3.5" /> Assignments ({filteredAssignments.length})
@@ -125,7 +124,7 @@ export const HODAcademicOversightPage: React.FC = () => {
             onClick={() => setActiveTab('quizzes')}
             className={clsx(
               "px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all",
-              activeTab === 'quizzes' ? "bg-purple-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+              activeTab === 'quizzes' ? "bg-[#0f172a] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
             )}
           >
             <Sparkles className="w-3.5 h-3.5" /> Quizzes ({filteredQuizzes.length})
@@ -134,7 +133,7 @@ export const HODAcademicOversightPage: React.FC = () => {
             onClick={() => setActiveTab('sessional')}
             className={clsx(
               "px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all",
-              activeTab === 'sessional' ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+              activeTab === 'sessional' ? "bg-[#0f172a] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
             )}
           >
             <Award className="w-3.5 h-3.5" /> Sessional Ledger
@@ -148,17 +147,17 @@ export const HODAcademicOversightPage: React.FC = () => {
               setSelectedYearFilter(e.target.value);
               setSelectedSectionFilter('ALL');
             }}
-            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-[#00ff88] font-bold focus:outline-none focus:border-emerald-500 cursor-pointer"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
           >
-            <option value="ALL" className="text-white">All Years</option>
+            <option value="ALL">All Years</option>
             {years.filter(y => y.active && y.year_number !== 1).map(y => (
-              <option key={y.id} value={y.id} className="text-white">{y.name}</option>
+              <option key={y.id} value={y.id}>{y.name}</option>
             ))}
           </select>
           <select
             value={selectedSectionFilter}
             onChange={(e) => setSelectedSectionFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
           >
             <option value="ALL">All Sections</option>
             {dynamicSections.map(s => (
@@ -168,7 +167,7 @@ export const HODAcademicOversightPage: React.FC = () => {
           <select
             value={selectedSubjectFilter}
             onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
           >
             <option value="ALL">All Subjects</option>
             {subjects.map(s => (
@@ -180,11 +179,11 @@ export const HODAcademicOversightPage: React.FC = () => {
 
       {/* Tab 1: Assignments Table */}
       {activeTab === 'assignments' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                <tr>
                   <th className="py-3 px-4">Subject</th>
                   <th className="py-3 px-4">Section</th>
                   <th className="py-3 px-4">Assignment Title</th>
@@ -194,10 +193,10 @@ export const HODAcademicOversightPage: React.FC = () => {
                   <th className="py-3 px-4 text-center">Graded Rate</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredAssignments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       No assignments found matching selection.
                     </td>
                   </tr>
@@ -209,18 +208,18 @@ export const HODAcademicOversightPage: React.FC = () => {
                     const pct = secStudents > 0 ? Math.round((subs.length / secStudents) * 100) : 0;
 
                     return (
-                      <tr key={a.id} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-semibold text-blue-400">{a.subject?.subject_code}</td>
-                        <td className="py-3 px-4 font-medium text-white">Section {a.section?.name}</td>
-                        <td className="py-3 px-4 font-medium text-white">{a.title}</td>
-                        <td className="py-3 px-4 text-slate-300">{a.faculty?.full_name}</td>
-                        <td className="py-3 px-4 text-slate-400 font-mono">
+                      <tr key={a.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4 font-semibold text-slate-900">{a.subject?.subject_code}</td>
+                        <td className="py-3 px-4 font-medium text-slate-700">Section {a.section?.name}</td>
+                        <td className="py-3 px-4 font-medium text-slate-900">{a.title}</td>
+                        <td className="py-3 px-4 text-slate-600">{a.faculty?.full_name}</td>
+                        <td className="py-3 px-4 text-slate-500 font-mono">
                           {new Date(a.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-white">
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-900">
                           {subs.length} / {secStudents} ({pct}%)
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-semibold text-emerald-400">
+                        <td className="py-3 px-4 text-center font-mono font-semibold text-emerald-700">
                           {graded} / {subs.length}
                         </td>
                       </tr>
@@ -235,11 +234,11 @@ export const HODAcademicOversightPage: React.FC = () => {
 
       {/* Tab 2: Quizzes Table */}
       {activeTab === 'quizzes' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                <tr>
                   <th className="py-3 px-4">Subject</th>
                   <th className="py-3 px-4">Section</th>
                   <th className="py-3 px-4">Quiz Title</th>
@@ -249,10 +248,10 @@ export const HODAcademicOversightPage: React.FC = () => {
                   <th className="py-3 px-4 text-center">Scores Recorded</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredQuizzes.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       No quizzes found matching selection.
                     </td>
                   </tr>
@@ -262,16 +261,16 @@ export const HODAcademicOversightPage: React.FC = () => {
                     const secStudents = students.filter(s => s.section_id === q.section_id).length;
 
                     return (
-                      <tr key={q.id} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-semibold text-purple-400">{q.subject?.subject_code}</td>
-                        <td className="py-3 px-4 font-medium text-white">Section {q.section?.name}</td>
-                        <td className="py-3 px-4 font-medium text-white">{q.title}</td>
-                        <td className="py-3 px-4 text-slate-300">{q.faculty?.full_name}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-400">{q.max_marks}</td>
-                        <td className="py-3 px-4 text-slate-400 font-mono">
+                      <tr key={q.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4 font-semibold text-slate-900">{q.subject?.subject_code}</td>
+                        <td className="py-3 px-4 font-medium text-slate-700">Section {q.section?.name}</td>
+                        <td className="py-3 px-4 font-medium text-slate-900">{q.title}</td>
+                        <td className="py-3 px-4 text-slate-600">{q.faculty?.full_name}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{q.max_marks}</td>
+                        <td className="py-3 px-4 text-slate-500 font-mono">
                           {new Date(q.start_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} — {new Date(q.end_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-white">
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-900">
                           {results.length} / {secStudents}
                         </td>
                       </tr>
@@ -286,11 +285,11 @@ export const HODAcademicOversightPage: React.FC = () => {
 
       {/* Tab 3: Sessional Ledger Summary */}
       {activeTab === 'sessional' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                <tr>
                   <th className="py-3 px-4">Subject</th>
                   <th className="py-3 px-4">Section</th>
                   <th className="py-3 px-4">Sessional Assessment</th>
@@ -300,7 +299,7 @@ export const HODAcademicOversightPage: React.FC = () => {
                   <th className="py-3 px-4 text-center">Evaluation Progress</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {sessionalAssessments
                   .filter(sa => {
                     const matchSec = selectedSectionFilter === 'ALL' || sa.section_id === selectedSectionFilter;
@@ -313,16 +312,16 @@ export const HODAcademicOversightPage: React.FC = () => {
                     const pct = secStudents > 0 ? Math.round((marksList.length / secStudents) * 100) : 0;
 
                     return (
-                      <tr key={sa.id} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-semibold text-emerald-400">{sa.subject?.subject_code}</td>
-                        <td className="py-3 px-4 font-medium text-white">Section {sa.section?.name}</td>
-                        <td className="py-3 px-4 font-bold text-white">{sa.title}</td>
-                        <td className="py-3 px-4 text-slate-300">{sa.faculty?.full_name}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-400">{sa.max_marks}</td>
-                        <td className="py-3 px-4 text-slate-400 font-mono">
+                      <tr key={sa.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4 font-semibold text-slate-900">{sa.subject?.subject_code}</td>
+                        <td className="py-3 px-4 font-medium text-slate-700">Section {sa.section?.name}</td>
+                        <td className="py-3 px-4 font-bold text-slate-900">{sa.title}</td>
+                        <td className="py-3 px-4 text-slate-600">{sa.faculty?.full_name}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{sa.max_marks}</td>
+                        <td className="py-3 px-4 text-slate-500 font-mono">
                           {new Date(sa.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-white">
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-900">
                           {marksList.length} / {secStudents} ({pct}%)
                         </td>
                       </tr>

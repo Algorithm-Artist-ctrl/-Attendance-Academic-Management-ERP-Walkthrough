@@ -473,20 +473,20 @@ export const FacultyDirectoryPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Users className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Users className="w-6 h-6 text-slate-900" />
             Faculty Master Directory
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Authoritative faculty management, subject-section assignments, and authentication status
           </p>
         </div>
 
         {(isSuperAdmin || isHOD) && (
           <Button
-            variant="neon"
+            variant="primary"
             size="sm"
             onClick={() => {
               setIsAddModalOpen(true);
@@ -496,7 +496,8 @@ export const FacultyDirectoryPage: React.FC = () => {
               setStagedAssignments([]);
               setAddModalError(null);
             }}
-            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+            leftIcon={<Plus className="w-4 h-4 text-white" />}
+            className="rounded-xl shadow-xs"
           >
             Add Faculty Member
           </Button>
@@ -504,7 +505,7 @@ export const FacultyDirectoryPage: React.FC = () => {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
           <div className="relative flex-1 sm:max-w-xs">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -515,14 +516,14 @@ export const FacultyDirectoryPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, code, or email..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active Only</option>
@@ -531,16 +532,16 @@ export const FacultyDirectoryPage: React.FC = () => {
           </select>
         </div>
 
-        <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
+        <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
           Showing {filteredFaculty.length} of {faculty.length} Faculty
         </span>
       </div>
 
       {/* Faculty Cards Grid */}
       {filteredFaculty.length === 0 ? (
-        <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
+        <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs">
           <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="font-semibold text-slate-300">No faculty members found</p>
+          <p className="font-semibold text-slate-800">No faculty members found</p>
           <p className="text-xs text-slate-500 mt-1">Register faculty using the "Add Faculty Member" button</p>
         </div>
       ) : (
@@ -595,12 +596,12 @@ export const FacultyDirectoryPage: React.FC = () => {
             return (
               <div
                 key={f.id}
-                className={`glass-panel rounded-3xl p-5 border transition-all space-y-3 relative overflow-hidden ${
+                className={`bg-white rounded-3xl p-5 border transition-all space-y-3 relative overflow-hidden shadow-xs hover:border-slate-300 hover:shadow-sm ${
                   currentStatus === 'BLOCKED'
-                    ? 'border-rose-500/30 bg-rose-950/10'
+                    ? 'border-rose-200 bg-rose-50/20'
                     : currentStatus === 'ARCHIVED'
-                    ? 'border-slate-700/40 bg-slate-950/40 opacity-75'
-                    : 'border-emerald-500/15 hover:border-emerald-500/35'
+                    ? 'border-slate-200 bg-slate-50 opacity-75'
+                    : 'border-slate-200/80 hover:border-slate-300'
                 }`}
               >
                 {/* Top Badges & Actions */}
@@ -608,23 +609,23 @@ export const FacultyDirectoryPage: React.FC = () => {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* Status Badge */}
                     {currentStatus === 'ACTIVE' && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                         <CheckCircle2 className="w-2.5 h-2.5" /> ACTIVE
                       </span>
                     )}
                     {currentStatus === 'BLOCKED' && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1">
                         <ShieldAlert className="w-2.5 h-2.5" /> BLOCKED
                       </span>
                     )}
                     {currentStatus === 'ARCHIVED' && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                         ARCHIVED
                       </span>
                     )}
 
                     {isFacultyHOD && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-800">
                         HOD
                       </span>
                     )}
@@ -635,7 +636,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                       {/* Edit Button */}
                       <button
                         onClick={() => handleOpenEditModal(f)}
-                        className="p-1.5 text-slate-400 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                         title="Edit Faculty & Assignments"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -647,8 +648,8 @@ export const FacultyDirectoryPage: React.FC = () => {
                         disabled={actionLoading === `status_${f.id}`}
                         className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                           currentStatus === 'BLOCKED'
-                            ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
-                            : 'text-amber-400 hover:text-rose-400 hover:bg-rose-500/10'
+                            ? 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50'
+                            : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
                         }`}
                         title={currentStatus === 'BLOCKED' ? 'Unblock Faculty' : 'Block Faculty'}
                       >
@@ -663,7 +664,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                       <button
                         onClick={() => handleSafeDelete(f)}
                         disabled={actionLoading === `delete_${f.id}`}
-                        className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                         title="Safe Delete / Archive Faculty"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -674,54 +675,54 @@ export const FacultyDirectoryPage: React.FC = () => {
 
                 {/* Identity Header */}
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black shadow-[0_0_12px_rgba(0,255,136,0.2)] ${
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shadow-xs ${
                     currentStatus === 'BLOCKED'
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                      : 'bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950'
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                      : 'bg-[#0f172a] text-white'
                   }`}>
                     {f.faculty_code || f.full_name.substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white leading-tight truncate">
+                    <h3 className="text-sm font-bold text-slate-900 leading-tight truncate">
                       {f.full_name}
                     </h3>
-                    <p className="text-xs text-emerald-400 font-medium mt-0.5 truncate">
+                    <p className="text-xs text-slate-500 font-medium mt-0.5 truncate">
                       {f.designation}
                     </p>
                   </div>
                 </div>
 
                 {/* Academic Metadata & Assignments */}
-                <div className="space-y-1.5 pt-2 border-t border-emerald-500/10 text-xs">
+                <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Employee Code:</span>
-                    <span className="font-mono font-bold text-white">{f.employee_code}</span>
+                    <span className="font-mono font-bold text-slate-900">{f.employee_code}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Timetable Code:</span>
-                    <span className="font-mono font-bold text-[#00ff88]">{f.faculty_code || '—'}</span>
+                    <span className="font-mono font-bold text-slate-900">{f.faculty_code || '—'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Department:</span>
-                    <span className="font-semibold text-slate-300">{dept?.name || 'CSE'}</span>
+                    <span className="font-semibold text-slate-800">{dept?.name || 'CSE'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Official Email:</span>
-                    <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]" title={f.email}>
+                    <span className="text-slate-700 font-mono text-[11px] truncate max-w-[170px]" title={f.email}>
                       {f.email}
                     </span>
                   </div>
                   {f.phone && (
                     <div className="flex justify-between">
                       <span className="text-slate-500">Phone:</span>
-                      <span className="text-slate-300 font-mono text-[11px]">{f.phone}</span>
+                      <span className="text-slate-700 font-mono text-[11px]">{f.phone}</span>
                     </div>
                   )}
 
                   {/* Real Database Assigned Subjects */}
-                  <div className="flex justify-between items-start gap-1 pt-1 border-t border-emerald-500/10">
+                  <div className="flex justify-between items-start gap-1 pt-1 border-t border-slate-100">
                     <span className="text-slate-500 shrink-0">Assigned Subjects:</span>
-                    <span className="text-emerald-400 font-mono text-[11px] text-right truncate max-w-[180px]" title={subCodes.join(', ')}>
+                    <span className="text-slate-900 font-mono font-bold text-[11px] text-right truncate max-w-[180px]" title={subCodes.join(', ')}>
                       {subCodes.length > 0 ? subCodes.join(', ') : 'None'}
                     </span>
                   </div>
@@ -729,29 +730,29 @@ export const FacultyDirectoryPage: React.FC = () => {
                   {/* Real Database Assigned Sections */}
                   <div className="flex justify-between items-start gap-1">
                     <span className="text-slate-500 shrink-0">Assigned Sections:</span>
-                    <span className="text-slate-300 font-medium text-[11px] text-right">
+                    <span className="text-slate-800 font-semibold text-[11px] text-right">
                       {assignedSecList.length > 0 ? assignedSecList.join(', ') : 'None'}
                     </span>
                   </div>
 
                   {/* Class Coordinator Badge */}
                   {coordinatedAssignments.length > 0 && (
-                    <div className="mt-2.5 p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-[#00ff88] font-bold text-[11px] uppercase tracking-wider">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88] shrink-0" />
+                    <div className="mt-2.5 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-slate-900 font-bold text-[11px] uppercase tracking-wider">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-900 shrink-0" />
                         <span>Class Coordinator</span>
                       </div>
                       <div className="space-y-1.5">
                         {coordinatedAssignments.map(coord => (
                           <div 
                             key={coord.sectionId} 
-                            className="flex flex-wrap items-center justify-between gap-1 text-xs pt-1 border-t border-emerald-500/10 first:border-0 first:pt-0"
+                            className="flex flex-wrap items-center justify-between gap-1 text-xs pt-1 border-t border-slate-200/60 first:border-0 first:pt-0"
                           >
-                            <span className="text-white font-bold">
+                            <span className="text-slate-900 font-bold">
                               {coord.yearName} • Section {coord.sectionName}
                             </span>
                             {coord.room && (
-                              <span className="text-emerald-400 font-mono text-[11px] font-semibold bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                              <span className="text-slate-800 font-mono text-[11px] font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
                                 {coord.room}
                               </span>
                             )}
@@ -788,7 +789,7 @@ export const FacultyDirectoryPage: React.FC = () => {
           {/* Master Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Employee Code <span className="text-rose-400">*</span>
               </label>
               <input
@@ -797,11 +798,11 @@ export const FacultyDirectoryPage: React.FC = () => {
                 value={empCode}
                 onChange={(e) => setEmpCode(e.target.value)}
                 placeholder="e.g. FAC-CSE-015"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Timetable Code (3-4 letters)
               </label>
               <input
@@ -810,13 +811,13 @@ export const FacultyDirectoryPage: React.FC = () => {
                 value={facCode}
                 onChange={(e) => setFacCode(e.target.value)}
                 placeholder="e.g. RKS"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 uppercase font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Full Legal Name with Title <span className="text-rose-400">*</span>
             </label>
             <input
@@ -825,17 +826,17 @@ export const FacultyDirectoryPage: React.FC = () => {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Dr. Rajesh Kumar Sharma"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Department</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
               <select
                 value={deptId}
                 onChange={(e) => setDeptId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 {departments.map(d => (
                   <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
@@ -843,20 +844,20 @@ export const FacultyDirectoryPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Designation</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
               <input
                 type="text"
                 required
                 value={designation}
                 onChange={(e) => setDesignation(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Official Email (Portal Login) <span className="text-rose-400">*</span>
               </label>
               <input
@@ -865,17 +866,17 @@ export const FacultyDirectoryPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="e.g. rajesh.cse@vctm.in"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Phone</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +91 98765 43210"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
@@ -883,18 +884,18 @@ export const FacultyDirectoryPage: React.FC = () => {
           {/* ======================================================== */}
           {/* ASSIGNMENT BUILDER (YEAR -> SECTION -> SUBJECT) */}
           {/* ======================================================== */}
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 space-y-3">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[#00ff88] flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5" />
                   Academic Subject & Section Assignments
                 </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-slate-500 mt-0.5">
                   Assign teaching subjects across active cohorts (1st Year strictly excluded)
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full">
                 {stagedAssignments.length} Staged
               </span>
             </div>
@@ -903,7 +904,7 @@ export const FacultyDirectoryPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               {/* Year */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Academic Year</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Academic Year</label>
                 <select
                   value={assignYearId}
                   onChange={(e) => {
@@ -911,7 +912,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                     setAssignSectionId('');
                     setAssignSubjectId('');
                   }}
-                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs"
                 >
                   <option value="">— Select Year —</option>
                   {activeCohorts.map(y => (
@@ -922,7 +923,7 @@ export const FacultyDirectoryPage: React.FC = () => {
 
               {/* Section */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Section</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Section</label>
                 <select
                   value={assignSectionId}
                   disabled={!assignYearId}
@@ -930,7 +931,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                     setAssignSectionId(e.target.value);
                     setAssignSubjectId('');
                   }}
-                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs disabled:opacity-50"
                 >
                   <option value="">— Select Section —</option>
                   {availableAddSections.map(s => (
@@ -941,12 +942,12 @@ export const FacultyDirectoryPage: React.FC = () => {
 
               {/* Subject */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Subject</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Subject</label>
                 <select
                   value={assignSubjectId}
                   disabled={!assignSectionId}
                   onChange={(e) => setAssignSubjectId(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs disabled:opacity-50"
                 >
                   <option value="">— Select Subject —</option>
                   {availableAddSubjects.map(s => (
@@ -977,10 +978,10 @@ export const FacultyDirectoryPage: React.FC = () => {
                 {stagedAssignments.map((a, idx) => (
                   <div
                     key={`${a.section_id}_${a.subject_id}_${idx}`}
-                    className="flex items-center justify-between p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-xs"
+                    className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-[#00ff88] font-bold text-[10px]">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold text-[10px]">
                         {a.year_name} • Sec {a.section_name}
                       </span>
                       <span className="font-mono font-bold text-white text-[11px]">
@@ -1008,15 +1009,16 @@ export const FacultyDirectoryPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
               Cancel
             </Button>
             <Button
               type="submit"
-              variant="neon"
+              variant="primary"
               size="sm"
               disabled={actionLoading === 'creating'}
+              className="rounded-xl shadow-xs"
             >
               {actionLoading === 'creating' ? 'Saving Faculty...' : 'Save Faculty & Assignments'}
             </Button>
@@ -1044,46 +1046,46 @@ export const FacultyDirectoryPage: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Full Legal Name *</label>
+              <label className="block text-slate-700 font-semibold mb-1">Full Legal Name *</label>
               <input
                 type="text"
                 required
                 value={editFullName}
                 onChange={(e) => setEditFullName(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Timetable Code</label>
+                <label className="block text-slate-700 font-semibold mb-1">Timetable Code</label>
                 <input
                   type="text"
                   maxLength={4}
                   value={editFacCode}
                   onChange={(e) => setEditFacCode(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white uppercase focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 uppercase font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Designation</label>
+                <label className="block text-slate-700 font-semibold mb-1">Designation</label>
                 <input
                   type="text"
                   required
                   value={editDesignation}
                   onChange={(e) => setEditDesignation(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Department</label>
+                <label className="block text-slate-700 font-semibold mb-1">Department</label>
                 <select
                   value={editDeptId}
                   onChange={(e) => setEditDeptId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 >
                   {departments.map(d => (
                     <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
@@ -1091,18 +1093,18 @@ export const FacultyDirectoryPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Contact Phone</label>
+                <label className="block text-slate-700 font-semibold mb-1">Contact Phone</label>
                 <input
                   type="tel"
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">
+              <label className="block text-slate-700 font-semibold mb-1">
                 Official / Login Email *
               </label>
               <input
@@ -1110,23 +1112,23 @@ export const FacultyDirectoryPage: React.FC = () => {
                 required
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
             {/* Assignments Manager inside Edit Modal */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/20 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-[#00ff88] flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5" />
                     Manage Subject & Section Assignments
                   </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     Active teaching assignments for this faculty member
                   </p>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full">
                   {editAssignments.length} Assigned
                 </span>
               </div>
@@ -1137,10 +1139,10 @@ export const FacultyDirectoryPage: React.FC = () => {
                   {editAssignments.map((a, idx) => (
                     <div
                       key={`${a.section_id}_${a.subject_id}_${idx}`}
-                      className="flex items-center justify-between p-2 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-xs"
+                      className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-[#00ff88] font-bold text-[10px]">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold text-[10px]">
                           {a.year_name} • Sec {a.section_name}
                         </span>
                         <span className="font-mono font-bold text-white text-[11px]">
@@ -1169,7 +1171,7 @@ export const FacultyDirectoryPage: React.FC = () => {
 
               {/* Add New Assignment to Edit List */}
               <div className="pt-2 border-t border-slate-800 space-y-2">
-                <span className="text-[11px] font-bold text-slate-300 block">Add New Assignment</span>
+                <span className="text-[11px] font-bold text-slate-700 block">Add New Assignment</span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <select
                     value={editAssignYearId}
@@ -1178,7 +1180,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                       setEditAssignSectionId('');
                       setEditAssignSubjectId('');
                     }}
-                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs"
                   >
                     <option value="">— Select Year —</option>
                     {activeCohorts.map(y => (
@@ -1193,7 +1195,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                       setEditAssignSectionId(e.target.value);
                       setEditAssignSubjectId('');
                     }}
-                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs disabled:opacity-50"
                   >
                     <option value="">— Select Section —</option>
                     {availableEditSections.map(s => (
@@ -1205,7 +1207,7 @@ export const FacultyDirectoryPage: React.FC = () => {
                     value={editAssignSubjectId}
                     disabled={!editAssignSectionId}
                     onChange={(e) => setEditAssignSubjectId(e.target.value)}
-                    className="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-[#00ff88] disabled:opacity-50"
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs disabled:opacity-50"
                   >
                     <option value="">— Select Subject —</option>
                     {availableEditSubjects.map(s => (
@@ -1231,15 +1233,16 @@ export const FacultyDirectoryPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-emerald-500/15">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <Button type="button" variant="outline" size="sm" onClick={() => setEditingFaculty(null)}>
                 Cancel
               </Button>
               <Button
                 type="submit"
-                variant="neon"
+                variant="primary"
                 size="sm"
                 disabled={actionLoading === 'updating'}
+                className="rounded-xl shadow-xs"
               >
                 {actionLoading === 'updating' ? 'Saving...' : 'Save & Synchronize All Changes'}
               </Button>

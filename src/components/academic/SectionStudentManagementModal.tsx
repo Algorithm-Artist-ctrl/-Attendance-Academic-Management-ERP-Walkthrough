@@ -517,32 +517,32 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
   if (!isOpen || !section) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-6xl rounded-3xl bg-[#091322] border border-emerald-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl text-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-6xl rounded-3xl bg-white border border-slate-200/80 shadow-2xl text-slate-900 overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header & Academic Context Banner */}
-        <div className="p-5 sm:p-6 border-b border-emerald-500/20 bg-slate-950/60 flex flex-col gap-4">
+        <div className="p-5 sm:p-6 border-b border-slate-100 bg-white flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] text-xs font-black tracking-wider uppercase">
+                <span className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-black tracking-wider uppercase">
                   Section Management
                 </span>
-                <span className="px-3 py-1 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-bold">
+                <span className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
                   {sectionDept?.name} ({sectionDept?.code})
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white mt-1.5 flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1.5 flex items-center gap-2">
                 Section {section.name} — Enrolled Student Directory
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 Section-scoped student enrollment, transfers, CSV synchronization, and profile administration.
               </p>
             </div>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               title="Close modal"
             >
               <X className="w-5 h-5" />
@@ -551,83 +551,83 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
 
           {/* Academic Hierarchy Metadata Badges */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700 text-xs font-semibold text-slate-200">
-              <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
+              <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
               <span>Program:</span>
-              <span className="text-white font-bold">{sectionProgram?.name || 'B.Tech'}</span>
+              <span className="text-slate-900 font-bold">{sectionProgram?.name || 'B.Tech'}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700 text-xs font-semibold text-slate-200">
-              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
               <span>Academic Year:</span>
-              <span className="text-white font-bold">{sectionYear?.name || '2nd Year'}</span>
+              <span className="text-slate-900 font-bold">{sectionYear?.name || '2nd Year'}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700 text-xs font-semibold text-slate-200">
-              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
               <span>Semester:</span>
-              <span className="text-white font-bold">{sectionSemester?.name || '3rd Semester'}</span>
+              <span className="text-slate-900 font-bold">{sectionSemester?.name || '3rd Semester'}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700 text-xs font-semibold text-slate-200">
-              <DoorOpen className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
+              <DoorOpen className="w-3.5 h-3.5 text-slate-500" />
               <span>Classroom:</span>
-              <span className="text-emerald-400 font-mono font-bold">{section.room_number || 'Unassigned'}</span>
+              <span className="text-slate-900 font-mono font-bold">{section.room_number || 'Unassigned'}</span>
             </div>
 
             {coordinator && (
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700 text-xs font-semibold text-slate-200">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
+                <UserCheck className="w-3.5 h-3.5 text-slate-500" />
                 <span>Coordinator:</span>
-                <span className="text-white font-bold">{coordinator.full_name}</span>
+                <span className="text-slate-900 font-bold">{coordinator.full_name}</span>
               </div>
             )}
           </div>
 
           {/* Real Live Student Count Metric Pills */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-[#00ff88] font-bold">
-              <Users className="w-4 h-4" />
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-800 font-bold">
+              <Users className="w-4 h-4 text-slate-600" />
               <span>Total Enrolled: {totalStudentsCount} Students</span>
             </div>
 
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-900 border border-slate-700 text-xs text-emerald-400 font-bold">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Active: {activeStudentsCount}</span>
             </div>
 
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-900 border border-slate-700 text-xs text-slate-400 font-bold">
-              <XCircle className="w-4 h-4" />
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-bold">
+              <XCircle className="w-4 h-4 text-slate-400" />
               <span>Inactive: {inactiveStudentsCount}</span>
             </div>
           </div>
         </div>
 
         {/* Action Controls & Filtering Bar */}
-        <div className="p-4 sm:p-5 border-b border-emerald-500/15 bg-slate-950/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 w-full sm:w-auto flex-1">
             <div className="relative flex-1 max-w-sm">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by Roll No or Student Name..."
-                className="w-full pl-9 pr-3.5 py-2 bg-slate-950/80 border border-slate-700/80 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] transition-colors"
+                className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs transition-colors"
               />
             </div>
 
             {/* Status Filter */}
-            <div className="bg-slate-950 p-1 rounded-xl border border-slate-700/80 flex items-center text-xs font-bold">
+            <div className="bg-white p-1 rounded-xl border border-slate-200 flex items-center text-xs font-bold shadow-xs">
               {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setStatusFilter(filter)}
                   className={clsx(
-                    'px-2.5 py-1 rounded-lg transition-all capitalize',
+                    'px-2.5 py-1 rounded-lg transition-all capitalize cursor-pointer',
                     statusFilter === filter
-                      ? 'bg-[#00ff88] text-slate-950 font-black'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-[#0f172a] text-white font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
                   )}
                 >
                   {filter.toLowerCase()}
@@ -640,9 +640,9 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             <Button
               size="sm"
               variant="outline"
-              leftIcon={<Download className="w-3.5 h-3.5 text-emerald-400" />}
+              leftIcon={<Download className="w-3.5 h-3.5 text-slate-500" />}
               onClick={handleExportRosterCSV}
-              className="text-xs font-bold border-slate-700 text-slate-200 hover:bg-slate-800"
+              className="text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-100"
             >
               Export Roster
             </Button>
@@ -650,14 +650,14 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             <Button
               size="sm"
               variant="outline"
-              leftIcon={<UploadCloud className="w-3.5 h-3.5 text-[#00ff88]" />}
+              leftIcon={<UploadCloud className="w-3.5 h-3.5 text-slate-500" />}
               onClick={() => {
                 setImportSuccessMsg(null);
                 setImportError(null);
                 setParsedImportRows([]);
                 setIsImportModalOpen(true);
               }}
-              className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
+              className="text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-100"
             >
               Import Students
             </Button>
@@ -665,12 +665,12 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             <Button
               size="sm"
               variant="neon"
-              leftIcon={<UserPlus className="w-3.5 h-3.5 text-slate-950" />}
+              leftIcon={<UserPlus className="w-3.5 h-3.5 text-white" />}
               onClick={() => {
                 setAddError(null);
                 setIsAddModalOpen(true);
               }}
-              className="text-xs font-black shadow-[0_0_15px_rgba(0,255,136,0.3)]"
+              className="text-xs font-bold"
             >
               Add Student
             </Button>
@@ -681,8 +681,8 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
           {filteredStudents.length === 0 ? (
             <div className="text-center py-16 px-4">
-              <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h4 className="text-base font-bold text-slate-300">
+              <Users className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <h4 className="text-base font-bold text-slate-900">
                 {sectionStudents.length === 0
                   ? `No students currently enrolled in Section ${section.name}`
                   : 'No students match your search criteria'}
@@ -694,9 +694,9 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/50">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/90 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3 w-12 text-center">#</th>
                     <th className="px-4 py-3">University Roll No</th>
@@ -707,39 +707,39 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {filteredStudents.map((stud, idx) => (
-                    <tr key={stud.id} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-4 py-3 text-center text-slate-500 font-mono">
+                    <tr key={stud.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-3 text-center text-slate-400 font-mono">
                         {idx + 1}
                       </td>
 
-                      <td className="px-4 py-3 font-mono font-bold text-[#00ff88]">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">
                         {stud.roll_number}
                       </td>
 
-                      <td className="px-4 py-3 font-bold text-white">
+                      <td className="px-4 py-3 font-bold text-slate-900">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88] flex items-center justify-center font-black text-xs">
+                          <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-black text-xs">
                             {stud.full_name.charAt(0).toUpperCase()}
                           </div>
                           <span>{stud.full_name}</span>
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-slate-300">
+                      <td className="px-4 py-3 text-slate-600">
                         <div>
-                          <p className="text-slate-200">{stud.email || '—'}</p>
-                          {stud.phone && <p className="text-[11px] text-slate-500">{stud.phone}</p>}
+                          <p className="text-slate-800">{stud.email || '—'}</p>
+                          {stud.phone && <p className="text-[11px] text-slate-400">{stud.phone}</p>}
                         </div>
                       </td>
 
                       <td className="px-4 py-3">
                         <span className={clsx(
-                          'px-2 py-0.5 rounded-full text-[10px] font-bold',
+                          'px-2 py-0.5 rounded-full text-[10px] font-bold border',
                           stud.admission_type === 'Lateral Entry'
-                            ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
-                            : 'bg-blue-500/15 border border-blue-500/30 text-blue-400'
+                            ? 'bg-amber-50 border-amber-200 text-amber-800'
+                            : 'bg-slate-100 border-slate-200 text-slate-700'
                         )}>
                           {stud.admission_type || 'Regular'}
                         </span>
@@ -749,10 +749,10 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
                         <button
                           onClick={() => handleToggleStudentStatus(stud)}
                           className={clsx(
-                            'px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer',
+                            'px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer border',
                             stud.active
-                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/25'
-                              : 'bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                              : 'bg-rose-50 border-rose-200 text-rose-800 hover:bg-rose-100'
                           )}
                           title="Click to toggle active/inactive status"
                         >
@@ -764,7 +764,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenTransfer(stud)}
-                            className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                            className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
                             title="Transfer student to another section"
                           >
                             <ArrowRightLeft className="w-3 h-3" />
@@ -773,7 +773,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
 
                           <button
                             onClick={() => handleOpenEdit(stud)}
-                            className="p-1.5 text-slate-400 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                             title="Edit Student Details"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -789,9 +789,9 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-emerald-500/20 bg-slate-950/80 flex items-center justify-between text-xs text-slate-400">
+        <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex items-center justify-between text-xs text-slate-500">
           <div>
-            Showing <span className="text-white font-bold">{filteredStudents.length}</span> of <span className="text-white font-bold">{totalStudentsCount}</span> students in Section {section.name}
+            Showing <span className="text-slate-900 font-bold">{filteredStudents.length}</span> of <span className="text-slate-900 font-bold">{totalStudentsCount}</span> students in Section {section.name}
           </div>
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
@@ -809,67 +809,67 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       >
         <form onSubmit={handleAddStudentSubmit} className="space-y-4">
           {addError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{addError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">University Roll Number *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">University Roll Number *</label>
             <input
               type="text"
               required
               value={addRollNumber}
               onChange={(e) => setAddRollNumber(e.target.value)}
               placeholder="e.g. 2503400100054"
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Full Student Name *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Student Name *</label>
             <input
               type="text"
               required
               value={addFullName}
               onChange={(e) => setAddFullName(e.target.value)}
               placeholder="e.g. RAHUL SHARMA"
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
               <input
                 type="email"
                 value={addEmail}
                 onChange={(e) => setAddEmail(e.target.value)}
                 placeholder="Optional (defaults to roll@vctm.in)"
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
               <input
                 type="tel"
                 value={addPhone}
                 onChange={(e) => setAddPhone(e.target.value)}
                 placeholder="e.g. 9876543210"
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Admission Type</label>
               <select
                 value={addAdmissionType}
                 onChange={(e) => setAddAdmissionType(e.target.value as AdmissionType)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88] cursor-pointer"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
               >
                 <option value="Regular">Regular</option>
                 <option value="Lateral Entry">Lateral Entry</option>
@@ -877,22 +877,22 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Assigned Section</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Section</label>
               <input
                 type="text"
                 disabled
                 value={`Section ${section.name} (Locked)`}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-emerald-400 font-bold"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-bold"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Faculty Mentor (Optional)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Faculty Mentor (Optional)</label>
             <select
               value={addMentorFacultyId}
               onChange={(e) => setAddMentorFacultyId(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88] cursor-pointer"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
             >
               <option value="">No Mentor Assigned</option>
               {faculty
@@ -903,7 +903,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </select>
           </div>
 
-          <div className="pt-3 flex items-center justify-end gap-2">
+          <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
@@ -934,29 +934,29 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       >
         <div className="space-y-4">
           {importError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{importError}</span>
             </div>
           )}
 
           {importSuccessMsg && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{importSuccessMsg}</span>
             </div>
           )}
 
           {/* Import Source Tabs */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setImportMode('file')}
                 className={clsx(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all',
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
                   importMode === 'file'
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#0f172a] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
                 )}
               >
                 CSV File Upload
@@ -964,10 +964,10 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
               <button
                 onClick={() => setImportMode('url')}
                 className={clsx(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all',
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
                   importMode === 'url'
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#0f172a] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
                 )}
               >
                 Google Sheet CSV URL
@@ -977,9 +977,9 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             <Button
               size="sm"
               variant="outline"
-              leftIcon={<FileDown className="w-3.5 h-3.5 text-emerald-400" />}
+              leftIcon={<FileDown className="w-3.5 h-3.5 text-slate-500" />}
               onClick={handleDownloadSampleCSV}
-              className="text-xs border-slate-700"
+              className="text-xs border-slate-200 text-slate-700 hover:bg-slate-50"
             >
               Download Template
             </Button>
@@ -987,32 +987,32 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
 
           {/* Import Inputs */}
           {importMode === 'file' ? (
-            <div className="p-6 rounded-2xl border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-950/60 text-center space-y-3 transition-colors">
-              <UploadCloud className="w-8 h-8 text-[#00ff88] mx-auto" />
+            <div className="p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50/60 text-center space-y-3 transition-colors">
+              <UploadCloud className="w-8 h-8 text-slate-500 mx-auto" />
               <div>
-                <p className="text-xs font-bold text-white">Select or drag CSV student file</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Required headers: Roll Number, Student Name</p>
+                <p className="text-xs font-bold text-slate-900">Select or drag CSV student file</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Required headers: Roll Number, Student Name</p>
               </div>
               <input
                 type="file"
                 accept=".csv,text/csv"
                 onChange={handleImportFileUpload}
-                className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00ff88] file:text-slate-950 hover:file:bg-[#00e67a] cursor-pointer"
+                className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#0f172a] file:text-white hover:file:bg-black cursor-pointer"
               />
               {importFileName && (
-                <p className="text-xs font-mono text-emerald-400">Selected: {importFileName}</p>
+                <p className="text-xs font-mono text-slate-700">Selected: {importFileName}</p>
               )}
             </div>
           ) : (
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">Public Google Sheet URL</label>
+              <label className="block text-xs font-semibold text-slate-700">Public Google Sheet URL</label>
               <div className="flex gap-2">
                 <input
                   type="url"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                   placeholder="https://docs.google.com/spreadsheets/d/..."
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
                 <Button
                   variant="neon"
@@ -1029,32 +1029,32 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
           {/* Validation & Preview Summary */}
           {parsedImportRows.length > 0 && (
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                 <div className="flex items-center gap-3">
-                  <span className="font-bold text-white">
+                  <span className="font-bold text-slate-900">
                     Total: {parsedImportRows.length} Rows
                   </span>
-                  <span className="text-[#00ff88] font-bold">
+                  <span className="text-emerald-700 font-bold">
                     {parsedImportRows.filter(r => r.status === 'NEW').length} New
                   </span>
-                  <span className="text-blue-400 font-bold">
+                  <span className="text-blue-700 font-bold">
                     {parsedImportRows.filter(r => r.status === 'UPDATE').length} Update
                   </span>
                   {parsedImportRows.filter(r => r.status === 'INVALID').length > 0 && (
-                    <span className="text-rose-400 font-bold">
+                    <span className="text-rose-700 font-bold">
                       {parsedImportRows.filter(r => r.status === 'INVALID').length} Invalid
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-slate-500 font-mono">
                   Target: Section {section.name}
                 </span>
               </div>
 
               {/* Preview Table (First 8 rows) */}
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950">
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xs">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-900 text-slate-400 font-bold uppercase sticky top-0">
+                  <thead className="bg-slate-50 text-slate-600 font-bold uppercase sticky top-0 border-b border-slate-200">
                     <tr>
                       <th className="px-3 py-2">Roll No</th>
                       <th className="px-3 py-2">Name</th>
@@ -1062,18 +1062,18 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
                       <th className="px-3 py-2">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-100">
                     {parsedImportRows.slice(0, 10).map((r, i) => (
-                      <tr key={i} className="hover:bg-slate-900/50">
-                        <td className="px-3 py-2 font-mono text-emerald-400">{r.roll_number}</td>
-                        <td className="px-3 py-2 font-bold text-white">{r.full_name}</td>
-                        <td className="px-3 py-2 text-slate-300">{r.admission_type}</td>
+                      <tr key={i} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-mono text-slate-900 font-semibold">{r.roll_number}</td>
+                        <td className="px-3 py-2 font-bold text-slate-900">{r.full_name}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.admission_type}</td>
                         <td className="px-3 py-2">
                           <span className={clsx(
-                            'px-2 py-0.5 rounded-full text-[10px] font-bold',
-                            r.status === 'NEW' && 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]',
-                            r.status === 'UPDATE' && 'bg-blue-500/15 border border-blue-500/30 text-blue-400',
-                            r.status === 'INVALID' && 'bg-rose-500/15 border border-rose-500/30 text-rose-400',
+                            'px-2 py-0.5 rounded-full text-[10px] font-bold border',
+                            r.status === 'NEW' && 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                            r.status === 'UPDATE' && 'bg-blue-50 border-blue-200 text-blue-800',
+                            r.status === 'INVALID' && 'bg-rose-50 border-rose-200 text-rose-800',
                           )}>
                             {r.status}
                           </span>
@@ -1086,7 +1086,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </div>
           )}
 
-          <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-800">
+          <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
@@ -1119,16 +1119,16 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       >
         <div className="space-y-4">
           {transferError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{transferError}</span>
             </div>
           )}
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-            <p className="text-xs text-slate-400">Student to Transfer:</p>
-            <h4 className="text-base font-black text-white">{transferStudent?.full_name}</h4>
-            <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <p className="text-xs text-slate-500">Student to Transfer:</p>
+            <h4 className="text-base font-black text-slate-900">{transferStudent?.full_name}</h4>
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
               <span>Roll No: {transferStudent?.roll_number}</span>
               <span>•</span>
               <span>Current: Section {section.name}</span>
@@ -1136,11 +1136,11 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Select Target Section *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Select Target Section *</label>
             <select
               value={targetSectionId}
               onChange={(e) => setTargetSectionId(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88] cursor-pointer"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
             >
               <option value="">-- Choose New Section --</option>
               {availableTargetSections.map(s => {
@@ -1155,17 +1155,17 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </select>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 space-y-1">
-            <p className="font-bold flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-blue-400" />
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+            <p className="font-bold flex items-center gap-1.5 text-slate-900">
+              <CheckCircle2 className="w-4 h-4 text-slate-600" />
               Data Integrity Guarantee
             </p>
-            <p className="text-[11px] text-slate-300 leading-relaxed">
+            <p className="text-[11px] text-slate-600 leading-relaxed">
               100% of attendance records, date stamps, internal test marks, assignment submissions, and Supabase login credentials remain completely intact and linked to the student.
             </p>
           </div>
 
-          <div className="pt-3 flex items-center justify-end gap-2">
+          <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
@@ -1198,63 +1198,63 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       >
         <form onSubmit={handleSaveEdit} className="space-y-4">
           {editError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{editError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">University Roll Number *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">University Roll Number *</label>
             <input
               type="text"
               required
               value={editRollNumber}
               onChange={(e) => setEditRollNumber(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
             <input
               type="text"
               required
               value={editFullName}
               onChange={(e) => setEditFullName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
               <input
                 type="email"
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
               <input
                 type="tel"
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Admission Type</label>
               <select
                 value={editAdmissionType}
                 onChange={(e) => setEditAdmissionType(e.target.value as AdmissionType)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88] cursor-pointer"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
               >
                 <option value="Regular">Regular</option>
                 <option value="Lateral Entry">Lateral Entry</option>
@@ -1262,11 +1262,11 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Faculty Mentor</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Faculty Mentor</label>
               <select
                 value={editMentorFacultyId}
                 onChange={(e) => setEditMentorFacultyId(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-[#00ff88] cursor-pointer"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
               >
                 <option value="">No Mentor Assigned</option>
                 {faculty
@@ -1278,7 +1278,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </div>
           </div>
 
-          <div className="pt-3 flex items-center justify-end gap-2">
+          <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"

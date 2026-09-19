@@ -211,10 +211,10 @@ export const AcademicSetupPage: React.FC = () => {
 
   if (!isSuperAdmin && !isHod) {
     return (
-      <div className="p-8 text-center glass-panel rounded-3xl border border-rose-500/20 max-w-xl mx-auto my-12">
+      <div className="p-8 text-center bg-white rounded-3xl border border-rose-200 max-w-xl mx-auto my-12 shadow-xs">
         <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-white mb-2">Access Restricted</h3>
-        <p className="text-slate-400 text-sm">
+        <h3 className="text-xl font-bold font-serif-institutional text-slate-900 mb-2">Access Restricted</h3>
+        <p className="text-slate-500 text-sm">
           Only institutional Super Administrators and Heads of Department (HOD) have permission to configure academic sections and structure.
         </p>
       </div>
@@ -224,27 +224,27 @@ export const AcademicSetupPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Layers className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-bold font-serif-institutional text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Layers className="w-6 h-6 text-slate-800" />
             Academic Hierarchy & Structure
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Configure departments, degree programs, semesters, and class sections dynamically
           </p>
         </div>
 
         {/* Tab switcher pills */}
         {isSuperAdmin ? (
-          <div className="flex items-center bg-slate-950/80 p-1.5 rounded-2xl border border-emerald-500/20 text-xs font-bold">
+          <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold">
             <button
               onClick={() => setActiveTab('departments')}
               className={clsx(
                 'px-3.5 py-1.5 rounded-xl transition-all',
                 activeTab === 'departments'
-                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               )}
             >
               Departments ({departments.length})
@@ -254,8 +254,8 @@ export const AcademicSetupPage: React.FC = () => {
               className={clsx(
                 'px-3.5 py-1.5 rounded-xl transition-all',
                 activeTab === 'programs'
-                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               )}
             >
               Programs ({programs.length})
@@ -265,8 +265,8 @@ export const AcademicSetupPage: React.FC = () => {
               className={clsx(
                 'px-3.5 py-1.5 rounded-xl transition-all',
                 activeTab === 'sections'
-                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               )}
             >
               Class Sections ({sections.length})
@@ -276,21 +276,21 @@ export const AcademicSetupPage: React.FC = () => {
               className={clsx(
                 'px-3.5 py-1.5 rounded-xl transition-all',
                 activeTab === 'policy'
-                  ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               )}
             >
               Claim Policy & Settings
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2.5 bg-slate-950/80 px-4 py-2 rounded-2xl border border-emerald-500/20 text-xs font-bold text-slate-300">
-            <Building2 className="w-4 h-4 text-[#00ff88]" />
+          <div className="flex items-center gap-2.5 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs">
+            <Building2 className="w-4 h-4 text-slate-700" />
             <span>Department:</span>
-            <span className="text-[#00ff88]">
+            <span className="text-slate-900 font-bold">
               {departments.find(d => d.id === user?.department_id)?.name || 'Computer Science & Engineering'}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] text-emerald-400 border border-emerald-500/20">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] text-emerald-800 border border-emerald-200 font-bold">
               HOD Access
             </span>
           </div>
@@ -299,16 +299,16 @@ export const AcademicSetupPage: React.FC = () => {
 
       {/* Departments Tab */}
       {activeTab === 'departments' && (
-        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">College Departments</h3>
+              <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">College Departments</h3>
               <p className="text-xs text-slate-400">Engineering and management branches</p>
             </div>
             <Button
               size="sm"
-              variant="neon"
-              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+              variant="primary"
+              leftIcon={<Plus className="w-4 h-4 text-white" />}
               onClick={() => setIsDeptModalOpen(true)}
             >
               Add Department
@@ -324,7 +324,7 @@ export const AcademicSetupPage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                   <tr>
                     <th className="px-5 py-3.5">Code</th>
                     <th className="px-5 py-3.5">Department Name</th>
@@ -333,23 +333,23 @@ export const AcademicSetupPage: React.FC = () => {
                     <th className="px-5 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-500/10">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {departments.map((dept) => {
                     const hod = faculty.find(f => f.id === dept.hod_faculty_id);
                     return (
-                      <tr key={dept.id} className="hover:bg-emerald-500/5 transition-colors">
-                        <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{dept.code}</td>
-                        <td className="px-5 py-4 font-bold text-white text-sm">{dept.name}</td>
-                        <td className="px-5 py-4 text-slate-300 font-medium">
+                      <tr key={dept.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-slate-900 text-sm">{dept.code}</td>
+                        <td className="px-5 py-4 font-bold text-slate-900 text-sm">{dept.name}</td>
+                        <td className="px-5 py-4 text-slate-600 font-medium">
                           {hod ? (
-                            <span className="text-white font-semibold flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+                            <span className="text-slate-900 font-semibold flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-slate-400" />
                               {hod.full_name} ({hod.faculty_code || 'HOD'})
                             </span>
                           ) : 'Not Appointed'}
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
                             Active
                           </span>
                         </td>
@@ -374,16 +374,16 @@ export const AcademicSetupPage: React.FC = () => {
 
       {/* Programs Tab */}
       {activeTab === 'programs' && (
-        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-slate-950/40">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">Degree Programs</h3>
+              <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">Degree Programs</h3>
               <p className="text-xs text-slate-400">Undergraduate & postgraduate courses</p>
             </div>
             <Button
               size="sm"
-              variant="neon"
-              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+              variant="primary"
+              leftIcon={<Plus className="w-4 h-4 text-white" />}
               onClick={() => setIsProgModalOpen(true)}
             >
               Add Program
@@ -399,7 +399,7 @@ export const AcademicSetupPage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                   <tr>
                     <th className="px-5 py-3.5">Code</th>
                     <th className="px-5 py-3.5">Degree Program</th>
@@ -409,17 +409,17 @@ export const AcademicSetupPage: React.FC = () => {
                     <th className="px-5 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-500/10">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {programs.map((prog) => {
                     const dept = departments.find(d => d.id === prog.department_id);
                     return (
-                      <tr key={prog.id} className="hover:bg-emerald-500/5 transition-colors">
-                        <td className="px-5 py-4 font-mono font-bold text-emerald-400 text-sm">{prog.code}</td>
-                        <td className="px-5 py-4 font-bold text-white text-sm">{prog.name}</td>
-                        <td className="px-5 py-4 text-slate-300 font-medium">{dept?.name || 'CSE'}</td>
-                        <td className="px-5 py-4 text-center font-bold text-white">{prog.duration_years} Years</td>
+                      <tr key={prog.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-slate-900 text-sm">{prog.code}</td>
+                        <td className="px-5 py-4 font-bold text-slate-900 text-sm">{prog.name}</td>
+                        <td className="px-5 py-4 text-slate-600 font-medium">{dept?.name || 'CSE'}</td>
+                        <td className="px-5 py-4 text-center font-bold text-slate-900">{prog.duration_years} Years</td>
                         <td className="px-5 py-4 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
                             Active
                           </span>
                         </td>
@@ -444,16 +444,16 @@ export const AcademicSetupPage: React.FC = () => {
 
       {/* Sections Tab */}
       {activeTab === 'sections' && (
-        <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
-          <div className="px-6 py-4 border-b border-emerald-500/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/40">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">Class Sections & Multi-Year Academic Structure</h3>
+              <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">Class Sections & Multi-Year Academic Structure</h3>
               <p className="text-xs text-slate-400">Classrooms, semesters, and assigned coordinators across all academic years</p>
             </div>
             
             <div className="flex flex-wrap items-center gap-2">
               {/* Year Filter */}
-              <div className="flex items-center gap-1 bg-slate-900/80 border border-emerald-500/20 rounded-xl px-2.5 py-1">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1 shadow-xs">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Year:</span>
                 <select
                   value={filterYearId}
@@ -461,49 +461,49 @@ export const AcademicSetupPage: React.FC = () => {
                     setFilterYearId(e.target.value);
                     setFilterSemesterId('ALL');
                   }}
-                  className="bg-transparent text-xs font-bold text-[#00ff88] focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
                 >
-                  <option value="ALL" className="bg-slate-950 text-white">All Years</option>
+                  <option value="ALL" >All Years</option>
                   {years.map(y => (
-                    <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+                    <option key={y.id} value={y.id} >{y.name}</option>
                   ))}
                 </select>
               </div>
 
               {/* Semester Filter */}
-              <div className="flex items-center gap-1 bg-slate-900/80 border border-emerald-500/20 rounded-xl px-2.5 py-1">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1 shadow-xs">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Semester:</span>
                 <select
                   value={filterSemesterId}
                   onChange={(e) => setFilterSemesterId(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-200 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
                 >
-                  <option value="ALL" className="bg-slate-950 text-white">All Semesters</option>
+                  <option value="ALL" >All Semesters</option>
                   {availableSemestersForFilter.map(s => (
-                    <option key={s.id} value={s.id} className="bg-slate-950 text-white">{s.name}</option>
+                    <option key={s.id} value={s.id} >{s.name}</option>
                   ))}
                 </select>
               </div>
 
               {/* Section Filter */}
-              <div className="flex items-center gap-1 bg-slate-900/80 border border-emerald-500/20 rounded-xl px-2.5 py-1">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1 shadow-xs">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Section:</span>
                 <select
                   value={filterSectionName}
                   onChange={(e) => setFilterSectionName(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-blue-400 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
                 >
-                  <option value="ALL" className="bg-slate-950 text-white">All Sections</option>
+                  <option value="ALL" >All Sections</option>
                   {availableSectionNamesForFilter.filter(n => n !== 'ALL').map(name => (
-                    <option key={name} value={name} className="bg-slate-950 text-white">Section {name}</option>
+                    <option key={name} value={name} >Section {name}</option>
                   ))}
                 </select>
               </div>
 
               <Button
                 size="sm"
-                variant="neon"
-                leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+                variant="primary"
+                leftIcon={<Plus className="w-4 h-4 text-white" />}
                 onClick={() => setIsSecModalOpen(true)}
               >
                 Add Section
@@ -520,7 +520,7 @@ export const AcademicSetupPage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                   <tr>
                     <th className="px-5 py-3.5">Section</th>
                     <th className="px-5 py-3.5">Academic Year</th>
@@ -532,7 +532,7 @@ export const AcademicSetupPage: React.FC = () => {
                     <th className="px-5 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-500/10">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {filteredSections.map((sec) => {
                     const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
                     const sem = semesters.find(s => s.id === sec.semester_id);
@@ -541,30 +541,30 @@ export const AcademicSetupPage: React.FC = () => {
                     const studentCount = secStudents.length;
 
                     return (
-                      <tr key={sec.id} className="hover:bg-emerald-500/5 transition-colors">
+                      <tr key={sec.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-5 py-4 font-bold text-white text-sm">
-                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[#00ff88]">
+                          <span className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-900 font-bold shadow-xs">
                             Section {sec.name}
                           </span>
                         </td>
-                        <td className="px-5 py-4 font-semibold text-slate-200">{yr?.name || '—'}</td>
-                        <td className="px-5 py-4 text-slate-300">{sem?.name || '—'}</td>
-                        <td className="px-5 py-4 font-mono text-emerald-400 font-semibold">{sec.room_number || 'TBD'}</td>
+                        <td className="px-5 py-4 font-semibold text-slate-900">{yr?.name || '—'}</td>
+                        <td className="px-5 py-4 text-slate-600">{sem?.name || '—'}</td>
+                        <td className="px-5 py-4 font-mono text-slate-900 font-semibold">{sec.room_number || 'TBD'}</td>
                         <td className="px-5 py-4">
                           <button
                             onClick={() => setManagingStudentsSection(sec)}
-                            className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer text-xs"
+                            className="px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-bold hover:bg-slate-200 transition-all flex items-center gap-1.5 cursor-pointer text-xs shadow-xs"
                             title={`Manage ${studentCount} students in Section ${sec.name}`}
                           >
                             <Users className="w-3.5 h-3.5" />
                             <span>{studentCount} Students</span>
                           </button>
                         </td>
-                        <td className="px-5 py-4 text-slate-300 font-medium">
+                        <td className="px-5 py-4 text-slate-600 font-medium">
                           {coordinator ? `${coordinator.full_name} (${coordinator.faculty_code || 'Faculty'})` : '—'}
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
                             Active
                           </span>
                         </td>
@@ -572,7 +572,7 @@ export const AcademicSetupPage: React.FC = () => {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => setManagingStudentsSection(sec)}
-                              className="p-1.5 text-slate-500 hover:text-blue-400 rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                               title="Manage Section Students"
                             >
                               <Users className="w-4 h-4" />
@@ -585,7 +585,7 @@ export const AcademicSetupPage: React.FC = () => {
                                 setEditSecRoom(sec.room_number || '');
                                 setEditSecCoordinatorId(sec.class_coordinator_id || '');
                               }}
-                              className="p-1.5 text-slate-500 hover:text-[#00ff88] rounded-lg hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                               title="Edit Section & Class Coordinator"
                             >
                               <Edit3 className="w-4 h-4" />
@@ -611,18 +611,18 @@ export const AcademicSetupPage: React.FC = () => {
 
       {/* Policy & Claim Window Tab */}
       {activeTab === 'policy' && (
-        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-6">
-          <div className="flex items-center justify-between border-b border-emerald-500/15 pb-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
-              <h3 className="text-base font-bold text-white tracking-wide">
+              <h3 className="text-base font-bold font-serif-institutional text-slate-900 tracking-wide">
                 Institutional Attendance Policy & Rectification Rules
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Configure student claim periods, AKTU threshold, and audit requirements
               </p>
             </div>
             {policySaved && (
-              <span className="px-3 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold animate-in zoom-in-95">
+              <span className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold animate-in zoom-in-95">
                 Settings Saved Successfully!
               </span>
             )}
@@ -639,7 +639,7 @@ export const AcademicSetupPage: React.FC = () => {
           >
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Attendance Claim Window (Days)
                 </label>
                 <div className="flex items-center gap-3">
@@ -649,7 +649,7 @@ export const AcademicSetupPage: React.FC = () => {
                     max={90}
                     value={tempClaimDays}
                     onChange={(e) => setTempClaimDays(Number(e.target.value))}
-                    className="w-32 px-3.5 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-sm font-black text-[#00ff88] focus:outline-none focus:border-[#00ff88]"
+                    className="w-32 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                   />
                   <span className="text-xs text-slate-400">
                     Days allowed for students to report discrepancy after lecture date
@@ -657,9 +657,9 @@ export const AcademicSetupPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 space-y-2 text-xs">
-                <h4 className="font-bold text-white">Active College Rules:</h4>
-                <ul className="list-disc list-inside text-slate-300 space-y-1 text-[11px]">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs text-slate-600 shadow-xs">
+                <h4 className="font-bold text-slate-900">Active College Rules:</h4>
+                <ul className="list-disc list-inside text-slate-600 space-y-1 text-[11px]">
                   <li>Minimum AKTU attendance eligibility requirement: <strong>75%</strong></li>
                   <li>Absence calculation formula: <code>Present ÷ (Present + Absent) × 100</code></li>
                   <li>Unconducted / Not Recorded lectures are strictly omitted from attendance denominator</li>
@@ -669,7 +669,7 @@ export const AcademicSetupPage: React.FC = () => {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" variant="neon" size="sm">
+              <Button type="submit" variant="primary" size="sm">
                 Save Policy Configuration
               </Button>
             </div>
@@ -686,30 +686,30 @@ export const AcademicSetupPage: React.FC = () => {
       >
         <form onSubmit={handleCreateDept} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Department Name</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department Name</label>
             <input
               type="text"
               required
               value={newDeptName}
               onChange={(e) => setNewDeptName(e.target.value)}
               placeholder="e.g. Electrical Engineering"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Department Code</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department Code</label>
             <input
               type="text"
               required
               value={newDeptCode}
               onChange={(e) => setNewDeptCode(e.target.value)}
               placeholder="e.g. EE"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 uppercase shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsDeptModalOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="neon" size="sm">Save Department</Button>
+            <Button type="submit" variant="primary" size="sm">Save Department</Button>
           </div>
         </form>
       </Modal>
@@ -723,30 +723,30 @@ export const AcademicSetupPage: React.FC = () => {
       >
         <form onSubmit={handleCreateProg} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Program Name</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Program Name</label>
             <input
               type="text"
               required
               value={newProgName}
               onChange={(e) => setNewProgName(e.target.value)}
               placeholder="e.g. Master of Business Administration"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Program Code</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Program Code</label>
             <input
               type="text"
               required
               value={newProgCode}
               onChange={(e) => setNewProgCode(e.target.value)}
               placeholder="e.g. MBA"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 uppercase shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsProgModalOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="neon" size="sm">Save Program</Button>
+            <Button type="submit" variant="primary" size="sm">Save Program</Button>
           </div>
         </form>
       </Modal>
@@ -769,12 +769,12 @@ export const AcademicSetupPage: React.FC = () => {
       >
         <form onSubmit={handleUpdateSec} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Semester / Academic Cohort</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Semester / Academic Cohort</label>
             <select
               value={editSecSemesterId}
               onChange={(e) => setEditSecSemesterId(e.target.value)}
               required
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               {semesters.map(s => {
                 const yr = years.find(y => y.id === s.academic_year_id);
@@ -785,7 +785,7 @@ export const AcademicSetupPage: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Section Identifier</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Section Identifier</label>
             <input
               type="text"
               required
@@ -793,25 +793,25 @@ export const AcademicSetupPage: React.FC = () => {
               value={editSecName}
               onChange={(e) => setEditSecName(e.target.value)}
               placeholder="e.g. A"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 uppercase shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Assigned Classroom</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Classroom</label>
             <input
               type="text"
               value={editSecRoom}
               onChange={(e) => setEditSecRoom(e.target.value)}
               placeholder="e.g. Room A007"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Class Coordinator</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Class Coordinator</label>
             <select
               value={editSecCoordinatorId}
               onChange={(e) => setEditSecCoordinatorId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               <option value="">None (Unassigned)</option>
               {faculty.map(f => (
@@ -819,9 +819,9 @@ export const AcademicSetupPage: React.FC = () => {
               ))}
             </select>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setEditingSection(null)}>Cancel</Button>
-            <Button type="submit" variant="neon" size="sm">Update Section</Button>
+            <Button type="submit" variant="primary" size="sm">Update Section</Button>
           </div>
         </form>
       </Modal>

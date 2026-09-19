@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { History, Calendar, CheckSquare, Users, Search, MapPin } from 'lucide-react';
+import { History, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
-import { Card } from '../../components/common/Card';
-import { Button } from '../../components/common/Button';
 
 interface AttendanceHistoryProps {
   onTakeAttendance: (timetableEntryId?: string) => void;
 }
 
-export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = ({ onTakeAttendance }) => {
+export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = () => {
   const { user } = useAuth();
   const { faculty, attendanceSessions, attendanceRecords } = useAcademic();
   const currentFaculty = faculty.find(
@@ -37,39 +35,39 @@ export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = ({ onTake
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <History className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-serif-institutional flex items-center gap-2.5">
+            <History className="w-6 h-6 text-slate-900" />
             Lecture Attendance History
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Archive of attendance sessions recorded by <span className="text-[#00ff88] font-bold">{currentFaculty?.full_name || user?.full_name}</span>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Archive of attendance sessions recorded by <span className="text-slate-900 font-bold">{currentFaculty?.full_name || user?.full_name}</span>
           </p>
         </div>
 
         <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search date, code, or subject..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
           />
         </div>
       </div>
 
       {/* History Table */}
-      <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="p-12 text-center text-xs text-slate-400">
+          <div className="p-12 text-center text-xs text-slate-500">
             No historical attendance sessions found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+              <thead className="bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-xs">
                 <tr>
                   <th className="px-5 py-3.5">Session Date</th>
                   <th className="px-5 py-3.5">Subject</th>
@@ -79,37 +77,37 @@ export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = ({ onTake
                   <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-emerald-500/10">
+              <tbody className="divide-y divide-slate-100">
                 {filtered.map((s) => {
                   const records = attendanceRecords.filter(r => r.attendance_session_id === s.id);
                   const presentCount = records.filter(r => r.status === 'Present').length;
                   const absentCount = records.length - presentCount;
 
                   return (
-                    <tr key={s.id} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="px-5 py-4 font-mono font-bold text-white text-sm">
+                    <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-4 font-mono font-semibold text-slate-900 text-sm">
                         {s.session_date}
                       </td>
-                      <td className="px-5 py-4 font-bold text-emerald-400 text-sm">
+                      <td className="px-5 py-4 font-bold text-slate-900 text-sm">
                         {s.subject?.subject_name}
-                        <span className="block text-[10px] text-slate-400 font-normal">
+                        <span className="block text-[11px] text-slate-500 font-mono font-normal">
                           {s.subject?.subject_code}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                        <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-700">
                           Section {s.section?.name}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-center font-mono text-slate-300">
+                      <td className="px-5 py-4 text-center font-mono text-slate-600">
                         {s.start_time} - {s.end_time}
                       </td>
                       <td className="px-5 py-4 text-center font-semibold">
-                        <span className="text-[#00ff88]">{presentCount} Present</span> /{' '}
-                        <span className="text-rose-400">{absentCount} Absent</span>
+                        <span className="text-emerald-700">{presentCount} Present</span> /{' '}
+                        <span className="text-rose-700">{absentCount} Absent</span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
                           Committed
                         </span>
                       </td>

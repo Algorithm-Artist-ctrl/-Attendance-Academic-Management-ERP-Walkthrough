@@ -49,30 +49,30 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-200">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"
+        className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal Card */}
       <div
         className={clsx(
-          'relative w-full rounded-t-3xl sm:rounded-3xl bg-[#091322]/95 border-t sm:border border-emerald-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl text-slate-100 overflow-hidden z-10 transition-all transform animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col',
+          'relative w-full rounded-t-3xl sm:rounded-3xl bg-white border-t sm:border border-slate-200 shadow-2xl text-slate-900 overflow-hidden z-10 transition-all transform animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col',
           maxWidthStyles[maxWidth]
         )}
       >
         {/* Header */}
-        <div className="px-5 sm:px-6 py-4 border-b border-emerald-500/15 flex items-start justify-between gap-4 bg-slate-950/40 shrink-0">
+        <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50 shrink-0">
           <div>
-            <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+            <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
               {title}
             </h3>
             {description && (
-              <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-emerald-500/10 transition-colors touch-target flex items-center justify-center"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors touch-target flex items-center justify-center cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -80,11 +80,11 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1 pb-safe">{children}</div>
+        <div className="p-5 sm:px-6 overflow-y-auto space-y-4 flex-1 pb-safe text-slate-700">{children}</div>
 
         {/* Optional Footer */}
         {footer && (
-          <div className="px-5 sm:px-6 py-3.5 border-t border-emerald-500/15 bg-slate-950/40 flex items-center justify-end gap-3 shrink-0 pb-safe">
+          <div className="px-5 sm:px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 shrink-0 pb-safe">
             {footer}
           </div>
         )}

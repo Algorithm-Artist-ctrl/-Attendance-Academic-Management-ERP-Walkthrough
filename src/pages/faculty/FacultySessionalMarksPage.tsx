@@ -381,34 +381,33 @@ export const FacultySessionalMarksPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 shadow-xs">
                 <Award className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Sessional Assessments & Marks Ledger</h1>
-                <p className="text-slate-400 text-sm mt-0.5">
+                <h1 className="text-2xl sm:text-3xl font-serif-institutional font-black text-slate-900 tracking-tight">Sessional Assessments & Marks Ledger</h1>
+                <p className="text-slate-500 text-sm mt-0.5">
                   Create multiple dynamic sessionals (Sessional 1, 2, 3, 4, PUT), record scores, and modify marks live.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Button
               variant="outline"
               onClick={() => setIsHistoryModalOpen(true)}
-              className="border-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5"
+              className="border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-xs"
             >
-              <History className="w-4 h-4 text-blue-400" /> Audit History
+              <History className="w-4 h-4 text-slate-500" /> Audit History
             </Button>
             <Button
               onClick={handleOpenAddModal}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> + Add Sessional
             </Button>
@@ -416,13 +415,13 @@ export const FacultySessionalMarksPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Subject</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Subject</label>
             <select
               value={selectedSubjectId}
               onChange={(e) => handleSubjectChange(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             >
               {myAssignedSubjects.map(s => (
                 <option key={s.subject.id} value={s.subject.id}>
@@ -433,11 +432,11 @@ export const FacultySessionalMarksPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Section</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Section</label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             >
               {myAssignedSubjects
                 .find(s => s.subject.id === selectedSubjectId)
@@ -454,7 +453,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Search Assessments</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Search Assessments</label>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
@@ -462,7 +461,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                 placeholder="Search sessional title..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
@@ -471,35 +470,35 @@ export const FacultySessionalMarksPage: React.FC = () => {
 
       {/* Success Toast Notification */}
       {successToast && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 text-sm flex items-center gap-2 shadow-lg">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <span>{successToast}</span>
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm flex items-center gap-2 shadow-xs">
+          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+          <span className="font-medium">{successToast}</span>
         </div>
       )}
 
       {/* Active Class & Section Context Banner */}
       {selectedSubject && selectedSection && (
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/30 text-xs text-slate-300">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 shadow-xs">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-slate-400 font-semibold">Active Managing Context:</span>
-            <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-[#00ff88] font-bold font-mono">
+            <span className="text-slate-500 font-semibold">Active Managing Context:</span>
+            <span className="px-2.5 py-0.5 rounded-md bg-slate-200/80 text-slate-900 font-bold font-mono border border-slate-300">
               {selectedSubject.subject_code} — {selectedSubject.subject_name}
             </span>
-            <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-emerald-500/20">
+            <span className="px-2.5 py-0.5 rounded-md bg-white text-slate-900 font-bold border border-slate-200 shadow-xs">
               Section {selectedSection.name}
             </span>
             {(() => {
               const sem = semesters.find(s => s.id === selectedSection.semester_id);
               const yr = years.find(y => y.id === sem?.academic_year_id);
               return (
-                <span className="text-slate-400">
+                <span className="text-slate-500">
                   • {sem?.name || 'Odd Semester 2026–2027'} {yr?.name ? `(${yr.name})` : ''}
                 </span>
               );
             })()}
           </div>
-          <span className="text-[11px] text-emerald-400 font-semibold hidden sm:inline">
-            ✓ Section-Specific Marks Isolation Active
+          <span className="text-[11px] text-emerald-700 font-semibold hidden sm:inline flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" /> Section-Specific Marks Isolation Active
           </span>
         </div>
       )}
@@ -507,15 +506,15 @@ export const FacultySessionalMarksPage: React.FC = () => {
       {/* Dynamic Sessionals Card Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredAssessments.length === 0 ? (
-          <div className="col-span-full py-16 text-center bg-slate-900/50 border border-slate-800/60 rounded-2xl">
-            <Award className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
-            <h3 className="text-lg font-semibold text-slate-300">No Sessionals Created Yet</h3>
+          <div className="col-span-full py-16 text-center bg-white border border-slate-200/80 rounded-3xl shadow-xs">
+            <Award className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-slate-900">No Sessionals Created Yet</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto mt-1 mb-4">
               Click &quot;+ Add Sessional&quot; to dynamically add Sessional 1, Sessional 2, Sessional 3, PUT or custom tests.
             </p>
             <Button
               onClick={handleOpenAddModal}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-2"
+              className="bg-[#0f172a] hover:bg-black text-white inline-flex items-center gap-2 shadow-xs rounded-xl"
             >
               <Plus className="w-4 h-4" /> + Add Sessional
             </Button>
@@ -529,21 +528,21 @@ export const FacultySessionalMarksPage: React.FC = () => {
             return (
               <div 
                 key={assessment.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg"
+                className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between shadow-xs"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                         {assessment.subject?.subject_code || selectedSubject?.subject_code} • Section {assessment.section?.name || selectedSection?.name}
                       </span>
                       {assessment.status === 'published' || assessment.status === 'completed' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Published
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Published
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> Draft (Hidden)
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-600" /> Draft (Hidden)
                         </span>
                       )}
                     </div>
@@ -552,10 +551,10 @@ export const FacultySessionalMarksPage: React.FC = () => {
                         onClick={() => handleToggleAssessmentStatus(assessment)}
                         disabled={isTogglingStatus === assessment.id}
                         className={clsx(
-                          "px-2 py-1 rounded-lg text-[11px] font-medium transition-colors border flex items-center gap-1",
+                          "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors border flex items-center gap-1",
                           assessment.status === 'published' || assessment.status === 'completed'
-                            ? "border-slate-700 text-slate-400 hover:text-amber-300 hover:border-amber-500/30"
-                            : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                            ? "border-slate-200 bg-white text-slate-600 hover:text-amber-700 hover:border-amber-300 hover:bg-amber-50"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                         )}
                         title={assessment.status === 'published' ? 'Unpublish and hide from students' : 'Publish marks to students'}
                       >
@@ -569,7 +568,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                       </button>
                       <button 
                         onClick={() => handleDeleteAssessment(assessment.id, assessment.title)}
-                        className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
                         title="Delete Sessional"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -577,26 +576,26 @@ export const FacultySessionalMarksPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white mb-1">{assessment.title}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">{assessment.title}</h3>
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-4">
                     {assessment.description || 'Continuous internal assessment examination.'}
                   </p>
 
-                  <div className="space-y-2 py-3 border-y border-slate-800/80 text-xs">
-                    <div className="flex items-center justify-between text-slate-400">
+                  <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Maximum Marks:</span>
-                      <span className="font-semibold text-emerald-400">{assessment.max_marks} Marks</span>
+                      <span className="font-bold text-slate-900 font-mono">{assessment.max_marks} Marks</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Exam Date:</span>
-                      <span className="font-medium text-slate-300 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
+                      <span className="font-medium text-slate-700 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
                         {new Date(assessment.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Evaluation Status:</span>
-                      <span className="font-mono font-bold text-white">
+                      <span className="font-mono font-bold text-slate-900">
                         {scoredCount} / {totalSectionStudents} Students Evaluated
                       </span>
                     </div>
@@ -606,7 +605,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                 <div className="mt-5 pt-3">
                   <Button
                     onClick={() => handleOpenMarksEntry(assessment)}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+                    className="w-full bg-[#0f172a] hover:bg-black text-white text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Edit3 className="w-4 h-4" />
                     {scoredCount > 0 ? 'Edit / Update Marks' : 'Enter Student Marks'}
@@ -626,48 +625,48 @@ export const FacultySessionalMarksPage: React.FC = () => {
       >
         <form onSubmit={handleCreateSessional} className="space-y-4">
           {modalError && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
               {modalError}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Sessional Name / Title *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Sessional Name / Title *</label>
             <input
               type="text"
               required
               placeholder="e.g. Sessional 1, Sessional 2, Sessional 3, PUT, Unit Test 1"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Subject</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Subject</label>
               <input
                 type="text"
                 disabled
                 value={`${selectedSubject?.subject_code} - ${selectedSubject?.subject_name}`}
-                className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Section</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Section</label>
               <input
                 type="text"
                 disabled
                 value={`Section ${selectedSection?.name}`}
-                className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Maximum Marks *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Maximum Marks *</label>
               <input
                 type="number"
                 min="1"
@@ -675,81 +674,82 @@ export const FacultySessionalMarksPage: React.FC = () => {
                 required
                 value={newMaxMarks}
                 onChange={(e) => setNewMaxMarks(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs font-mono font-semibold"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Exam Date *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Exam Date *</label>
               <input
                 type="date"
                 required
                 value={newExamDate}
                 onChange={(e) => setNewExamDate(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Description / Notes (Optional)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Description / Notes (Optional)</label>
             <textarea
               rows={2}
               placeholder="e.g. Unit 1 & Unit 2 syllabus coverage"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Publication Status *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Publication Status *</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setNewStatus('published')}
                 className={clsx(
-                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all",
+                  "p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all",
                   newStatus === 'published'
-                    ? "bg-emerald-500/20 border-emerald-500/50 text-[#00ff88]"
-                    : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 )}
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 Published (Live)
               </button>
               <button
                 type="button"
                 onClick={() => setNewStatus('draft')}
                 className={clsx(
-                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all",
+                  "p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all",
                   newStatus === 'draft'
-                    ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
-                    : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                    ? "bg-amber-50 border-amber-300 text-amber-800 shadow-xs"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 )}
               >
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 text-amber-600" />
                 Draft (Hidden)
               </button>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-slate-500 mt-1.5">
               {newStatus === 'published'
                 ? "Marks will be visible to students once scores are saved."
                 : "Marks will be kept private as a draft until explicitly published."}
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsAddModalOpen(false)}
+              className="border-slate-200 hover:bg-slate-50 text-slate-700"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isCreating}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl"
             >
               {isCreating ? 'Creating...' : '+ Create Sessional'}
             </Button>
@@ -765,29 +765,29 @@ export const FacultySessionalMarksPage: React.FC = () => {
       >
         <div className="space-y-4">
           {saveMarksError && (
-            <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
-              <span className="font-medium">{saveMarksError}</span>
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <span className="font-semibold">{saveMarksError}</span>
               <button
                 type="button"
                 onClick={() => setSaveMarksError('')}
-                className="text-rose-400 hover:text-white p-1"
+                className="text-rose-500 hover:text-rose-700 p-1"
               >
                 ✕
               </button>
             </div>
           )}
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div>
-              <span className="text-slate-400">Subject: </span>
-              <span className="text-white font-medium">{activeAssessmentForMarks?.subject?.subject_name}</span>
+              <span className="text-slate-500">Subject: </span>
+              <span className="text-slate-900 font-bold">{activeAssessmentForMarks?.subject?.subject_name}</span>
             </div>
             <div>
-              <span className="text-slate-400">Max Marks: </span>
-              <span className="text-emerald-400 font-bold font-mono">{activeAssessmentForMarks?.max_marks}</span>
+              <span className="text-slate-500">Max Marks: </span>
+              <span className="text-slate-900 font-bold font-mono">{activeAssessmentForMarks?.max_marks}</span>
             </div>
             <div>
-              <span className="text-slate-400">Section: </span>
-              <span className="text-blue-400 font-medium">Section {activeAssessmentForMarks?.section?.name}</span>
+              <span className="text-slate-500">Section: </span>
+              <span className="text-slate-900 font-bold">Section {activeAssessmentForMarks?.section?.name}</span>
             </div>
           </div>
 
@@ -798,15 +798,15 @@ export const FacultySessionalMarksPage: React.FC = () => {
               placeholder="Search student by name or roll..."
               value={rosterSearch}
               onChange={(e) => setRosterSearch(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           {/* Student Roster Table */}
-          <div className="overflow-x-auto max-h-[380px]">
+          <div className="overflow-x-auto max-h-[380px] border border-slate-200 rounded-xl">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80 sticky top-0">
+                <tr className="border-b border-slate-200 text-slate-600 bg-slate-50/90 sticky top-0 font-semibold uppercase text-[11px] tracking-wider">
                   <th className="py-2.5 px-3">Roll No.</th>
                   <th className="py-2.5 px-3">Student Name</th>
                   <th className="py-2.5 px-3 w-32">Marks (/{activeAssessmentForMarks?.max_marks})</th>
@@ -814,7 +814,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                   <th className="py-2.5 px-3">Last Updated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {students
                   .filter(s => s.section_id === activeAssessmentForMarks?.section_id)
                   .filter(s => 
@@ -825,9 +825,9 @@ export const FacultySessionalMarksPage: React.FC = () => {
                     const current = marksRoster[student.id] || { marks: '', remarks: '' };
 
                     return (
-                      <tr key={student.id} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 px-3 font-mono text-slate-300">{student.roll_number}</td>
-                        <td className="py-2.5 px-3 font-medium text-white">{student.full_name}</td>
+                      <tr key={student.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-slate-600 font-semibold">{student.roll_number}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">{student.full_name}</td>
                         <td className="py-2.5 px-3">
                           <input
                             type="number"
@@ -842,7 +842,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                                 [student.id]: { ...prev[student.id], marks: val }
                               }));
                             }}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono font-bold"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-900 focus:outline-none focus:border-slate-400 font-mono font-bold shadow-xs"
                           />
                         </td>
                         <td className="py-2.5 px-3">
@@ -857,10 +857,10 @@ export const FacultySessionalMarksPage: React.FC = () => {
                                 [student.id]: { ...prev[student.id], remarks: text }
                               }));
                             }}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
                           />
                         </td>
-                        <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px]">
+                        <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">
                           {current.updatedAt ? new Date(current.updatedAt).toLocaleDateString('en-IN') : '—'}
                         </td>
                       </tr>
@@ -870,20 +870,20 @@ export const FacultySessionalMarksPage: React.FC = () => {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
             <div>
               {activeAssessmentForMarks && (activeAssessmentForMarks.status === 'published' || activeAssessmentForMarks.status === 'completed') ? (
                 <button
                   type="button"
                   onClick={handleUnpublishCurrentAssessment}
                   disabled={isSavingMarks}
-                  className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-colors"
+                  className="text-xs text-amber-800 hover:text-amber-900 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors shadow-xs"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" /> Revert to Draft (Hide from Students)
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-600" /> Revert to Draft (Hide from Students)
                 </button>
               ) : (
-                <span className="text-xs text-amber-400 flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <Clock className="w-3.5 h-3.5" /> Currently Draft (Hidden from students)
+                <span className="text-xs text-amber-800 flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" /> Currently Draft (Hidden from students)
                 </span>
               )}
             </div>
@@ -893,6 +893,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                 variant="outline"
                 onClick={() => setActiveAssessmentForMarks(null)}
                 disabled={isSavingMarks}
+                className="border-slate-200 hover:bg-slate-50 text-slate-700"
               >
                 Cancel
               </Button>
@@ -903,9 +904,9 @@ export const FacultySessionalMarksPage: React.FC = () => {
                 onClick={() => handleSaveMarksRoster('draft')}
                 disabled={isSavingMarks}
                 className={clsx(
-                  "flex items-center gap-1.5 transition-all text-xs",
-                  saveDraftSuccess && "bg-amber-500/20 border-amber-500/50 text-amber-300",
-                  !saveDraftSuccess && "border-slate-700 text-slate-300 hover:text-white"
+                  "flex items-center gap-1.5 transition-all text-xs font-semibold shadow-xs",
+                  saveDraftSuccess && "bg-amber-50 border-amber-300 text-amber-800",
+                  !saveDraftSuccess && "border-slate-200 text-slate-700 hover:bg-slate-50"
                 )}
               >
                 {isSavingDraft ? (
@@ -915,12 +916,12 @@ export const FacultySessionalMarksPage: React.FC = () => {
                   </>
                 ) : saveDraftSuccess ? (
                   <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
                     Draft Saved ✓
                   </>
                 ) : (
                   <>
-                    <Save className="w-3.5 h-3.5" />
+                    <Save className="w-3.5 h-3.5 text-slate-500" />
                     Save Draft
                   </>
                 )}
@@ -930,10 +931,10 @@ export const FacultySessionalMarksPage: React.FC = () => {
                 onClick={() => handleSaveMarksRoster('published')}
                 disabled={isSavingMarks}
                 className={clsx(
-                  'flex items-center gap-1.5 font-bold transition-all text-xs',
-                  publishSuccess && 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.3)]',
-                  saveMarksError && 'bg-rose-600 hover:bg-rose-500 text-white',
-                  !publishSuccess && !saveMarksError && 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  'flex items-center gap-1.5 font-semibold transition-all text-xs shadow-xs rounded-xl',
+                  publishSuccess && 'bg-emerald-600 hover:bg-emerald-700 text-white',
+                  saveMarksError && 'bg-rose-600 hover:bg-rose-700 text-white',
+                  !publishSuccess && !saveMarksError && 'bg-[#0f172a] hover:bg-black text-white'
                 )}
               >
                 {isPublishing ? (
@@ -970,14 +971,14 @@ export const FacultySessionalMarksPage: React.FC = () => {
         title="Sessional Marks Modification Audit Log"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             Authoritative audit trail of all sessional marks adjustments for {selectedSubject?.subject_name || 'this subject'}.
           </p>
 
-          <div className="overflow-x-auto max-h-[400px]">
+          <div className="overflow-x-auto max-h-[400px] border border-slate-200 rounded-xl">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80 sticky top-0">
+                <tr className="border-b border-slate-200 text-slate-600 bg-slate-50/90 sticky top-0 font-semibold uppercase text-[11px] tracking-wider">
                   <th className="py-2.5 px-3">Date / Time</th>
                   <th className="py-2.5 px-3">Student</th>
                   <th className="py-2.5 px-3">Old Marks</th>
@@ -985,10 +986,10 @@ export const FacultySessionalMarksPage: React.FC = () => {
                   <th className="py-2.5 px-3">Reason</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {subjectHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
                       No marks modification history recorded for this course yet.
                     </td>
                   </tr>
@@ -996,20 +997,20 @@ export const FacultySessionalMarksPage: React.FC = () => {
                   subjectHistory.map(mh => {
                     const st = students.find(s => s.id === mh.student_id);
                     return (
-                      <tr key={mh.id} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 px-3 text-slate-400 font-mono">
+                      <tr key={mh.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-2.5 px-3 text-slate-500 font-mono">
                           {new Date(mh.updated_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
                         </td>
-                        <td className="py-2.5 px-3 font-medium text-white">
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">
                           {st?.full_name || 'Student'} ({st?.roll_number})
                         </td>
-                        <td className="py-2.5 px-3 text-slate-400 font-mono">
+                        <td className="py-2.5 px-3 text-slate-500 font-mono">
                           {mh.old_marks !== undefined ? mh.old_marks : 'None'}
                         </td>
-                        <td className="py-2.5 px-3 text-emerald-400 font-bold font-mono">
+                        <td className="py-2.5 px-3 text-slate-900 font-bold font-mono">
                           {mh.new_marks}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-300">
+                        <td className="py-2.5 px-3 text-slate-600">
                           {mh.reason || 'Sessional Marks Update'}
                         </td>
                       </tr>
@@ -1024,3 +1025,4 @@ export const FacultySessionalMarksPage: React.FC = () => {
     </div>
   );
 };
+

@@ -192,23 +192,23 @@ export const CSVImportPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Panel */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <FileSpreadsheet className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-bold font-serif-institutional text-slate-900 tracking-tight flex items-center gap-2.5">
+            <FileSpreadsheet className="w-6 h-6 text-slate-800" />
             Student Bulk Onboarding & CSV Import
             {isHOD && (
-              <span className="text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
+              <span className="text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold">
                 {userDept?.code || 'Department'} Scope
               </span>
             )}
             {isSuperAdmin && (
-              <span className="text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold">
+              <span className="text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold">
                 Institution-Wide Scope
               </span>
             )}
           </h1>
-          <p className="text-xs text-slate-300 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             {isHOD
               ? `Onboard and update students strictly for ${userDept?.name || 'your department'} via CSV upload or Google Sheets.`
               : 'Enterprise multi-year student directory synchronization with automatic profile generation, deduplication and role assignment.'}
@@ -219,8 +219,8 @@ export const CSVImportPage: React.FC = () => {
           variant="outline"
           size="sm"
           onClick={handleDownloadSampleCSV}
-          leftIcon={<Download className="w-4 h-4 text-[#00ff88]" />}
-          className="font-bold border-emerald-500/30 text-white"
+          leftIcon={<Download className="w-4 h-4 text-slate-600" />}
+          className="font-semibold border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
         >
           Download Template
         </Button>
@@ -228,12 +228,12 @@ export const CSVImportPage: React.FC = () => {
 
       {/* Scope Notice Banner */}
       {isHOD && (
-        <div className="p-4 rounded-2xl bg-slate-950/80 border border-emerald-500/25 flex items-center gap-3 text-xs">
-          <Building2 className="w-5 h-5 text-[#00ff88] shrink-0" />
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs flex items-center gap-3 text-xs">
+          <Building2 className="w-5 h-5 text-slate-700 shrink-0" />
           <div>
-            <span className="font-bold text-white">Department Boundary Enforced: </span>
-            <span className="text-slate-300">
-              You are logged in as Head of Department for <strong className="text-[#00ff88]">{userDept?.name} ({userDept?.code})</strong>. Any CSV rows for other departments will be flagged and rejected to preserve departmental integrity.
+            <span className="font-bold text-slate-900">Department Boundary Enforced: </span>
+            <span className="text-slate-600">
+              You are logged in as Head of Department for <strong className="text-slate-900">{userDept?.name} ({userDept?.code})</strong>. Any CSV rows for other departments will be flagged and rejected to preserve departmental integrity.
             </span>
           </div>
         </div>
@@ -241,10 +241,10 @@ export const CSVImportPage: React.FC = () => {
 
       {/* Import Execution Result Toast */}
       {importResult && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-xs font-bold space-y-1.5 animate-in zoom-in-95">
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-bold space-y-1.5 shadow-xs animate-in zoom-in-95">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-emerald-300">
-              <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
+            <div className="flex items-center gap-2 text-emerald-800">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
               <span className="text-sm">✓ Student Onboarding Completed Successfully</span>
             </div>
             <button onClick={() => setImportResult(null)} className="text-slate-400 hover:text-white cursor-pointer">
@@ -252,21 +252,21 @@ export const CSVImportPage: React.FC = () => {
             </button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-slate-200 font-mono">
-            <div className="p-2 rounded-xl bg-slate-950/60 border border-emerald-500/20">
+            <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
               <span className="text-slate-400 block text-[10px]">TOTAL ROWS</span>
-              <strong className="text-sm text-white">{importResult.totalRows}</strong>
+              <strong className="text-sm text-slate-900 font-serif-institutional">{importResult.totalRows}</strong>
             </div>
-            <div className="p-2 rounded-xl bg-slate-950/60 border border-emerald-500/20">
+            <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
               <span className="text-emerald-400 block text-[10px]">NEW ADDED</span>
-              <strong className="text-sm text-[#00ff88]">{importResult.added}</strong>
+              <strong className="text-sm text-emerald-700 font-serif-institutional">{importResult.added}</strong>
             </div>
-            <div className="p-2 rounded-xl bg-slate-950/60 border border-emerald-500/20">
+            <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
               <span className="text-blue-400 block text-[10px]">UPDATED</span>
-              <strong className="text-sm text-blue-300">{importResult.updated}</strong>
+              <strong className="text-sm text-slate-900 font-serif-institutional">{importResult.updated}</strong>
             </div>
-            <div className="p-2 rounded-xl bg-slate-950/60 border border-emerald-500/20">
+            <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-xs">
               <span className="text-slate-400 block text-[10px]">UNCHANGED</span>
-              <strong className="text-sm text-slate-300">{importResult.unchanged}</strong>
+              <strong className="text-sm text-slate-700 font-serif-institutional">{importResult.unchanged}</strong>
             </div>
           </div>
         </div>
@@ -274,9 +274,9 @@ export const CSVImportPage: React.FC = () => {
 
       {/* Error Display */}
       {validationError && (
-        <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs space-y-1.5 animate-in fade-in">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1.5 shadow-xs animate-in fade-in">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-rose-200">
+            <div className="flex items-center gap-2 font-bold text-rose-900">
               <AlertTriangle className="w-4 h-4 text-rose-400" />
               <span>Import Issue Detected</span>
             </div>
@@ -289,14 +289,14 @@ export const CSVImportPage: React.FC = () => {
       )}
 
       {/* Source Selection Tabs */}
-      <div className="flex items-center gap-2 border-b border-emerald-500/20 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
         <button
           onClick={() => { setImportMode('file'); setValidationReport(null); }}
           className={clsx(
             "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
             importMode === 'file'
-              ? "bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.25)]"
-              : "text-slate-400 hover:text-white hover:bg-slate-900"
+              ? "bg-[#0f172a] text-white shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           )}
         >
           <Upload className="w-4 h-4" />
@@ -307,8 +307,8 @@ export const CSVImportPage: React.FC = () => {
           className={clsx(
             "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
             importMode === 'url'
-              ? "bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.25)]"
-              : "text-slate-400 hover:text-white hover:bg-slate-900"
+              ? "bg-[#0f172a] text-white shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           )}
         >
           <Link className="w-4 h-4" />
@@ -317,41 +317,41 @@ export const CSVImportPage: React.FC = () => {
       </div>
 
       {/* Default Cohort Config */}
-      <div className="flex flex-wrap items-center gap-3 bg-slate-950/60 px-4 py-3 rounded-2xl border border-emerald-500/20 text-xs">
-        <span className="font-bold text-slate-300">Default Cohort Year:</span>
+      <div className="flex flex-wrap items-center gap-3 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200/80 text-xs shadow-xs">
+        <span className="font-semibold text-slate-700">Default Cohort Year:</span>
         <select
           value={selectedCohortYearId}
           onChange={(e) => {
             setSelectedCohortYearId(e.target.value);
             if (csvContent) runValidation(csvContent);
           }}
-          className="px-3 py-1.5 bg-slate-900 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+          className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 cursor-pointer shadow-xs"
         >
           {years.map(y => (
             <option key={y.id} value={y.id}>{y.name}</option>
           ))}
         </select>
-        <span className="text-slate-400 text-[11px]">(Used only when a CSV row does not specify an academic year)</span>
+        <span className="text-slate-500 text-[11px]">(Used only when a CSV row does not specify an academic year)</span>
       </div>
 
       {/* File Upload Mode */}
       {importMode === 'file' && (
-        <div className="glass-panel rounded-3xl p-8 border border-emerald-500/20 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-slate-950/80 border border-emerald-500/30 flex items-center justify-center text-[#00ff88] mx-auto shadow-[0_0_20px_rgba(0,255,136,0.2)]">
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-xs text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 mx-auto shadow-xs">
             <Upload className="w-8 h-8" />
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-white">
+            <h3 className="text-base font-bold font-serif-institutional text-slate-900">
               Upload Student CSV Spreadsheet
             </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
               Select or drop your student CSV file. Headers supported: roll_no, name, email, phone, year, section, admission_type.
             </p>
           </div>
 
           <div className="pt-2">
-            <label className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#00ff88] hover:bg-[#10b981] text-slate-950 font-black text-xs cursor-pointer shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all">
+            <label className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#0f172a] hover:bg-black text-white font-semibold text-xs cursor-pointer shadow-xs transition-all">
               <Upload className="w-4 h-4 mr-2" />
               <span>Select CSV File</span>
               <input
@@ -364,7 +364,7 @@ export const CSVImportPage: React.FC = () => {
           </div>
 
           {fileName && (
-            <p className="text-xs text-emerald-400 font-mono font-semibold">
+            <p className="text-xs text-slate-700 font-mono font-semibold">
               Selected: {fileName}
             </p>
           )}
@@ -373,13 +373,13 @@ export const CSVImportPage: React.FC = () => {
 
       {/* Google Sheet URL Mode */}
       {importMode === 'url' && (
-        <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+            <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 shadow-xs">
               <Link className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white">Google Sheet CSV Sync</h3>
+              <h3 className="text-base font-bold font-serif-institutional text-slate-900">Google Sheet CSV Sync</h3>
               <p className="text-xs text-slate-400">
                 Paste any Google Sheet link. Automatically normalized and fetched through secure college proxy.
               </p>
@@ -392,14 +392,14 @@ export const CSVImportPage: React.FC = () => {
               value={googleSheetUrl}
               onChange={(e) => setGoogleSheetUrl(e.target.value)}
               placeholder="https://docs.google.com/spreadsheets/d/.../edit or /export?format=csv"
-              className="flex-1 w-full px-4 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 font-mono focus:outline-none focus:border-[#00ff88]"
+              className="flex-1 w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 font-mono shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               onClick={handleUrlFetchAndValidate}
               isLoading={isValidating}
-              leftIcon={<RefreshCw className="w-4 h-4 text-slate-950" />}
+              leftIcon={<RefreshCw className="w-4 h-4 text-white" />}
               className="w-full sm:w-auto font-black shrink-0"
             >
               Fetch & Validate
@@ -410,7 +410,7 @@ export const CSVImportPage: React.FC = () => {
 
       {/* Pre-Import Summary Card & Row Preview */}
       {validationReport && (
-        <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6 animate-in fade-in">
           {/* New Sections Detected Banner */}
           {validationReport.detectedNewSections && validationReport.detectedNewSections.length > 0 && (
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-3">
@@ -435,12 +435,12 @@ export const CSVImportPage: React.FC = () => {
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-500/20">
                 <Button
-                  variant="neon"
+                  variant="primary"
                   size="sm"
                   disabled={isImporting}
                   isLoading={isImporting}
                   onClick={() => handleExecuteImport(true)}
-                  leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+                  leftIcon={<Plus className="w-4 h-4 text-white" />}
                   className="font-black"
                 >
                   Create Detected Section(s) & Import All Students
@@ -450,10 +450,10 @@ export const CSVImportPage: React.FC = () => {
           )}
 
           {/* Summary Metrics */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-emerald-500/15">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
-              <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
+              <h3 className="text-base font-bold font-serif-institutional text-slate-900 tracking-tight flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-700" />
                 Pre-Flight Validation Summary
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -462,13 +462,13 @@ export const CSVImportPage: React.FC = () => {
             </div>
 
             <Button
-              variant="neon"
+              variant="primary"
               size="md"
               disabled={!validationReport.canImport || isImporting}
               isLoading={isImporting}
               onClick={() => handleExecuteImport(false)}
-              rightIcon={<ArrowRight className="w-4 h-4 text-slate-950" />}
-              className="font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]"
+              rightIcon={<ArrowRight className="w-4 h-4 text-white" />}
+              className="font-black"
             >
               Commit {validationReport.validCount} Students to Database
             </Button>
@@ -476,36 +476,36 @@ export const CSVImportPage: React.FC = () => {
 
           {/* Metric Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-            <div className="p-3 rounded-2xl bg-slate-950/70 border border-emerald-500/20">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
               <span className="text-slate-400 block text-[10px] font-bold">TOTAL ROWS</span>
-              <strong className="text-lg text-white font-mono">{validationReport.totalRows}</strong>
+              <strong className="text-lg text-slate-900 font-mono font-bold font-serif-institutional">{validationReport.totalRows}</strong>
             </div>
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-              <span className="text-emerald-400 block text-[10px] font-bold">VALID & READY</span>
-              <strong className="text-lg text-[#00ff88] font-mono">{validationReport.validCount}</strong>
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-xs">
+              <span className="text-emerald-800 block text-[10px] font-bold">VALID & READY</span>
+              <strong className="text-lg text-emerald-900 font-mono font-bold font-serif-institutional">{validationReport.validCount}</strong>
             </div>
-            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30">
-              <span className="text-blue-400 block text-[10px] font-bold">NEW STUDENTS</span>
-              <strong className="text-lg text-blue-300 font-mono">{validationReport.newCount}</strong>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
+              <span className="text-slate-600 block text-[10px] font-bold">NEW STUDENTS</span>
+              <strong className="text-lg text-slate-900 font-mono font-bold font-serif-institutional">{validationReport.newCount}</strong>
             </div>
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-              <span className="text-amber-400 block text-[10px] font-bold">EXISTING UPDATES</span>
-              <strong className="text-lg text-amber-300 font-mono">{validationReport.updateCount}</strong>
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
+              <span className="text-amber-800 block text-[10px] font-bold">EXISTING UPDATES</span>
+              <strong className="text-lg text-amber-900 font-mono font-bold font-serif-institutional">{validationReport.updateCount}</strong>
             </div>
-            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30">
-              <span className="text-rose-400 block text-[10px] font-bold">REJECTED / ERRORS</span>
-              <strong className="text-lg text-rose-300 font-mono">{validationReport.invalidCount}</strong>
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 shadow-xs">
+              <span className="text-rose-800 block text-[10px] font-bold">REJECTED / ERRORS</span>
+              <strong className="text-lg text-rose-900 font-mono font-bold font-serif-institutional">{validationReport.invalidCount}</strong>
             </div>
           </div>
 
           {/* Row Preview Table */}
           <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Student Records Preview ({validationReport.previewRows.length} rows)
             </h4>
-            <div className="max-h-72 overflow-y-auto border border-emerald-500/15 rounded-2xl overflow-hidden">
+            <div className="max-h-72 overflow-y-auto border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/90 text-slate-400 font-bold uppercase tracking-wider border-b border-emerald-500/15 sticky top-0">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px] sticky top-0">
                   <tr>
                     <th className="px-3.5 py-2">Row</th>
                     <th className="px-3.5 py-2">Roll No</th>
@@ -515,12 +515,12 @@ export const CSVImportPage: React.FC = () => {
                     <th className="px-3.5 py-2">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-500/10 text-slate-300">
+                <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
                   {validationReport.previewRows.map((row) => (
-                    <tr key={row.rowNumber} className={clsx("hover:bg-emerald-500/5", !row.isValid && "bg-rose-500/5")}>
+                    <tr key={row.rowNumber} className={clsx("hover:bg-slate-50/80 transition-colors", !row.isValid && "bg-rose-50/50")}>
                       <td className="px-3.5 py-2 font-mono text-slate-500">{row.rowNumber}</td>
-                      <td className="px-3.5 py-2 font-mono font-bold text-white">{row.rollNumber || '—'}</td>
-                      <td className="px-3.5 py-2 font-semibold text-slate-200">{row.fullName || '—'}</td>
+                      <td className="px-3.5 py-2 font-mono font-bold text-slate-900">{row.rollNumber || '—'}</td>
+                      <td className="px-3.5 py-2 font-semibold text-slate-900">{row.fullName || '—'}</td>
                       <td className="px-3.5 py-2 font-mono">{row.departmentCode}</td>
                       <td className="px-3.5 py-2">{row.academicYear} • Sec {row.sectionName}</td>
                       <td className="px-3.5 py-2">
@@ -528,13 +528,13 @@ export const CSVImportPage: React.FC = () => {
                           <span className={clsx(
                             "px-2 py-0.5 rounded-full text-[10px] font-bold border",
                             row.isExisting 
-                              ? "bg-amber-500/15 text-amber-300 border-amber-500/30" 
-                              : "bg-emerald-500/15 text-[#00ff88] border-emerald-500/30"
+                              ? "bg-amber-50 text-amber-800 border-amber-200" 
+                              : "bg-emerald-50 text-emerald-800 border-emerald-200"
                           )}>
                             {row.isExisting ? 'Update' : 'New'}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30" title={row.errors.join('; ')}>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200" title={row.errors.join('; ')}>
                             Error: {row.errors[0]}
                           </span>
                         )}

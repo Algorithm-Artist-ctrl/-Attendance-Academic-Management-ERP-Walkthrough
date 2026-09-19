@@ -312,22 +312,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   return (
     <div className="space-y-6">
       {/* 1. WELCOME BANNER */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1 z-10">
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight">
             Welcome back, {currentFaculty?.full_name || user?.full_name || 'Faculty Member'} 👋
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            {currentFaculty?.designation || 'Faculty'} • {dept?.name || 'Academic Department'} • Code: <span className="text-[#00ff88] font-bold">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+            {currentFaculty?.designation || 'Faculty'} • {dept?.name || 'Academic Department'} • Code: <span className="text-slate-900 font-bold font-mono bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
           </p>
         </div>
 
         <div className="z-10 flex items-center gap-3">
           <Button
-            variant="neon"
+            variant="primary"
             size="sm"
             onClick={() => onNavigate('take_attendance')}
-            leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
+            leftIcon={<CheckSquare className="w-3.5 h-3.5 text-white" />}
           >
             Mark Live Attendance
           </Button>
@@ -342,71 +342,71 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Today's Classes */}
-          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-400">Today's Classes</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+              <p className="text-xs font-semibold text-slate-500">Today's Classes</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {todayClassesCount}
               </h3>
-              <span className="text-[10px] text-emerald-400 font-medium">{todayDay} Timetable</span>
+              <span className="text-[10px] text-slate-500 font-medium">{todayDay} Timetable</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
 
           {/* Weekly Teaching Load */}
-          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-400">Weekly Teaching Load</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              <p className="text-xs font-semibold text-slate-500">Weekly Teaching Load</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {weeklyLoadCount}
               </h3>
-              <span className="text-[10px] text-[#00ff88] font-medium">Lectures / Week</span>
+              <span className="text-[10px] text-slate-500 font-medium">Lectures / Week</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-[#00ff88]">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
               <Clock className="w-5 h-5" />
             </div>
           </div>
 
           {/* Assigned Subjects */}
-          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-400">Assigned Subjects</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              <p className="text-xs font-semibold text-slate-500">Assigned Subjects</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {assignedSubjectsCount}
               </h3>
-              <span className="text-[10px] text-slate-400 font-medium">Theory & Labs</span>
+              <span className="text-[10px] text-slate-500 font-medium">Theory & Labs</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
               <BookOpen className="w-5 h-5" />
             </div>
           </div>
 
           {/* Assigned Sections */}
-          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-400">Assigned Sections</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              <p className="text-xs font-semibold text-slate-500">Assigned Sections</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {assignedSectionsCount}
               </h3>
-              <span className="text-[10px] text-slate-400 font-medium">Active Sections</span>
+              <span className="text-[10px] text-slate-500 font-medium">Active Sections</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
               <Layers className="w-5 h-5" />
             </div>
           </div>
 
           {/* Pending Requests */}
-          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1 shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-400">Pending Requests</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
+              <p className="text-xs font-semibold text-slate-500">Pending Requests</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-amber-600 mt-1">
                 {pendingCorrectionsCount}
               </h3>
-              <span className="text-[10px] text-amber-400/80 font-medium">Requires Review</span>
+              <span className="text-[10px] text-amber-700/80 font-medium">Requires Review</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
               <RotateCcw className="w-5 h-5" />
             </div>
           </div>
@@ -414,18 +414,18 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       )}
 
       {/* 2.5 MY ASSIGNED CLASSES (SECTION-WISE SEPARATION) */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-4">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 space-y-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
           <div>
-            <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-[#00ff88]" />
+            <h3 className="text-base font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-slate-800" />
               MY ASSIGNED CLASSES
             </h3>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Classes and subjects assigned to your teaching portfolio across sections
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] self-start sm:self-auto">
+          <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-800 self-start sm:self-auto">
             {enrichedAssignedSections.length} Assigned Sections
           </span>
         </div>
@@ -433,14 +433,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         {/* Multi-Year Filter Tabs (when faculty teaches across multiple academic years) */}
         {distinctAssignedYears.length > 1 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
-            <span className="text-xs font-semibold text-slate-400 shrink-0">Filter by Year:</span>
+            <span className="text-xs font-semibold text-slate-500 shrink-0">Filter by Year:</span>
             <button
               onClick={() => setSelectedYearFilter('ALL')}
               className={clsx(
                 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
                 selectedYearFilter === 'ALL'
-                  ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                  : 'bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-emerald-500/40'
+                  ? 'bg-[#0f172a] text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               )}
             >
               All Years ({enrichedAssignedSections.length})
@@ -452,8 +452,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                 className={clsx(
                   'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
                   selectedYearFilter === yr.id
-                    ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                    : 'bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-emerald-500/40'
+                    ? 'bg-[#0f172a] text-white shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 )}
               >
                 {yr.name} ({yr.count})
@@ -463,10 +463,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         )}
 
         {enrichedAssignedSections.length === 0 ? (
-          <div className="p-8 text-center bg-slate-950/60 rounded-2xl border border-emerald-500/15 space-y-2">
-            <BookOpen className="w-8 h-8 text-slate-500 mx-auto" />
-            <h4 className="text-sm font-bold text-white">No published timetable or teaching assignments available</h4>
-            <p className="text-xs text-slate-400">
+          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+            <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-900">No published timetable or teaching assignments available</h4>
+            <p className="text-xs text-slate-500">
               When teaching assignments or published timetable schedules are configured for your profile, your assigned classes, sections, and subjects will appear here automatically.
             </p>
           </div>
@@ -476,31 +476,31 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               return (
                 <div
                   key={sec.id}
-                  className="p-5 rounded-2xl bg-slate-950/80 border border-emerald-500/25 space-y-4 shadow-xl relative overflow-hidden flex flex-col justify-between"
+                  className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-4 shadow-xs relative overflow-hidden flex flex-col justify-between hover:border-slate-300 transition-all"
                 >
                   {/* Section Banner Header */}
-                  <div className="flex items-center justify-between border-b border-emerald-500/15 pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-base shadow-[0_0_12px_rgba(0,255,136,0.3)]">
+                      <div className="w-10 h-10 rounded-xl bg-[#0f172a] text-white font-black flex items-center justify-center text-base shadow-xs">
                         {cleanSecName}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-base font-black text-white tracking-tight">
+                          <h4 className="text-base font-black text-slate-900 tracking-tight">
                             SECTION {cleanSecName}
                           </h4>
                           {yearName && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                               {yearName}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-emerald-400 font-mono mt-0.5">
+                        <p className="text-xs text-slate-500 font-mono mt-0.5 font-medium">
                           {yearName} • {cleanRoom} • {studentCount} Students
                         </p>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-900 border border-emerald-500/20 text-[#00ff88]">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white border border-slate-200 text-slate-800 shadow-xs">
                       {subjectsInSec.length} Subjects
                     </span>
                   </div>
@@ -508,7 +508,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   {/* Assigned Subjects in This Section */}
                   <div className="space-y-3 flex-1">
                     {subjectsInSec.length === 0 ? (
-                      <div className="p-3 text-center text-xs text-slate-400 bg-slate-900/60 rounded-xl border border-emerald-500/10">
+                      <div className="p-3 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200">
                         Section allocated • Subject curriculum pending assignment
                       </div>
                     ) : (
@@ -520,31 +520,31 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                         return (
                           <div
                             key={sub.id}
-                            className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/15 hover:border-emerald-500/40 transition-all space-y-2.5"
+                            className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 transition-all space-y-2.5 shadow-xs"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black bg-emerald-500/15 text-[#00ff88] border border-emerald-500/25">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
                                   {sub.subject_code}
                                 </span>
-                                <h5 className="text-xs sm:text-sm font-bold text-white mt-1">
+                                <h5 className="text-xs sm:text-sm font-bold text-slate-900 mt-1">
                                   {sub.subject_name}
                                 </h5>
-                                <span className="text-[11px] text-slate-400">
+                                <span className="text-[11px] text-slate-500 font-medium">
                                   {sub.lecture_type || 'Theory'} • {sub.credits || 4} Credits
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-2 border-t border-emerald-500/10 text-[11px] text-slate-400">
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
                               <div className="flex items-center gap-2 text-[10px]">
-                                <span>Assgn: <strong className="text-blue-400">{asgnCount}</strong></span>
-                                <span>Quizzes: <strong className="text-purple-400">{quizCount}</strong></span>
-                                <span>Sess: <strong className="text-amber-400">{sessCount}</strong></span>
+                                <span>Assgn: <strong className="text-slate-800 font-bold">{asgnCount}</strong></span>
+                                <span>Quizzes: <strong className="text-slate-800 font-bold">{quizCount}</strong></span>
+                                <span>Sess: <strong className="text-slate-800 font-bold">{sessCount}</strong></span>
                               </div>
 
                               <Button
-                                variant="neon"
+                                variant="primary"
                                 size="sm"
                                 onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
                                 className="text-[10px] py-1 px-3 font-bold"
@@ -641,26 +641,26 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             {coordinatorItems.map(item => (
               <div 
                 key={item.id} 
-                className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-2xl"
+                className="bg-white rounded-3xl p-6 border border-slate-200/80 space-y-4 shadow-xs"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
                       <GraduationCap className="w-6 h-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                           OFFICIAL CLASS COORDINATOR
                         </span>
-                        <span className="text-xs text-slate-400 font-mono">
+                        <span className="text-xs text-slate-500 font-mono">
                           {item.yrName} • {item.cleanCoordRoom}
                         </span>
                       </div>
-                      <h3 className="text-base font-black text-white mt-1">
+                      <h3 className="text-base font-black text-slate-900 font-serif-institutional mt-1">
                         Class Coordinator Portal — {item.yrName} Section {item.secName}
                       </h3>
-                      <p className="text-xs text-slate-300 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         Coordinating {item.secStudentsCount} enrolled students and complete weekly timetable oversight ({item.weeklyLecturesCount} weekly periods)
                       </p>
                     </div>
@@ -668,10 +668,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
                   <div className="flex items-center gap-2 shrink-0">
                     <Button
-                      variant="neon"
+                      variant="primary"
                       size="sm"
                       onClick={() => onNavigate('timetable')}
-                      leftIcon={<Calendar className="w-3.5 h-3.5 text-slate-950" />}
+                      leftIcon={<Calendar className="w-3.5 h-3.5 text-white" />}
                     >
                       View Complete Section Timetable
                     </Button>
@@ -686,22 +686,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-emerald-500/15 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                    <span className="text-slate-400 text-[10px] block font-semibold">Enrolled Section Students</span>
-                    <span className="text-lg font-black text-white block mt-0.5">{item.secStudentsCount}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-500 text-[10px] block font-semibold">Enrolled Section Students</span>
+                    <span className="text-lg font-black text-slate-900 block mt-0.5">{item.secStudentsCount}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                    <span className="text-slate-400 text-[10px] block font-semibold">Weekly Lecture Periods</span>
-                    <span className="text-lg font-black text-[#00ff88] block mt-0.5">{item.weeklyLecturesCount}</span>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-500 text-[10px] block font-semibold">Weekly Lecture Periods</span>
+                    <span className="text-lg font-black text-slate-900 block mt-0.5">{item.weeklyLecturesCount}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                    <span className="text-slate-400 text-[10px] block font-semibold">Department & Year</span>
-                    <span className="text-sm font-bold text-white block mt-0.5 truncate">{dept?.name || 'CSE'} ({item.yrName})</span>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-500 text-[10px] block font-semibold">Department & Year</span>
+                    <span className="text-sm font-bold text-slate-900 block mt-0.5 truncate">{dept?.name || 'CSE'} ({item.yrName})</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15">
-                    <span className="text-slate-400 text-[10px] block font-semibold">Coordinator Role</span>
-                    <span className="text-sm font-bold text-emerald-400 block mt-0.5">{item.yrName} Sec {item.secName} Lead</span>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-500 text-[10px] block font-semibold">Coordinator Role</span>
+                    <span className="text-sm font-bold text-slate-900 block mt-0.5">{item.yrName} Sec {item.secName} Lead</span>
                   </div>
                 </div>
               </div>
@@ -714,31 +714,31 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Card: Dynamic Day Schedule with "Take Attendance" button */}
-        <div className="lg:col-span-7 glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
+        <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 space-y-4 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 tracking-wide flex items-center gap-2">
                 <span>{selectedScheduleDay === todayDay 
                   ? `Today's Schedule (${todayDay})` 
                   : `${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} Schedule (${selectedScheduleDay})`}</span>
                 {isDateToday(selectedScheduleDate, todayISO) && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                     TODAY
                   </span>
                 )}
                 {isDateInFuture(selectedScheduleDate, todayISO) && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                     UPCOMING
                   </span>
                 )}
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {formatDateFull(selectedScheduleDate)} • Odd Semester
               </p>
             </div>
 
             {/* Day Selector Tabs */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200 overflow-x-auto no-scrollbar">
               {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map(d => {
                 const dayDate = getDateForWeekdayInCurrentWeek(d, todayISO);
                 const isDayToday = d === todayDay;
@@ -749,10 +749,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                     className={clsx(
                       'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
                       selectedScheduleDay === d
-                        ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_8px_rgba(0,255,136,0.3)]'
+                        ? 'bg-[#0f172a] text-white shadow-xs'
                         : isDayToday
-                          ? 'text-emerald-400 border border-emerald-500/30 hover:text-white'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                          ? 'text-slate-900 bg-white/70 border border-slate-300 font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                     )}
                     title={formatDateFull(dayDate)}
                   >
@@ -762,7 +762,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               })}
               <button
                 onClick={() => onNavigate('timetable')}
-                className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer px-2 py-1 shrink-0 ml-1"
+                className="text-xs font-bold text-slate-900 hover:underline cursor-pointer px-2 py-1 shrink-0 ml-1"
               >
                 Full →
               </button>
@@ -773,16 +773,16 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             {isScopedLoading && displayedSchedule.length === 0 ? (
               <TimetableSkeleton slots={3} />
             ) : displayedSchedule.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
-                <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
-                <p className="font-bold text-white text-sm">
+              <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="font-bold text-slate-900 text-sm">
                   {myTt.length === 0
                     ? 'No published timetable is available for your teaching assignments'
                     : selectedScheduleDay === todayDay && todayDay === 'SUN' 
                       ? 'Today is Sunday (Weekend / Holiday)' 
                       : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} (${formatDateFull(selectedScheduleDate)})`}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-500 mt-1">
                   {myTt.length === 0
                     ? 'When the department HOD publishes your timetable schedule, your lectures will appear here automatically.'
                     : todayDay === 'SUN' && selectedScheduleDay === 'SUN' 
@@ -815,17 +815,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                 return (
                   <div
                     key={entry.id}
-                    className="p-4 rounded-2xl bg-slate-950/60 border border-emerald-500/15 hover:border-emerald-500/35 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs"
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-[#00ff88] font-mono text-xs font-bold shrink-0">
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-mono text-xs font-bold shrink-0 shadow-xs">
                         {entry.start_time?.substring(0, 5) || '09:00'} – {entry.end_time?.substring(0, 5) || '09:50'}
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-white leading-tight">
+                        <h4 className="text-sm font-bold text-slate-900 leading-tight">
                           {sub?.subject_name || 'Subject'}
                         </h4>
-                        <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                        <p className="text-xs text-slate-500 mt-0.5 font-medium">
                           {yrName ? `${yrName} • ` : ''}Section {sec?.name} • {cleanRoom || 'Room TBD'} • {entry.lecture_type || 'Theory'}
                         </p>
                       </div>
@@ -833,49 +833,49 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
                     <div className="flex items-center gap-2.5 self-end sm:self-auto">
                       {isFuture ? (
-                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700/60 text-slate-400">
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-500">
                           Upcoming • Attendance not available yet
                         </span>
                       ) : summary.status === 'FULLY_MARKED' ? (
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>✓ Marked ({summary.total}/{summary.total})</span>
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
-                            className="shrink-0 text-xs font-bold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                            className="shrink-0 text-xs font-bold text-slate-800"
                           >
                             View / Update →
                           </Button>
                         </div>
                       ) : summary.status === 'PARTIALLY_MARKED' ? (
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1.5">
-                            <AlertCircle className="w-3.5 h-3.5" />
+                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                             <span>Marked ({summary.marked}/{summary.total})</span>
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
-                            className="shrink-0 text-xs font-bold border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                            className="shrink-0 text-xs font-bold text-amber-800 border-amber-200 hover:bg-amber-50"
                           >
                             View / Update →
                           </Button>
                         </div>
                       ) : isToday ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-amber-300">
+                          <span className="text-[11px] font-bold text-amber-800">
                             Not Recorded
                           </span>
                           <Button
-                            variant="neon"
+                            variant="primary"
                             size="sm"
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
-                            leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
+                            leftIcon={<CheckSquare className="w-3.5 h-3.5 text-white" />}
                             className="shrink-0 text-xs font-bold"
                           >
                             Take Attendance
@@ -883,14 +883,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-500">
+                          <span className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-500">
                             Not Marked (Past)
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
-                            className="shrink-0 text-xs font-bold border-slate-700 text-slate-300 hover:text-white"
+                            className="shrink-0 text-xs font-bold text-slate-700"
                           >
                             View Details →
                           </Button>
@@ -905,10 +905,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         </div>
 
         {/* Right Card: Recent Student Correction Requests & Assessment Actions */}
-        <div className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 flex flex-col justify-between space-y-4 shadow-xs">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-white tracking-wide">
+              <h3 className="text-sm font-bold text-slate-900 tracking-wide">
                 Academic & Marks Shortcuts
               </h3>
             </div>
@@ -916,37 +916,37 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             <div className="grid grid-cols-2 gap-2.5 mb-4">
               <button
                 onClick={() => onNavigate('faculty_assignments')}
-                className="p-3 rounded-2xl bg-slate-950/80 border border-blue-500/20 hover:border-blue-500/50 text-left transition-all group"
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group shadow-xs"
               >
-                <div className="text-xs font-bold text-white group-hover:text-blue-400">Assignments</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Create & Grade</div>
+                <div className="text-xs font-bold text-slate-900 group-hover:text-black">Assignments</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Create & Grade</div>
               </button>
 
               <button
                 onClick={() => onNavigate('quizzes')}
-                className="p-3 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/50 text-left transition-all group"
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group shadow-xs"
               >
-                <div className="text-xs font-bold text-white group-hover:text-purple-400">Quizzes</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Google Form Quizzes</div>
+                <div className="text-xs font-bold text-slate-900 group-hover:text-black">Quizzes</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Google Form Quizzes</div>
               </button>
 
               <button
                 onClick={() => onNavigate('marks_and_assessments')}
-                className="col-span-2 p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/20 hover:border-emerald-500/50 text-left transition-all group flex items-center justify-between"
+                className="col-span-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group flex items-center justify-between shadow-xs"
               >
                 <div>
-                  <div className="text-xs font-bold text-white group-hover:text-emerald-400">Marks & Assessment Management</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Sessional 1, 2, Quizzes, CSV Import/Export & PDF Scorecards</div>
+                  <div className="text-xs font-bold text-slate-900 group-hover:text-black">Marks & Assessment Management</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Sessional 1, 2, Quizzes, CSV Import/Export & PDF Scorecards</div>
                 </div>
-                <span className="text-xs font-bold text-emerald-400">Manage Marks →</span>
+                <span className="text-xs font-bold text-slate-900">Manage Marks →</span>
               </button>
             </div>
 
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-slate-400">Pending Correction Requests</h4>
+              <h4 className="text-xs font-bold text-slate-500">Pending Correction Requests</h4>
               <button
                 onClick={() => onNavigate('corrections')}
-                className="text-[11px] font-bold text-[#00ff88] hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-slate-900 hover:underline cursor-pointer"
               >
                 View All →
               </button>
@@ -954,20 +954,20 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
             <div className="space-y-2">
               {myPendingCorrections.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-xl">
+                <div className="p-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
                   No pending correction requests from students.
                 </div>
               ) : (
                 myPendingCorrections.slice(0, 2).map((c) => (
                   <div
                     key={c.id}
-                    className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs"
+                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs"
                   >
                     <div>
-                      <h4 className="font-bold text-white">
+                      <h4 className="font-bold text-slate-900">
                         {c.student?.full_name || 'Student'}
                       </h4>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-slate-500">
                         Roll: {c.student?.roll_number} • {c.reason}
                       </p>
                     </div>
@@ -975,7 +975,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                       variant="outline"
                       size="sm"
                       onClick={() => onNavigate('corrections')}
-                      className="text-[10px] py-1 px-2 shrink-0"
+                      className="text-[10px] py-1 px-2 shrink-0 text-slate-800"
                     >
                       Review
                     </Button>

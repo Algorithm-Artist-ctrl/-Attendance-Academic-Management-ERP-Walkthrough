@@ -80,19 +80,19 @@ export const SettingsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Settings className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Settings className="w-6 h-6 text-slate-900" />
             Account & Security Settings
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Manage your credentials, notification preferences, and active sessions
           </p>
         </div>
 
         {saveSettingsSuccess && (
-          <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
+          <div className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
             <CheckCircle2 className="w-4 h-4" />
             <span>Preferences Saved!</span>
           </div>
@@ -102,24 +102,24 @@ export const SettingsPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Card 1: Change Password & Security */}
-        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-5">
-          <div className="flex items-center gap-2.5 border-b border-emerald-500/15 pb-3">
-            <Lock className="w-5 h-5 text-[#00ff88]" />
-            <h3 className="text-sm font-bold text-white tracking-wide">
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+            <Lock className="w-5 h-5 text-slate-900" />
+            <h3 className="text-sm font-bold text-slate-900 tracking-wide">
               Change Account Password
             </h3>
           </div>
 
           {role === 'student' ? (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
               <div className="flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1.5 text-xs text-slate-300">
-                  <p className="font-bold text-white">Institutional Credential Policy</p>
-                  <p className="text-slate-300 leading-relaxed">
+                  <p className="font-bold text-amber-900">Institutional Credential Policy</p>
+                  <p className="text-amber-800 leading-relaxed">
                     For security reasons, student passwords cannot be altered directly. Please contact your Super Admin or College Administrator to reset your password.
                   </p>
-                  <p className="text-[11px] text-amber-400/90 font-mono pt-1">
+                  <p className="text-[11px] text-amber-800 font-mono pt-1">
                     Contact: Central Administrative Office / Registrar Desk
                   </p>
                 </div>
@@ -130,8 +130,8 @@ export const SettingsPage: React.FC = () => {
               {passwordMsg && (
                 <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
                   passwordMsg.type === 'success' 
-                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]' 
-                    : 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+                    : 'bg-rose-50 border border-rose-200 text-rose-800'
                 }`}>
                   {passwordMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                   <span>{passwordMsg.text}</span>
@@ -140,26 +140,26 @@ export const SettingsPage: React.FC = () => {
 
               <form onSubmit={handlePasswordChange} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Current Password</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Current Password</label>
                   <input
                     type="password"
                     required
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                   />
                 </div>
 
                 <div className="relative">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">New Password</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">New Password</label>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                   />
                   <button
                     type="button"
@@ -171,18 +171,18 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Confirm New Password</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm New Password</label>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat new password"
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                   />
                 </div>
 
-                <Button type="submit" variant="neon" size="sm" isLoading={isChangingPassword} className="w-full mt-2">
+                <Button type="submit" variant="primary" size="sm" isLoading={isChangingPassword} className="w-full mt-2 rounded-xl shadow-xs">
                   Update Password
                 </Button>
               </form>
@@ -191,64 +191,64 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Card 2: Notification Preferences */}
-        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-5">
-          <div className="flex items-center gap-2.5 border-b border-emerald-500/15 pb-3">
-            <Bell className="w-5 h-5 text-[#00ff88]" />
-            <h3 className="text-sm font-bold text-white tracking-wide">
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+            <Bell className="w-5 h-5 text-slate-900" />
+            <h3 className="text-sm font-bold text-slate-900 tracking-wide">
               Alerts & Notifications
             </h3>
           </div>
 
           <div className="space-y-3">
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-white">Daily Lecture & Schedule Alerts</h4>
-                <p className="text-[11px] text-slate-400">Receive morning notification for upcoming periods</p>
+                <h4 className="text-xs font-bold text-slate-900">Daily Lecture & Schedule Alerts</h4>
+                <p className="text-[11px] text-slate-500">Receive morning notification for upcoming periods</p>
               </div>
               <input
                 type="checkbox"
                 checked={notifySchedule}
                 onChange={(e) => setNotifySchedule(e.target.checked)}
-                className="w-4 h-4 accent-[#00ff88] rounded cursor-pointer"
+                className="w-4 h-4 accent-[#0f172a] rounded cursor-pointer"
               />
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-white">Low Attendance Warning Trigger</h4>
-                <p className="text-[11px] text-slate-400">Alert when attendance drops below the 75% threshold</p>
+                <h4 className="text-xs font-bold text-slate-900">Low Attendance Warning Trigger</h4>
+                <p className="text-[11px] text-slate-500">Alert when attendance drops below the 75% threshold</p>
               </div>
               <input
                 type="checkbox"
                 checked={notifyAttendance}
                 onChange={(e) => setNotifyAttendance(e.target.checked)}
-                className="w-4 h-4 accent-[#00ff88] rounded cursor-pointer"
+                className="w-4 h-4 accent-[#0f172a] rounded cursor-pointer"
               />
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-white">College Notice Circular Broadcasts</h4>
-                <p className="text-[11px] text-slate-400">Instant notification for examination and holiday circulars</p>
+                <h4 className="text-xs font-bold text-slate-900">College Notice Circular Broadcasts</h4>
+                <p className="text-[11px] text-slate-500">Instant notification for examination and holiday circulars</p>
               </div>
               <input
                 type="checkbox"
                 checked={notifyNotices}
                 onChange={(e) => setNotifyNotices(e.target.checked)}
-                className="w-4 h-4 accent-[#00ff88] rounded cursor-pointer"
+                className="w-4 h-4 accent-[#0f172a] rounded cursor-pointer"
               />
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/15 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-white">Correction Status Updates</h4>
-                <p className="text-[11px] text-slate-400">Alerts when faculty approves or rejects a rectification</p>
+                <h4 className="text-xs font-bold text-slate-900">Correction Status Updates</h4>
+                <p className="text-[11px] text-slate-500">Alerts when faculty approves or rejects a rectification</p>
               </div>
               <input
                 type="checkbox"
                 checked={notifyCorrections}
                 onChange={(e) => setNotifyCorrections(e.target.checked)}
-                className="w-4 h-4 accent-[#00ff88] rounded cursor-pointer"
+                className="w-4 h-4 accent-[#0f172a] rounded cursor-pointer"
               />
             </div>
           </div>
@@ -259,11 +259,11 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Card 3: Active Device & Session Info */}
-        <div className="lg:col-span-2 glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-4">
-          <div className="flex items-center justify-between border-b border-emerald-500/15 pb-3">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
-              <Smartphone className="w-5 h-5 text-[#00ff88]" />
-              <h3 className="text-sm font-bold text-white tracking-wide">
+              <Smartphone className="w-5 h-5 text-slate-900" />
+              <h3 className="text-sm font-bold text-slate-900 tracking-wide">
                 Active Devices & Security Sessions
               </h3>
             </div>
@@ -280,33 +280,33 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-[#00ff88]">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="font-bold text-white block">Current Web Browser Session</span>
-                  <span className="text-slate-400 text-[11px]">macOS / Chrome • Aligarh, Uttar Pradesh</span>
+                  <span className="font-bold text-slate-900 block">Current Web Browser Session</span>
+                  <span className="text-slate-500 text-[11px]">macOS / Chrome • Aligarh, Uttar Pradesh</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-                <span className="font-bold text-emerald-400 font-mono text-[11px]">Online Now</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-bold text-emerald-700 font-mono text-[11px]">Online Now</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/15 flex items-center justify-between gap-3 text-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="font-bold text-white block font-mono text-[11.5px] truncate max-w-[180px]">
+                  <span className="font-bold text-slate-900 block font-mono text-[11.5px] truncate max-w-[180px]">
                     {user?.email || 'user@vctm.in'}
                   </span>
-                  <span className="text-slate-400 text-[11px]">Official Supabase Auth Email</span>
+                  <span className="text-slate-500 text-[11px]">Official Supabase Auth Email</span>
                 </div>
               </div>
 
@@ -316,7 +316,7 @@ export const SettingsPage: React.FC = () => {
                     <AlertCircle className="w-3 h-3 text-amber-400" /> Pending Verification
                   </span>
                 ) : user?.email_confirmed_at ? (
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Email Verified
                   </span>
                 ) : (

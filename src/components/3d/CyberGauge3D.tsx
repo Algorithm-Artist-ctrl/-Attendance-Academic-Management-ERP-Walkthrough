@@ -21,28 +21,22 @@ export const CyberGauge3D: React.FC<CyberGauge3DProps> = ({
   const strokeDashoffset = circumference - (safePercentage / 100) * circumference;
 
   const isEligible = safePercentage >= 75;
-  const strokeColor = isEligible ? '#00ff88' : '#f43f5e';
+  const strokeColor = isEligible ? '#0f172a' : '#e11d48';
 
   return (
     <div className="relative flex flex-col items-center justify-center select-none" style={{ width: size, height: size }}>
-      {/* Outer ambient glow */}
-      <div 
-        className="absolute inset-2 rounded-full blur-lg pointer-events-none opacity-40 animate-pulse"
-        style={{ backgroundColor: strokeColor }}
-      />
-
       <svg width={size} height={size} className="transform -rotate-90">
         {/* Background track circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#0d1b32"
+          stroke="#e2e8f0"
           strokeWidth={strokeWidth}
           fill="transparent"
         />
 
-        {/* Foreground progress arc with gradient */}
+        {/* Foreground progress arc */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -59,16 +53,16 @@ export const CyberGauge3D: React.FC<CyberGauge3DProps> = ({
 
       {/* Center percentage label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-2xl font-black text-white tracking-tight" style={{ textShadow: `0 0 12px ${strokeColor}66` }}>
+        <span className="text-2xl font-black text-slate-900 tracking-tight">
           {safePercentage}%
         </span>
         {label && (
-          <span className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">
+          <span className="text-[10px] uppercase font-bold text-slate-500 mt-0.5">
             {label}
           </span>
         )}
         {subLabel && (
-          <span className="text-[9px] text-slate-500 font-medium">
+          <span className="text-[9px] text-slate-400 font-medium">
             {subLabel}
           </span>
         )}

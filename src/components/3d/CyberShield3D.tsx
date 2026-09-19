@@ -8,69 +8,62 @@ interface CyberShield3DProps {
 export const CyberShield3D: React.FC<CyberShield3DProps> = ({ className = '', size = 160 }) => {
   return (
     <div className={`relative flex items-center justify-center select-none ${className}`} style={{ width: size, height: size }}>
-      {/* Ambient Radial Glow */}
-      <div className="absolute inset-0 rounded-full bg-[#00ff88]/15 blur-xl pointer-events-none animate-pulse" />
+      {/* Ambient Radial Subtle Tint */}
+      <div className="absolute inset-0 rounded-full bg-slate-200/40 blur-xl pointer-events-none" />
 
       <svg
         viewBox="0 0 200 200"
-        className="w-full h-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.5)]"
+        className="w-full h-full drop-shadow-sm"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
           <linearGradient id="shieldPlate" x1="50" y1="30" x2="150" y2="170" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#1e3a5f" />
-            <stop offset="50%" stopColor="#0d1b32" />
-            <stop offset="100%" stopColor="#050b14" />
+            <stop offset="0%" stopColor="#f8fafc" />
+            <stop offset="50%" stopColor="#f1f5f9" />
+            <stop offset="100%" stopColor="#e2e8f0" />
           </linearGradient>
           <linearGradient id="shieldBorder" x1="30" y1="30" x2="170" y2="170" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#00ff88" />
-            <stop offset="50%" stopColor="#059669" />
-            <stop offset="100%" stopColor="#047857" />
+            <stop offset="0%" stopColor="#0f172a" />
+            <stop offset="50%" stopColor="#334155" />
+            <stop offset="100%" stopColor="#475569" />
           </linearGradient>
-          <filter id="shieldGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
         </defs>
 
-        {/* 3D Hologram Base Plate */}
-        <ellipse cx="100" cy="170" rx="65" ry="18" fill="#040b15" stroke="#00ff88" strokeWidth="1.5" strokeOpacity="0.4" />
-        <ellipse cx="100" cy="170" rx="45" ry="12" stroke="#00ff88" strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.6" />
+        {/* Base Plate */}
+        <ellipse cx="100" cy="170" rx="65" ry="18" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5" strokeOpacity="0.8" />
+        <ellipse cx="100" cy="170" rx="45" ry="12" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 4" />
 
         {/* Outer Shield Shell */}
         <path
           d="M 100 25 L 155 48 C 155 105 130 145 100 165 C 70 145 45 105 45 48 Z"
           fill="url(#shieldPlate)"
           stroke="url(#shieldBorder)"
-          strokeWidth="3.5"
-          filter="url(#shieldGlow)"
+          strokeWidth="3"
         />
 
         {/* Inner Shield Facet */}
         <path
           d="M 100 38 L 142 56 C 142 98 122 132 100 148 C 78 132 58 98 58 56 Z"
-          fill="#061220"
-          stroke="#00ff88"
+          fill="#ffffff"
+          stroke="#cbd5e1"
           strokeWidth="1.5"
-          strokeOpacity="0.5"
         />
 
-        {/* Center Glowing Neon Checkmark */}
+        {/* Center Checkmark */}
         <path
           d="M 82 92 L 95 106 L 122 76"
-          stroke="#00ff88"
-          strokeWidth="5.5"
+          stroke="#0f172a"
+          strokeWidth="5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          filter="url(#shieldGlow)"
         />
 
-        {/* Cyber Nodes */}
-        <circle cx="100" cy="25" r="3.5" fill="#00ff88" />
-        <circle cx="155" cy="48" r="3" fill="#00ff88" />
-        <circle cx="45" cy="48" r="3" fill="#00ff88" />
-        <circle cx="100" cy="165" r="3" fill="#00ff88" />
+        {/* Nodes */}
+        <circle cx="100" cy="25" r="3.5" fill="#0f172a" />
+        <circle cx="155" cy="48" r="3" fill="#0f172a" />
+        <circle cx="45" cy="48" r="3" fill="#0f172a" />
+        <circle cx="100" cy="165" r="3" fill="#0f172a" />
       </svg>
     </div>
   );

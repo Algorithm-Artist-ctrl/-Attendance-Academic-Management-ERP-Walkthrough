@@ -364,13 +364,13 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <GraduationCap className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <GraduationCap className="w-6 h-6 text-slate-900" />
             Student Master Directory
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             {isFaculty 
               ? `My Assigned Class Students • Showing ${filteredStudents.length} Students`
               : `Official institutional enrollment records • Total ${students.length} Students`}
@@ -379,10 +379,11 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
 
         {(isSuperAdmin || isHOD) && (
           <Button
-            variant="neon"
+            variant="primary"
             size="sm"
             onClick={handleOpenAddModal}
-            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+            leftIcon={<Plus className="w-4 h-4 text-white" />}
+            className="rounded-xl shadow-xs"
           >
             Add New Student
           </Button>
@@ -391,20 +392,20 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
 
       {/* Student Data Source Panel for Super Admin & HOD */}
       {(isSuperAdmin || isHOD) && (
-        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/25 space-y-4 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+              <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800">
                 <FileSpreadsheet className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
                   Student Data Source
-                  <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold">
+                  <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold">
                     {isSuperAdmin ? 'Super Admin Master Sync' : `HOD Department Sync (${departments.find(d => d.id === user?.department_id)?.code || 'Dept'})`}
                   </span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   {isSuperAdmin 
                     ? 'Synchronize students across all college departments from a Google Sheet CSV URL or file (Upsert by Roll No.)'
                     : 'Synchronize students for your department from a Google Sheet CSV URL or file (Upsert by Roll No.)'}
@@ -424,8 +425,8 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                leftIcon={<UploadCloud className="w-4 h-4 text-emerald-400" />}
-                className="text-xs font-bold border-emerald-500/30 text-white hover:bg-emerald-500/10"
+                leftIcon={<UploadCloud className="w-4 h-4 text-slate-600" />}
+                className="text-xs font-semibold border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
               >
                 Upload CSV File
               </Button>
@@ -440,44 +441,44 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                 value={googleSheetUrl}
                 onChange={(e) => setGoogleSheetUrl(e.target.value)}
                 placeholder="Paste Google Sheet CSV URL (e.g. https://docs.google.com/spreadsheets/d/.../export?format=csv)..."
-                className="w-full px-3.5 py-2.5 bg-slate-950/90 border border-emerald-500/30 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#00ff88] font-mono shadow-inner"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 font-mono shadow-xs"
               />
             </div>
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               onClick={handleSyncStudents}
               isLoading={isSyncing}
-              leftIcon={<Download className="w-4 h-4 text-slate-950" />}
-              className="w-full sm:w-auto font-black shadow-[0_0_15px_rgba(0,255,136,0.25)] shrink-0"
+              leftIcon={<Download className="w-4 h-4 text-white" />}
+              className="w-full sm:w-auto font-bold shadow-xs shrink-0 rounded-xl"
             >
               SYNC STUDENTS
             </Button>
           </div>
 
           {/* Last Sync & Result Metadata */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-emerald-500/10 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs text-slate-500">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-slate-500" />
-              <span>Last Sync: <strong className="text-slate-200">{lastSyncTime || 'Never'}</strong></span>
+              <span>Last Sync: <strong className="text-slate-800">{lastSyncTime || 'Never'}</strong></span>
             </div>
 
             {syncResult && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Sync Result:</span>
-                <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] font-bold">
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
                   {syncResult.added} added
                 </span>
-                <span className="px-2 py-0.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 font-bold">
+                <span className="px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-bold">
                   {syncResult.updated} updated
                 </span>
-                <span className="px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-bold">
+                <span className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold">
                   {syncResult.unchanged} unchanged
                 </span>
                 {syncResult.errorCount > 0 && (
                   <button 
                     onClick={() => setShowErrors(!showErrors)}
-                    className="px-2 py-0.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold hover:bg-rose-500/25 transition-colors cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 font-bold hover:bg-rose-100 transition-colors cursor-pointer"
                   >
                     {syncResult.errorCount} errors {showErrors ? '▲' : '▼'}
                   </button>
@@ -504,7 +505,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
           )}
 
           {syncSuccessToast && (
-            <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center justify-between animate-in fade-in">
+            <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between animate-in fade-in">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{syncSuccessToast}</span>
@@ -518,7 +519,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
       )}
 
       {/* Filter & Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-200/80 shadow-xs">
         <div className="relative w-full sm:w-80">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
             <Search className="w-4 h-4" />
@@ -528,34 +529,34 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by Roll Number or Name..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-semibold">Year:</span>
+            <span className="text-slate-600 font-semibold">Year:</span>
             <select
               value={yearFilter}
               onChange={(e) => {
                 setYearFilter(e.target.value);
                 setSectionFilter('ALL');
               }}
-              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-[#00ff88] font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
             >
-              <option value="ALL" className="bg-slate-950 text-white">All Years</option>
+              <option value="ALL">All Years</option>
               {years.map(y => (
-                <option key={y.id} value={y.id} className="bg-slate-950 text-white">{y.name}</option>
+                <option key={y.id} value={y.id}>{y.name}</option>
               ))}
             </select>
           </div>
 
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-semibold">Section:</span>
+            <span className="text-slate-600 font-semibold">Section:</span>
             <select
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
             >
               <option value="ALL">All Sections</option>
               {availableSections.map(sec => (
@@ -565,11 +566,11 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
           </div>
 
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-semibold">Type:</span>
+            <span className="text-slate-600 font-semibold">Type:</span>
             <select
               value={admissionFilter}
               onChange={(e) => setAdmissionFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
             >
               <option value="ALL">All Types</option>
               <option value="Regular">Regular</option>
@@ -582,9 +583,9 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
       {/* Student List Container (Dual-View: Cards on mobile, Table on desktop) */}
       <div>
         {filteredStudents.length === 0 ? (
-          <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
+          <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs">
             <GraduationCap className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="font-semibold text-slate-300">No student records found</p>
+            <p className="font-semibold text-slate-800">No student records found</p>
             <p className="text-xs text-slate-500 mt-1">Enroll students using "Add Student" or upload a batch CSV</p>
           </div>
         ) : (
@@ -594,7 +595,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
               {paginatedStudents.map((stud, idx) => (
                 <div 
                   key={stud.id}
-                  className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3 hover:border-emerald-500/40 transition-colors"
+                  className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3 hover:border-slate-300 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div 
@@ -603,9 +604,9 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-slate-500">#{(currentPage - 1) * pageSize + idx + 1}</span>
-                        <span className="font-mono text-xs font-black text-emerald-400 group-hover:underline">{stud.roll_number}</span>
+                        <span className="font-mono text-xs font-bold text-slate-900 group-hover:underline">{stud.roll_number}</span>
                       </div>
-                      <h3 className="text-sm font-bold text-white mt-0.5 group-hover:text-[#00ff88] transition-colors flex items-center gap-1.5">
+                      <h3 className="text-sm font-bold text-slate-900 mt-0.5 group-hover:text-slate-700 transition-colors flex items-center gap-1.5">
                         {stud.full_name}
                         <span className="text-[10px] text-emerald-400 opacity-60 group-hover:opacity-100">→</span>
                       </h3>
@@ -617,7 +618,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                           e.stopPropagation();
                           handleDelete(stud.id, stud.full_name);
                         }}
-                        className="p-2 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer touch-target flex items-center justify-center"
+                        className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer touch-target flex items-center justify-center"
                         title="Delete Student"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -626,21 +627,21 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                   </div>
 
                   <div 
-                    className="flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-500/10 text-xs cursor-pointer"
+                    className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs cursor-pointer"
                     onClick={() => handleOpenStudentProfile(stud.id)}
                   >
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 border border-slate-200 text-slate-700">
                       Section {stud.section?.name}
                     </span>
                     <span className={clsx(
                       'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
                       stud.admission_type === 'Lateral Entry'
-                        ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                        : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                        ? 'bg-purple-50 border-purple-200 text-purple-800'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                     )}>
                       {stud.admission_type}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
                       Active
                     </span>
                   </div>
@@ -655,10 +656,10 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
             </div>
 
             {/* DESKTOP VIEW: Data Table */}
-            <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+            <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                     <tr>
                       <th className="px-5 py-3.5">#</th>
                       <th className="px-5 py-3.5">Roll Number</th>
@@ -671,32 +672,32 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                       <th className="px-5 py-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-emerald-500/10">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {paginatedStudents.map((stud, idx) => {
                       const yr = years.find(y => y.id === stud.academic_year_id);
                       return (
                         <tr 
                           key={stud.id} 
                           onClick={() => handleOpenStudentProfile(stud.id)}
-                          className="hover:bg-emerald-500/10 transition-colors cursor-pointer group"
+                          className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                         >
                           <td className="px-5 py-3.5 font-mono text-slate-500">{(currentPage - 1) * pageSize + idx + 1}</td>
-                          <td className="px-5 py-3.5 font-mono font-bold text-emerald-400 text-sm group-hover:underline">
+                          <td className="px-5 py-3.5 font-mono font-bold text-slate-900 text-sm group-hover:underline">
                             {stud.roll_number}
                           </td>
-                          <td className="px-5 py-3.5 font-bold text-white text-sm group-hover:text-[#00ff88] transition-colors">
+                          <td className="px-5 py-3.5 font-bold text-slate-900 text-sm group-hover:text-slate-700 transition-colors">
                             <div className="flex items-center gap-2">
                               <span>{stud.full_name}</span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-[#00ff88] opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
                                 View Profile
                               </span>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 text-center font-semibold text-slate-300">
+                          <td className="px-5 py-3.5 text-center font-semibold text-slate-700">
                             {yr?.name || '—'}
                           </td>
                           <td className="px-5 py-3.5 text-center">
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-700">
                               Sec {stud.section?.name}
                             </span>
                           </td>
@@ -704,24 +705,24 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                             <span className={clsx(
                               'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
                               stud.admission_type === 'Lateral Entry'
-                                ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                                : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                                ? 'bg-purple-50 border-purple-200 text-purple-800'
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                             )}>
                               {stud.admission_type}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-slate-300 font-medium">
+                          <td className="px-5 py-3.5 text-slate-700 font-medium">
                             {stud.mentor?.full_name || '—'}
                           </td>
                           <td className="px-5 py-3.5 text-center">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
                               Active
                             </span>
                           </td>
                           <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => handleDelete(stud.id, stud.full_name)}
-                              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                               title="Delete Student"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -737,26 +738,26 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
 
             {/* Pagination Controls */}
             {filteredStudents.length > pageSize && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 glass-panel rounded-2xl border border-emerald-500/20 text-xs text-slate-400 mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-slate-200/80 shadow-xs text-xs text-slate-600 mt-4">
                 <div>
-                  Showing <span className="font-semibold text-white">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * pageSize, filteredStudents.length)}</span> of <span className="font-semibold text-white">{filteredStudents.length}</span> students
+                  Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-semibold text-slate-900">{Math.min(currentPage * pageSize, filteredStudents.length)}</span> of <span className="font-semibold text-slate-900">{filteredStudents.length}</span> students
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-emerald-500/25 bg-slate-950/60 hover:bg-emerald-500/10 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Previous
                   </button>
-                  <span className="px-3 py-1 font-semibold text-white">
+                  <span className="px-3 py-1 font-semibold text-slate-900">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-emerald-500/25 bg-slate-950/60 hover:bg-emerald-500/10 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   >
                     Next
                     <ChevronRight className="w-4 h-4" />
@@ -784,7 +785,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Roll Number <span className="text-rose-400">*</span>
             </label>
             <input
@@ -793,12 +794,12 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
               value={newRoll}
               onChange={(e) => setNewRoll(e.target.value)}
               placeholder="e.g. 2503400100099"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Full Name (Capital Letters) <span className="text-rose-400">*</span>
             </label>
             <input
@@ -807,19 +808,19 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. RAHUL SHARMA"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Academic Year <span className="text-rose-400">*</span>
               </label>
               <select
                 value={newStudentYearId}
                 onChange={(e) => handleModalYearChange(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 {years.map(y => (
                   <option key={y.id} value={y.id}>{y.name}</option>
@@ -828,13 +829,13 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Target Section <span className="text-rose-400">*</span>
               </label>
               <select
                 value={newSectionId}
                 onChange={(e) => setNewSectionId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 {addModalSections.length === 0 ? (
                   <option value="">No sections available</option>
@@ -854,35 +855,35 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
               <input
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder="e.g. student@vctm.in"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
               <input
                 type="tel"
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
                 placeholder="e.g. +91 9876543210"
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Admission Type</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Admission Type</label>
               <select
                 value={newAdmissionType}
                 onChange={(e) => setNewAdmissionType(e.target.value as AdmissionType)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 <option value="Regular">Regular</option>
                 <option value="Lateral Entry">Lateral Entry</option>
@@ -890,11 +891,11 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mentor Faculty</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Mentor Faculty</label>
               <select
                 value={newMentorId}
                 onChange={(e) => setNewMentorId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 <option value="">None / Not Assigned</option>
                 {faculty.filter(f => f.active).map(f => (
@@ -904,11 +905,11 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="neon" size="sm">
+            <Button type="submit" variant="primary" size="sm" className="rounded-xl shadow-xs">
               Save Student
             </Button>
           </div>

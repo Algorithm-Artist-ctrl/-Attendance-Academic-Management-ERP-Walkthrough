@@ -389,13 +389,13 @@ export const FacultyAccountsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Panel */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Users className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Users className="w-6 h-6 text-slate-900" />
             Faculty Account & Security Directory
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Centralized credential management, account status control, session revocation, and security audit trails
           </p>
         </div>
@@ -406,8 +406,8 @@ export const FacultyAccountsPage: React.FC = () => {
             size="sm"
             onClick={handleReconcile}
             isLoading={isReconciling}
-            leftIcon={<ShieldCheck className={`w-3.5 h-3.5 text-emerald-400 ${isReconciling ? 'animate-spin' : ''}`} />}
-            className="border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/10 text-emerald-300"
+            leftIcon={<ShieldCheck className={`w-3.5 h-3.5 text-slate-700 ${isReconciling ? 'animate-spin' : ''}`} />}
+            className="border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs"
           >
             Reconcile Auth Accounts
           </Button>
@@ -426,11 +426,11 @@ export const FacultyAccountsPage: React.FC = () => {
       {reconcileResult && (
         <div className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${
           reconcileResult.type === 'success'
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-rose-50 border-rose-200 text-rose-800'
         }`}>
           <div className="flex items-center gap-2">
-            {reconcileResult.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
+            {reconcileResult.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
             <span>{reconcileResult.message}</span>
           </div>
           <button onClick={() => setReconcileResult(null)} className="text-slate-400 hover:text-white text-xs ml-4">✕</button>
@@ -438,7 +438,7 @@ export const FacultyAccountsPage: React.FC = () => {
       )}
 
       {/* Filter and Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      <div className="bg-white rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between border border-slate-200/80 shadow-xs">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -446,22 +446,22 @@ export const FacultyAccountsPage: React.FC = () => {
             placeholder="Search by faculty name, employee code, email, designation..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] transition-colors"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs transition-colors"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Department Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-slate-300">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 shadow-xs">
             <Building2 className="w-3.5 h-3.5 text-slate-400" />
             <select
               value={departmentFilter}
               onChange={e => setDepartmentFilter(e.target.value)}
-              className="bg-transparent border-none text-xs text-white focus:outline-none cursor-pointer"
+              className="bg-transparent border-none text-xs text-slate-900 font-semibold focus:outline-none cursor-pointer"
             >
-              <option value="ALL" className="bg-slate-900 text-white">All Departments</option>
+              <option value="ALL">All Departments</option>
               {departments.map(d => (
-                <option key={d.id} value={d.id} className="bg-slate-900 text-white">
+                <option key={d.id} value={d.id}>
                   {d.name} ({d.code})
                 </option>
               ))}
@@ -469,28 +469,28 @@ export const FacultyAccountsPage: React.FC = () => {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-slate-300">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 shadow-xs">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
-              className="bg-transparent border-none text-xs text-white focus:outline-none cursor-pointer"
+              className="bg-transparent border-none text-xs text-slate-900 font-semibold focus:outline-none cursor-pointer"
             >
-              <option value="ALL" className="bg-slate-900 text-white">All Statuses</option>
-              <option value="ACTIVE" className="bg-slate-900 text-emerald-400">Active Only</option>
-              <option value="BLOCKED" className="bg-slate-900 text-amber-400">Blocked Only</option>
-              <option value="ARCHIVED" className="bg-slate-900 text-slate-400">Archived Only</option>
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active Only</option>
+              <option value="BLOCKED">Blocked Only</option>
+              <option value="ARCHIVED">Archived Only</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Directory Table */}
-      <div className="glass-panel rounded-3xl overflow-hidden border border-emerald-500/20">
+      <div className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Faculty Member</th>
                 <th className="py-3.5 px-4">Employee Code</th>
                 <th className="py-3.5 px-4">Email / Auth ID</th>
@@ -500,12 +500,12 @@ export const FacultyAccountsPage: React.FC = () => {
                 <th className="py-3.5 px-4 text-right">Security Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs">
+            <tbody className="divide-y divide-slate-100 text-xs bg-white">
               {filteredAccounts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <Users className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
-                    <p className="font-semibold text-slate-300">No faculty accounts found matching criteria</p>
+                    <p className="font-semibold text-slate-800">No faculty accounts found matching criteria</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">Try adjusting your search terms or filters.</p>
                   </td>
                 </tr>
@@ -517,31 +517,31 @@ export const FacultyAccountsPage: React.FC = () => {
                   return (
                     <tr 
                       key={acc.id} 
-                      className={`hover:bg-slate-900/50 transition-colors ${isBlocked ? 'bg-amber-950/10' : isArchived ? 'opacity-60 bg-slate-950/20' : ''}`}
+                      className={`hover:bg-slate-50/80 transition-colors ${isBlocked ? 'bg-amber-50/40' : isArchived ? 'opacity-60 bg-slate-50' : ''}`}
                     >
                       {/* Name & Designation */}
                       <td className="py-3 px-4">
-                        <div className="font-bold text-white flex items-center gap-2">
+                        <div className="font-bold text-slate-900 flex items-center gap-2">
                           <span>{acc.full_name}</span>
                           {acc.faculty_code && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 font-mono">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-700 font-mono font-bold">
                               {acc.faculty_code}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-400">{acc.designation}</p>
+                        <p className="text-[11px] text-slate-500">{acc.designation}</p>
                       </td>
 
                       {/* Employee Code */}
                       <td className="py-3 px-4">
-                        <span className="font-mono text-slate-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                        <span className="font-mono text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 font-bold">
                           {acc.employee_code}
                         </span>
                       </td>
 
                       {/* Email */}
                       <td className="py-3 px-4">
-                        <div className="text-slate-300 font-mono text-[11px] flex items-center gap-1">
+                        <div className="text-slate-700 font-mono text-[11px] flex items-center gap-1">
                           <Mail className="w-3 h-3 text-slate-500 shrink-0" />
                           <span>{acc.email}</span>
                         </div>
@@ -555,26 +555,26 @@ export const FacultyAccountsPage: React.FC = () => {
 
                       {/* Department */}
                       <td className="py-3 px-4">
-                        <span className="text-slate-300 font-medium">{acc.department_name}</span>
+                        <span className="text-slate-800 font-semibold">{acc.department_name}</span>
                         <span className="text-[10px] text-slate-500 block font-mono">({acc.department_code})</span>
                       </td>
 
                       {/* Status Badge */}
                       <td className="py-3 px-4">
                         {acc.status === 'ACTIVE' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
                             Active
                           </span>
                         )}
                         {acc.status === 'BLOCKED' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                             <Lock className="w-3 h-3" />
                             Blocked
                           </span>
                         )}
                         {acc.status === 'ARCHIVED' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                             <Archive className="w-3 h-3" />
                             Archived
                           </span>
@@ -584,7 +584,7 @@ export const FacultyAccountsPage: React.FC = () => {
                       {/* Last Login */}
                       <td className="py-3 px-4 text-[11px] text-slate-400 font-mono">
                         {acc.last_sign_in_at ? (
-                          <span className="flex items-center gap-1 text-slate-300">
+                          <span className="flex items-center gap-1 text-slate-600">
                             <Clock className="w-3 h-3 text-slate-500" />
                             {formatTimeAgo(acc.last_sign_in_at)}
                           </span>
@@ -599,8 +599,8 @@ export const FacultyAccountsPage: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenManage(acc)}
-                          className="text-xs hover:text-[#00ff88]"
-                          leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}
+                          className="text-xs text-slate-600 hover:text-slate-900"
+                          leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-slate-600" />}
                         >
                           Manage
                         </Button>
@@ -626,8 +626,8 @@ export const FacultyAccountsPage: React.FC = () => {
             {actionMessage && (
               <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
                 actionMessage.type === 'success' 
-                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' 
-                  : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+                  : 'bg-rose-50 border border-rose-200 text-rose-800'
               }`}>
                 {actionMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
                 <span>{actionMessage.text}</span>
@@ -635,20 +635,20 @@ export const FacultyAccountsPage: React.FC = () => {
             )}
 
             {/* Profile Overview */}
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-black text-white">{selectedAccount.full_name}</h4>
-                  <p className="text-xs text-slate-400">{selectedAccount.designation} • {selectedAccount.department_name}</p>
+                  <h4 className="text-sm font-bold text-slate-900">{selectedAccount.full_name}</h4>
+                  <p className="text-xs text-slate-500">{selectedAccount.designation} • {selectedAccount.department_name}</p>
                 </div>
                 <div>
                   {selectedAccount.status === 'ACTIVE' && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                       Active Account
                     </span>
                   )}
                   {selectedAccount.status === 'BLOCKED' && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
                       Account Blocked
                     </span>
                   )}
@@ -660,22 +660,22 @@ export const FacultyAccountsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-800">
+              <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-200">
                 <div>
                   <span className="text-slate-500 block text-[10px] uppercase font-bold">Official Email</span>
-                  <span className="text-slate-200 font-mono">{selectedAccount.email}</span>
+                  <span className="text-slate-800 font-mono font-bold">{selectedAccount.email}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px] uppercase font-bold">Employee Code</span>
-                  <span className="text-slate-200 font-mono">{selectedAccount.employee_code}</span>
+                  <span className="text-slate-800 font-mono font-bold">{selectedAccount.employee_code}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px] uppercase font-bold">Faculty Shorthand</span>
-                  <span className="text-slate-200 font-mono">{selectedAccount.faculty_code || 'None'}</span>
+                  <span className="text-slate-800 font-mono font-bold">{selectedAccount.faculty_code || 'None'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px] uppercase font-bold">Last Login</span>
-                  <span className="text-slate-200 font-mono">
+                  <span className="text-slate-800 font-mono font-bold">
                     {selectedAccount.last_sign_in_at ? formatTimeAgo(selectedAccount.last_sign_in_at) : 'Never logged in'}
                   </span>
                 </div>
@@ -683,16 +683,16 @@ export const FacultyAccountsPage: React.FC = () => {
             </div>
 
             {/* Super Admin Credential Management Panel */}
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/25 space-y-4">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-emerald-500/10">
                 <div className="flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-emerald-400" />
+                  <KeyRound className="w-4 h-4 text-slate-900" />
                   <div>
-                    <h4 className="text-xs font-bold text-white tracking-wide">Account Credential Management</h4>
+                    <h4 className="text-xs font-bold text-slate-900 tracking-wide">Account Credential Management</h4>
                     <p className="text-[10px] text-slate-400">Direct Super Admin Auth Controls • Active Immediately</p>
                   </div>
                 </div>
-                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[10px] text-slate-700 font-mono bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
                   Confirmed Identity
                 </span>
@@ -701,7 +701,7 @@ export const FacultyAccountsPage: React.FC = () => {
               {/* 1. Official Login Email (Identity) Control */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
                     <Mail className="w-3.5 h-3.5 text-slate-400" />
                     Official Login Email (Supabase Auth Identity)
                   </label>
@@ -717,7 +717,7 @@ export const FacultyAccountsPage: React.FC = () => {
                     value={editEmail}
                     onChange={e => setEditEmail(e.target.value)}
                     placeholder="faculty.name@vctm.in"
-                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-mono font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                   />
                   <Button
                     variant="outline"
@@ -737,8 +737,8 @@ export const FacultyAccountsPage: React.FC = () => {
               </div>
 
               {/* 2. Password Management Controls */}
-              <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+              <div className="space-y-2 pt-2 border-t border-slate-200/80">
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-slate-400" />
                   Set / Reset Password
                 </label>
@@ -751,7 +751,7 @@ export const FacultyAccountsPage: React.FC = () => {
                       value={editPassword}
                       onChange={e => setEditPassword(e.target.value)}
                       placeholder="Enter new custom password (min 6 characters)..."
-                      className="w-full px-3 py-2 pr-9 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                      className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-mono font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                     />
                     <button
                       type="button"
@@ -834,7 +834,7 @@ export const FacultyAccountsPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[10px] text-slate-400 space-y-1">
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[10px] text-slate-500 space-y-1">
                 <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
                   <CheckCircle2 className="w-3 h-3" />
                   Immediate Login Enabled
@@ -846,8 +846,8 @@ export const FacultyAccountsPage: React.FC = () => {
             </div>
 
             {/* Account Status Controls */}
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
-              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-amber-400" />
                 Access & Status Enforcement
               </h4>
@@ -857,7 +857,7 @@ export const FacultyAccountsPage: React.FC = () => {
                   {!showBlockConfirm ? (
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-semibold text-white">Block Account Access</p>
+                        <p className="text-xs font-semibold text-slate-900">Block Account Access</p>
                         <p className="text-[11px] text-slate-400">Immediately revokes session and blocks portal login.</p>
                       </div>
                       <Button
@@ -910,11 +910,12 @@ export const FacultyAccountsPage: React.FC = () => {
                     <p className="text-[11px] text-slate-400">Restore access and enable authentication for this faculty member.</p>
                   </div>
                   <Button
-                    variant="neon"
+                    variant="primary"
                     size="sm"
                     onClick={handleToggleBlock}
                     isLoading={actionLoading}
-                    leftIcon={<Unlock className="w-3.5 h-3.5 text-slate-950" />}
+                    leftIcon={<Unlock className="w-3.5 h-3.5 text-white" />}
+                    className="rounded-xl shadow-xs"
                   >
                     Unblock Account
                   </Button>
@@ -927,7 +928,7 @@ export const FacultyAccountsPage: React.FC = () => {
 
               {/* Soft Archive Option */}
               {selectedAccount.status !== 'ARCHIVED' && (
-                <div className="pt-3 border-t border-slate-800">
+                <div className="pt-3 border-t border-slate-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-slate-300">Archive / Record Departure</p>

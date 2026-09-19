@@ -450,10 +450,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     if (saveStatus === 'saving') {
       return {
         label: 'Saving...',
-        icon: <RotateCcw className="w-4 h-4 text-slate-950 animate-spin" />,
-        variant: 'neon' as const,
+        icon: <RotateCcw className="w-4 h-4 text-white animate-spin" />,
+        variant: 'primary' as const,
         disabled: true,
-        className: 'font-black opacity-80 cursor-not-allowed',
+        className: 'font-bold opacity-80 cursor-not-allowed',
       };
     }
     if (saveStatus === 'error') {
@@ -462,33 +462,33 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         icon: <AlertCircle className="w-4 h-4 text-white" />,
         variant: 'outline' as const,
         disabled: false,
-        className: 'font-black text-rose-300 border-rose-500 bg-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.4)] hover:bg-rose-500/30',
+        className: 'font-bold text-rose-700 border-rose-300 bg-rose-50 hover:bg-rose-100',
       };
     }
     if (saveStatus === 'saved' && !hasUnsavedChanges && (presentCount > 0 || absentCount > 0)) {
       return {
         label: 'Attendance Saved',
-        icon: <CheckCheck className="w-4 h-4 text-[#00ff88]" />,
+        icon: <CheckCheck className="w-4 h-4 text-emerald-600" />,
         variant: 'outline' as const,
         disabled: false,
-        className: 'font-black text-[#00ff88] border-[#00ff88]/50 bg-[#00ff88]/10 shadow-[0_0_15px_rgba(0,255,136,0.2)]',
+        className: 'font-bold text-emerald-800 border-emerald-300 bg-emerald-50',
       };
     }
     if (hasUnsavedChanges) {
       return {
         label: `Save Attendance (${changedCount})`,
-        icon: <CheckCircle2 className="w-4 h-4 text-slate-950" />,
-        variant: 'neon' as const,
+        icon: <CheckCircle2 className="w-4 h-4 text-white" />,
+        variant: 'primary' as const,
         disabled: false,
-        className: 'font-black shadow-[0_0_20px_rgba(0,255,136,0.35)]',
+        className: 'font-bold shadow-xs',
       };
     }
     return {
       label: 'Save Attendance',
-      icon: <CheckCircle2 className="w-4 h-4 text-slate-950" />,
-      variant: 'neon' as const,
+      icon: <CheckCircle2 className="w-4 h-4 text-white" />,
+      variant: 'primary' as const,
       disabled: false,
-      className: 'font-black shadow-[0_0_15px_rgba(0,255,136,0.25)]',
+      className: 'font-bold shadow-xs',
     };
   }, [saveStatus, hasUnsavedChanges, changedCount, presentCount, absentCount]);
 
@@ -625,12 +625,12 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // Access Denied for unauthorized roles
   if (!isAuthorized) {
     return (
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-rose-500/30 text-center space-y-4 max-w-xl mx-auto my-12">
-        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 text-center space-y-4 max-w-xl mx-auto my-12 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto text-rose-600">
           <ShieldAlert className="w-6 h-6" />
         </div>
-        <h2 className="text-lg font-bold text-white">Access Restricted</h2>
-        <p className="text-xs text-slate-300">
+        <h2 className="text-lg font-bold text-slate-900">Access Restricted</h2>
+        <p className="text-xs text-slate-500">
           Live lecture attendance marking is reserved strictly for authenticated teaching faculty. Administrative staff and students cannot take daily attendance.
         </p>
       </div>
@@ -640,13 +640,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   // No assigned classes state
   if (assignedClasses.length === 0) {
     return (
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-amber-500/30 text-center space-y-4 max-w-xl mx-auto my-12">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 text-center space-y-4 max-w-xl mx-auto my-12 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
           <AlertCircle className="w-6 h-6" />
         </div>
-        <h2 className="text-lg font-bold text-white">No Assigned Classes Found</h2>
-        <p className="text-xs text-slate-300">
-          Your faculty profile (<span className="text-[#00ff88] font-semibold">{currentFaculty?.full_name || user?.full_name}</span>) has no active teaching lectures assigned in the academic timetable.
+        <h2 className="text-lg font-bold text-slate-900">No Assigned Classes Found</h2>
+        <p className="text-xs text-slate-500">
+          Your faculty profile (<span className="text-slate-900 font-semibold">{currentFaculty?.full_name || user?.full_name}</span>) has no active teaching lectures assigned in the academic timetable.
         </p>
       </div>
     );
@@ -667,40 +667,40 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     return (
       <div className="space-y-6">
         {/* Header with Date Navigation & Quick Filters */}
-        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 flex-wrap">
-              <CheckSquare className="w-6 h-6 text-[#00ff88]" />
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-2.5 flex-wrap">
+              <CheckSquare className="w-6 h-6 text-slate-800" />
               <span>
                 {isToday
                   ? `Today's Assigned Classes (${todayDay})`
                   : `Assigned Classes — ${formatDateFull(sessionDate)}`}
               </span>
               {isToday && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/40">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
                   TODAY
                 </span>
               )}
               {isFuture && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                   UPCOMING
                 </span>
               )}
               {isPast && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                   HISTORICAL
                 </span>
               )}
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              {formatDateFull(sessionDate)} • Faculty: <span className="text-white font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              {formatDateFull(sessionDate)} • Faculty: <span className="text-slate-900 font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
             </p>
           </div>
 
           {/* Date Picker & Quick Selectors */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {/* Quick Presets */}
-            <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-2xl border border-emerald-500/20">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
               <button
                 type="button"
                 onClick={() => {
@@ -708,7 +708,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                   setSessionDate(prev);
                   setSelectedDayFilter(getISTDayOfWeek(prev));
                 }}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer"
                 title="Previous Day"
               >
                 ◀ Prev
@@ -722,8 +722,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 className={clsx(
                   'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
                   isToday
-                    ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_10px_rgba(0,255,136,0.3)]'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                    ? 'bg-[#0f172a] text-white font-black shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 )}
               >
                 Today
@@ -735,7 +735,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                   setSessionDate(next);
                   setSelectedDayFilter(getISTDayOfWeek(next));
                 }}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer"
                 title="Next Day"
               >
                 Next ▶
@@ -743,8 +743,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             </div>
 
             {/* Date Input */}
-            <div className="flex items-center gap-1.5 bg-slate-950/80 px-3 py-1.5 rounded-2xl border border-emerald-500/20">
-              <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-2xl border border-slate-200">
+              <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
               <input
                 type="date"
                 value={sessionDate}
@@ -755,14 +755,14 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                     setSelectedDayFilter(getISTDayOfWeek(d));
                   }
                 }}
-                className="bg-transparent text-xs text-white font-bold focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs text-slate-900 font-bold focus:outline-none cursor-pointer"
               />
             </div>
           </div>
         </div>
 
         {/* Weekday Selector Bar */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar max-w-full">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200 overflow-x-auto no-scrollbar max-w-full">
           {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const).map(d => {
             const dayDate = getDateForWeekdayInCurrentWeek(d, todayISO);
             const isDaySelected = selectedDayFilter === d;
@@ -779,17 +779,17 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 className={clsx(
                   'px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5',
                   isDaySelected
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.3)] font-black'
+                    ? 'bg-[#0f172a] text-white shadow-xs font-black'
                     : isDayToday
-                      ? 'text-emerald-400 border border-emerald-500/30 hover:text-white'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                      ? 'text-slate-900 bg-white/70 border border-slate-300 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white'
                 )}
                 title={formatDateFull(dayDate)}
               >
                 <span>{d}</span>
                 <span className={clsx(
                   'text-[10px] opacity-75 font-mono',
-                  isDaySelected ? 'text-slate-900' : 'text-slate-500'
+                  isDaySelected ? 'text-slate-300' : 'text-slate-500'
                 )}>
                   {dayDate.substring(8)}
                 </span>
@@ -800,14 +800,14 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
         {/* Classes Cards Grid */}
         {dayClasses.length === 0 ? (
-          <div className="glass-panel rounded-3xl p-8 sm:p-12 border border-emerald-500/20 text-center space-y-3">
-            <Calendar className="w-8 h-8 text-slate-500 mx-auto" />
-            <p className="font-bold text-white text-sm">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 text-center space-y-3 shadow-xs">
+            <Calendar className="w-8 h-8 text-slate-400 mx-auto" />
+            <p className="font-bold text-slate-900 text-sm">
               {selectedDayFilter === 'SUN'
                 ? 'Today is Sunday (Weekend / Holiday)'
                 : `No teaching lectures scheduled for ${selectedDayFilter} (${formatDateFull(sessionDate)})`}
             </p>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
               {selectedDayFilter === 'SUN' 
                 ? 'College academic lectures are not held on Sundays. Classes resume on Monday. You can select Monday–Saturday tabs to review weekly assignments.'
                 : `No active teaching periods are assigned to you on ${selectedDayFilter} in the published timetable.`}
@@ -833,19 +833,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               return (
                 <div
                   key={cls.id}
-                  className="glass-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between space-y-4 border border-emerald-500/20 hover:border-emerald-500/40 transition-all hover:shadow-[0_0_20px_rgba(0,255,136,0.1)]"
+                  className="bg-white rounded-3xl p-4 sm:p-5 flex flex-col justify-between space-y-4 border border-slate-200/80 hover:border-slate-300 transition-all shadow-xs"
                 >
                   <div className="space-y-3">
                     {/* Top Row: Time & Section */}
                     <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-950 border border-emerald-500/30 text-[#00ff88]">
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-100 border border-slate-200 text-slate-800">
                         {cls.start_time?.substring(0, 5)} – {cls.end_time?.substring(0, 5)} (P{cls.period_number})
                       </span>
                       {(() => {
                         const sem = semesters.find(s => s.id === sec?.semester_id);
                         const yr = years.find(y => y.id === sem?.academic_year_id);
                         return (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-emerald-500/20 text-slate-200">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 border border-slate-200 text-slate-800">
                             {yr?.name ? `${yr.name} • ` : ''}Section {sec?.name}
                           </span>
                         );
@@ -854,43 +854,43 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
                     {/* Subject Details */}
                     <div>
-                      <h3 className="text-base font-bold text-white tracking-tight leading-snug">
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug">
                         {sub?.subject_name}
                       </h3>
-                      <p className="text-xs font-mono text-[#00ff88] mt-0.5">
+                      <p className="text-xs font-mono text-slate-600 mt-0.5">
                         {sub?.subject_code} • {cls.lecture_type || 'Theory'}
                       </p>
                     </div>
 
                     {/* Meta info */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 pt-2 border-t border-emerald-500/10">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-100">
                       <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="truncate">{cls.room_number || sec?.room_number || 'Room TBD'}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{enrolledCount} Students</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Attendance Status & Action */}
-                  <div className="pt-3 border-t border-emerald-500/15 flex items-center justify-between gap-2">
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     {isFuture ? (
                       <>
-                        <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-blue-400" />
+                        <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-blue-600" />
                           <span>Upcoming</span>
                         </div>
-                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700/60 text-slate-500">
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-500">
                           Not Available Yet
                         </span>
                       </>
                     ) : summary.status === 'FULLY_MARKED' ? (
                       <>
-                        <div className="text-[11px] font-bold text-[#00ff88] flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>✓ Marked ({summary.total}/{summary.total})</span>
                         </div>
                         <Button
@@ -901,15 +901,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                             setActiveClassId(cls.id);
                           }}
                           rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                          className="touch-target font-bold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                          className="touch-target font-bold text-slate-800"
                         >
                           {isToday ? 'View / Update' : 'View Attendance'}
                         </Button>
                       </>
                     ) : summary.status === 'PARTIALLY_MARKED' ? (
                       <>
-                        <div className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                        <div className="text-[11px] font-bold text-amber-800 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                           <span>Marked ({summary.marked}/{summary.total})</span>
                         </div>
                         <Button
@@ -920,26 +920,26 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                             setActiveClassId(cls.id);
                           }}
                           rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                          className="touch-target font-bold border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                          className="touch-target font-bold text-amber-800 border-amber-200 hover:bg-amber-50"
                         >
                           View / Update
                         </Button>
                       </>
                     ) : isToday ? (
                       <>
-                        <div className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                        <div className="text-[11px] font-bold text-amber-800 flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5" />
                           <span>Not Recorded</span>
                         </div>
                         <Button
                           size="sm"
-                          variant="neon"
+                          variant="primary"
                           onClick={() => {
                             setSessionDate(sessionDate);
                             setActiveClassId(cls.id);
                           }}
-                          leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
-                          className="touch-target font-black"
+                          leftIcon={<CheckSquare className="w-3.5 h-3.5 text-white" />}
+                          className="touch-target font-bold"
                         >
                           Take Attendance
                         </Button>
@@ -958,7 +958,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                             setActiveClassId(cls.id);
                           }}
                           rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                          className="touch-target font-medium border-slate-700 text-slate-400 hover:text-white"
+                          className="touch-target font-medium text-slate-700"
                         >
                           Review Past
                         </Button>
@@ -980,34 +980,34 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
   return (
     <div className="space-y-4 pb-80 md:pb-36">
       {/* 1. Class Context Header Bar */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => safelyNavigate(() => setActiveClassId(null))}
-            className="p-2.5 rounded-2xl bg-slate-950 border border-emerald-500/30 text-[#00ff88] hover:bg-emerald-500/10 transition-all shrink-0 cursor-pointer flex items-center justify-center min-h-[44px] min-w-[44px]"
+            className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 hover:bg-slate-200 transition-all shrink-0 cursor-pointer flex items-center justify-center min-h-[44px] min-w-[44px]"
             title="Back to Assigned Schedule"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 font-mono text-xs font-bold text-[#00ff88]">
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 font-mono text-xs font-bold text-slate-800">
                 {activeSubject?.subject_code}
               </span>
               {(() => {
                 const sem = semesters.find(s => s.id === activeSection?.semester_id);
                 const yr = years.find(y => y.id === sem?.academic_year_id);
                 return (
-                  <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-emerald-500/20 text-xs font-bold text-white">
+                  <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800">
                     {yr?.name ? `${yr.name} • ` : ''}Section {activeSection?.name}
                   </span>
                 );
               })()}
-              <span className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-slate-700 text-xs font-mono text-slate-300">
+              <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-xs font-mono text-slate-600">
                 {roomNumber}
               </span>
             </div>
-            <h1 className="text-lg sm:text-xl font-black text-white tracking-tight mt-1 truncate">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 font-serif-institutional tracking-tight mt-1 truncate">
               {activeSubject?.subject_name}
             </h1>
           </div>
@@ -1015,8 +1015,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
         {/* Date Selector & Session Status & Mobile Save Action */}
         <div className="flex items-center gap-2 sm:gap-3 self-end md:self-auto">
-          <div className="flex items-center gap-2 bg-slate-950/90 border border-emerald-500/30 px-3 py-1.5 rounded-2xl text-xs">
-            <Calendar className="w-4 h-4 text-[#00ff88]" />
+          <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-2xl text-xs text-slate-900">
+            <Calendar className="w-4 h-4 text-slate-500" />
             <input
               type="date"
               max={todayISO}
@@ -1027,12 +1027,12 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                   safelyNavigate(() => setSessionDate(newDate));
                 }
               }}
-              className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer"
             />
           </div>
 
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 text-xs text-slate-300">
-            <Clock className="w-3.5 h-3.5 text-[#00ff88]" />
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
             <span className="font-mono">{timeSlot}</span>
           </div>
 
@@ -1043,7 +1043,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             leftIcon={saveButtonConfig.icon}
             onClick={handleInitiateSave}
             disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
-            className={clsx('md:hidden font-black text-xs py-1.5 px-3 min-h-[44px]', saveButtonConfig.className)}
+            className={clsx('md:hidden font-bold text-xs py-1.5 px-3 min-h-[44px]', saveButtonConfig.className)}
           >
             {saveButtonConfig.label}
           </Button>
@@ -1052,85 +1052,85 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
       {/* Notifications */}
       {saveSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in zoom-in-95 shadow-xs">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>Attendance recorded and synced to Supabase database successfully!</span>
         </div>
       )}
 
       {saveError && (
-        <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 shadow-xs">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{saveError}</span>
         </div>
       )}
 
       {/* 2. Progress & Live Summary Bar */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/20 space-y-3">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 space-y-3 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-            <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700/50 font-bold text-slate-300">
-              Total: <strong className="text-white text-sm ml-1">{sectionStudents.length}</strong>
+            <span className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-700">
+              Total: <strong className="text-slate-900 text-sm ml-1">{sectionStudents.length}</strong>
             </span>
-            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 font-bold text-emerald-400">
-              Present: <strong className="text-white text-sm ml-1">{presentCount}</strong>
+            <span className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-800">
+              Present: <strong className="text-slate-900 text-sm ml-1">{presentCount}</strong>
             </span>
-            <span className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/25 font-bold text-rose-400">
-              Absent: <strong className="text-white text-sm ml-1">{absentCount}</strong>
+            <span className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 font-bold text-rose-800">
+              Absent: <strong className="text-slate-900 text-sm ml-1">{absentCount}</strong>
             </span>
             {unmarkedCount > 0 ? (
-              <span className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/35 font-bold text-amber-300 animate-pulse">
-                Not Marked: <strong className="text-white text-sm ml-1">{unmarkedCount}</strong>
+              <span className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 font-bold text-amber-800 animate-pulse">
+                Not Marked: <strong className="text-slate-900 text-sm ml-1">{unmarkedCount}</strong>
               </span>
             ) : (
-              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 font-bold text-[#00ff88] flex items-center gap-1.5">
-                <CheckCheck className="w-3.5 h-3.5" />
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-800 flex items-center gap-1.5">
+                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
                 All Students Marked
               </span>
             )}
           </div>
 
-          <div className="text-xs font-mono font-bold text-slate-400">
-            Progress: <span className="text-[#00ff88] text-sm">{completionPercent}%</span>
+          <div className="text-xs font-mono font-bold text-slate-500">
+            Progress: <span className="text-slate-900 text-sm">{completionPercent}%</span>
           </div>
         </div>
 
         {/* Animated Progress Bar */}
-        <div className="w-full bg-slate-950/90 rounded-full h-2 overflow-hidden border border-emerald-500/20">
+        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
           <div 
-            className="h-full bg-gradient-to-r from-emerald-500 to-[#00ff88] transition-all duration-300 shadow-[0_0_10px_rgba(0,255,136,0.5)]"
+            className="h-full bg-[#0f172a] transition-all duration-300"
             style={{ width: `${completionPercent}%` }}
           />
         </div>
       </div>
 
       {/* 3. Dedicated Attendance Actions Section */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/25 bg-slate-900/90 shadow-xl space-y-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-4">
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_rgba(0,255,136,0.6)]" />
-            <h3 className="text-sm font-black text-white tracking-wide uppercase font-mono">
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-800" />
+            <h3 className="text-sm font-black text-slate-900 tracking-wide uppercase font-mono">
               Attendance Actions
             </h3>
-            <span className="text-slate-500 text-xs hidden sm:inline">•</span>
-            <span className="text-xs font-mono text-emerald-400 font-semibold">
+            <span className="text-slate-400 text-xs hidden sm:inline">•</span>
+            <span className="text-xs font-mono text-slate-600 font-semibold">
               {sectionStudents.length} Enrolled ({hasUnsavedChanges ? `${changedCount} Pending` : (existingSession && (presentCount > 0 || absentCount > 0) ? 'Saved' : 'Ready')})
             </span>
           </div>
 
           {/* Desktop Keyboard Shortcuts Hint */}
-          <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/15 font-mono">
-            <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
-            <span><strong className="text-white">P</strong> = Present</span>
+          <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 font-mono">
+            <Keyboard className="w-3.5 h-3.5 text-slate-600" />
+            <span><strong className="text-slate-900">P</strong> = Present</span>
             <span>•</span>
-            <span><strong className="text-white">A</strong> = Absent</span>
+            <span><strong className="text-slate-900">A</strong> = Absent</span>
             <span>•</span>
-            <span><strong className="text-white">↑/↓</strong> = Navigate</span>
+            <span><strong className="text-slate-900">↑/↓</strong> = Navigate</span>
             <span>•</span>
-            <span><strong className="text-white">/</strong> = Search</span>
+            <span><strong className="text-slate-900">/</strong> = Search</span>
             <span>•</span>
-            <span><strong className="text-white">Ctrl+Z</strong> = Undo</span>
+            <span><strong className="text-slate-900">Ctrl+Z</strong> = Undo</span>
           </div>
         </div>
 
@@ -1138,7 +1138,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         <div className="space-y-3">
           {/* ROW / GROUP 1: Bulk Marking & History */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block sm:hidden">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold block sm:hidden">
               Bulk Marking
             </span>
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
@@ -1146,8 +1146,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 size="md" 
                 variant="outline" 
                 onClick={handleMarkAllPresent}
-                leftIcon={<CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
-                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold border-emerald-500/30 hover:border-[#00ff88] hover:bg-emerald-500/10 text-white"
+                leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold text-slate-800 hover:bg-slate-50"
               >
                 Mark All Present
               </Button>
@@ -1155,8 +1155,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 size="md" 
                 variant="outline" 
                 onClick={handleMarkAllAbsent}
-                leftIcon={<XCircle className="w-4 h-4 text-rose-400" />}
-                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10 text-white"
+                leftIcon={<XCircle className="w-4 h-4 text-rose-600" />}
+                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold text-slate-800 hover:bg-slate-50"
               >
                 Mark All Absent
               </Button>
@@ -1165,20 +1165,20 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                   size="md" 
                   variant="outline" 
                   onClick={handleMarkRemainingPresent}
-                  className="col-span-2 sm:col-span-1 min-h-[48px] sm:min-h-[40px] text-xs font-bold text-amber-300 border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/10"
+                  className="col-span-2 sm:col-span-1 min-h-[48px] sm:min-h-[40px] text-xs font-bold text-amber-800 border-amber-200 hover:bg-amber-50"
                 >
                   Remaining → Present ({unmarkedCount})
                 </Button>
               )}
               <Button 
                 size="md" 
-                variant="ghost" 
+                variant="outline" 
                 onClick={handleUndo}
                 disabled={history.length === 0}
                 leftIcon={<RotateCcw className="w-4 h-4" />}
                 className={clsx(
-                  'col-span-2 sm:col-span-1 min-h-[48px] sm:min-h-[40px] text-xs font-bold border border-slate-700/50 hover:bg-slate-800',
-                  history.length === 0 ? 'opacity-40 cursor-not-allowed text-slate-500' : 'text-slate-300 hover:text-white'
+                  'col-span-2 sm:col-span-1 min-h-[48px] sm:min-h-[40px] text-xs font-bold',
+                  history.length === 0 ? 'opacity-40 cursor-not-allowed text-slate-400' : 'text-slate-700 hover:bg-slate-50'
                 )}
                 title="Undo last change (Ctrl+Z / ⌘Z)"
               >
@@ -1189,7 +1189,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
           {/* ROW / GROUP 2: Reset & Clear Controls */}
           <div className="space-y-1.5 pt-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block sm:hidden">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold block sm:hidden">
               Reset & Clear
             </span>
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
@@ -1198,10 +1198,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 variant="outline" 
                 onClick={handleResetToSaved}
                 disabled={!hasUnsavedChanges}
-                leftIcon={<RotateCcw className="w-4 h-4 text-amber-400" />}
+                leftIcon={<RotateCcw className="w-4 h-4 text-amber-600" />}
                 className={clsx(
-                  'w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/10 text-amber-300',
-                  !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500 hover:bg-transparent'
+                  'w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold text-slate-700 hover:bg-slate-50',
+                  !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-200 text-slate-400'
                 )}
                 title="Revert modified marks to database baseline"
               >
@@ -1211,8 +1211,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 size="md" 
                 variant="outline" 
                 onClick={() => setIsClearModalOpen(true)}
-                leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
-                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold text-rose-300 border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10"
+                leftIcon={<Trash2 className="w-4 h-4 text-rose-600" />}
+                className="w-full sm:w-auto min-h-[48px] sm:min-h-[40px] text-xs font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
                 title="Open Clear Attendance dialog"
               >
                 Clear Attendance
@@ -1221,16 +1221,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           </div>
 
           {/* ROW / GROUP 3: Primary Save Attendance */}
-          <div className="pt-2 border-t border-emerald-500/15 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="text-xs text-slate-400 hidden sm:block">
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="text-xs text-slate-500 hidden sm:block">
               {hasUnsavedChanges ? (
-                <span className="text-amber-300 flex items-center gap-1.5 font-medium">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                <span className="text-amber-800 flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                   {changedCount} unsaved mark(s) ready to commit to Supabase
                 </span>
               ) : existingSession && (presentCount > 0 || absentCount > 0) && !hasUnsavedChanges ? (
-                <span className="text-[#00ff88] flex items-center gap-1.5 font-medium">
-                  <CheckCheck className="w-3.5 h-3.5" />
+                <span className="text-emerald-800 flex items-center gap-1.5 font-medium">
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
                   Attendance synchronized with Supabase
                 </span>
               ) : (
@@ -1244,7 +1244,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               onClick={handleInitiateSave}
               disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
               className={clsx(
-                'w-full sm:w-auto min-h-[48px] px-6 text-sm font-black tracking-wide shadow-lg cursor-pointer',
+                'w-full sm:w-auto min-h-[48px] px-6 text-sm font-bold tracking-wide shadow-xs cursor-pointer',
                 saveButtonConfig.className
               )}
             >
@@ -1268,19 +1268,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               setStudentSearch(e.target.value);
               setFocusedIndex(0);
             }}
-            className="w-full pl-10 pr-4 py-2 bg-slate-950/90 border border-emerald-500/25 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-2xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
           />
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 text-xs font-bold shrink-0">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200 text-xs font-bold shrink-0">
           <button
             onClick={() => { setStatusFilter('ALL'); setFocusedIndex(0); }}
             className={clsx(
               'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
               statusFilter === 'ALL'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#0f172a] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             )}
           >
             All ({sectionStudents.length})
@@ -1290,8 +1290,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             className={clsx(
               'px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1',
               statusFilter === 'UNMARKED'
-                ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                : 'text-amber-400/80 hover:text-amber-300'
+                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                : 'text-amber-800/80 hover:text-amber-900'
             )}
           >
             Unmarked ({unmarkedCount})
@@ -1301,8 +1301,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             className={clsx(
               'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
               statusFilter === 'PRESENT'
-                ? 'bg-emerald-500/25 text-[#00ff88] border border-emerald-500/40'
-                : 'text-emerald-400/80 hover:text-emerald-300'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'text-emerald-700/80 hover:text-emerald-800'
             )}
           >
             Present ({presentCount})
@@ -1312,8 +1312,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             className={clsx(
               'px-3 py-1.5 rounded-xl transition-all cursor-pointer',
               statusFilter === 'ABSENT'
-                ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40'
-                : 'text-rose-400/80 hover:text-rose-300'
+                ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                : 'text-rose-700/80 hover:text-rose-800'
             )}
           >
             Absent ({absentCount})
@@ -1324,9 +1324,9 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       {/* 5. Student List (Optimized Fast Dual-Pill Rows) */}
       <div className="space-y-2">
         {filteredStudents.length === 0 ? (
-          <div className="glass-panel p-10 text-center text-xs text-slate-400 rounded-3xl border border-emerald-500/15 space-y-2">
-            <Users className="w-8 h-8 text-slate-600 mx-auto" />
-            <p className="font-bold text-white text-sm">No students match current filter</p>
+          <div className="bg-white p-10 text-center text-xs text-slate-500 rounded-3xl border border-slate-200/80 space-y-2 shadow-xs">
+            <Users className="w-8 h-8 text-slate-400 mx-auto" />
+            <p className="font-bold text-slate-900 text-sm">No students match current filter</p>
             <p className="text-slate-500">Try adjusting your search query or status filter above</p>
           </div>
         ) : (
@@ -1339,11 +1339,11 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 key={stud.id}
                 onClick={() => setFocusedIndex(idx)}
                 className={clsx(
-                  'p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3',
+                  'p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-xs',
                   isFocused 
-                    ? 'border-[#00ff88]/60 bg-slate-900/90 shadow-[0_0_15px_rgba(0,255,136,0.1)] ring-1 ring-[#00ff88]/40' 
-                    : 'border-emerald-500/15 bg-slate-950/70 hover:border-emerald-500/35 hover:bg-slate-900/50',
-                  status === 'Present' && 'border-l-4 border-l-[#00ff88]',
+                    ? 'border-slate-400 bg-slate-50 shadow-xs ring-1 ring-slate-400' 
+                    : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50',
+                  status === 'Present' && 'border-l-4 border-l-emerald-500',
                   status === 'Absent' && 'border-l-4 border-l-rose-500',
                   status === 'Unmarked' && 'border-l-4 border-l-amber-400'
                 )}
@@ -1355,14 +1355,14 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-black text-[#00ff88] tracking-wider">
+                      <span className="font-mono text-xs font-black text-slate-900 tracking-wider">
                         {stud.roll_number}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 font-mono">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
                         {stud.admission_type || 'Regular'}
                       </span>
                     </div>
-                    <h4 className="text-sm font-bold text-white truncate mt-0.5">
+                    <h4 className="text-sm font-bold text-slate-900 truncate mt-0.5">
                       {stud.full_name}
                     </h4>
                   </div>
@@ -1381,8 +1381,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                     className={clsx(
                       'px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
                       status === 'Present'
-                        ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.4)] scale-105'
-                        : 'bg-slate-900 text-slate-400 border border-emerald-500/20 hover:border-[#00ff88]/50 hover:text-emerald-300'
+                        ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
                     )}
                     title="Mark Present (P)"
                   >
@@ -1402,8 +1402,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                     className={clsx(
                       'px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5',
                       status === 'Absent'
-                        ? 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)] scale-105'
-                        : 'bg-slate-900 text-slate-400 border border-rose-500/20 hover:border-rose-500/50 hover:text-rose-300'
+                        ? 'bg-rose-600 text-white shadow-xs scale-105'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300 hover:text-rose-700'
                     )}
                     title="Mark Absent (A)"
                   >
@@ -1419,15 +1419,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       </div>
 
       {/* 5b. Mobile & Tablet In-Flow Attendance Action Bar (Architecture Component 6) */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-emerald-500/25 bg-slate-900/90 shadow-xl space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/15 pb-2.5">
+      <div className="rounded-3xl p-4 sm:p-5 border border-slate-200/80 bg-white shadow-xs space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00ff88] animate-pulse" />
-            <h4 className="text-xs font-black uppercase tracking-wider text-white font-mono">
+            <span className="w-2 h-2 rounded-full bg-slate-900" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
               Attendance Action Bar • End of Roster
             </h4>
           </div>
-          <span className="text-xs font-mono text-emerald-400 font-bold">
+          <span className="text-xs text-slate-600 font-semibold">
             {sectionStudents.length} Students ({hasUnsavedChanges ? `${changedCount} Pending` : (existingSession && (presentCount > 0 || absentCount > 0) ? 'All Synced' : 'Ready')})
           </span>
         </div>
@@ -1439,8 +1439,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             size="md"
             variant="outline"
             onClick={handleMarkAllPresent}
-            leftIcon={<CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
-            className="w-full sm:w-auto min-h-[48px] text-xs font-bold border-emerald-500/30 hover:border-[#00ff88] hover:bg-emerald-500/10 text-white"
+            leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+            className="w-full sm:w-auto min-h-[48px] text-xs font-bold border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800"
           >
             Mark All Present
           </Button>
@@ -1448,8 +1448,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             size="md"
             variant="outline"
             onClick={handleMarkAllAbsent}
-            leftIcon={<XCircle className="w-4 h-4 text-rose-400" />}
-            className="w-full sm:w-auto min-h-[48px] text-xs font-bold border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10 text-white"
+            leftIcon={<XCircle className="w-4 h-4 text-rose-600" />}
+            className="w-full sm:w-auto min-h-[48px] text-xs font-bold border-rose-200 hover:border-rose-300 hover:bg-rose-50 text-rose-700"
           >
             Mark All Absent
           </Button>
@@ -1459,8 +1459,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             size="md"
             variant="outline"
             onClick={() => setIsClearModalOpen(true)}
-            leftIcon={<Trash2 className="w-4 h-4 text-rose-400" />}
-            className="w-full sm:w-auto min-h-[48px] text-xs font-bold text-rose-300 border-rose-500/30 hover:border-rose-500 hover:bg-rose-500/10"
+            leftIcon={<Trash2 className="w-4 h-4 text-rose-600" />}
+            className="w-full sm:w-auto min-h-[48px] text-xs font-bold text-rose-700 border-rose-200 hover:border-rose-300 hover:bg-rose-50"
           >
             Clear Attendance
           </Button>
@@ -1471,7 +1471,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             onClick={handleInitiateSave}
             disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
             className={clsx(
-              'w-full sm:w-auto min-h-[48px] px-6 text-xs sm:text-sm font-black tracking-wide shadow-lg',
+              'w-full sm:w-auto min-h-[48px] px-6 text-xs sm:text-sm font-bold tracking-wide shadow-xs',
               saveButtonConfig.className
             )}
           >
@@ -1484,7 +1484,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               size="md"
               variant="outline"
               onClick={handleMarkRemainingPresent}
-              className="w-full sm:w-auto min-h-[48px] text-xs font-bold text-amber-300 border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/10"
+              className="w-full sm:w-auto min-h-[48px] text-xs font-bold text-amber-800 border-amber-200 hover:border-amber-300 hover:bg-amber-50"
             >
               Remaining → Present ({unmarkedCount})
             </Button>
@@ -1494,10 +1494,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               variant="outline"
               onClick={handleResetToSaved}
               disabled={!hasUnsavedChanges}
-              leftIcon={<RotateCcw className="w-4 h-4 text-amber-400" />}
+              leftIcon={<RotateCcw className="w-4 h-4 text-slate-600" />}
               className={clsx(
-                'w-full sm:w-auto min-h-[48px] text-xs font-bold border-amber-500/30 text-amber-300',
-                !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500'
+                'w-full sm:w-auto min-h-[48px] text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50',
+                !hasUnsavedChanges && 'opacity-40 cursor-not-allowed text-slate-400'
               )}
             >
               Reset Unsaved Marks
@@ -1510,8 +1510,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             disabled={history.length === 0}
             leftIcon={<RotateCcw className="w-4 h-4" />}
             className={clsx(
-              'w-full sm:w-auto min-h-[48px] text-xs font-bold border border-slate-700/50 hover:bg-slate-800',
-              history.length === 0 ? 'opacity-40 cursor-not-allowed text-slate-500' : 'text-slate-300 hover:text-white'
+              'w-full sm:w-auto min-h-[48px] text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700',
+              history.length === 0 ? 'opacity-40 cursor-not-allowed text-slate-400' : 'hover:text-slate-900'
             )}
             title="Undo last change (Ctrl+Z / ⌘Z)"
           >
@@ -1521,36 +1521,36 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       </div>
 
       {/* 6. Sticky Floating Bottom Action Bar (Positioned strictly ABOVE mobile bottom nav) */}
-      <div className="fixed bottom-[var(--app-bottom-nav-height,calc(4.25rem+max(env(safe-area-inset-bottom,0px),16px)))] md:bottom-0 left-0 right-0 md:left-64 z-40 bg-slate-950/95 border-t border-emerald-500/30 backdrop-blur-2xl p-2.5 sm:p-3.5 px-3 sm:px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
+      <div className="fixed bottom-[var(--app-bottom-nav-height,calc(4.25rem+max(env(safe-area-inset-bottom,0px),16px)))] md:bottom-0 left-0 right-0 md:left-64 z-40 bg-white/95 border-t border-slate-200 backdrop-blur-xl p-2.5 sm:p-3.5 px-3 sm:px-6 shadow-lg">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
           {/* Top Line on Mobile / Left on Desktop: Realtime Attendance Metrics & Controls */}
           <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 text-xs font-bold">
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+              <span className="text-emerald-700 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>{presentCount}</span>
-                <span className="text-[10px] sm:text-[11px]">P</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">P</span>
               </span>
-              <span className="text-slate-600">•</span>
-              <span className="text-rose-400 flex items-center gap-1">
+              <span className="text-slate-300">•</span>
+              <span className="text-rose-700 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
                 <span>{absentCount}</span>
-                <span className="text-[10px] sm:text-[11px]">A</span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">A</span>
               </span>
               {unmarkedCount > 0 ? (
                 <>
-                  <span className="text-slate-600">•</span>
-                  <span className="text-amber-300 flex items-center gap-1 font-mono">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span className="text-slate-300">•</span>
+                  <span className="text-amber-800 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
                     <span>{unmarkedCount}</span>
-                    <span className="text-[10px] sm:text-[11px]">Unmarked</span>
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Unmarked</span>
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="text-slate-600 hidden xs:inline">•</span>
-                  <span className="text-[#00ff88] hidden xs:flex items-center gap-1 text-[11px]">
-                    <CheckCheck className="w-3.5 h-3.5" />
+                  <span className="text-slate-300 hidden xs:inline">•</span>
+                  <span className="text-emerald-700 hidden xs:flex items-center gap-1 text-[11px]">
+                    <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>All Marked</span>
                   </span>
                 </>
@@ -1563,7 +1563,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 <button
                   type="button"
                   onClick={handleUndo}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center gap-1 min-h-[36px]"
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 text-[11px] font-bold flex items-center gap-1 min-h-[36px]"
                   title="Undo last mark"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1573,7 +1573,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               <button
                 type="button"
                 onClick={() => setIsClearModalOpen(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 text-[11px] font-bold flex items-center gap-1 min-h-[36px]"
+                className="px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 text-[11px] font-bold flex items-center gap-1 min-h-[36px]"
                 title="Clear attendance"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -1591,7 +1591,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               onClick={handleInitiateSave}
               disabled={sectionStudents.length === 0 || saveButtonConfig.disabled}
               className={clsx(
-                'font-black text-xs sm:text-sm py-2 sm:py-2.5 px-4 sm:px-6 min-h-[48px] sm:min-h-[44px] w-full sm:w-auto justify-center shadow-lg',
+                'font-bold text-xs sm:text-sm py-2 sm:py-2.5 px-4 sm:px-6 min-h-[48px] sm:min-h-[44px] w-full sm:w-auto justify-center shadow-xs',
                 saveButtonConfig.className
               )}
             >
@@ -1610,11 +1610,11 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         maxWidth="md"
       >
         <div className="space-y-4 pt-2">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">Attendance Submission Options</p>
-              <p className="text-slate-400 mt-0.5">
+              <p className="font-bold text-amber-900">Attendance Submission Options</p>
+              <p className="text-slate-600 mt-0.5">
                 You can save partial attendance now, mark all remaining students before submitting, or return to the sheet.
               </p>
             </div>
@@ -1622,10 +1622,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
           <div className="space-y-2">
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               className="w-full justify-start text-xs font-bold"
-              leftIcon={<Save className="w-4 h-4 text-slate-950" />}
+              leftIcon={<Save className="w-4 h-4 text-white" />}
               onClick={() => {
                 executeSave(attendanceMap);
               }}
@@ -1636,8 +1636,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="w-full justify-start text-xs border-rose-500/30 hover:border-rose-500 text-rose-300"
-              leftIcon={<XCircle className="w-4 h-4 text-rose-400" />}
+              className="w-full justify-start text-xs border-rose-200 hover:border-rose-300 hover:bg-rose-50 text-rose-700"
+              leftIcon={<XCircle className="w-4 h-4 text-rose-600" />}
               onClick={() => {
                 const final = { ...attendanceMap };
                 sectionStudents.forEach(s => {
@@ -1652,8 +1652,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="w-full justify-start text-xs border-emerald-500/30 hover:border-emerald-500 text-emerald-300"
-              leftIcon={<CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
+              className="w-full justify-start text-xs border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800"
+              leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
               onClick={() => {
                 const final = { ...attendanceMap };
                 sectionStudents.forEach(s => {
@@ -1668,7 +1668,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full text-xs text-slate-400 hover:text-white"
+              className="w-full text-xs text-slate-600 hover:text-slate-900"
               onClick={() => {
                 setIsUnmarkedReviewOpen(false);
                 setStatusFilter('UNMARKED');
@@ -1688,8 +1688,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         onConfirm={() => executeSave(attendanceMap)}
         title="Confirm Attendance Submission"
         message={`Save attendance for Section ${activeSection?.name} (${activeSubject?.subject_name}) on ${sessionDate}? Total: ${sectionStudents.length} (Present: ${presentCount}, Absent: ${absentCount}${unmarkedCount > 0 ? `, Unmarked: ${unmarkedCount}` : ''}).`}
-        confirmText={isSaving ? 'Submitting...' : 'Confirm & Save to Supabase'}
-        variant="neon"
+        confirmText={isSaving ? 'Submitting...' : 'Confirm & Save'}
+        variant="primary"
         isLoading={isSaving}
       />
 
@@ -1705,11 +1705,11 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         maxWidth="md"
       >
         <div className="space-y-4 pt-2">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-amber-300">Changes will not be saved to Supabase</p>
-              <p className="text-slate-400 mt-0.5">
+              <p className="font-bold text-amber-900">Changes will not be saved</p>
+              <p className="text-slate-600 mt-0.5">
                 {changedCount} student mark(s) have been modified. Choose whether to save or discard your changes before leaving this session.
               </p>
             </div>
@@ -1723,7 +1723,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 setIsNavConfirmOpen(false);
                 setPendingNavAction(null);
               }}
-              className="w-full sm:w-auto text-xs"
+              className="w-full sm:w-auto text-xs text-slate-700"
             >
               Stay on Page
             </Button>
@@ -1731,16 +1731,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               variant="outline"
               size="sm"
               onClick={handleDiscardAndLeave}
-              className="w-full sm:w-auto text-xs border-rose-500/30 hover:border-rose-500 text-rose-300"
+              className="w-full sm:w-auto text-xs border-rose-200 hover:border-rose-300 hover:bg-rose-50 text-rose-700"
             >
               Discard & Proceed
             </Button>
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               onClick={handleSaveAndLeave}
               isLoading={isSaving}
-              className="w-full sm:w-auto text-xs font-black"
+              className="w-full sm:w-auto text-xs font-bold"
             >
               Save & Proceed
             </Button>
@@ -1758,19 +1758,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       >
         <div className="space-y-4 pt-2">
           {/* Option 1: Reset Unsaved Marks */}
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700/80 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                <RotateCcw className="w-4 h-4 text-amber-400" />
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-slate-700" />
                 Reset Unsaved Marks
               </h4>
               {hasUnsavedChanges && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold border border-amber-200">
                   {changedCount} unsaved
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Reverts all marks on screen back to the last saved database state ({existingSession ? 'previously saved session' : 'all unmarked'}) without altering database history.
             </p>
             <Button
@@ -1779,8 +1779,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               disabled={!hasUnsavedChanges}
               onClick={handleResetToSaved}
               className={clsx(
-                'w-full min-h-[44px] text-xs font-bold border-amber-500/40 text-amber-300 hover:bg-amber-500/10',
-                !hasUnsavedChanges && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500'
+                'w-full min-h-[44px] text-xs font-bold border-slate-300 text-slate-800 hover:bg-white',
+                !hasUnsavedChanges && 'opacity-40 cursor-not-allowed text-slate-400'
               )}
             >
               Revert to Database Baseline
@@ -1788,19 +1788,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           </div>
 
           {/* Option 2: Delete Saved Attendance */}
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-                <Trash2 className="w-4 h-4 text-rose-400" />
+              <h4 className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+                <Trash2 className="w-4 h-4 text-rose-600" />
                 Delete Saved Attendance
               </h4>
               {existingSession && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold border border-rose-200">
                   Active in DB
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Permanently delete this saved lecture session and all student attendance records from Supabase. Requires explicit confirmation.
             </p>
             <Button
@@ -1812,8 +1812,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 setIsDeleteConfirmOpen(true);
               }}
               className={clsx(
-                'w-full min-h-[44px] text-xs font-bold text-rose-300 border-rose-500/40 hover:bg-rose-500/20 hover:border-rose-500',
-                !existingSession && 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500'
+                'w-full min-h-[44px] text-xs font-bold text-rose-700 border-rose-300 hover:bg-rose-100',
+                !existingSession && 'opacity-40 cursor-not-allowed border-slate-200 text-slate-400'
               )}
             >
               {existingSession ? 'Delete Saved Attendance Session...' : 'No Saved Session in Database'}
@@ -1823,7 +1823,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-xs text-slate-400 hover:text-white"
+            className="w-full text-xs text-slate-600 hover:text-slate-900"
             onClick={() => setIsClearModalOpen(false)}
           >
             Cancel
@@ -1843,39 +1843,39 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       >
         <div className="space-y-4 pt-2">
           {/* Warning Banner */}
-          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-rose-300">Permanent Database Deletion</p>
-              <p className="text-slate-300 mt-0.5">
+              <p className="font-bold text-rose-900">Permanent Database Deletion</p>
+              <p className="text-slate-600 mt-0.5">
                 This will remove the lecture record for all {sectionStudents.length} students. HOD and student dashboards will no longer reflect this session.
               </p>
             </div>
           </div>
 
           {/* Session Details Card */}
-          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs font-mono">
-            <div className="flex justify-between py-1 border-b border-slate-800/60">
-              <span className="text-slate-400">Date:</span>
-              <span className="text-white font-bold">{formattedSessionDate}</span>
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+            <div className="flex justify-between py-1 border-b border-slate-200/80">
+              <span className="text-slate-500">Date:</span>
+              <span className="text-slate-900 font-bold">{formattedSessionDate}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-800/60">
-              <span className="text-slate-400">Subject:</span>
-              <span className="text-emerald-400 font-bold text-right truncate max-w-[200px]">
+            <div className="flex justify-between py-1 border-b border-slate-200/80">
+              <span className="text-slate-500">Subject:</span>
+              <span className="text-slate-900 font-bold text-right truncate max-w-[200px]">
                 {activeSubject?.subject_code} — {activeSubject?.subject_name}
               </span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-800/60">
-              <span className="text-slate-400">Section:</span>
-              <span className="text-white font-bold">Section {activeSection?.name}</span>
+            <div className="flex justify-between py-1 border-b border-slate-200/80">
+              <span className="text-slate-500">Section:</span>
+              <span className="text-slate-900 font-bold">Section {activeSection?.name}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-800/60">
-              <span className="text-slate-400">Lecture Time:</span>
-              <span className="text-amber-300 font-bold">{timeSlot}</span>
+            <div className="flex justify-between py-1 border-b border-slate-200/80">
+              <span className="text-slate-500">Lecture Time:</span>
+              <span className="text-slate-900 font-bold">{timeSlot}</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-slate-400">Faculty:</span>
-              <span className="text-white font-bold">{currentFaculty?.full_name || user?.full_name || 'Assigned Faculty'}</span>
+              <span className="text-slate-500">Faculty:</span>
+              <span className="text-slate-900 font-bold">{currentFaculty?.full_name || user?.full_name || 'Assigned Faculty'}</span>
             </div>
           </div>
 
@@ -1886,18 +1886,18 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               size="sm"
               disabled={isDeletingSession}
               onClick={() => setIsDeleteConfirmOpen(false)}
-              className="w-full sm:w-auto min-h-[44px] text-xs text-slate-300 hover:text-white"
+              className="w-full sm:w-auto min-h-[44px] text-xs text-slate-700 hover:text-slate-900"
             >
               Cancel
             </Button>
             <Button
-              variant="outline"
+              variant="danger"
               size="sm"
               onClick={handleDeleteSavedSession}
               isLoading={isDeletingSession}
-              className="w-full sm:w-auto min-h-[44px] text-xs font-bold border-rose-500 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 hover:border-rose-400"
+              className="w-full sm:w-auto min-h-[44px] text-xs font-bold"
             >
-              {isDeletingSession ? 'Deleting from Supabase...' : '🗑 Delete Attendance'}
+              {isDeletingSession ? 'Deleting from Supabase...' : 'Delete Attendance'}
             </Button>
           </div>
         </div>

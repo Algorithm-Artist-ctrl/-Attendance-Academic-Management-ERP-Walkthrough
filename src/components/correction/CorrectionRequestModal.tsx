@@ -150,11 +150,11 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2.5 text-white">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88]">
+        <div className="flex items-center gap-2.5 text-slate-900">
+          <div className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-900">
             <RotateCcw className="w-4 h-4" />
           </div>
-          <span>Request Attendance Correction</span>
+          <span className="font-serif-institutional font-bold">Request Attendance Correction</span>
         </div>
       }
       description="Step-by-step attendance correction workflow submitted directly to faculty"
@@ -164,10 +164,10 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
       <div className={clsx(
         "p-3 rounded-xl border mb-4 text-xs flex items-center justify-between gap-3",
         claimWindowStatus === 'OPEN' 
-          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
           : claimWindowStatus === 'BEFORE_WINDOW'
-          ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
-          : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+          ? "bg-amber-50 border-amber-200 text-amber-800"
+          : "bg-rose-50 border-rose-200 text-rose-800"
       )}>
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 shrink-0" />
@@ -179,7 +179,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
           {claimWindowStatus === 'OPEN' ? 'Window Active' : claimWindowStatus === 'BEFORE_WINDOW' ? 'Opens 9:00 AM' : 'Window Closed (3:40 PM)'}
         </span>
       </div>
-      {/* 4-Step Stepper Bar Matching Screen 5 */}
+      {/* 4-Step Stepper Bar */}
       <div className="grid grid-cols-4 gap-2 mb-6">
         {steps.map((s) => (
           <div
@@ -187,10 +187,10 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
             className={clsx(
               'p-2 rounded-xl text-center border transition-all text-xs font-bold',
               currentStep === s.num
-                ? 'bg-[#00ff88] text-slate-950 border-[#00ff88] shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                 : currentStep > s.num
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                : 'bg-slate-950/60 text-slate-500 border-slate-800'
+                ? 'bg-slate-100 text-slate-800 border-slate-300'
+                : 'bg-slate-50 text-slate-400 border-slate-200'
             )}
           >
             <span className="block text-[10px] uppercase font-mono">Step {s.num}</span>
@@ -200,10 +200,10 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
       </div>
 
       {successMessage ? (
-        <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-center space-y-3 animate-in zoom-in-95">
-          <CheckCircle2 className="w-12 h-12 text-[#00ff88] mx-auto animate-bounce" />
-          <h4 className="text-base font-bold text-white">Correction Request Dispatched</h4>
-          <p className="text-xs text-slate-300">{successMessage}</p>
+        <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center space-y-3 animate-in zoom-in-95">
+          <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+          <h4 className="text-base font-bold text-slate-900 font-serif-institutional">Correction Request Dispatched</h4>
+          <p className="text-xs text-slate-600">{successMessage}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
@@ -211,7 +211,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
           {/* Left Column: 3D Clipboard Checklist Asset */}
           <div className="hidden md:flex md:col-span-4 flex-col items-center justify-center p-4">
             <CyberClipboard3D size={150} />
-            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400/80 mt-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 mt-2">
               Official Review Protocol
             </span>
           </div>
@@ -219,8 +219,8 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
           {/* Right Column: Step Forms */}
           <div className="md:col-span-8 space-y-4">
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
                 <span>{errorMessage}</span>
               </div>
             )}
@@ -229,40 +229,40 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
             {currentStep === 1 && (
               <div className="space-y-3.5 animate-in fade-in">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Lecture Date
                   </label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Subject Name & Code
                   </label>
                   <select
                     value={selectedSubjectId}
                     onChange={(e) => setSelectedSubjectId(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                   >
                     {subjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.subject_name} ({s.subject_code})</option>
+                      <option key={s.id} value={s.id} className="bg-white text-slate-900">{s.subject_name} ({s.subject_code})</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Lecture Time Slot
                   </label>
                   <select
                     value={selectedTimeSlot}
                     onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/80 border border-emerald-500/20 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                   >
                     <option value="09:00 - 09:50">09:00 - 09:50 (Period 1)</option>
                     <option value="09:50 - 10:40">09:50 - 10:40 (Period 2)</option>
@@ -279,34 +279,34 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
             {currentStep === 2 && (
               <div className="space-y-3.5 animate-in fade-in">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Assigned Faculty Full Name
                   </label>
                   <input
                     type="text"
                     disabled
                     value={assignedFaculty?.full_name || 'Course Faculty'}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/10 rounded-xl text-slate-400 font-semibold"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-600 font-semibold"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Current Recorded Status
                     </label>
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
                       {currentStatus}
                     </span>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Requested Rectification
                     </label>
                     <select
                       value={requestedStatus}
                       onChange={(e) => setRequestedStatus(e.target.value as AttendanceStatus)}
-                      className="w-full px-3.5 py-1.5 text-xs font-bold bg-slate-950/80 border border-emerald-500/30 rounded-xl text-[#00ff88] focus:outline-none focus:border-[#00ff88]"
+                      className="w-full px-3.5 py-1.5 text-xs font-bold bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                     >
                       <option value="Present">Present</option>
                       <option value="Absent">Absent</option>
@@ -319,7 +319,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
             {/* STEP 3: REASON */}
             {currentStep === 3 && (
               <div className="space-y-3.5 animate-in fade-in">
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Reason / Proof of Attendance
                 </label>
                 <textarea
@@ -328,39 +328,39 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="e.g. I was present in Room A-007 for Data Structure lecture but mistakenly marked absent on the register."
-                  className="w-full px-3.5 py-2.5 text-xs bg-slate-950/80 border border-emerald-500/25 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                  className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 />
               </div>
             )}
 
             {/* STEP 4: PREVIEW & SUBMIT */}
             {currentStep === 4 && (
-              <div className="p-4 rounded-2xl bg-slate-950/80 border border-emerald-500/20 space-y-2 text-xs animate-in fade-in">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs animate-in fade-in">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Date:</span>
-                  <span className="font-bold text-white">{selectedDate}</span>
+                  <span className="text-slate-500">Date:</span>
+                  <span className="font-bold text-slate-900">{selectedDate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Subject:</span>
-                  <span className="font-bold text-emerald-400">{selectedSubject?.subject_name}</span>
+                  <span className="text-slate-500">Subject:</span>
+                  <span className="font-bold text-slate-900">{selectedSubject?.subject_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Faculty:</span>
-                  <span className="font-bold text-slate-200">{assignedFaculty?.full_name}</span>
+                  <span className="text-slate-500">Faculty:</span>
+                  <span className="font-bold text-slate-700">{assignedFaculty?.full_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Status Change:</span>
-                  <span className="font-bold text-rose-400">{currentStatus} ➔ <span className="text-[#00ff88]">{requestedStatus}</span></span>
+                  <span className="text-slate-500">Status Change:</span>
+                  <span className="font-bold text-rose-600">{currentStatus} ➔ <span className="text-emerald-700">{requestedStatus}</span></span>
                 </div>
-                <div className="pt-2 border-t border-emerald-500/10">
-                  <span className="text-slate-400 block mb-1">Reason:</span>
-                  <p className="text-slate-300 italic">{reason}</p>
+                <div className="pt-2 border-t border-slate-200">
+                  <span className="text-slate-500 block mb-1">Reason:</span>
+                  <p className="text-slate-700 italic">{reason}</p>
                 </div>
               </div>
             )}
 
             {/* Modal Controls */}
-            <div className="flex items-center justify-between pt-4 border-t border-emerald-500/15">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
               {currentStep > 1 ? (
                 <Button
                   type="button"
@@ -379,7 +379,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
                   variant="neon"
                   size="sm"
                   onClick={() => setCurrentStep(prev => prev + 1)}
-                  rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                  rightIcon={<ArrowRight className="w-3.5 h-3.5 text-white" />}
                 >
                   Next Step
                 </Button>
@@ -391,7 +391,7 @@ export const CorrectionRequestModal: React.FC<CorrectionRequestModalProps> = ({
                   disabled={isSubmitting || (user?.role === 'student' && (claimWindowStatus !== 'OPEN' || selectedDate !== getISTTodayDate()))}
                   isLoading={isSubmitting}
                   onClick={handleSubmitRequest}
-                  rightIcon={<CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />}
+                  rightIcon={<CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                 >
                   {user?.role === 'student' && claimWindowStatus !== 'OPEN' 
                     ? 'Claim Window Closed' 

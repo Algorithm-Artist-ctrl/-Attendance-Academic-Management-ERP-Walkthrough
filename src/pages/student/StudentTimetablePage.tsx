@@ -66,27 +66,27 @@ export const StudentTimetablePage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header with Strict Section Authority & Academic Scope */}
-      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Calendar className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-2.5">
+            <Calendar className="w-6 h-6 text-slate-900" />
             Official Academic Timetable
           </h1>
-          <p className="text-xs text-slate-300 mt-1 font-medium">
-            {program?.name || 'B.Tech'}{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-[#00ff88] font-bold">{currentSection?.name || 'Assigned'}</span> ({displayRoom}) • Class Coordinator: <span className="text-white font-semibold">{classIncharge}</span>
+          <p className="text-xs text-slate-600 mt-1 font-medium">
+            {program?.name || 'B.Tech'}{year?.name ? ` • ${year.name}` : ''}{sem?.name ? ` • ${sem.name}` : ''} • Section <span className="text-slate-900 font-bold">{currentSection?.name || 'Assigned'}</span> ({displayRoom}) • Class Coordinator: <span className="text-slate-900 font-semibold">{classIncharge}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-semibold bg-slate-950/80 px-4 py-2 rounded-xl border border-emerald-500/20 text-[#00ff88] shrink-0 self-start sm:self-auto font-mono">
+        <div className="flex items-center gap-3 text-xs font-semibold bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-slate-800 shrink-0 self-start sm:self-auto font-mono shadow-2xs">
           <Clock className="w-4 h-4" />
           <span>{session?.name || 'Academic Session 2026–2027'}</span>
         </div>
       </div>
 
       {sectionEntries.length === 0 ? (
-        <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20 space-y-3">
+        <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 space-y-3 shadow-xs">
           <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-1" />
-          <h3 className="text-base font-bold text-white">No published timetable is available for your class.</h3>
+          <h3 className="text-base font-bold text-slate-900 font-serif-institutional">No published timetable is available for your class.</h3>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
             The official academic timetable for Section {currentSection?.name || 'Assigned'} has not been published yet. Please check back later or contact your Class Coordinator ({classIncharge}).
           </p>
@@ -96,16 +96,14 @@ export const StudentTimetablePage: React.FC = () => {
           {/* MOBILE VIEW: Day Selector Tab Bar & Vertical Period Cards */}
           <div className="block lg:hidden space-y-4">
             {/* Day Selector Pills */}
-            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-x-auto no-scrollbar">
               {days.map(d => (
                 <button
                   key={d}
                   onClick={() => setSelectedMobileDay(d)}
                   className={clsx(
                     'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center justify-center cursor-pointer touch-target',
-                    selectedMobileDay === d
-                      ? 'bg-[#00ff88] text-slate-950 font-black shadow-[0_0_12px_rgba(0,255,136,0.3)]'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    selectedMobileDay === d ? 'bg-[#0f172a] text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   )}
                 >
                   {d} • {dayLabels[d]}
@@ -120,10 +118,10 @@ export const StudentTimetablePage: React.FC = () => {
                   return (
                     <div 
                       key={slot.period}
-                      className="p-3.5 rounded-2xl bg-slate-950/60 border border-emerald-500/10 text-center flex items-center justify-between text-xs"
+                      className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-center flex items-center justify-between text-xs"
                     >
                       <span className="font-mono text-slate-500 font-bold">{slot.time}</span>
-                      <span className="px-3 py-1 rounded-full bg-slate-900 text-[#00ff88] text-[11px] font-black tracking-wider">
+                      <span className="px-3 py-1 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold tracking-wider">
                         LUNCH RECESS
                       </span>
                     </div>
@@ -141,7 +139,7 @@ export const StudentTimetablePage: React.FC = () => {
                   return (
                     <div 
                       key={slot.period}
-                      className="p-3.5 rounded-2xl bg-slate-950/40 border border-emerald-500/10 flex items-center justify-between text-xs text-slate-500"
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs text-slate-500"
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-slate-400">{slot.label}</span>
@@ -155,39 +153,39 @@ export const StudentTimetablePage: React.FC = () => {
                 return (
                   <div 
                     key={slot.period}
-                    className="glass-card rounded-2xl p-4 border border-emerald-500/25 space-y-2.5 hover:border-emerald-500/40 transition-all"
+                    className="bg-white rounded-2xl p-4 border border-slate-200/80 space-y-2.5 hover:border-slate-300 transition-all shadow-xs"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                        <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-black bg-slate-100 text-slate-800 border border-slate-200">
                           {slot.label}
                         </span>
-                        <span className="text-xs font-mono text-slate-300 font-bold">{slot.time}</span>
+                        <span className="text-xs font-mono text-slate-600 font-bold">{slot.time}</span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 border border-emerald-500/20 text-slate-300">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700">
                         {entry.lecture_type || 'Theory'}
                       </span>
                     </div>
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-black text-[#00ff88] bg-emerald-500/15 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-mono font-black text-slate-800 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
                           {sub?.subject_code}
                         </span>
-                        <h4 className="text-sm font-bold text-white tracking-tight">{sub?.subject_name}</h4>
+                        <h4 className="text-sm font-bold text-slate-900 tracking-tight">{sub?.subject_name}</h4>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-[11px] text-slate-300">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
                       <div className="flex items-center gap-1.5 truncate max-w-[65%]">
-                        <User className={clsx("w-3.5 h-3.5 shrink-0", fac?.full_name ? "text-emerald-400" : "text-slate-500")} />
+                        <User className={clsx("w-3.5 h-3.5 shrink-0", fac?.full_name ? "text-slate-500" : "text-slate-500")} />
                         <span className={clsx("truncate", !fac?.full_name && "text-slate-500 italic")}>
                           {fac?.full_name || 'Unassigned Faculty'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="font-bold text-[#00ff88]">{entry.room_number || currentSection?.room_number || 'Room'}</span>
+                        <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="font-bold text-slate-900">{entry.room_number || currentSection?.room_number || 'Room'}</span>
                       </div>
                     </div>
                   </div>
@@ -197,32 +195,32 @@ export const StudentTimetablePage: React.FC = () => {
           </div>
 
           {/* DESKTOP/TABLET VIEW: Full Master Grid Timetable Table */}
-          <div className="hidden lg:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+          <div className="hidden lg:block bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-center border-collapse">
                 <thead>
-                  <tr className="bg-slate-950/90 text-slate-300 border-b border-emerald-500/20 text-xs font-bold uppercase tracking-wider">
-                    <th className="p-4 text-left w-32 border-r border-emerald-500/10">Day / Period</th>
+                  <tr className="bg-slate-50/80 text-slate-600 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider">
+                    <th className="p-4 text-left w-32 border-r border-slate-200">Day / Period</th>
                     {timeSlots.map(slot => (
-                      <th key={slot.period} className="p-3 min-w-[140px] border-r border-emerald-500/10 last:border-r-0">
-                        <span className="block text-white font-mono text-xs">{slot.time}</span>
-                        <span className="text-[10px] text-[#00ff88] font-semibold">
+                      <th key={slot.period} className="p-3 min-w-[140px] border-r border-slate-200 last:border-r-0">
+                        <span className="block text-slate-900 font-mono text-xs">{slot.time}</span>
+                        <span className="text-[10px] text-slate-500 font-semibold">
                           {slot.isLunch ? 'LUNCH RECESS' : slot.label}
                         </span>
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-emerald-500/10 text-xs">
+                <tbody className="divide-y divide-slate-100 text-xs">
                   {days.map(day => (
-                    <tr key={day} className="hover:bg-emerald-500/5 transition-colors">
-                      <td className="p-4 text-left font-black text-white bg-slate-950/50 border-r border-emerald-500/10">
-                        <span className="text-sm text-[#00ff88]">{dayLabels[day]}</span>
+                    <tr key={day} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="p-4 text-left font-black text-slate-900 bg-slate-50/60 border-r border-slate-200">
+                        <span className="text-sm text-slate-900 font-serif-institutional">{dayLabels[day]}</span>
                       </td>
                       {timeSlots.map(slot => {
                         if (slot.isLunch) {
                           return (
-                            <td key={slot.period} className="p-3 bg-slate-950/80 text-slate-500 font-bold border-r border-emerald-500/10 text-[11px]">
+                            <td key={slot.period} className="p-3 bg-slate-100/60 text-slate-500 font-bold border-r border-slate-200 text-[11px]">
                               LUNCH
                             </td>
                           );
@@ -231,7 +229,7 @@ export const StudentTimetablePage: React.FC = () => {
                         const entry = sectionEntries.find(e => e.day_of_week === day && e.period_number === slot.period);
                         if (!entry) {
                           return (
-                            <td key={slot.period} className="p-3 text-slate-600 border-r border-emerald-500/10">
+                            <td key={slot.period} className="p-3 text-slate-600 border-r border-slate-200">
                               —
                             </td>
                           );
@@ -241,23 +239,23 @@ export const StudentTimetablePage: React.FC = () => {
                         const fac = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
 
                         return (
-                          <td key={slot.period} className="p-2 border-r border-emerald-500/10">
-                            <div className="p-2.5 rounded-xl bg-slate-950/70 border border-emerald-500/20 hover:border-[#00ff88] transition-all text-left space-y-1">
+                          <td key={slot.period} className="p-2 border-r border-slate-200">
+                            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-400 hover:bg-white transition-all text-left space-y-1 shadow-2xs">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] text-[#00ff88] font-mono font-black">
+                                <span className="text-[11px] text-slate-900 font-mono font-black">
                                   {sub?.subject_code}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-semibold">
                                   {entry.room_number || currentSection?.room_number || 'Room'}
                                 </span>
                               </div>
-                              <span className="font-bold text-white block text-xs truncate" title={sub?.subject_name}>
+                              <span className="font-bold text-slate-900 block text-xs truncate" title={sub?.subject_name}>
                                 {sub?.subject_name || 'Subject'}
                               </span>
                               <span className={clsx("text-[11px] font-medium block truncate", fac?.full_name ? "text-slate-300" : "text-slate-500 italic")} title={fac?.full_name}>
                                 {fac?.full_name || 'Unassigned Faculty'}
                               </span>
-                              <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-emerald-500/10">
+                              <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-slate-200">
                                 <span className="text-slate-400">{entry.lecture_type || 'Theory'}</span>
                                 <span className="text-slate-500 font-mono">{slot.time}</span>
                               </div>

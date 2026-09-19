@@ -320,19 +320,19 @@ export const ProfilePage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <User className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <User className="w-6 h-6 text-slate-900" />
             Official Identity & Academic Credentials
           </h1>
-          <p className="text-xs text-slate-300 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Registered credentials for Academic Session 2026–2027 • {institution?.name || 'VCTM Aligarh'}
           </p>
         </div>
 
         {saveSuccess && (
-          <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
+          <div className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in zoom-in-95">
             <CheckCircle2 className="w-4 h-4" />
             <span>{successBannerText}</span>
           </div>
@@ -343,55 +343,55 @@ export const ProfilePage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Avatar & Role Badge */}
-        <div className="lg:col-span-4 glass-panel rounded-3xl p-6 border border-emerald-500/20 text-center space-y-4">
+        <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs text-center space-y-4">
           <div className="relative inline-block">
-            <div className="w-28 h-28 rounded-3xl bg-slate-950/80 border-2 border-emerald-500/40 flex items-center justify-center text-[#00ff88] text-4xl font-black mx-auto shadow-[0_0_25px_rgba(0,255,136,0.3)]">
+            <div className="w-28 h-28 rounded-3xl bg-[#0f172a] text-white flex items-center justify-center text-4xl font-bold mx-auto shadow-xs">
               {(user?.full_name || 'U').charAt(0).toUpperCase()}
             </div>
-            <div className="absolute -bottom-2 -right-2 p-1.5 rounded-xl bg-slate-900 border border-emerald-500/30 text-[#00ff88]">
+            <div className="absolute -bottom-2 -right-2 p-1.5 rounded-xl bg-white border border-slate-200 text-slate-900 shadow-xs">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
 
           <div>
-            <h2 className="text-lg font-black text-white tracking-tight">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
               {user?.full_name || 'User Profile'}
             </h2>
-            <p className="text-xs font-bold text-emerald-400 font-mono mt-0.5">
+            <p className="text-xs font-bold text-slate-600 font-mono mt-0.5">
               {student ? `Roll: ${student.roll_number}` : currentFaculty ? `Code: ${currentFaculty.faculty_code || currentFaculty.employee_code}` : 'ADMINISTRATOR'}
             </p>
-            <span className="inline-block mt-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+            <span className="inline-block mt-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200 text-slate-700">
               {role === 'super_admin' ? 'Super Administrator' : (role || 'STUDENT').toUpperCase()}
             </span>
           </div>
 
           {stats && (
-            <div className="pt-4 border-t border-emerald-500/15 grid grid-cols-2 gap-2 text-left">
-              <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
-                <span className="text-[10px] text-slate-400 font-semibold block">Attendance</span>
-                <span className="text-lg font-black text-[#00ff88]">{stats.percentage}%</span>
+            <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-left">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-500 font-semibold block">Attendance</span>
+                <span className="text-lg font-bold text-slate-900">{stats.percentage}%</span>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-950/60 border border-emerald-500/15">
-                <span className="text-[10px] text-slate-400 font-semibold block">Section</span>
-                <span className="text-lg font-black text-white">{sec?.name}</span>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-500 font-semibold block">Section</span>
+                <span className="text-lg font-bold text-slate-900">{sec?.name}</span>
               </div>
             </div>
           )}
 
-          <div className="pt-2 text-xs text-slate-400 space-y-1 text-left">
+          <div className="pt-2 text-xs text-slate-600 space-y-1 text-left">
             <p><strong>Institution:</strong> {institution?.name || 'Vivekananda College of Technology & Management (340)'}</p>
             <p><strong>Department:</strong> {dept?.name || 'Computer Science & Engineering'}</p>
           </div>
         </div>
 
         {/* Right Column: Academic & Contact Form */}
-        <div className="lg:col-span-8 glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 space-y-6">
-          <div className="flex items-center justify-between border-b border-emerald-500/15 pb-4">
-            <h3 className="text-base font-bold text-white tracking-wide">
+        <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <h3 className="text-base font-bold text-slate-900 tracking-wide">
               Academic Credentials & Enrolled Section
             </h3>
             <Button
-              variant={isEditing ? "outline" : "neon"}
+              variant={isEditing ? "outline" : "primary"}
               size="sm"
               onClick={() => {
                 if (isEditing) {
@@ -419,8 +419,8 @@ export const ProfilePage: React.FC = () => {
                   onChange={(e) => setFullName(e.target.value)}
                   className={`w-full px-3.5 py-2 text-xs rounded-xl ${
                     isEditing 
-                      ? 'bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]' 
-                      : 'bg-slate-950/50 border border-emerald-500/15 text-slate-300 font-semibold'
+                      ? 'bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs' 
+                      : 'bg-slate-50 border border-slate-200 text-slate-700 font-semibold'
                   }`}
                 />
               </div>
@@ -433,7 +433,7 @@ export const ProfilePage: React.FC = () => {
                   type="email"
                   disabled
                   value={email}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/50 border border-emerald-500/15 text-slate-300 font-semibold cursor-not-allowed"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed"
                 />
               </div>
 
@@ -449,8 +449,8 @@ export const ProfilePage: React.FC = () => {
                   placeholder="+91 9876543210"
                   className={`w-full px-3.5 py-2 text-xs rounded-xl ${
                     isEditing 
-                      ? 'bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]' 
-                      : 'bg-slate-950/50 border border-emerald-500/15 text-slate-300 font-semibold'
+                      ? 'bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs' 
+                      : 'bg-slate-50 border border-slate-200 text-slate-700 font-semibold'
                   }`}
                 />
               </div>
@@ -461,7 +461,7 @@ export const ProfilePage: React.FC = () => {
                   type="text"
                   disabled
                   value={branchName}
-                  className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-emerald-400 font-semibold cursor-not-allowed"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold cursor-not-allowed"
                 />
               </div>
 
@@ -473,7 +473,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value={`${prog?.name || 'B.Tech in Computer Science & Engineering'}${year?.name ? ` • ${year.name}` : ''}${sem?.name ? ` • ${sem.name}` : ''}`}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                     />
                   </div>
 
@@ -486,7 +486,7 @@ export const ProfilePage: React.FC = () => {
                         value={selectedSectionId}
                         onChange={(e) => handleSectionChange(e.target.value)}
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                       >
                         <option value="">Select Section</option>
                         {studentAvailableSections.map((s) => (
@@ -500,7 +500,7 @@ export const ProfilePage: React.FC = () => {
                         type="text"
                         disabled
                         value={sec?.name ? `Section ${sec.name}` : 'Section Not Assigned'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold cursor-not-allowed"
                       />
                     )}
                   </div>
@@ -516,14 +516,14 @@ export const ProfilePage: React.FC = () => {
                         onChange={(e) => setClassroomRoom(e.target.value)}
                         placeholder="e.g. Room 204 or LH-1"
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                       />
                     ) : (
                       <input
                         type="text"
                         disabled
                         value={sec?.room_number || classroomRoom || '—'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold cursor-not-allowed"
                       />
                     )}
                   </div>
@@ -537,7 +537,7 @@ export const ProfilePage: React.FC = () => {
                         value={admissionType}
                         onChange={(e) => setAdmissionType(e.target.value as AdmissionType)}
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                       >
                         <option value="Regular">Regular</option>
                         <option value="Lateral Entry">Lateral Entry</option>
@@ -547,7 +547,7 @@ export const ProfilePage: React.FC = () => {
                         type="text"
                         disabled
                         value={student.admission_type || admissionType || 'Regular'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                       />
                     )}
                   </div>
@@ -561,7 +561,7 @@ export const ProfilePage: React.FC = () => {
                         value={selectedMentorId}
                         onChange={(e) => setSelectedMentorId(e.target.value)}
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                       >
                         <option value="">No Faculty Mentor Assigned</option>
                         {faculty.filter(f => f.active).map((f) => (
@@ -575,7 +575,7 @@ export const ProfilePage: React.FC = () => {
                         type="text"
                         disabled
                         value={mentor?.full_name ? `${mentor.full_name} (${mentor.faculty_code || mentor.employee_code})` : 'Not Assigned'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                       />
                     )}
                   </div>
@@ -590,7 +590,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value="System Owner • Full Institutional Control"
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-bold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold cursor-not-allowed"
                     />
                   </div>
 
@@ -600,7 +600,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value={institution?.name || 'Vivekananda College of Technology & Management, Aligarh (Code: 340)'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                     />
                   </div>
 
@@ -610,7 +610,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value="Super Administrator • Authoritative DB Access"
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                     />
                   </div>
                 </>
@@ -624,7 +624,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value={`${currentFaculty.employee_code || '—'} • Timetable Code: ${currentFaculty.faculty_code || '—'}`}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-[#00ff88] font-mono font-bold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold cursor-not-allowed"
                     />
                   </div>
 
@@ -638,14 +638,14 @@ export const ProfilePage: React.FC = () => {
                         value={designation}
                         onChange={(e) => setDesignation(e.target.value)}
                         placeholder="e.g. Assistant Professor & Coordinator (Sec A)"
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-950/90 border border-emerald-500/40 text-white focus:outline-none focus:border-[#00ff88]"
+                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                       />
                     ) : (
                       <input
                         type="text"
                         disabled
                         value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Academic Department'}`}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                       />
                     )}
                   </div>
@@ -656,7 +656,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value={facultyAssignedSubjectNames || 'No subjects currently assigned'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                     />
                   </div>
 
@@ -666,7 +666,7 @@ export const ProfilePage: React.FC = () => {
                       type="text"
                       disabled
                       value={facultyAssignedSectionNames || 'No sections currently assigned'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-950/50 border border-emerald-500/15 rounded-xl text-slate-300 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
                     />
                   </div>
                 </>
@@ -686,7 +686,7 @@ export const ProfilePage: React.FC = () => {
                 </Button>
                 <Button 
                   type="submit" 
-                  variant="neon" 
+                  variant="primary" 
                   size="sm" 
                   disabled={isSaving}
                   leftIcon={<Save className="w-4 h-4 text-slate-950" />}
@@ -704,24 +704,24 @@ export const ProfilePage: React.FC = () => {
       {/* 1.5 CLASS COORDINATOR ASSIGNMENTS (IF APPLICABLE) */}
       {/* ======================================================== */}
       {coordinatedSections.length > 0 && (
-        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 space-y-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   OFFICIAL ACADEMIC ROLE
                 </span>
               </div>
-              <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2 mt-1">
-                <GraduationCap className="w-5 h-5 text-[#00ff88]" />
+              <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2 mt-1">
+                <GraduationCap className="w-5 h-5 text-slate-700" />
                 Class Coordinator Assignments
               </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 Official coordinator responsibility for complete section oversight and master timetable monitoring
               </p>
             </div>
 
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" /> Coordinator Active
             </span>
           </div>
@@ -732,22 +732,22 @@ export const ProfilePage: React.FC = () => {
               const cLectures = timetable.filter(t => t.section_id === cSec.id && t.active);
 
               return (
-                <div key={cSec.id} className="p-5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 space-y-3">
+                <div key={cSec.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Coordinator</span>
-                      <h4 className="text-sm font-bold text-white mt-0.5">
+                      <h4 className="text-sm font-bold text-slate-900 mt-0.5">
                         {branchName} — {cSec.year_name || 'Academic Year'} — Section {cSec.name}
                       </h4>
                     </div>
-                    <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-slate-900 border border-emerald-500/30 text-[#00ff88]">
+                    <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-white border border-slate-200 text-slate-900 shadow-2xs">
                       {cSec.room_number ? `Room ${cSec.room_number}` : `Section ${cSec.name}`}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-300 pt-2 border-t border-emerald-500/10">
-                    <div>Enrolled Students: <strong className="text-white font-mono">{cStudents.length}</strong></div>
-                    <div>Master Classes: <strong className="text-[#00ff88] font-mono">{cLectures.length} / Week</strong></div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-200/80">
+                    <div>Enrolled Students: <strong className="text-slate-900 font-mono">{cStudents.length}</strong></div>
+                    <div>Master Classes: <strong className="text-slate-900 font-mono">{cLectures.length} / Week</strong></div>
                   </div>
                 </div>
               );
@@ -760,14 +760,14 @@ export const ProfilePage: React.FC = () => {
       {/* 2. ACCOUNT SECURITY & SUPABASE AUTH CREDENTIALS */}
       {/* ======================================================== */}
       {role !== 'student' && (
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/25 space-y-5 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/15 pb-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
-            <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
-              <Lock className="w-5 h-5 text-[#00ff88]" />
+            <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <Lock className="w-5 h-5 text-slate-700" />
               Account Security & Supabase Credentials
             </h3>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
               Manage your real authentication email and login password for VCTM ERP
             </p>
           </div>
@@ -779,15 +779,15 @@ export const ProfilePage: React.FC = () => {
                 <AlertCircle className="w-3 h-3 text-amber-400" /> Verification Pending
               </span>
             ) : user?.email_confirmed_at ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Email Verified
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800/80 border border-emerald-500/20 text-slate-300 flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800/80 border border-emerald-500/20 text-slate-700 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-400" /> Institutional Account
               </span>
             )}
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3" /> Account Active
             </span>
           </div>
@@ -796,7 +796,7 @@ export const ProfilePage: React.FC = () => {
         {/* Credentials Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Login Email */}
-          <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -821,7 +821,7 @@ export const ProfilePage: React.FC = () => {
                     <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold block text-amber-300 text-[11.5px]">Email Change Awaiting Confirmation</span>
-                      <span className="text-[11px] text-slate-300">
+                      <span className="text-[11px] text-slate-700">
                         Supabase sent a confirmation link to <strong className="text-white font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
                       </span>
                     </div>
@@ -863,7 +863,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Card 2: Password */}
-            <div className="p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -873,7 +873,7 @@ export const ProfilePage: React.FC = () => {
                     ••••••••••••••••
                   </h4>
                 </div>
-                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+                <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800">
                   <KeyRound className="w-4 h-4" />
                 </div>
               </div>
@@ -884,7 +884,7 @@ export const ProfilePage: React.FC = () => {
 
               <div className="pt-2">
                 <Button
-                  variant="neon"
+                  variant="primary"
                   size="sm"
                   onClick={() => {
                     setCurrentPassInput('');
@@ -907,14 +907,14 @@ export const ProfilePage: React.FC = () => {
       {role === 'student' && (
         <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 bg-slate-900/40 space-y-3">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] shrink-0 mt-0.5">
+            <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 shrink-0 mt-0.5">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-white tracking-wide">
                 Institutional Credential Policy & Security Protection
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-700 leading-relaxed">
                 Student login credentials (official roll number, institutional login email, and initial access passwords) are centrally administered and protected by the Academic Registrar and Super Admin.
               </p>
               <p className="text-xs text-slate-400 leading-relaxed">
@@ -945,19 +945,19 @@ export const ProfilePage: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Current Password *</label>
+            <label className="block text-slate-700 font-semibold mb-1">Current Password *</label>
             <input
               type="password"
               required
               value={currentPassInput}
               onChange={(e) => setCurrentPassInput(e.target.value)}
               placeholder="Enter current password"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">New Password (min 6 chars) *</label>
+            <label className="block text-slate-700 font-semibold mb-1">New Password (min 6 chars) *</label>
             <input
               type="password"
               required
@@ -965,12 +965,12 @@ export const ProfilePage: React.FC = () => {
               value={newPassInput}
               onChange={(e) => setNewPassInput(e.target.value)}
               placeholder="Enter new password"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Confirm New Password *</label>
+            <label className="block text-slate-700 font-semibold mb-1">Confirm New Password *</label>
             <input
               type="password"
               required
@@ -978,7 +978,7 @@ export const ProfilePage: React.FC = () => {
               value={confirmPassInput}
               onChange={(e) => setConfirmPassInput(e.target.value)}
               placeholder="Re-enter new password"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
@@ -986,7 +986,7 @@ export const ProfilePage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={() => setIsPassModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="neon" size="sm" type="submit" disabled={isSubmittingPass}>
+            <Button variant="primary" size="sm" type="submit" disabled={isSubmittingPass}>
               {isSubmittingPass ? 'Updating...' : 'Update Password'}
             </Button>
           </div>
@@ -1010,25 +1010,25 @@ export const ProfilePage: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Current Login Email</label>
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/15 text-slate-400 font-mono">
+              <label className="block text-slate-700 font-semibold mb-1">Current Login Email</label>
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-mono">
                 {user?.email || 'N/A'}
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
+              <label className="block text-slate-700 font-semibold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
               <input
                 type="email"
                 required
                 value={newEmailInput}
                 onChange={(e) => setNewEmailInput(e.target.value)}
                 placeholder="e.g. hemlata.cse@gmail.com"
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/15 text-[11px] text-slate-300 space-y-1">
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/15 text-[11px] text-slate-700 space-y-1">
               <p className="font-semibold text-emerald-400">Official Supabase Verification Notice:</p>
               <p className="text-slate-400">
                 Supabase Auth will dispatch a confirmation email with a secure verification link to your new address. Your login credentials and database records will automatically update once you click the confirmation link.
@@ -1039,7 +1039,7 @@ export const ProfilePage: React.FC = () => {
               <Button variant="outline" size="sm" type="button" onClick={() => setIsEmailModalOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="neon" size="sm" type="submit" disabled={isSubmittingEmail}>
+              <Button variant="primary" size="sm" type="submit" disabled={isSubmittingEmail}>
                 {isSubmittingEmail ? 'Dispatching Verification...' : 'Send Verification Link'}
               </Button>
             </div>

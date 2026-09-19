@@ -302,17 +302,16 @@ export const FacultyQuizzesPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Quiz Management & Scoring</h1>
-                <p className="text-slate-400 text-sm mt-0.5">
+                <h1 className="text-2xl font-black text-slate-900 font-serif-institutional tracking-tight">Quiz Management & Scoring</h1>
+                <p className="text-slate-600 text-sm mt-0.5">
                   Publish Google Form quizzes, share external assessment links, and record student marks.
                 </p>
               </div>
@@ -320,14 +319,14 @@ export const FacultyQuizzesPage: React.FC = () => {
           </div>
           <Button 
             onClick={handleOpenCreateModal}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+            className="bg-[#0f172a] hover:bg-black text-white shadow-xs font-bold rounded-xl flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Create New Quiz
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
@@ -335,7 +334,7 @@ export const FacultyQuizzesPage: React.FC = () => {
               placeholder="Search quizzes by title or subject..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -343,7 +342,7 @@ export const FacultyQuizzesPage: React.FC = () => {
             <select
               value={selectedSubjectFilter}
               onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               <option value="ALL">All Assigned Subjects ({myAssignedSubjects.length})</option>
               {myAssignedSubjects.map(s => (
@@ -356,7 +355,7 @@ export const FacultyQuizzesPage: React.FC = () => {
             <select
               value={selectedSectionFilter}
               onChange={(e) => setSelectedSectionFilter(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               <option value="ALL">All Assigned Sections ({myAssignedSections.length})</option>
               {myAssignedSections.map(sec => {
@@ -374,13 +373,13 @@ export const FacultyQuizzesPage: React.FC = () => {
       </div>
 
       {/* Active Class & Section Context Banner */}
-      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 text-xs text-slate-300">
+      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-slate-400 font-semibold">Active Managing Context:</span>
-          <span className="px-2.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 font-bold font-mono">
+          <span className="text-slate-500 font-semibold">Active Managing Context:</span>
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold font-mono border border-slate-200">
             {selectedSubjectFilter === 'ALL' ? 'All Assigned Subjects' : subjects.find(s => s.id === selectedSubjectFilter)?.subject_code + ' — ' + subjects.find(s => s.id === selectedSubjectFilter)?.subject_name}
           </span>
-          <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-purple-500/20">
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold border border-slate-200">
             {selectedSectionFilter === 'ALL' ? 'All Assigned Sections' : 'Section ' + sections.find(s => s.id === selectedSectionFilter)?.name}
           </span>
           {(() => {
@@ -390,13 +389,13 @@ export const FacultyQuizzesPage: React.FC = () => {
             const sem = semesters.find(s => s.id === activeSec?.semester_id);
             const yr = years.find(y => y.id === sem?.academic_year_id);
             return (
-              <span className="text-slate-400">
+              <span className="text-slate-500 font-medium">
                 • {sem?.name || 'Odd Semester 2026–2027'} {yr?.name ? `(${yr.name})` : ''}
               </span>
             );
           })()}
         </div>
-        <span className="text-[11px] text-purple-400 font-semibold hidden sm:inline">
+        <span className="text-[11px] text-slate-600 font-semibold hidden sm:inline">
           ✓ Section-Specific Isolation Active
         </span>
       </div>
@@ -404,9 +403,9 @@ export const FacultyQuizzesPage: React.FC = () => {
       {/* Quiz Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredQuizzes.length === 0 ? (
-          <div className="col-span-full py-16 text-center bg-slate-900/50 border border-slate-800/60 rounded-2xl">
-            <Sparkles className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
-            <h3 className="text-lg font-semibold text-slate-300">No Quizzes Created Yet</h3>
+          <div className="col-span-full py-16 text-center bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+            <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-slate-800 font-serif-institutional">No Quizzes Created Yet</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto mt-1">
               Click &quot;Create New Quiz&quot; to link a Google Form quiz with maximum marks and duration.
             </p>
@@ -419,41 +418,41 @@ export const FacultyQuizzesPage: React.FC = () => {
             return (
               <div 
                 key={quiz.id} 
-                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg"
+                className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between shadow-2xs"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                       {quiz.subject?.subject_code || 'Subject'} • Section {quiz.section?.name || ''} • Odd Semester 2026–27
                     </span>
                     <button 
                       onClick={() => handleDelete(quiz.id, quiz.title)}
-                      className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                      className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                       title="Delete Quiz"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white mb-1 line-clamp-1">{quiz.title}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1">{quiz.title}</h3>
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-4">
                     {quiz.description || quiz.instructions || 'Online Google Form Assessment.'}
                   </p>
 
-                  <div className="space-y-2 py-3 border-y border-slate-800/80 text-xs">
-                    <div className="flex items-center justify-between text-slate-400">
+                  <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Max Marks:</span>
-                      <span className="font-semibold text-emerald-400">{quiz.max_marks} Marks</span>
+                      <span className="font-semibold text-emerald-800">{quiz.max_marks} Marks</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Status:</span>
-                      <span className={clsx("px-2 py-0.5 rounded text-[11px] font-semibold", isExpired ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-300")}>
+                      <span className={clsx("px-2.5 py-0.5 rounded-full text-[11px] font-semibold", isExpired ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200")}>
                         {isExpired ? 'Expired' : 'Active / Available'}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Window:</span>
-                      <span className="font-medium text-slate-300 flex items-center gap-1">
+                      <span className="font-medium text-slate-700 flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
                         {new Date(quiz.start_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} — {new Date(quiz.end_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </span>
@@ -461,9 +460,9 @@ export const FacultyQuizzesPage: React.FC = () => {
                   </div>
 
                   {/* Scored Students Count */}
-                  <div className="mt-4 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 text-center">
-                    <div className="text-lg font-bold text-white">{results.length}</div>
-                    <div className="text-[11px] text-slate-400">Students Scored Recorded</div>
+                  <div className="mt-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                    <div className="text-lg font-bold text-slate-900">{results.length}</div>
+                    <div className="text-[11px] text-slate-500 font-medium">Students Scored Recorded</div>
                   </div>
                 </div>
 
@@ -472,13 +471,13 @@ export const FacultyQuizzesPage: React.FC = () => {
                     href={quiz.google_form_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-700"
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-300 shadow-xs"
                   >
-                    <ExternalLink className="w-3.5 h-3.5 text-purple-400" /> Form Link
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-600" /> Form Link
                   </a>
                   <Button
                     onClick={() => handleOpenMarksRoster(quiz)}
-                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-purple-600/20"
+                    className="flex-1 bg-[#0f172a] hover:bg-black text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
                   >
                     <Award className="w-3.5 h-3.5" /> Enter / Edit Marks
                   </Button>
@@ -497,31 +496,31 @@ export const FacultyQuizzesPage: React.FC = () => {
       >
         <form onSubmit={handleCreateQuiz} className="space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {errorMsg}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Quiz Title *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Quiz Title *</label>
             <input
               type="text"
               required
               placeholder="e.g. Unit 1 Data Structure Assessment"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Subject *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Subject *</label>
               <select
                 value={selectedSubjectId}
                 onChange={(e) => handleSubjectChange(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               >
                 {myAssignedSubjects.map(s => (
                   <option key={s.subject.id} value={s.subject.id}>
@@ -531,11 +530,11 @@ export const FacultyQuizzesPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Section *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Section *</label>
               <select
                 value={selectedSectionId}
                 onChange={(e) => setSelectedSectionId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 font-medium"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 font-medium"
               >
                 {myAssignedSubjects
                   .find(s => s.subject.id === selectedSubjectId)
@@ -558,11 +557,11 @@ export const FacultyQuizzesPage: React.FC = () => {
             const currentSecObj = currentSubObj?.sections.find(sec => sec.id === selectedSectionId) || sections.find(s => s.id === selectedSectionId);
             if (!currentSecObj) return null;
             return (
-              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/25 text-xs text-purple-300 flex items-start gap-2.5">
-                <Users className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5">
+                <Users className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white">Target Scope: Section {currentSecObj.name} {currentSecObj.room_number ? `(Room ${currentSecObj.room_number})` : ''}</span>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <span className="font-semibold text-slate-900">Target Scope: Section {currentSecObj.name} {currentSecObj.room_number ? `(Room ${currentSecObj.room_number})` : ''}</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     This Google Form quiz will be assigned strictly to students in Section {currentSecObj.name}. Other sections will not see or attempt this quiz.
                   </p>
                 </div>
@@ -571,21 +570,21 @@ export const FacultyQuizzesPage: React.FC = () => {
           })()}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Google Form Link *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Google Form Link *</label>
             <input
               type="url"
               required
               placeholder="https://forms.google.com/..."
               value={googleFormUrl}
               onChange={(e) => setGoogleFormUrl(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
             <p className="text-[11px] text-slate-500 mt-1">Students will access and submit the quiz via this Google Form.</p>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Max Marks *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Max Marks *</label>
               <input
                 type="number"
                 min="1"
@@ -593,43 +592,43 @@ export const FacultyQuizzesPage: React.FC = () => {
                 required
                 value={maxMarks}
                 onChange={(e) => setMaxMarks(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Start Time *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Start Time *</label>
               <input
                 type="datetime-local"
                 required
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">End Time *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">End Time *</label>
               <input
                 type="datetime-local"
                 required
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Optional Instructions</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Optional Instructions</label>
             <textarea
               rows={2}
               placeholder="e.g. 20 MCQ questions. Each question carries 1 mark. Negative marking: None."
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
@@ -640,7 +639,7 @@ export const FacultyQuizzesPage: React.FC = () => {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl shadow-xs"
             >
               {isSubmitting ? 'Publishing...' : 'Publish Quiz'}
             </Button>
@@ -655,45 +654,45 @@ export const FacultyQuizzesPage: React.FC = () => {
         title={`Record Quiz Marks — ${activeQuizForMarks?.title || ''}`}
       >
         <div className="space-y-4">
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs text-slate-700">
             <div>
-              <span className="text-slate-400">Subject: </span>
-              <span className="text-white font-medium">{activeQuizForMarks?.subject?.subject_name}</span>
+              <span className="text-slate-500">Subject: </span>
+              <span className="text-slate-900 font-semibold">{activeQuizForMarks?.subject?.subject_name}</span>
             </div>
             <div>
-              <span className="text-slate-400">Max Marks: </span>
-              <span className="text-emerald-400 font-bold">{activeQuizForMarks?.max_marks}</span>
+              <span className="text-slate-500">Max Marks: </span>
+              <span className="text-emerald-800 font-bold">{activeQuizForMarks?.max_marks}</span>
             </div>
             <div>
-              <span className="text-slate-400">Section: </span>
-              <span className="text-purple-400 font-medium">Section {activeQuizForMarks?.section?.name}</span>
+              <span className="text-slate-500">Section: </span>
+              <span className="text-slate-900 font-semibold">Section {activeQuizForMarks?.section?.name}</span>
             </div>
           </div>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             Enter marks evaluated from the Google Form responses. All updates are logged in the audit ledger.
           </p>
 
           <div className="overflow-x-auto max-h-[380px]">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80 sticky top-0">
+                <tr className="border-b border-slate-200 text-slate-600 bg-slate-50/90 sticky top-0 font-semibold uppercase tracking-wider">
                   <th className="py-2.5 px-3">Roll No.</th>
                   <th className="py-2.5 px-3">Student Name</th>
                   <th className="py-2.5 px-3 w-28">Marks (/{activeQuizForMarks?.max_marks})</th>
                   <th className="py-2.5 px-3">Remarks</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100">
                 {students
                   .filter(s => s.section_id === activeQuizForMarks?.section_id)
                   .map(student => {
                     const current = marksRoster[student.id] || { marks: '', remarks: '' };
 
                     return (
-                      <tr key={student.id} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 px-3 font-mono text-slate-300">{student.roll_number}</td>
-                        <td className="py-2.5 px-3 font-medium text-white">{student.full_name}</td>
+                      <tr key={student.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-slate-700">{student.roll_number}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">{student.full_name}</td>
                         <td className="py-2.5 px-3">
                           <input
                             type="number"
@@ -708,7 +707,7 @@ export const FacultyQuizzesPage: React.FC = () => {
                                 [student.id]: { ...prev[student.id], marks: val }
                               }));
                             }}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-sm text-white focus:outline-none focus:border-purple-500 font-mono"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-900 focus:outline-none focus:border-slate-400 font-mono"
                           />
                         </td>
                         <td className="py-2.5 px-3">
@@ -723,7 +722,7 @@ export const FacultyQuizzesPage: React.FC = () => {
                                 [student.id]: { ...prev[student.id], remarks: text }
                               }));
                             }}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-purple-500"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-slate-400"
                           />
                         </td>
                       </tr>
@@ -733,7 +732,7 @@ export const FacultyQuizzesPage: React.FC = () => {
             </table>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
               variant="outline"
               onClick={() => setActiveQuizForMarks(null)}
@@ -743,11 +742,7 @@ export const FacultyQuizzesPage: React.FC = () => {
             <Button
               onClick={handleSaveMarksRoster}
               disabled={isSavingMarks || saveMarksSuccess}
-              className={`flex items-center gap-1.5 transition-all ${
-                saveMarksSuccess
-                  ? '!bg-emerald-500 !text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)] font-bold'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              }`}
+              className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5"
             >
               {isSavingMarks ? (
                 <>
@@ -756,7 +751,7 @@ export const FacultyQuizzesPage: React.FC = () => {
                 </>
               ) : saveMarksSuccess ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                  <CheckCircle2 className="w-4 h-4 text-white" />
                   Saved ✓
                 </>
               ) : (

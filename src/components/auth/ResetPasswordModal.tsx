@@ -68,8 +68,8 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
       isOpen={isOpen}
       onClose={handleCancel}
       title={
-        <div className="flex items-center gap-2.5 text-white">
-          <div className={`p-1.5 rounded-lg ${isStudent ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' : 'bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88]'}`}>
+        <div className="flex items-center gap-2.5 text-slate-900 font-bold">
+          <div className={`p-1.5 rounded-lg ${isStudent ? 'bg-amber-50 border border-amber-200 text-amber-700' : 'bg-slate-100 border border-slate-200 text-slate-700'}`}>
             {isStudent ? <ShieldAlert className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
           </div>
           <span>Password Recovery</span>
@@ -86,20 +86,20 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
     >
       {isStudent ? (
         <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-300">
-              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-800">
+              <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0" />
               <span>Password Recovery Restricted</span>
             </div>
-            <p className="text-slate-300 text-sm font-medium">
+            <p className="text-amber-900 text-sm font-medium">
               For security reasons, students cannot reset their password directly.
             </p>
-            <p className="text-slate-400 text-xs">
+            <p className="text-amber-700 text-xs">
               Please contact your Super Admin / College Administrator to reset your account password.
             </p>
           </div>
 
-          <div className="flex justify-end pt-3 border-t border-emerald-500/15">
+          <div className="flex justify-end pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="neon"
@@ -110,9 +110,9 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
           </div>
         </div>
       ) : successMessage ? (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs space-y-3 animate-in fade-in">
-          <div className="flex items-center gap-2 font-bold text-[#00ff88]">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-3 animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold text-emerald-800">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <span>Password Updated Successfully</span>
           </div>
           <p>{successMessage}</p>
@@ -120,18 +120,18 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
       ) : (
         <form onSubmit={handleResetSubmit} className="space-y-4">
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               New Password (minimum 6 characters)
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <Lock className="w-4 h-4" />
               </div>
               <input
@@ -141,12 +141,12 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
-                className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-900/80 border border-emerald-500/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] focus:ring-1 focus:ring-[#00ff88]"
+                className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -154,11 +154,11 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Confirm New Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <Lock className="w-4 h-4" />
               </div>
               <input
@@ -168,12 +168,12 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter new password"
-                className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-900/80 border border-emerald-500/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] focus:ring-1 focus:ring-[#00ff88]"
+                className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
               Cancel Recovery
             </Button>
@@ -181,7 +181,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
               type="submit"
               variant="neon"
               isLoading={isSubmitting}
-              rightIcon={<ArrowRight className="w-4 h-4 text-slate-950" />}
+              rightIcon={<ArrowRight className="w-4 h-4 text-white" />}
             >
               Update Password & Enter ERP
             </Button>

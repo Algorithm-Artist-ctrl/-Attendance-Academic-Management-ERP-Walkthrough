@@ -989,28 +989,28 @@ export const FacultyMarksManagementPage: React.FC = () => {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800/80 backdrop-blur-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
             <Award className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-3">
               Marks & Assessment Management
               {activeAssessment && (
                 <span 
                   className={clsx(
                     'px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border',
                     activeAssessment.status === 'published'
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                      : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
                   )}
                 >
                   {activeAssessment.status === 'published' ? '● Published' : '○ Draft'}
                 </span>
               )}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
               Record, validate, publish, and audit continuous internal assessments, sessionals, and quizzes
             </p>
           </div>
@@ -1023,9 +1023,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={openHistoryModal}
             disabled={!activeAssessment}
-            className="border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300"
+            className="border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl shadow-xs font-semibold"
           >
-            <History className="w-4 h-4 mr-1.5 text-cyan-400" />
+            <History className="w-4 h-4 mr-1.5 text-slate-600" />
             Marks History
           </Button>
 
@@ -1034,9 +1034,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={() => setIsCsvImportModalOpen(true)}
             disabled={!activeAssessment || sectionStudents.length === 0}
-            className="border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300"
+            className="border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl shadow-xs font-semibold"
           >
-            <Upload className="w-4 h-4 mr-1.5 text-emerald-400" />
+            <Upload className="w-4 h-4 mr-1.5 text-slate-600" />
             Import CSV
           </Button>
 
@@ -1045,9 +1045,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={handleExportCSV}
             disabled={!activeAssessment || sectionStudents.length === 0}
-            className="border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300"
+            className="border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl shadow-xs font-semibold"
           >
-            <Download className="w-4 h-4 mr-1.5 text-emerald-400" />
+            <Download className="w-4 h-4 mr-1.5 text-slate-600" />
             Export CSV
           </Button>
 
@@ -1056,27 +1056,27 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={() => setIsPdfModalOpen(true)}
             disabled={!activeAssessment || sectionStudents.length === 0}
-            className="border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300"
+            className="border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl shadow-xs font-semibold"
           >
-            <FileDown className="w-4 h-4 mr-1.5 text-cyan-400" />
+            <FileDown className="w-4 h-4 mr-1.5 text-slate-600" />
             Download PDF
           </Button>
         </div>
       </div>
 
       {/* Faculty Assignment Filter Bar */}
-      <div className="bg-[#091322]/90 border border-emerald-500/20 rounded-2xl p-5 shadow-[0_4px_24px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           {/* 1. Academic Year */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
               Academic Year
             </label>
             <select
               value={selectedYearId}
               onChange={(e) => setSelectedYearId(e.target.value)}
-              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all font-medium"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
             >
               {facultyTeachingScope.assignedYears.map(yr => (
                 <option key={yr.id} value={yr.id}>
@@ -1091,14 +1091,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
           {/* 2. Section */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-emerald-400" />
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-slate-500" />
               Section
             </label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
-              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all font-medium"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
             >
               {availableSections.map(sec => (
                 <option key={sec.id} value={sec.id}>
@@ -1113,14 +1113,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
           {/* 3. Subject */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-slate-500" />
               Subject
             </label>
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all font-medium"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
             >
               {availableSubjects.map(sub => (
                 <option key={sub.id} value={sub.id}>
@@ -1136,14 +1136,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
           {/* 4. Assessment */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-emerald-400" />
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-slate-500" />
                 Assessment
               </label>
               <button
                 type="button"
                 onClick={() => setIsAddSessionalModalOpen(true)}
-                className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5 transition-colors font-medium"
+                className="text-[11px] text-slate-900 hover:text-black flex items-center gap-0.5 transition-colors font-bold"
               >
                 <Plus className="w-3 h-3" />
                 Add Assessment
@@ -1152,7 +1152,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
             <select
               value={selectedAssessmentId}
               onChange={(e) => setSelectedAssessmentId(e.target.value)}
-              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 transition-all font-medium"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
             >
               {assessmentOptions.map(opt => (
                 <option key={opt.id} value={opt.id}>
@@ -1170,56 +1170,56 @@ export const FacultyMarksManagementPage: React.FC = () => {
       {/* Summary Statistics & KPI Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total Students */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
             <Users className="w-3 h-3 text-slate-400" />
             Total Roster
           </span>
-          <div className="text-xl font-bold text-white mt-1">
+          <div className="text-xl font-bold text-slate-900 mt-1 font-serif-institutional">
             {stats.totalStudents}
           </div>
           <span className="text-[10px] text-slate-500 mt-0.5">Enrolled in Section</span>
         </div>
 
         {/* Marks Entered */}
-        <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
             Entered
           </span>
-          <div className="text-xl font-bold text-emerald-400 mt-1">
+          <div className="text-xl font-bold text-emerald-800 mt-1 font-serif-institutional">
             {stats.enteredCount}
           </div>
-          <span className="text-[10px] text-emerald-400/70 mt-0.5">
+          <span className="text-[10px] text-slate-500 mt-0.5">
             {stats.totalStudents > 0 ? `${((stats.enteredCount / stats.totalStudents) * 100).toFixed(0)}% Completed` : '0%'}
           </span>
         </div>
 
         {/* Marks Missing */}
-        <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-amber-400 uppercase tracking-wider flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 text-amber-400" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 text-amber-600" />
             Missing
           </span>
-          <div className="text-xl font-bold text-amber-400 mt-1">
+          <div className="text-xl font-bold text-amber-800 mt-1 font-serif-institutional">
             {stats.missingCount}
           </div>
-          <span className="text-[10px] text-amber-400/70 mt-0.5">Pending input</span>
+          <span className="text-[10px] text-slate-500 mt-0.5">Pending input</span>
         </div>
 
         {/* Publication Status */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
             <Eye className="w-3 h-3 text-slate-400" />
             Status
           </span>
           <div className="mt-1">
             {activeAssessment?.status === 'published' ? (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                 Published
               </span>
             ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                 Draft Only
               </span>
             )}
@@ -1230,36 +1230,36 @@ export const FacultyMarksManagementPage: React.FC = () => {
         </div>
 
         {/* Class Average */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
             <TrendingUp className="w-3 h-3 text-slate-400" />
             Class Average
           </span>
-          <div className="text-xl font-bold text-cyan-400 mt-1">
+          <div className="text-xl font-bold text-slate-900 mt-1 font-serif-institutional">
             {stats.avgMarks} <span className="text-xs font-normal text-slate-500">/ {activeAssessment?.maxMarks || 30}</span>
           </div>
           <span className="text-[10px] text-slate-500 mt-0.5">Mean Performance</span>
         </div>
 
         {/* Highest Mark */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Award className="w-3 h-3 text-amber-400" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <Award className="w-3 h-3 text-slate-400" />
             Highest Mark
           </span>
-          <div className="text-xl font-bold text-amber-400 mt-1">
+          <div className="text-xl font-bold text-slate-900 mt-1 font-serif-institutional">
             {stats.highest} <span className="text-xs font-normal text-slate-500">/ {activeAssessment?.maxMarks || 30}</span>
           </div>
           <span className="text-[10px] text-slate-500 mt-0.5">Top Score</span>
         </div>
 
         {/* Lowest & Pass Rate */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Percent className="w-3 h-3 text-emerald-400" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <Percent className="w-3 h-3 text-slate-400" />
             Pass Rate
           </span>
-          <div className="text-xl font-bold text-emerald-400 mt-1">
+          <div className="text-xl font-bold text-emerald-800 mt-1 font-serif-institutional">
             {stats.passPercentage}%
           </div>
           <span className="text-[10px] text-slate-500 mt-0.5">Min: {stats.lowest}</span>
@@ -1267,7 +1267,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
       </div>
 
       {/* Roster Controls & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
         {/* Left: Search & Filter Toggles */}
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative w-64">
@@ -1277,7 +1277,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               placeholder="Search roll number or name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
@@ -1285,16 +1285,16 @@ export const FacultyMarksManagementPage: React.FC = () => {
             type="button"
             onClick={() => setShowMissingOnly(prev => !prev)}
             className={clsx(
-              'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors',
               showMissingOnly
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-                : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200'
+                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
             )}
           >
             <Filter className="w-3.5 h-3.5" />
             {showMissingOnly ? 'Showing Missing Only' : 'Show Missing Only'}
             {stats.missingCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/30 text-amber-300">
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
                 {stats.missingCount}
               </span>
             )}
@@ -1304,8 +1304,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
         {/* Right: Primary Save & Publish Buttons */}
         <div className="flex items-center gap-2.5">
           {isDirty && (
-            <span className="text-xs text-amber-400/90 font-medium flex items-center gap-1 animate-pulse mr-1">
-              <AlertCircle className="w-3.5 h-3.5" />
+            <span className="text-xs text-amber-800 font-medium flex items-center gap-1 mr-1">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
               Unsaved Changes
             </span>
           )}
@@ -1315,12 +1315,12 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={() => handleSaveMarks('draft')}
             disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
-            className="border-slate-700 hover:border-slate-500 text-slate-300"
+            className="border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl font-bold shadow-xs"
           >
             {isSaving ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin text-slate-400" />
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin text-slate-600" />
             ) : (
-              <Save className="w-4 h-4 mr-1.5 text-slate-400" />
+              <Save className="w-4 h-4 mr-1.5 text-slate-600" />
             )}
             Save Draft
           </Button>
@@ -1330,7 +1330,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={() => setIsPublishModalOpen(true)}
             disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+            className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl shadow-xs"
           >
             <CheckCircle2 className="w-4 h-4 mr-1.5" />
             Publish Marks
@@ -1339,16 +1339,16 @@ export const FacultyMarksManagementPage: React.FC = () => {
       </div>
 
       {/* Main Student Marks Roster Table */}
-      <div className="bg-[#091322]/80 border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl">
+      <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-xs">
         {isLoadingStudents ? (
-          <div className="p-12 flex flex-col items-center justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mb-3" />
+          <div className="p-12 flex flex-col items-center justify-center text-slate-500">
+            <Loader2 className="w-8 h-8 animate-spin text-slate-900 mb-3" />
             <p className="text-sm">Loading student roster for {currentSectionObj?.name || 'selected section'}...</p>
           </div>
         ) : displayedStudents.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
-            <Users className="w-10 h-10 mx-auto text-slate-600 mb-3" />
-            <h3 className="text-base font-medium text-white mb-1">No Students Match Selection</h3>
+          <div className="p-12 text-center text-slate-500">
+            <Users className="w-10 h-10 mx-auto text-slate-400 mb-3" />
+            <h3 className="text-base font-bold text-slate-800 mb-1">No Students Match Selection</h3>
             <p className="text-xs text-slate-500">
               {showMissingOnly 
                 ? 'All students in this section have marks entered! Great job.' 
@@ -1359,7 +1359,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-900/90 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
                   <th className="py-3.5 px-4 w-12 text-center">#</th>
                   <th className="py-3.5 px-4 w-44">Roll Number</th>
                   <th className="py-3.5 px-4">Student Name</th>
@@ -1371,7 +1371,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                   <th className="py-3.5 px-4 w-60">Remarks (Optional)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs">
+              <tbody className="divide-y divide-slate-100 text-xs">
                 {displayedStudents.map((st, index) => {
                   const entry = marksRoster[st.id] || { marks: '', remarks: '' };
                   const marksVal = entry.marks;
@@ -1384,8 +1384,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
                     <tr 
                       key={st.id} 
                       className={clsx(
-                        'hover:bg-slate-900/50 transition-colors',
-                        !hasMark && 'bg-amber-950/5'
+                        'hover:bg-slate-50/60 transition-colors',
+                        !hasMark && 'bg-amber-50/30'
                       )}
                     >
                       {/* S.No */}
@@ -1394,14 +1394,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
                       </td>
 
                       {/* Roll Number */}
-                      <td className="py-3 px-4 font-mono font-semibold text-cyan-400">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
                         {st.roll_number}
                       </td>
 
                       {/* Student Name */}
-                      <td className="py-3 px-4 font-medium text-slate-200">
+                      <td className="py-3 px-4 font-semibold text-slate-900">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
                             {st.full_name?.charAt(0) || 'S'}
                           </div>
                           <span>{st.full_name}</span>
@@ -1422,12 +1422,12 @@ export const FacultyMarksManagementPage: React.FC = () => {
                             onChange={(e) => handleMarkChange(st.id, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(e, index)}
                             className={clsx(
-                              'w-24 text-center py-1.5 px-2 rounded-lg font-mono text-sm font-semibold transition-all focus:outline-none',
+                              'w-24 text-center py-1.5 px-2 rounded-xl font-mono text-sm font-bold transition-all focus:outline-none',
                               hasMark 
                                 ? isPassing
-                                  ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/50 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400'
-                                  : 'bg-rose-950/40 text-rose-300 border border-rose-500/50 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
-                                : 'bg-slate-950/80 text-white border border-slate-700/80 border-dashed focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400'
+                                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 focus:border-emerald-500'
+                                  : 'bg-rose-50 text-rose-900 border border-rose-300 focus:border-rose-500'
+                                : 'bg-white text-slate-900 border border-slate-300 border-dashed focus:border-slate-500'
                             )}
                           />
                           <span className="text-[11px] text-slate-500 font-mono">
@@ -1437,29 +1437,28 @@ export const FacultyMarksManagementPage: React.FC = () => {
                       </td>
 
                       {/* Percentage */}
-                      <td className="py-3 px-4 text-center font-mono">
+                      <td className="py-3 px-4 text-center font-mono font-semibold">
                         {percentage !== null ? (
                           <span 
                             className={clsx(
-                              'font-medium',
-                              isPassing ? 'text-slate-300' : 'text-rose-400'
+                              isPassing ? 'text-slate-800' : 'text-rose-700'
                             )}
                           >
                             {percentage}%
                           </span>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
 
                       {/* Status */}
                       <td className="py-3 px-4 text-center">
                         {hasMark ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                             Entered
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                             Missing
                           </span>
                         )}
@@ -1472,7 +1471,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                           value={entry.remarks || ''}
                           placeholder="Add comment..."
                           onChange={(e) => handleRemarkChange(st.id, e.target.value)}
-                          className="w-full bg-transparent border-b border-slate-800 hover:border-slate-700 focus:border-emerald-500 text-xs text-slate-300 placeholder-slate-600 focus:outline-none px-1 py-1 transition-colors"
+                          className="w-full bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-slate-500 text-xs text-slate-800 placeholder-slate-400 focus:outline-none px-1 py-1 transition-colors"
                         />
                       </td>
                     </tr>
@@ -1489,8 +1488,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
         isOpen={isPublishModalOpen}
         onClose={() => setIsPublishModalOpen(false)}
         title={
-          <div className="flex items-center gap-2 text-emerald-400">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="flex items-center gap-2 text-slate-900">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <span>Publish Marks Confirmation</span>
           </div>
         }
@@ -1498,43 +1497,43 @@ export const FacultyMarksManagementPage: React.FC = () => {
       >
         <div className="space-y-4 pt-2">
           {stats.missingCount > 0 && (
-            <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
-                <span className="font-semibold text-amber-300 block">
+                <span className="font-bold text-amber-900 block">
                   Warning: {stats.missingCount} student(s) have missing marks!
                 </span>
-                <p className="text-slate-300">
+                <p className="text-slate-600">
                   Publishing now will make entered marks visible immediately to students on their portal, while leaving {stats.missingCount} record(s) blank.
                 </p>
               </div>
             </div>
           )}
 
-          <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2.5 text-xs">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5 text-xs">
             <div className="flex justify-between">
-              <span className="text-slate-400">Total Students in Section:</span>
-              <span className="text-white font-mono font-semibold">{stats.totalStudents}</span>
+              <span className="text-slate-500">Total Students in Section:</span>
+              <span className="text-slate-900 font-mono font-bold">{stats.totalStudents}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Marks Entered:</span>
-              <span className="text-emerald-400 font-mono font-semibold">{stats.enteredCount}</span>
+              <span className="text-slate-500">Marks Entered:</span>
+              <span className="text-emerald-800 font-mono font-bold">{stats.enteredCount}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Missing Marks:</span>
-              <span className="text-amber-400 font-mono font-semibold">{stats.missingCount}</span>
+              <span className="text-slate-500">Missing Marks:</span>
+              <span className="text-amber-800 font-mono font-bold">{stats.missingCount}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Maximum Marks:</span>
-              <span className="text-white font-mono font-semibold">{activeAssessment?.maxMarks}</span>
+              <span className="text-slate-500">Maximum Marks:</span>
+              <span className="text-slate-900 font-mono font-bold">{activeAssessment?.maxMarks}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Class Average:</span>
-              <span className="text-cyan-400 font-mono font-semibold">{stats.avgMarks}</span>
+              <span className="text-slate-500">Class Average:</span>
+              <span className="text-slate-900 font-mono font-bold">{stats.avgMarks}</span>
             </div>
           </div>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600">
             Once published, these scores will be visible on the student scorecard in realtime. You may re-edit and update scores at any time.
           </p>
 
@@ -1543,7 +1542,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setIsPublishModalOpen(false)}
-              className="border-slate-700 text-slate-300"
+              className="border-slate-300 text-slate-700"
             >
               Cancel
             </Button>
@@ -1552,7 +1551,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               size="sm"
               onClick={() => handleSaveMarks('published')}
               disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+              className="bg-[#0f172a] hover:bg-black text-white font-bold"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
@@ -1570,8 +1569,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
         isOpen={isAddSessionalModalOpen}
         onClose={() => setIsAddSessionalModalOpen(false)}
         title={
-          <div className="flex items-center gap-2 text-white">
-            <Plus className="w-5 h-5 text-emerald-400" />
+          <div className="flex items-center gap-2 text-slate-900">
+            <Plus className="w-5 h-5 text-slate-900" />
             <span>Add Sessional Assessment</span>
           </div>
         }
@@ -1579,8 +1578,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
       >
         <form onSubmit={handleCreateSessional} className="space-y-4 pt-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Assessment Title <span className="text-rose-400">*</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Assessment Title <span className="text-rose-600">*</span>
             </label>
             <input
               type="text"
@@ -1588,14 +1587,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
               placeholder="e.g. Sessional 3, PUT (Pre-University Test), Class Test 1"
               value={newSessionalTitle}
               onChange={(e) => setNewSessionalTitle(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Maximum Marks <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Maximum Marks <span className="text-rose-600">*</span>
               </label>
               <input
                 type="number"
@@ -1604,19 +1603,19 @@ export const FacultyMarksManagementPage: React.FC = () => {
                 max="100"
                 value={newSessionalMaxMarks}
                 onChange={(e) => setNewSessionalMaxMarks(parseInt(e.target.value) || 30)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Exam Date
               </label>
               <input
                 type="date"
                 value={newSessionalDate}
                 onChange={(e) => setNewSessionalDate(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
               />
             </div>
           </div>
@@ -1627,7 +1626,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               size="sm"
               type="button"
               onClick={() => setIsAddSessionalModalOpen(false)}
-              className="border-slate-700 text-slate-300"
+              className="border-slate-300 text-slate-700"
             >
               Cancel
             </Button>
@@ -1636,7 +1635,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               size="sm"
               type="submit"
               disabled={isCreatingSessional}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+              className="bg-[#0f172a] hover:bg-black text-white font-bold"
             >
               {isCreatingSessional ? (
                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
@@ -1654,8 +1653,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
         title={
-          <div className="flex items-center gap-2 text-cyan-400">
-            <FileDown className="w-5 h-5" />
+          <div className="flex items-center gap-2 text-slate-900">
+            <FileDown className="w-5 h-5 text-slate-900" />
             <span>Download Marks Report PDF</span>
           </div>
         }
@@ -1663,77 +1662,77 @@ export const FacultyMarksManagementPage: React.FC = () => {
       >
         <div className="space-y-4 pt-2">
           <div className="space-y-2.5">
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Select Report Template:
             </label>
 
-            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 cursor-pointer transition-colors">
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white cursor-pointer transition-colors">
               <input
                 type="radio"
                 name="pdfReportType"
                 checked={selectedPdfReportType === 'CURRENT_ASSESSMENT'}
                 onChange={() => setSelectedPdfReportType('CURRENT_ASSESSMENT')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500"
+                className="mt-1 text-slate-900 focus:ring-slate-900"
               />
               <div>
-                <span className="text-xs font-semibold text-white block">
+                <span className="text-xs font-semibold text-slate-900 block">
                   1. Current Assessment Marks Sheet
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-600">
                   Standard roster with marks, percentage, status, summary statistics, and faculty/HOD signature lines.
                 </span>
               </div>
             </label>
 
-            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 cursor-pointer transition-colors">
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white cursor-pointer transition-colors">
               <input
                 type="radio"
                 name="pdfReportType"
                 checked={selectedPdfReportType === 'SUBJECT_SCORECARD'}
                 onChange={() => setSelectedPdfReportType('SUBJECT_SCORECARD')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500"
+                className="mt-1 text-slate-900 focus:ring-slate-900"
               />
               <div>
-                <span className="text-xs font-semibold text-white block">
+                <span className="text-xs font-semibold text-slate-900 block">
                   2. Complete Subject Scorecard
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-600">
                   Comprehensive internal ledger: Sessional 1 + Sessional 2 + Quizzes Total + Internal Marks.
                 </span>
               </div>
             </label>
 
-            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 cursor-pointer transition-colors">
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white cursor-pointer transition-colors">
               <input
                 type="radio"
                 name="pdfReportType"
                 checked={selectedPdfReportType === 'SECTION_REPORT'}
                 onChange={() => setSelectedPdfReportType('SECTION_REPORT')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500"
+                className="mt-1 text-slate-900 focus:ring-slate-900"
               />
               <div>
-                <span className="text-xs font-semibold text-white block">
+                <span className="text-xs font-semibold text-slate-900 block">
                   3. Section Assessment Ledger
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-600">
                   Official class-wide continuous evaluation report for academic records and university compliance.
                 </span>
               </div>
             </label>
 
-            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 cursor-pointer transition-colors">
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white cursor-pointer transition-colors">
               <input
                 type="radio"
                 name="pdfReportType"
                 checked={selectedPdfReportType === 'STUDENT_REPORT'}
                 onChange={() => setSelectedPdfReportType('STUDENT_REPORT')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500"
+                className="mt-1 text-slate-900 focus:ring-slate-900"
               />
               <div className="w-full">
-                <span className="text-xs font-semibold text-white block">
+                <span className="text-xs font-semibold text-slate-900 block">
                   4. Individual Student Scorecard
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-600">
                   Detailed single student assessment breakdown across all tests in this subject.
                 </span>
                 {selectedPdfReportType === 'STUDENT_REPORT' && (
@@ -1741,7 +1740,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                     <select
                       value={selectedStudentForPdf}
                       onChange={(e) => setSelectedStudentForPdf(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-slate-400"
                     >
                       {sectionStudents.map(st => (
                         <option key={st.id} value={st.id}>
@@ -1760,7 +1759,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setIsPdfModalOpen(false)}
-              className="border-slate-700 text-slate-300"
+              className="border-slate-300 text-slate-700"
             >
               Cancel
             </Button>
@@ -1768,7 +1767,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               variant="primary"
               size="sm"
               onClick={handleDownloadPdf}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium"
+              className="bg-[#0f172a] hover:bg-black text-white font-bold"
             >
               <Download className="w-4 h-4 mr-1.5" />
               Generate & Download
@@ -1786,8 +1785,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
           setCsvFile(null);
         }}
         title={
-          <div className="flex items-center gap-2 text-white">
-            <Upload className="w-5 h-5 text-emerald-400" />
+          <div className="flex items-center gap-2 text-slate-900">
+            <Upload className="w-5 h-5 text-slate-900" />
             <span>Bulk CSV Marks Import</span>
           </div>
         }
@@ -1797,12 +1796,12 @@ export const FacultyMarksManagementPage: React.FC = () => {
         <div className="space-y-4 pt-2">
           {/* File Picker */}
           {!importPreview && (
-            <div className="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 rounded-2xl p-6 text-center transition-colors">
-              <FileSpreadsheet className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
-              <p className="text-xs font-medium text-white mb-1">
+            <div className="border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50/50 rounded-2xl p-6 text-center transition-colors">
+              <FileSpreadsheet className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-900 mb-1">
                 Upload CSV File
               </p>
-              <p className="text-[11px] text-slate-400 mb-4">
+              <p className="text-[11px] text-slate-600 mb-4">
                 Required columns: <code>Roll Number</code> and <code>Marks</code> (or <code>Marks Obtained</code>). Optional: <code>Remarks</code>.
               </p>
               <input
@@ -1818,7 +1817,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               />
               <label
                 htmlFor="csvMarksInput"
-                className="cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition-all"
+                className="cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-bold bg-[#0f172a] hover:bg-black text-white shadow-xs transition-all"
               >
                 Browse CSV File
               </label>
@@ -1827,8 +1826,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
           {/* Processing Indicator */}
           {isProcessingCsv && (
-            <div className="p-8 text-center text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-400 mx-auto mb-2" />
+            <div className="p-8 text-center text-slate-500">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-900 mx-auto mb-2" />
               <p className="text-xs">Validating rows against section students and max marks...</p>
             </div>
           )}
@@ -1836,15 +1835,15 @@ export const FacultyMarksManagementPage: React.FC = () => {
           {/* Import Preview */}
           {importPreview && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs">
+              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
                 <div className="flex items-center gap-4">
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-emerald-800 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     {importPreview.validRows.length} Valid Records
                   </span>
                   {importPreview.invalidRows.length > 0 && (
-                    <span className="text-rose-400 font-semibold flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
+                    <span className="text-rose-700 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4 text-rose-600" />
                       {importPreview.invalidRows.length} Invalid Records
                     </span>
                   )}
@@ -1855,7 +1854,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                     setImportPreview(null);
                     setCsvFile(null);
                   }}
-                  className="text-slate-400 hover:text-white underline text-[11px]"
+                  className="text-slate-600 hover:text-slate-900 underline text-[11px] font-medium"
                 >
                   Choose Different File
                 </button>
@@ -1863,11 +1862,11 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
               {/* Invalid Rows Warning */}
               {importPreview.invalidRows.length > 0 && (
-                <div className="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3 max-h-36 overflow-y-auto">
-                  <span className="text-[11px] font-semibold text-rose-300 block mb-1">
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 max-h-36 overflow-y-auto">
+                  <span className="text-[11px] font-bold text-rose-900 block mb-1">
                     Issues Detected (these rows will be skipped):
                   </span>
-                  <ul className="text-[10px] text-rose-200/80 space-y-1 list-disc pl-4">
+                  <ul className="text-[10px] text-rose-800 space-y-1 list-disc pl-4">
                     {importPreview.invalidRows.map((inv, idx) => (
                       <li key={idx}>{inv.error}</li>
                     ))}
@@ -1876,9 +1875,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
               )}
 
               {/* Valid Rows Preview Table */}
-              <div className="max-h-56 overflow-y-auto border border-slate-800 rounded-xl">
+              <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-xl">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-900 text-slate-400 sticky top-0">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider sticky top-0 border-b border-slate-200">
                     <tr>
                       <th className="p-2">Roll Number</th>
                       <th className="p-2">Student Name</th>
@@ -1886,13 +1885,13 @@ export const FacultyMarksManagementPage: React.FC = () => {
                       <th className="p-2">Remarks</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-100">
                     {importPreview.validRows.slice(0, 50).map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-900/40">
-                        <td className="p-2 font-mono text-cyan-400">{row.rollNumber}</td>
-                        <td className="p-2 text-slate-200">{row.studentName}</td>
-                        <td className="p-2 font-mono font-semibold text-emerald-400 text-center">{row.marks}</td>
-                        <td className="p-2 text-slate-400">{row.remarks || '—'}</td>
+                      <tr key={idx} className="hover:bg-slate-50/60">
+                        <td className="p-2 font-mono font-bold text-slate-900">{row.rollNumber}</td>
+                        <td className="p-2 text-slate-800 font-medium">{row.studentName}</td>
+                        <td className="p-2 font-mono font-bold text-emerald-800 text-center">{row.marks}</td>
+                        <td className="p-2 text-slate-500">{row.remarks || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1907,7 +1906,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                     setImportPreview(null);
                     setIsCsvImportModalOpen(false);
                   }}
-                  className="border-slate-700 text-slate-300"
+                  className="border-slate-300 text-slate-700"
                 >
                   Cancel
                 </Button>
@@ -1916,7 +1915,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                   size="sm"
                   onClick={applyCsvImport}
                   disabled={importPreview.validRows.length === 0}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                  className="bg-[#0f172a] hover:bg-black text-white font-bold"
                 >
                   Apply {importPreview.validRows.length} Valid Marks
                 </Button>
@@ -1931,8 +1930,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
         title={
-          <div className="flex items-center gap-2 text-cyan-400">
-            <History className="w-5 h-5" />
+          <div className="flex items-center gap-2 text-slate-900">
+            <History className="w-5 h-5 text-slate-900" />
             <span>Marks Modification Audit Trail</span>
           </div>
         }
@@ -1941,19 +1940,19 @@ export const FacultyMarksManagementPage: React.FC = () => {
       >
         <div className="space-y-4 pt-2">
           {isLoadingHistory ? (
-            <div className="p-8 text-center text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin text-cyan-400 mx-auto mb-2" />
+            <div className="p-8 text-center text-slate-500">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-900 mx-auto mb-2" />
               <p className="text-xs">Loading audit logs from database...</p>
             </div>
           ) : historyRecords.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">
-              <History className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+            <div className="p-8 text-center text-slate-500">
+              <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="text-xs">No modification history recorded yet for this assessment.</p>
             </div>
           ) : (
-            <div className="max-h-80 overflow-y-auto border border-slate-800 rounded-xl">
+            <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900 text-slate-400 sticky top-0">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider sticky top-0 border-b border-slate-200">
                   <tr>
                     <th className="p-2.5">Date & Time</th>
                     <th className="p-2.5">Roll No</th>
@@ -1962,24 +1961,24 @@ export const FacultyMarksManagementPage: React.FC = () => {
                     <th className="p-2.5">Reason</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {historyRecords.map((hist) => (
-                    <tr key={hist.id} className="hover:bg-slate-900/40">
-                      <td className="p-2.5 font-mono text-[11px] text-slate-400">
+                    <tr key={hist.id} className="hover:bg-slate-50/60">
+                      <td className="p-2.5 font-mono text-[11px] text-slate-500">
                         {new Date(hist.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                       </td>
-                      <td className="p-2.5 font-mono text-cyan-400">
+                      <td className="p-2.5 font-mono font-bold text-slate-900">
                         {hist.student?.roll_number || '—'}
                       </td>
-                      <td className="p-2.5 text-slate-300">
+                      <td className="p-2.5 text-slate-800 font-medium">
                         {hist.student?.full_name || 'Student'}
                       </td>
-                      <td className="p-2.5 text-center font-mono font-semibold">
-                        <span className="text-slate-500">{hist.old_marks ?? '—'}</span>
+                      <td className="p-2.5 text-center font-mono font-bold">
+                        <span className="text-slate-400">{hist.old_marks ?? '—'}</span>
                         <span className="text-slate-400 mx-1">→</span>
-                        <span className="text-emerald-400">{hist.new_marks}</span>
+                        <span className="text-emerald-800">{hist.new_marks}</span>
                       </td>
-                      <td className="p-2.5 text-slate-400 text-[11px]">
+                      <td className="p-2.5 text-slate-600 text-[11px]">
                         {hist.reason || 'Marks Updated'}
                       </td>
                     </tr>
@@ -1994,7 +1993,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setIsHistoryModalOpen(false)}
-              className="border-slate-700 text-slate-300"
+              className="border-slate-300 text-slate-700"
             >
               Close
             </Button>
@@ -2004,3 +2003,5 @@ export const FacultyMarksManagementPage: React.FC = () => {
     </div>
   );
 };
+
+

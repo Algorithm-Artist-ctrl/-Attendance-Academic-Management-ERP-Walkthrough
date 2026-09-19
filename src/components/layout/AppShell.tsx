@@ -169,55 +169,55 @@ export const AppShell: React.FC<AppShellProps> = ({
     const t = (type || '').toUpperCase();
     if (t.includes('LEAVE')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <FileText className="w-3.5 h-3.5" />
         </div>
       );
     }
     if (t.includes('MESSAGE') || t.includes('CONVERSATION')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <MessageSquare className="w-3.5 h-3.5" />
         </div>
       );
     }
     if (t.includes('MARKS')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#00ff88] flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <Award className="w-3.5 h-3.5" />
         </div>
       );
     }
     if (t.includes('ASSIGNMENT')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <FileText className="w-3.5 h-3.5" />
         </div>
       );
     }
     if (t.includes('QUIZ')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <Sparkles className="w-3.5 h-3.5" />
         </div>
       );
     }
     if (t.includes('ATTENDANCE')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <ClipboardCheck className="w-3.5 h-3.5" />
         </div>
       );
     }
     if (t.includes('TIMETABLE')) {
       return (
-        <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center border border-slate-200">
           <Calendar className="w-3.5 h-3.5" />
         </div>
       );
     }
     return (
-      <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center">
+      <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
         <Bell className="w-3.5 h-3.5" />
       </div>
     );
@@ -429,23 +429,23 @@ export const AppShell: React.FC<AppShellProps> = ({
   const bottomNavItems = getBottomNavItems();
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-[#050b14] text-slate-100 flex flex-col md:flex-row max-w-full overflow-x-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-slate-50 text-slate-900 flex flex-col md:flex-row max-w-full overflow-x-hidden">
       {/* ======================================================== */}
-      {/* DESKTOP LEFT CYBER SIDEBAR */}
+      {/* DESKTOP LEFT INSTITUTIONAL SIDEBAR */}
       {/* ======================================================== */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#081220]/90 border-r border-emerald-500/15 backdrop-blur-xl shrink-0 z-30 min-h-screen min-h-[100dvh]">
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200/80 shrink-0 z-30 min-h-screen min-h-[100dvh]">
         {/* VCTM Brand Logo */}
-        <div className="p-5 border-b border-emerald-500/15 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-slate-950/90 border border-emerald-500/30 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,136,0.2)] shrink-0 overflow-hidden">
-            <img src={vctmOfficialLogo} alt="VCTM Official Logo" className="w-full h-full object-cover rounded-xl" />
+        <div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-white">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+            <img src={vctmOfficialLogo} alt="VCTM Official Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm tracking-wider text-white">
-                VCTM <span className="text-[#00ff88]">ERP</span>
+              <span className="font-serif-institutional font-black text-base tracking-wide text-slate-900">
+                VCTM <span className="text-slate-950 font-sans font-extrabold text-sm">ERP</span>
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium tracking-tight">
+            <p className="text-[10px] text-slate-500 font-medium tracking-tight">
               Vivekananda College (340)
             </p>
           </div>
@@ -455,18 +455,18 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {/* HOD Faculty Mode Active Banner in Sidebar */}
           {role === 'hod' && isTeachingMode && (
-            <div className="mb-3 p-3 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-left space-y-2 shadow-[0_0_15px_rgba(0,255,136,0.1)]">
+            <div className="mb-3 p-3 rounded-2xl bg-slate-100 border border-slate-200 text-left space-y-2 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#00ff88] flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-900 animate-pulse" />
                   Faculty Mode
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900 text-white">
                   ACTIVE
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 leading-tight">
-                You are currently acting as <strong className="text-white">Teaching Faculty</strong> for your assigned subjects & classes.
+              <p className="text-[11px] text-slate-600 leading-tight">
+                You are currently acting as <strong className="text-slate-900">Teaching Faculty</strong> for your assigned subjects & classes.
               </p>
               <button
                 type="button"
@@ -474,9 +474,9 @@ export const AppShell: React.FC<AppShellProps> = ({
                   onToggleTeachingMode?.(false);
                   onTabChange('dashboard');
                 }}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-900 border border-emerald-500/30 hover:border-rose-400/50 hover:bg-rose-500/10 text-xs font-bold text-slate-200 hover:text-rose-200 transition-all cursor-pointer shadow-sm group"
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-xs font-bold text-slate-700 hover:text-rose-700 transition-all cursor-pointer shadow-xs group"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-180 transition-transform duration-300" />
+                <RotateCcw className="w-3.5 h-3.5 text-slate-600 group-hover:rotate-180 transition-transform duration-300" />
                 <span>Exit Faculty Mode</span>
               </button>
             </div>
@@ -493,18 +493,18 @@ export const AppShell: React.FC<AppShellProps> = ({
                 className={clsx(
                   'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none group',
                   isActive
-                    ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_18px_rgba(0,255,136,0.35)]'
-                    : 'text-slate-300 hover:text-white hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20'
+                    ? 'bg-[#0f172a] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100 border border-transparent'
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={clsx('w-4 h-4', isActive ? 'text-slate-950' : 'text-slate-400 group-hover:text-[#00ff88]')} />
+                  <Icon className={clsx('w-4 h-4', isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-900')} />
                   <span>{item.label}</span>
                 </div>
                 {item.badge && (
                   <span className={clsx(
                     'px-1.5 py-0.2 rounded-full text-[10px] font-extrabold',
-                    isActive ? 'bg-slate-950 text-[#00ff88]' : 'bg-rose-500 text-white'
+                    isActive ? 'bg-white text-slate-950' : 'bg-slate-900 text-white'
                   )}>
                     {item.badge}
                   </span>
@@ -516,25 +516,25 @@ export const AppShell: React.FC<AppShellProps> = ({
           {/* HOD Teaching Mode Switcher (when in normal HOD mode) */}
           {role === 'hod' && !isTeachingMode && (
             <div className="pt-2">
-              <div className="border-t border-emerald-500/20 my-2.5" />
+              <div className="border-t border-slate-200 my-2.5" />
               <button
                 type="button"
                 onClick={() => {
                   onToggleTeachingMode?.(true);
                   onTabChange('dashboard');
                 }}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/30 text-emerald-400 hover:text-white hover:border-[#00ff88] hover:bg-emerald-500/25 transition-all cursor-pointer shadow-[0_0_15px_rgba(0,255,136,0.12)] group select-none text-left"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200 text-slate-800 hover:text-slate-950 hover:bg-slate-100 hover:border-slate-300 transition-all cursor-pointer shadow-xs group select-none text-left"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-[#00ff88] group-hover:bg-[#00ff88] group-hover:text-slate-950 transition-colors">
+                  <div className="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-slate-800 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                     <GraduationCap className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-extrabold tracking-wide block leading-tight">Teaching Mode</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Act as Faculty</span>
+                    <span className="font-extrabold tracking-wide block leading-tight text-slate-900">Teaching Mode</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Act as Faculty</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30 group-hover:bg-[#00ff88] group-hover:text-slate-950 transition-colors">
+                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-slate-200 text-slate-800 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                   Switch →
                 </span>
               </button>
@@ -543,7 +543,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
 
         {/* Sidebar Footer & Quick Actions */}
-        <div className="p-3 border-t border-emerald-500/15 space-y-2">
+        <div className="p-3 border-t border-slate-100 space-y-2 bg-white">
           {role === 'hod' && isTeachingMode && (
             <button
               type="button"
@@ -551,7 +551,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 onToggleTeachingMode?.(false);
                 onTabChange('dashboard');
               }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>← Return to HOD Portal</span>
@@ -560,7 +560,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/25 transition-all cursor-pointer"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
@@ -581,26 +581,26 @@ export const AppShell: React.FC<AppShellProps> = ({
         )}
 
         {/* Top Navbar */}
-        <header className="sticky top-0 z-20 bg-[#07111e]/90 border-b border-emerald-500/15 backdrop-blur-xl px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 max-w-full">
+        <header className="sticky top-0 z-20 bg-white/95 border-b border-slate-200/80 backdrop-blur-md px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 max-w-full">
           {/* Mobile Menu Toggle & Title */}
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2.5 rounded-xl bg-slate-900 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] active:scale-95 transition-all touch-target flex items-center justify-center cursor-pointer"
+              className="md:hidden p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-400 active:scale-95 transition-all touch-target flex items-center justify-center cursor-pointer shadow-xs"
               aria-label="Open Navigation Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
             
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-slate-950 border border-emerald-500/30 p-0.5 overflow-hidden flex items-center justify-center shrink-0">
-                <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-cover rounded-lg" />
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 p-0.5 overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
+                <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
               </div>
               <div>
-                <span className="font-black text-sm sm:text-base text-white tracking-wide">
-                  VCTM <span className="text-[#00ff88]">ERP</span>
+                <span className="font-serif-institutional font-black text-sm sm:text-base text-slate-900 tracking-wide">
+                  VCTM <span className="font-sans font-extrabold text-xs sm:text-sm text-slate-950">ERP</span>
                 </span>
-                <span className="hidden sm:inline-block ml-2 text-[10px] text-slate-400 font-mono">
+                <span className="hidden sm:inline-block ml-2 text-[10px] text-slate-500 font-mono">
                   Code: 340
                 </span>
               </div>
@@ -612,8 +612,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             {/* HOD Faculty Mode Header Indicator & Exit Button */}
             {role === 'hod' && isTeachingMode && (
               <div className="flex items-center gap-2">
-                <div className="px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-[#00ff88]/40 text-[#00ff88] text-[11px] font-black tracking-wider flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,255,136,0.25)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+                <div className="px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-300 text-slate-900 text-[11px] font-black tracking-wider flex items-center gap-1.5 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-900 animate-pulse" />
                   FACULTY MODE
                 </div>
                 <button
@@ -622,10 +622,10 @@ export const AppShell: React.FC<AppShellProps> = ({
                     onToggleTeachingMode?.(false);
                     onTabChange('dashboard');
                   }}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 hover:border-rose-400/50 text-slate-200 hover:text-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs hover:bg-rose-500/10"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-rose-300 text-slate-700 hover:text-rose-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs hover:bg-rose-50"
                   title="Exit Faculty Mode and return to HOD Dashboard"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
                   <span className="hidden sm:inline">Exit Faculty Mode</span>
                   <span className="sm:hidden">Exit</span>
                 </button>
@@ -637,15 +637,15 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button 
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                 title="View Notifications"
-                className="relative p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-[#00ff88] transition-colors cursor-pointer touch-target flex items-center justify-center"
+                className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 text-slate-700 hover:text-slate-950 transition-colors cursor-pointer touch-target flex items-center justify-center shadow-xs"
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotificationCount > 0 ? (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-[0_0_8px_rgba(0,255,136,0.6)]">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#0f172a] text-white font-bold text-[10px] flex items-center justify-center shadow-xs">
                     {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                   </span>
                 ) : (
-                  <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500/40" />
+                  <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-slate-400" />
                 )}
               </button>
 
@@ -655,13 +655,13 @@ export const AppShell: React.FC<AppShellProps> = ({
                     className="fixed inset-0 z-40" 
                     onClick={() => setIsNotifOpen(false)} 
                   />
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900/95 border border-emerald-500/30 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.7)] z-50 overflow-hidden animate-in zoom-in-95 duration-150">
-                    <div className="p-3.5 border-b border-emerald-500/20 flex items-center justify-between bg-slate-950/60">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 overflow-hidden animate-in zoom-in-95 duration-150">
+                    <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
                       <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-[#00ff88]" />
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Notifications</h4>
+                        <Bell className="w-4 h-4 text-slate-900" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Notifications</h4>
                         {unreadNotificationCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white">
                             {unreadNotificationCount} new
                           </span>
                         )}
@@ -670,27 +670,27 @@ export const AppShell: React.FC<AppShellProps> = ({
                         {unreadNotificationCount > 0 && (
                           <button
                             onClick={() => markAllNotificationsAsRead()}
-                            className="text-[10px] font-bold text-emerald-400 hover:text-white transition-colors"
+                            className="text-[10px] font-bold text-slate-700 hover:text-black transition-colors"
                           >
                             Mark all read
                           </button>
                         )}
                         <button
                           onClick={() => setIsNotifOpen(false)}
-                          className="text-slate-400 hover:text-white"
+                          className="text-slate-400 hover:text-slate-700"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
 
-                    <div className="max-h-80 overflow-y-auto divide-y divide-emerald-500/10 custom-scrollbar">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
                       {isLoading && notifications.length === 0 ? (
                         <NotificationSkeleton count={4} />
                       ) : notifications.length === 0 ? (
                         <div className="p-6 text-center text-slate-400 space-y-1">
-                          <Bell className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-40" />
-                          <p className="text-xs font-semibold text-slate-300">No Notifications</p>
+                          <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-50" />
+                          <p className="text-xs font-semibold text-slate-700">No Notifications</p>
                           <p className="text-[11px] text-slate-500">You're all caught up with classes and assessments.</p>
                         </div>
                       ) : (
@@ -704,7 +704,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                             }}
                             className={clsx(
                               "p-3 transition-colors cursor-pointer flex gap-3 text-left",
-                              n.is_read ? "bg-transparent hover:bg-slate-800/40" : "bg-emerald-500/5 hover:bg-emerald-500/10"
+                              n.is_read ? "bg-white hover:bg-slate-50/80" : "bg-slate-50/90 hover:bg-slate-100"
                             )}
                           >
                             <div className="mt-0.5 shrink-0">
@@ -712,15 +712,15 @@ export const AppShell: React.FC<AppShellProps> = ({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1">
-                                <span className="text-xs font-bold text-white truncate">{n.title}</span>
+                                <span className="text-xs font-bold text-slate-900 truncate">{n.title}</span>
                                 {!n.is_read && (
-                                  <span className="w-2 h-2 rounded-full bg-[#00ff88] shrink-0" />
+                                  <span className="w-2 h-2 rounded-full bg-[#0f172a] shrink-0" />
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
+                              <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">
                                 {n.message}
                               </p>
-                              <span className="text-[10px] text-slate-500 mt-1 block">
+                              <span className="text-[10px] text-slate-400 mt-1 block">
                                 {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                               </span>
                             </div>
@@ -729,13 +729,13 @@ export const AppShell: React.FC<AppShellProps> = ({
                       )}
                     </div>
 
-                    <div className="p-2.5 bg-slate-950/80 border-t border-emerald-500/15 text-center">
+                    <div className="p-2.5 bg-slate-50/80 border-t border-slate-100 text-center">
                       <button
                         onClick={() => {
                           setIsNotifOpen(false);
                           onTabChange('notices');
                         }}
-                        className="text-xs font-bold text-[#00ff88] hover:underline"
+                        className="text-xs font-bold text-[#0f172a] hover:underline"
                       >
                         View Official Notices & Circulars →
                       </button>
@@ -749,16 +749,16 @@ export const AppShell: React.FC<AppShellProps> = ({
             <button 
               onClick={() => onTabChange('profile')}
               title="View Profile"
-              className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/80 border border-emerald-500/20 hover:border-[#00ff88] transition-colors shadow-xs cursor-pointer text-left touch-target"
+              className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-900 transition-colors shadow-xs cursor-pointer text-left touch-target"
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-xs shadow-[0_0_12px_rgba(0,255,136,0.3)] shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#0f172a] text-white font-black flex items-center justify-center text-xs shadow-xs shrink-0">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
               <div className="text-left hidden sm:block max-w-[120px] lg:max-w-[180px] truncate">
-                <div className="text-xs font-bold text-white leading-tight truncate">
+                <div className="text-xs font-bold text-slate-900 leading-tight truncate">
                   {user?.full_name}
                 </div>
-                <div className="text-[10px] text-slate-400 font-medium truncate">
+                <div className="text-[10px] text-slate-500 font-medium truncate">
                   {user?.student?.roll_number 
                     ? `Roll: ${user.student.roll_number}` 
                     : (role === 'hod' && isTeachingMode)
@@ -775,40 +775,40 @@ export const AppShell: React.FC<AppShellProps> = ({
           <div className="fixed inset-0 z-50 md:hidden flex animate-in fade-in duration-200">
             {/* Backdrop */}
             <div 
-              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs"
               onClick={() => setIsMobileMenuOpen(false)}
             />
 
             {/* Slide Drawer Content */}
-            <div className="relative w-4/5 max-w-xs bg-[#081220] border-r border-emerald-500/25 h-full flex flex-col z-10 shadow-2xl p-4 overflow-y-auto animate-in slide-in-from-left duration-250">
+            <div className="relative w-4/5 max-w-xs bg-white border-r border-slate-200 h-full flex flex-col z-10 shadow-2xl p-4 overflow-y-auto animate-in slide-in-from-left duration-250 text-slate-900">
               {/* Drawer Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-emerald-500/20">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-slate-950 border border-emerald-500/30 p-0.5 flex items-center justify-center overflow-hidden shrink-0">
-                    <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-cover rounded-lg" />
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 p-0.5 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                    <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-white">VCTM ERP</h3>
-                    <p className="text-[10px] text-slate-400">Institutional Portal</p>
+                    <h3 className="font-serif-institutional font-black text-sm text-slate-900">VCTM ERP</h3>
+                    <p className="text-[10px] text-slate-500">Institutional Portal</p>
                   </div>
                 </div>
 
                 <button 
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white border border-emerald-500/20"
+                  className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 border border-slate-200 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* User Profile Mini Card */}
-              <div className="my-3 p-3 rounded-2xl bg-slate-950/70 border border-emerald-500/20 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-[#00ff88] text-slate-950 font-black flex items-center justify-center text-sm">
+              <div className="my-3 p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#0f172a] text-white font-black flex items-center justify-center text-sm shadow-xs">
                   {user?.full_name?.charAt(0) || 'U'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-white truncate">{user?.full_name}</p>
-                  <p className="text-[10px] text-emerald-400 font-mono truncate">
+                  <p className="text-xs font-bold text-slate-900 truncate">{user?.full_name}</p>
+                  <p className="text-[10px] text-slate-500 font-mono truncate">
                     {user?.student?.roll_number 
                       ? `Roll: ${user.student.roll_number}` 
                       : (role === 'hod' && isTeachingMode)
@@ -822,10 +822,10 @@ export const AppShell: React.FC<AppShellProps> = ({
               <div className="flex-1 space-y-1 py-2 overflow-y-auto">
                 {/* Mobile Drawer HOD Faculty Mode Banner */}
                 {role === 'hod' && isTeachingMode && (
-                  <div className="mb-2 p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-left space-y-1.5">
+                  <div className="mb-2 p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-left space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-[#00ff88] flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-900 animate-pulse" />
                         Faculty Mode Active
                       </span>
                     </div>
@@ -836,9 +836,9 @@ export const AppShell: React.FC<AppShellProps> = ({
                         onTabChange('dashboard');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-slate-900 border border-emerald-500/30 text-xs font-bold text-slate-200"
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white border border-slate-300 text-xs font-bold text-slate-700"
                     >
-                      <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                      <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
                       <span>Exit Faculty Mode</span>
                     </button>
                   </div>
@@ -857,16 +857,16 @@ export const AppShell: React.FC<AppShellProps> = ({
                       className={clsx(
                         'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all touch-target',
                         isActive
-                          ? 'bg-[#00ff88] text-slate-950 font-black shadow-md'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                          ? 'bg-[#0f172a] text-white font-black shadow-xs'
+                          : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className={clsx('w-4 h-4', isActive ? 'text-slate-950' : 'text-slate-400')} />
+                        <Icon className={clsx('w-4 h-4', isActive ? 'text-white' : 'text-slate-400')} />
                         <span>{item.label}</span>
                       </div>
                       {item.badge && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500 text-white font-extrabold">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-white font-extrabold">
                           {item.badge}
                         </span>
                       )}
@@ -877,7 +877,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 {/* Mobile Drawer HOD Teaching Mode Switcher */}
                 {role === 'hod' && !isTeachingMode && (
                   <div className="pt-2">
-                    <div className="border-t border-emerald-500/20 my-2" />
+                    <div className="border-t border-slate-200 my-2" />
                     <button
                       type="button"
                       onClick={() => {
@@ -885,7 +885,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                         onTabChange('dashboard');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200 text-slate-800"
                     >
                       <div className="flex items-center gap-2">
                         <GraduationCap className="w-4 h-4" />
@@ -898,10 +898,10 @@ export const AppShell: React.FC<AppShellProps> = ({
               </div>
 
               {/* Logout Button */}
-              <div className="pt-3 border-t border-emerald-500/20 pb-safe">
+              <div className="pt-3 border-t border-slate-100 pb-safe">
                 <button
                   onClick={logout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all touch-target"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all touch-target cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
@@ -917,7 +917,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </main>
 
         {/* Mobile Bottom Navigation Bar (Thumb Friendly) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#07111e]/95 border-t border-emerald-500/20 backdrop-blur-2xl px-2 py-1.5 pb-safe flex items-center justify-around shadow-[0_-4px_25px_rgba(0,0,0,0.5)] h-[var(--app-bottom-nav-height)]">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 border-t border-slate-200 backdrop-blur-2xl px-2 py-1.5 pb-safe flex items-center justify-around shadow-[0_-2px_15px_rgba(0,0,0,0.05)] h-[var(--app-bottom-nav-height)]">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -927,20 +927,20 @@ export const AppShell: React.FC<AppShellProps> = ({
                 onClick={() => onTabChange(item.id)}
                 className={clsx(
                   'flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative touch-target',
-                  isActive ? 'text-[#00ff88]' : 'text-slate-400 hover:text-slate-200'
+                  isActive ? 'text-[#0f172a]' : 'text-slate-400 hover:text-slate-700'
                 )}
               >
                 <div className={clsx(
                   'p-1 rounded-lg transition-all',
-                  isActive && 'bg-emerald-500/20 shadow-[0_0_12px_rgba(0,255,136,0.3)]'
+                  isActive && 'bg-slate-100 shadow-xs text-slate-900'
                 )}>
                   <Icon className="w-5 h-5" />
                 </div>
-                <span className={clsx('text-[10px] font-bold mt-0.5 tracking-tight', isActive && 'text-white')}>
+                <span className={clsx('text-[10px] font-bold mt-0.5 tracking-tight', isActive ? 'text-slate-900 font-extrabold' : 'text-slate-500')}>
                   {item.label}
                 </span>
                 {item.badge && (
-                  <span className="absolute top-1 right-3 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">
+                  <span className="absolute top-1 right-3 w-4 h-4 rounded-full bg-slate-900 text-white text-[9px] font-black flex items-center justify-center">
                     {item.badge}
                   </span>
                 )}
@@ -950,8 +950,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         </nav>
 
         {/* Desktop/Tablet Footer */}
-        <footer className="hidden md:block border-t border-emerald-500/10 bg-[#060c18] py-4 px-6 text-center text-xs text-slate-500">
-          © 2026 <strong className="text-slate-300">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
+        <footer className="hidden md:block border-t border-slate-200/80 bg-white py-4 px-6 text-center text-xs text-slate-500">
+          © 2026 <strong className="text-slate-800">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
         </footer>
 
         {/* Realtime Floating Non-Blocking Live Toast Banner */}
@@ -959,7 +959,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           <aside
             role="status"
             aria-live="polite"
-            className="fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-50 max-w-sm sm:max-w-md w-[calc(100vw-24px)] sm:w-auto p-4 rounded-2xl bg-slate-900/95 border border-[#00ff88]/50 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200"
+            className="fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-50 max-w-sm sm:max-w-md w-[calc(100vw-24px)] sm:w-auto p-4 rounded-2xl bg-white border border-slate-300 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200 text-slate-900"
           >
             <div className="flex items-start gap-3">
               <div className="mt-0.5 shrink-0">
@@ -967,16 +967,16 @@ export const AppShell: React.FC<AppShellProps> = ({
               </div>
               <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#00ff88]">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">
                     Live Notification
                   </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-ping" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-900 animate-ping" />
                 </div>
-                <h5 className="text-xs font-bold text-white mt-0.5 truncate">{activeToast.title}</h5>
-                <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
+                <h5 className="text-xs font-bold text-slate-900 mt-0.5 truncate">{activeToast.title}</h5>
+                <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">
                   {activeToast.message}
                 </p>
-                <div className="flex items-center gap-2 mt-2 pt-1 border-t border-emerald-500/15">
+                <div className="flex items-center gap-2 mt-2 pt-1 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -984,7 +984,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                       handleNotificationNavigation(activeToast.type, activeToast.referenceType, activeToast.referenceId);
                       dismissToast();
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-[#00ff88] text-slate-950 text-[11px] font-black hover:bg-emerald-400 transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-[#0f172a] text-white text-[11px] font-bold hover:bg-black transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <span>View Now</span>
                     <ExternalLink className="w-3 h-3" />
@@ -992,7 +992,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   <button
                     type="button"
                     onClick={dismissToast}
-                    className="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                    className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 text-[11px] font-semibold transition-colors cursor-pointer"
                   >
                     Dismiss
                   </button>
@@ -1001,7 +1001,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 type="button"
                 onClick={dismissToast}
-                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer shrink-0"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors cursor-pointer shrink-0"
                 aria-label="Close notification"
               >
                 <X className="w-4 h-4" />

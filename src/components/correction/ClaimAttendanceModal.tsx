@@ -135,13 +135,13 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2.5 text-white">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[#00ff88]">
+        <div className="flex items-center gap-2.5 text-slate-900">
+          <div className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-900">
             <RotateCcw className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold leading-tight">Claim Lecture Attendance</h2>
-            <p className="text-xs text-slate-400 font-normal">Report attendance discrepancy directly to assigned faculty</p>
+            <h2 className="text-base font-bold leading-tight font-serif-institutional">Claim Lecture Attendance</h2>
+            <p className="text-xs text-slate-500 font-normal">Report attendance discrepancy directly to assigned faculty</p>
           </div>
         </div>
       }
@@ -150,56 +150,56 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
       <div className="space-y-5">
         {/* Error / Success Banners */}
         {errorMessage && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95">
-            <CheckCircle2 className="w-5 h-5 shrink-0 text-[#00ff88]" />
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95">
+            <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
             <span>{successMessage}</span>
           </div>
         )}
 
         {/* Readonly Lecture Info Card */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/20 space-y-3">
-          <div className="flex items-center justify-between border-b border-emerald-500/10 pb-2.5">
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
             <div>
-              <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Scheduled Lecture</span>
-              <h3 className="text-sm font-black text-white">{lecture.subjectName} ({lecture.subjectCode})</h3>
+              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">Scheduled Lecture</span>
+              <h3 className="text-sm font-black text-slate-900">{lecture.subjectName} ({lecture.subjectCode})</h3>
             </div>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-emerald-500/25 text-[#00ff88] font-mono text-xs font-bold">
+            <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-900 font-mono text-xs font-bold shadow-2xs">
               {lecture.startTime} – {lecture.endTime}
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
             <div>
-              <span className="text-[10px] text-slate-400 block">Assigned Faculty</span>
-              <span className="font-bold text-white">{lecture.facultyName}</span>
+              <span className="text-[10px] text-slate-500 block">Assigned Faculty</span>
+              <span className="font-bold text-slate-900">{lecture.facultyName}</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 block">Date & Day</span>
-              <span className="font-bold text-white">{lecture.sessionDate} ({lecture.dayOfWeek})</span>
+              <span className="text-[10px] text-slate-500 block">Date & Day</span>
+              <span className="font-bold text-slate-900">{lecture.sessionDate} ({lecture.dayOfWeek})</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 block">Classroom / Section</span>
-              <span className="font-bold text-white">{lecture.roomNumber} • Sec {lecture.sectionName}</span>
+              <span className="text-[10px] text-slate-500 block">Classroom / Section</span>
+              <span className="font-bold text-slate-900">{lecture.roomNumber} • Sec {lecture.sectionName}</span>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-xs">
+          <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">Recorded Status:</span>
-              <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-[11px]">
+              <span className="text-slate-500">Recorded Status:</span>
+              <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[11px]">
                 ● ABSENT
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">Claiming:</span>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-[#00ff88] border border-emerald-500/30 font-bold text-[11px]">
+              <span className="text-slate-500">Claiming:</span>
+              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px]">
                 ● PRESENT
               </span>
             </div>
@@ -209,7 +209,7 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
         {/* Claim Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-2">
+            <label className="block text-xs font-bold text-slate-700 mb-2">
               Select Justification Reason
             </label>
             <div className="space-y-2">
@@ -220,8 +220,8 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
                   className={clsx(
                     'p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer text-xs transition-all',
                     selectedPreset === idx
-                      ? 'bg-emerald-500/10 border-[#00ff88] text-white font-semibold shadow-[0_0_12px_rgba(0,255,136,0.15)]'
-                      : 'bg-slate-950/50 border-emerald-500/15 text-slate-400 hover:border-emerald-500/30 hover:text-slate-200'
+                      ? 'bg-slate-100 border-slate-900 text-slate-900 font-semibold shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
                   )}
                 >
                   <input
@@ -229,7 +229,7 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
                     name="claimPreset"
                     checked={selectedPreset === idx}
                     onChange={() => handlePresetSelect(idx)}
-                    className="accent-[#00ff88]"
+                    className="accent-slate-900"
                   />
                   <span>{p}</span>
                 </label>
@@ -239,7 +239,7 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
 
           {selectedPreset === presets.length - 1 && (
             <div className="animate-in fade-in">
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 Detailed Reason / Remarks
               </label>
               <textarea
@@ -247,26 +247,26 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
                 value={customReason}
                 onChange={(e) => handleCustomReasonChange(e.target.value)}
                 placeholder="Explain clearly why your attendance was marked absent..."
-                className="w-full p-3 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                 required
               />
             </div>
           )}
 
           {!claimValidation.canSubmit && (
-            <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 shrink-0 text-amber-600" />
               <span>{claimValidation.message}</span>
             </div>
           )}
 
-          <div className="p-3 rounded-xl bg-slate-950/40 border border-emerald-500/10 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Daily Claim Window: <strong className="text-emerald-400">09:00 AM – 03:40 PM IST</strong></span>
-            <span>Target Reviewer: <strong className="text-white">{lecture.facultyName}</strong></span>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 flex items-center justify-between">
+            <span>Daily Claim Window: <strong className="text-slate-900">09:00 AM – 03:40 PM IST</strong></span>
+            <span>Target Reviewer: <strong className="text-slate-900">{lecture.facultyName}</strong></span>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-emerald-500/15">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
             <Button
               type="button"
               variant="outline"
@@ -282,7 +282,7 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
               variant="neon"
               size="sm"
               disabled={isSubmitting || !!successMessage || !claimValidation.canSubmit}
-              leftIcon={<Send className="w-3.5 h-3.5 text-slate-950" />}
+              leftIcon={<Send className="w-3.5 h-3.5 text-white" />}
             >
               {isSubmitting ? 'Submitting Claim...' : 'Submit Attendance Claim'}
             </Button>

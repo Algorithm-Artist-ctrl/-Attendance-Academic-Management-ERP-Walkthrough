@@ -433,31 +433,31 @@ export const LeaveManagementPage: React.FC = () => {
     switch (status) {
       case 'APPROVED':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 border border-emerald-200 text-emerald-800">
             Approved
           </span>
         );
       case 'PENDING_HOD':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-cyan-500/15 border border-cyan-500/30 text-cyan-300">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-cyan-50 border border-cyan-200 text-cyan-800">
             Pending HOD Review
           </span>
         );
       case 'PENDING_COORDINATOR':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/15 border border-amber-500/30 text-amber-300">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-50 border border-amber-200 text-amber-800">
             Pending Coordinator Review
           </span>
         );
       case 'REJECTED_BY_COORDINATOR':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/15 border border-rose-500/30 text-rose-400" title="Rejected by Class Coordinator">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-50 border border-rose-200 text-rose-800" title="Rejected by Class Coordinator">
             Rejected
           </span>
         );
       case 'REJECTED_BY_HOD':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/15 border border-rose-500/30 text-rose-400" title="Rejected by Head of Department">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-50 border border-rose-200 text-rose-800" title="Rejected by Head of Department">
             Rejected
           </span>
         );
@@ -469,21 +469,21 @@ export const LeaveManagementPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header Banner */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+            <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700">
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {role === 'hod' 
                   ? 'Department Leave Approvals' 
                   : role === 'super_admin' 
                   ? 'All Institutional Leave Applications' 
                   : 'Class Coordinator Leave Review'}
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 font-medium">
                 {role === 'hod' 
                   ? 'Final sanction authority for forwarded leave applications' 
                   : 'Screening and endorsement of student leave applications for your coordinated classes'}
@@ -498,7 +498,7 @@ export const LeaveManagementPage: React.FC = () => {
             size="sm"
             onClick={() => loadApplications(false)}
             isLoading={isRefreshing}
-            leftIcon={<RefreshCw className="w-3.5 h-3.5 text-slate-400" />}
+            leftIcon={<RefreshCw className="w-3.5 h-3.5 text-slate-500" />}
           >
             Refresh
           </Button>
@@ -506,14 +506,14 @@ export const LeaveManagementPage: React.FC = () => {
       </div>
 
       {actionSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95 shadow-md">
-          <CheckCircle2 className="w-5 h-5 text-[#00ff88] shrink-0" />
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95 shadow-xs">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>{actionSuccess}</span>
         </div>
       )}
 
       {/* Tabs & Controls */}
-      <div className="glass-panel rounded-3xl p-4 border border-emerald-500/20 bg-slate-900/70 space-y-4">
+      <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Navigation Tabs */}
           <div className="flex flex-wrap items-center gap-2">
@@ -521,15 +521,15 @@ export const LeaveManagementPage: React.FC = () => {
               onClick={() => setActiveTab('pending')}
               className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'pending'
-                  ? 'bg-amber-500 text-slate-950 shadow-md'
-                  : 'bg-slate-950/70 text-slate-300 hover:bg-slate-950 border border-slate-800'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
               <span>Pending Action</span>
               {pendingCount > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                  activeTab === 'pending' ? 'bg-slate-950 text-amber-300' : 'bg-amber-500/20 text-amber-300'
+                  activeTab === 'pending' ? 'bg-black/20 text-white' : 'bg-amber-100 text-amber-800'
                 }`}>
                   {pendingCount}
                 </span>
@@ -540,14 +540,14 @@ export const LeaveManagementPage: React.FC = () => {
               onClick={() => setActiveTab('approved')}
               className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'approved'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'bg-slate-950/70 text-slate-300 hover:bg-slate-950 border border-slate-800'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{role === 'faculty' ? 'Approved & Forwarded' : 'Approved Leaves'}</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === 'approved' ? 'bg-slate-950 text-emerald-300' : 'bg-emerald-500/20 text-emerald-300'
+                activeTab === 'approved' ? 'bg-black/20 text-white' : 'bg-emerald-100 text-emerald-800'
               }`}>
                 {approvedCount}
               </span>
@@ -557,14 +557,14 @@ export const LeaveManagementPage: React.FC = () => {
               onClick={() => setActiveTab('rejected')}
               className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'rejected'
-                  ? 'bg-rose-500 text-white shadow-md'
-                  : 'bg-slate-950/70 text-slate-300 hover:bg-slate-950 border border-slate-800'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
               <XCircle className="w-3.5 h-3.5" />
               <span>Rejected</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === 'rejected' ? 'bg-slate-950 text-rose-300' : 'bg-rose-500/20 text-rose-300'
+                activeTab === 'rejected' ? 'bg-black/20 text-white' : 'bg-rose-100 text-rose-800'
               }`}>
                 {rejectedCount}
               </span>
@@ -574,8 +574,8 @@ export const LeaveManagementPage: React.FC = () => {
               onClick={() => setActiveTab('all')}
               className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'all'
-                  ? 'bg-slate-700 text-white shadow-md'
-                  : 'bg-slate-950/70 text-slate-300 hover:bg-slate-950 border border-slate-800'
+                  ? 'bg-[#0f172a] text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -591,14 +591,14 @@ export const LeaveManagementPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by student, roll, ID..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
         </div>
 
         {/* Filter Dropdowns */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/80 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-400 font-semibold">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
             <Filter className="w-3.5 h-3.5" />
             <span>Filters:</span>
           </div>
@@ -607,11 +607,11 @@ export const LeaveManagementPage: React.FC = () => {
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-[#00ff88] transition-colors"
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-slate-400 shadow-xs transition-colors"
           >
-            <option value="ALL" className="bg-slate-950 text-white">All Academic Years</option>
+            <option value="ALL">All Academic Years</option>
             {availableYears.map(y => (
-              <option key={y.id} value={y.id} className="bg-slate-950 text-white">
+              <option key={y.id} value={y.id}>
                 {y.name || `${y.year_number} Year`}
               </option>
             ))}
@@ -621,16 +621,16 @@ export const LeaveManagementPage: React.FC = () => {
           <select
             value={selectedSection}
             onChange={(e) => setSelectedSection(e.target.value)}
-            className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-[#00ff88] transition-colors"
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-slate-400 shadow-xs transition-colors"
           >
-            <option value="ALL" className="bg-slate-950 text-white">All Sections</option>
+            <option value="ALL">All Sections</option>
             {availableSectionOptions.map(s => {
               const secYear = getSectionYear(s);
               const label = selectedYear === 'ALL' && secYear?.name
                 ? `Section ${s.name} (${secYear.name})`
                 : `Section ${s.name}`;
               return (
-                <option key={s.id} value={s.id} className="bg-slate-950 text-white">
+                <option key={s.id} value={s.id}>
                   {label}
                 </option>
               );
@@ -642,14 +642,14 @@ export const LeaveManagementPage: React.FC = () => {
       {/* Applications List */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="glass-panel p-12 rounded-3xl border border-emerald-500/15 text-center text-slate-400 space-y-3">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-400" />
+          <div className="bg-white p-12 rounded-3xl border border-slate-200/80 text-center text-slate-500 space-y-3 shadow-xs">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-slate-600" />
             <p className="text-xs font-medium">Fetching leave applications from database...</p>
           </div>
         ) : filteredApplications.length === 0 ? (
-          <div className="glass-panel rounded-3xl border border-emerald-500/15 p-12 text-center text-slate-400">
-            <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="font-bold text-slate-200">No applications matching current filters</p>
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center text-slate-500 shadow-xs">
+            <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+            <p className="font-bold text-slate-900">No applications matching current filters</p>
             <p className="text-xs text-slate-500 mt-1">
               {activeTab === 'pending' 
                 ? 'All pending leave requests have been reviewed!' 
@@ -667,28 +667,28 @@ export const LeaveManagementPage: React.FC = () => {
               return (
                 <div
                   key={app.id}
-                  className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 bg-slate-900/70 hover:border-emerald-500/40 transition-all space-y-4 shadow-lg"
+                  className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 hover:border-slate-300 transition-all space-y-4 shadow-xs"
                 >
                   {/* Header Row */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/25">
+                        <span className="font-mono text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
                           {app.application_number}
                         </span>
-                        <span className="font-black text-white text-base">
+                        <span className="font-black text-slate-900 text-base">
                           {app.student?.full_name || 'Student Name'}
                         </span>
-                        <span className="text-xs font-mono text-slate-400">
+                        <span className="text-xs font-mono text-slate-500">
                           ({app.student?.roll_number || 'No Roll'})
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium">
                         <span>{app.department?.name || 'CSE'}</span>
                         <span>•</span>
                         <span>{app.academic_year?.name || 'Year'}</span>
                         <span>•</span>
-                        <span className="text-emerald-400 font-bold">Section {app.section?.name || 'A'}</span>
+                        <span className="text-slate-900 font-bold">Section {app.section?.name || 'A'}</span>
                       </div>
                     </div>
 
@@ -700,7 +700,7 @@ export const LeaveManagementPage: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDownloadPdf(app)}
-                          leftIcon={<Download className="w-3.5 h-3.5 text-emerald-400" />}
+                          leftIcon={<Download className="w-3.5 h-3.5 text-slate-600" />}
                         >
                           Certificate PDF
                         </Button>
@@ -725,54 +725,54 @@ export const LeaveManagementPage: React.FC = () => {
 
                   {/* Summary Row */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                    <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80">
-                      <span className="text-slate-400 block text-[11px]">Leave Type</span>
-                      <strong className="text-white text-xs">{app.leave_type}</strong>
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                      <span className="text-slate-500 block text-[11px]">Leave Type</span>
+                      <strong className="text-slate-900 text-xs">{app.leave_type}</strong>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80">
-                      <span className="text-slate-400 block text-[11px]">Period</span>
-                      <span className="font-mono text-white text-xs font-bold">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                      <span className="text-slate-500 block text-[11px]">Period</span>
+                      <span className="font-mono text-slate-900 text-xs font-bold">
                         {new Date(app.from_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                         {' - '}
                         {new Date(app.to_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                       </span>
-                      <span className="text-emerald-400 block text-[10px] mt-0.5">
+                      <span className="text-slate-700 font-semibold block text-[10px] mt-0.5">
                         {app.number_of_days} Day(s)
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 md:col-span-2">
-                      <span className="text-slate-400 block text-[11px]">Reason / Justification</span>
-                      <p className="text-slate-200 italic line-clamp-2">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 md:col-span-2">
+                      <span className="text-slate-500 block text-[11px]">Reason / Justification</span>
+                      <p className="text-slate-700 italic line-clamp-2">
                         "{app.reason}"
                       </p>
                     </div>
                   </div>
 
                   {/* Coordinator & HOD Endorsement Status Footer */}
-                  <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 text-[11px]">Coordinator:</span>
-                      <strong className="text-white">{app.coordinator_approver?.full_name || app.coordinator?.full_name || 'Class Coordinator'}</strong>
+                      <span className="text-slate-500 text-[11px]">Coordinator:</span>
+                      <strong className="text-slate-900">{app.coordinator_approver?.full_name || app.coordinator?.full_name || 'Class Coordinator'}</strong>
                       {app.coordinator_approved_at ? (
-                        <span className="text-emerald-400 font-mono text-[10px]">
+                        <span className="text-emerald-700 font-mono text-[10px] font-semibold">
                           (Approved: {new Date(app.coordinator_approved_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})
                         </span>
                       ) : (
-                        <span className="text-amber-400 font-mono text-[10px]">(Pending)</span>
+                        <span className="text-amber-700 font-mono text-[10px] font-semibold">(Pending)</span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 text-[11px]">HOD:</span>
-                      <strong className="text-white">{app.hod_approver?.full_name || app.hod?.full_name || 'HOD'}</strong>
+                      <span className="text-slate-500 text-[11px]">HOD:</span>
+                      <strong className="text-slate-900">{app.hod_approver?.full_name || app.hod?.full_name || 'HOD'}</strong>
                       {app.hod_approved_at ? (
-                        <span className="text-emerald-400 font-mono text-[10px]">
+                        <span className="text-emerald-700 font-mono text-[10px] font-semibold">
                           (Approved: {new Date(app.hod_approved_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})
                         </span>
                       ) : (
-                        <span className="text-slate-500 font-mono text-[10px]">(Waiting)</span>
+                        <span className="text-slate-400 font-mono text-[10px]">(Waiting)</span>
                       )}
                     </div>
                   </div>
@@ -798,40 +798,40 @@ export const LeaveManagementPage: React.FC = () => {
         >
           <div className="space-y-5">
             {actionError && (
-              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{actionError}</span>
               </div>
             )}
 
             {/* Student & Academic Context */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 text-[11px] block">Student Name</span>
-                <strong className="text-white">{selectedApp.student?.full_name}</strong>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-500 text-[11px] block">Student Name</span>
+                <strong className="text-slate-900 font-bold">{selectedApp.student?.full_name}</strong>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 text-[11px] block">Roll Number</span>
-                <strong className="text-emerald-400 font-mono">{selectedApp.student?.roll_number}</strong>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-500 text-[11px] block">Roll Number</span>
+                <strong className="text-slate-900 font-mono font-bold">{selectedApp.student?.roll_number}</strong>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 text-[11px] block">Section</span>
-                <strong className="text-white">Section {selectedApp.section?.name}</strong>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-500 text-[11px] block">Section</span>
+                <strong className="text-slate-900 font-bold">Section {selectedApp.section?.name}</strong>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-400 text-[11px] block">Current Status</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-500 text-[11px] block">Current Status</span>
                 <div className="mt-0.5">{getStatusBadge(selectedApp.status)}</div>
               </div>
             </div>
 
             {/* Leave Duration & Reason */}
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3 text-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                 <div>
-                  <span className="text-slate-400 text-[11px]">Leave Category: </span>
-                  <strong className="text-white">{selectedApp.leave_type}</strong>
+                  <span className="text-slate-500 text-[11px]">Leave Category: </span>
+                  <strong className="text-slate-900 font-bold">{selectedApp.leave_type}</strong>
                 </div>
-                <div className="font-mono text-emerald-400 font-bold">
+                <div className="font-mono text-slate-900 font-bold">
                   {new Date(selectedApp.from_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
                   {' to '}
                   {new Date(selectedApp.to_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
@@ -840,14 +840,14 @@ export const LeaveManagementPage: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-slate-400 font-semibold block text-[11px] mb-1">Reason Submitted by Student:</span>
-                <p className="text-slate-200 italic leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <span className="text-slate-600 font-semibold block text-[11px] mb-1">Reason Submitted by Student:</span>
+                <p className="text-slate-800 italic leading-relaxed bg-white p-3 rounded-xl border border-slate-200/80">
                   "{selectedApp.reason}"
                 </p>
               </div>
 
               {selectedApp.attachment_name && (
-                <div className="text-[11px] text-slate-400 font-mono">
+                <div className="text-[11px] text-slate-600 font-mono">
                   📎 Attached document: <strong>{selectedApp.attachment_name}</strong>
                 </div>
               )}
@@ -855,47 +855,47 @@ export const LeaveManagementPage: React.FC = () => {
 
             {/* Endorsement Audit History */}
             <div className="space-y-2 text-xs">
-              <span className="font-bold uppercase text-slate-400 text-[11px] block">Approval Hierarchy Audit Trail</span>
+              <span className="font-bold uppercase text-slate-500 text-[11px] block">Approval Hierarchy Audit Trail</span>
               
               <div className="space-y-2">
                 {/* Level 1: Coordinator */}
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] text-slate-400 block">Level 1: Class Coordinator</span>
-                    <strong className="text-white">{selectedApp.coordinator_approver?.full_name || selectedApp.coordinator?.full_name || 'Class Coordinator'}</strong>
+                    <span className="text-[11px] text-slate-500 block">Level 1: Class Coordinator</span>
+                    <strong className="text-slate-900">{selectedApp.coordinator_approver?.full_name || selectedApp.coordinator?.full_name || 'Class Coordinator'}</strong>
                     {selectedApp.coordinator_remarks && (
-                      <p className="text-[11px] text-slate-300 italic mt-0.5">Remarks: "{selectedApp.coordinator_remarks}"</p>
+                      <p className="text-[11px] text-slate-600 italic mt-0.5">Remarks: "{selectedApp.coordinator_remarks}"</p>
                     )}
                   </div>
                   <div className="text-right font-mono">
                     {selectedApp.coordinator_approved_at ? (
-                      <span className="text-emerald-400 font-bold block">Approved ✓</span>
+                      <span className="text-emerald-700 font-bold block">Approved ✓</span>
                     ) : selectedApp.status === 'REJECTED_BY_COORDINATOR' ? (
-                      <span className="text-rose-400 font-bold block">Rejected ✗</span>
+                      <span className="text-rose-700 font-bold block">Rejected ✗</span>
                     ) : (
-                      <span className="text-amber-400 font-bold block">Pending Review</span>
+                      <span className="text-amber-700 font-bold block">Pending Review</span>
                     )}
                   </div>
                 </div>
 
                 {/* Level 2: HOD */}
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] text-slate-400 block">Level 2: Head of Department (HOD)</span>
-                    <strong className="text-white">{selectedApp.hod_approver?.full_name || selectedApp.hod?.full_name || 'Head of Department'}</strong>
+                    <span className="text-[11px] text-slate-500 block">Level 2: Head of Department (HOD)</span>
+                    <strong className="text-slate-900">{selectedApp.hod_approver?.full_name || selectedApp.hod?.full_name || 'Head of Department'}</strong>
                     {selectedApp.hod_remarks && (
-                      <p className="text-[11px] text-slate-300 italic mt-0.5">Remarks: "{selectedApp.hod_remarks}"</p>
+                      <p className="text-[11px] text-slate-600 italic mt-0.5">Remarks: "{selectedApp.hod_remarks}"</p>
                     )}
                   </div>
                   <div className="text-right font-mono">
                     {selectedApp.hod_approved_at ? (
-                      <span className="text-emerald-400 font-bold block">Final Sanctioned ✓</span>
+                      <span className="text-emerald-700 font-bold block">Final Sanctioned ✓</span>
                     ) : selectedApp.status === 'REJECTED_BY_HOD' ? (
-                      <span className="text-rose-400 font-bold block">Rejected ✗</span>
+                      <span className="text-rose-700 font-bold block">Rejected ✗</span>
                     ) : selectedApp.status === 'PENDING_HOD' ? (
-                      <span className="text-cyan-400 font-bold block">Awaiting HOD Sanction</span>
+                      <span className="text-cyan-700 font-bold block">Awaiting HOD Sanction</span>
                     ) : (
-                      <span className="text-slate-500 font-bold block">Waiting Level 1</span>
+                      <span className="text-slate-400 font-bold block">Waiting Level 1</span>
                     )}
                   </div>
                 </div>
@@ -906,23 +906,23 @@ export const LeaveManagementPage: React.FC = () => {
             {((role === 'faculty' && selectedApp.status === 'PENDING_COORDINATOR') ||
               (role === 'hod' && selectedApp.status === 'PENDING_HOD') ||
               (role === 'super_admin' && selectedApp.status.startsWith('PENDING'))) && (
-              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-3 pt-4">
-                <span className="font-bold text-xs text-white block">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 pt-4">
+                <span className="font-bold text-xs text-slate-900 block">
                   {role === 'hod' 
                     ? 'Head of Department Final Decision' 
                     : 'Class Coordinator Verification Decision'}
                 </span>
 
                 <div className="space-y-2">
-                  <label className="block text-[11px] text-slate-400">
-                    Remarks / Justification {actionType === 'REJECT' ? '<span className="text-rose-400">* (Mandatory for rejection)</span>' : '(Optional)'}
+                  <label className="block text-[11px] text-slate-600 font-medium">
+                    Remarks / Justification {actionType === 'REJECT' ? '<span className="text-rose-600 font-bold">* (Mandatory for rejection)</span>' : '(Optional)'}
                   </label>
                   <textarea
                     rows={2}
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                     placeholder={actionType === 'REJECT' ? 'State clear reason for rejecting leave application...' : 'Add any official remarks or conditions...'}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                   />
                 </div>
 
@@ -939,8 +939,8 @@ export const LeaveManagementPage: React.FC = () => {
                       handleExecuteReview();
                     }}
                     isLoading={isProcessingAction && actionType === 'REJECT'}
-                    className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
-                    leftIcon={<XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                    className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                    leftIcon={<XCircle className="w-3.5 h-3.5 text-rose-700" />}
                   >
                     Reject Application
                   </Button>
@@ -953,7 +953,7 @@ export const LeaveManagementPage: React.FC = () => {
                       handleExecuteReview();
                     }}
                     isLoading={isProcessingAction && actionType === 'APPROVE'}
-                    leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />}
+                    leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                   >
                     {role === 'hod' ? 'Approve & Sanction Leave' : 'Approve & Forward to HOD'}
                   </Button>
@@ -961,7 +961,7 @@ export const LeaveManagementPage: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-end pt-3 border-t border-slate-800">
+            <div className="flex justify-end pt-3 border-t border-slate-100">
               <Button
                 variant="outline"
                 size="sm"

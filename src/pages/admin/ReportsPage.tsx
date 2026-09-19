@@ -332,13 +332,13 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
   return (
     <div className="space-y-6 pb-24">
       {/* 1. Header & Tab Navigation */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <FileSpreadsheet className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <FileSpreadsheet className="w-6 h-6 text-slate-900" />
             {isFacultyMode ? 'Attendance Reports' : 'Reports & Academic Audits'}
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             {isFacultyMode
               ? 'View attendance history, rosters, and audit records for your assigned classes'
               : 'Live lecture registers, 15-column master attendance exports & exam eligibility ledgers'}
@@ -347,14 +347,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
 
         {/* Tab Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex p-1 bg-slate-950/80 rounded-2xl border border-emerald-500/20">
+          <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200">
             <button
               onClick={() => setActiveTab('lectures')}
               className={clsx(
                 'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer',
                 activeTab === 'lectures'
-                  ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.4)]'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900 font-semibold'
               )}
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -365,8 +365,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
               className={clsx(
                 'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer',
                 activeTab === 'cumulative'
-                  ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(0,255,136,0.4)]'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900 font-semibold'
               )}
             >
               <Users className="w-3.5 h-3.5" />
@@ -376,11 +376,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
 
           {activeTab === 'lectures' ? (
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               onClick={handleExportLecturesCSV}
-              leftIcon={<Download className="w-4 h-4 text-slate-950" />}
-              className="font-black text-xs"
+              leftIcon={<Download className="w-4 h-4 text-white" />}
+              className="font-semibold text-xs rounded-xl shadow-xs"
             >
               Export 15-Col CSV
             </Button>
@@ -390,15 +390,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                 variant="outline"
                 size="sm"
                 onClick={handleExportCSV}
-                leftIcon={<Download className="w-4 h-4 text-[#00ff88]" />}
+                leftIcon={<Download className="w-4 h-4 text-slate-700" />}
               >
                 Export CSV
               </Button>
               <Button
-                variant="neon"
+                variant="primary"
                 size="sm"
                 onClick={handleExportPDF}
-                leftIcon={<Printer className="w-4 h-4 text-slate-950" />}
+                leftIcon={<Printer className="w-4 h-4 text-white" />}
+                className="font-semibold text-xs rounded-xl shadow-xs"
               >
                 Generate PDF
               </Button>
@@ -409,7 +410,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
 
       {/* Flash Action Message */}
       {actionMessage && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88] text-xs font-bold flex items-center gap-2 animate-in fade-in">
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           {actionMessage}
         </div>
@@ -422,54 +423,54 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
         <div className="space-y-6">
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400">Total Lectures</span>
-                <Calendar className="w-4 h-4 text-emerald-400" />
+                <span className="text-[11px] font-semibold text-slate-500">Total Lectures</span>
+                <Calendar className="w-4 h-4 text-slate-600" />
               </div>
-              <p className="text-2xl font-black text-white mt-1.5">{lectureKPIs.totalSessions}</p>
+              <p className="text-2xl font-serif-institutional font-bold text-slate-900 mt-1.5">{lectureKPIs.totalSessions}</p>
               <span className="text-[10px] text-slate-500">Saved sessions matching filter</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400">Total Records</span>
-                <Users className="w-4 h-4 text-cyan-400" />
+                <span className="text-[11px] font-semibold text-slate-500">Total Records</span>
+                <Users className="w-4 h-4 text-slate-600" />
               </div>
-              <p className="text-2xl font-black text-white mt-1.5">{lectureKPIs.totalRecords}</p>
+              <p className="text-2xl font-serif-institutional font-bold text-slate-900 mt-1.5">{lectureKPIs.totalRecords}</p>
               <span className="text-[10px] text-slate-500">Individual student attendances</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400">Present Marks</span>
-                <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />
+                <span className="text-[11px] font-semibold text-slate-500">Present Marks</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
-              <p className="text-2xl font-black text-[#00ff88] mt-1.5">{lectureKPIs.totalPresent}</p>
+              <p className="text-2xl font-serif-institutional font-bold text-emerald-700 mt-1.5">{lectureKPIs.totalPresent}</p>
               <span className="text-[10px] text-slate-500">Attended lectures</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-rose-500/20">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400">Absent Marks</span>
-                <XCircle className="w-4 h-4 text-rose-400" />
+                <span className="text-[11px] font-semibold text-slate-500">Absent Marks</span>
+                <XCircle className="w-4 h-4 text-rose-600" />
               </div>
-              <p className="text-2xl font-black text-rose-400 mt-1.5">{lectureKPIs.totalAbsent}</p>
+              <p className="text-2xl font-serif-institutional font-bold text-rose-700 mt-1.5">{lectureKPIs.totalAbsent}</p>
               <span className="text-[10px] text-slate-500">Missed lectures</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20 col-span-2 lg:col-span-1">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs col-span-2 lg:col-span-1">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400">Attendance Rate</span>
-                <GraduationCap className="w-4 h-4 text-amber-400" />
+                <span className="text-[11px] font-semibold text-slate-500">Attendance Rate</span>
+                <GraduationCap className="w-4 h-4 text-slate-600" />
               </div>
-              <p className="text-2xl font-black font-mono text-[#00ff88] mt-1.5">{lectureKPIs.percentage}%</p>
+              <p className="text-2xl font-serif-institutional font-bold text-slate-900 mt-1.5">{lectureKPIs.percentage}%</p>
               <span className="text-[10px] text-slate-500">Benchmark: &ge;75%</span>
             </div>
           </div>
 
           {/* Filter Bar */}
-          <div className="glass-card rounded-2xl p-4 space-y-3 border border-emerald-500/20">
+          <div className="bg-white rounded-2xl p-4 space-y-3 border border-slate-200/80 shadow-xs">
             <div className={clsx(
               "grid grid-cols-1 sm:grid-cols-2 gap-3",
               isFacultyMode ? "lg:grid-cols-6" : "lg:grid-cols-7"
@@ -482,7 +483,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                   placeholder="Search subject, faculty, room..."
                   value={lectureSearch}
                   onChange={(e) => setLectureSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
               </div>
 
@@ -490,7 +491,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
               <select
                 value={lectureYearFilter}
                 onChange={(e) => setLectureYearFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 <option value="ALL">All Academic Years</option>
                 {years.map(y => (
@@ -502,7 +503,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
               <select
                 value={lectureSectionFilter}
                 onChange={(e) => setLectureSectionFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 <option value="ALL">All Sections</option>
                 {availableSections.map(sec => (
@@ -515,7 +516,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                 <select
                   value={lectureFacultyFilter}
                   onChange={(e) => setLectureFacultyFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 >
                   <option value="ALL">All Faculty</option>
                   {faculty.map(f => (
@@ -528,7 +529,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
               <select
                 value={lectureSubjectFilter}
                 onChange={(e) => setLectureSubjectFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 <option value="ALL">All Subjects</option>
                 {subjects.filter(s => s.active).map(sub => (
@@ -543,12 +544,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                     type="date"
                     value={lectureDateFilter}
                     onChange={(e) => setLectureDateFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88] cursor-pointer"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer"
                   />
                   {lectureDateFilter && (
                     <button
                       onClick={() => setLectureDateFilter('')}
-                      className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-white text-xs cursor-pointer"
+                      className="p-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 text-xs cursor-pointer"
                       title="Clear Date"
                     >
                       ✕
@@ -559,7 +560,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                   <button
                     type="button"
                     onClick={() => setLectureDateFilter(prev => getRelativeDate(prev || getISTTodayDate(), -1))}
-                    className="flex-1 py-1 px-1 rounded-lg bg-slate-900/90 border border-emerald-500/20 text-[10px] font-bold text-slate-300 hover:text-white hover:border-emerald-500/40 transition-colors cursor-pointer"
+                    className="flex-1 py-1 px-1 rounded-lg bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
                   >
                     ◀ Prev
                   </button>
@@ -569,8 +570,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                     className={clsx(
                       "flex-1 py-1 px-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer",
                       lectureDateFilter === getISTTodayDate()
-                        ? "bg-emerald-500 text-slate-950 font-black shadow-[0_0_8px_rgba(0,255,136,0.3)]"
-                        : "bg-slate-900/90 border border-emerald-500/20 text-slate-300 hover:text-white hover:border-emerald-500/40"
+                        ? "bg-[#0f172a] text-white font-bold shadow-xs"
+                        : "bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200"
                     )}
                   >
                     Today
@@ -578,7 +579,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                   <button
                     type="button"
                     onClick={() => setLectureDateFilter(prev => getRelativeDate(prev || getISTTodayDate(), 1))}
-                    className="flex-1 py-1 px-1 rounded-lg bg-slate-900/90 border border-emerald-500/20 text-[10px] font-bold text-slate-300 hover:text-white hover:border-emerald-500/40 transition-colors cursor-pointer"
+                    className="flex-1 py-1 px-1 rounded-lg bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
                   >
                     Next ▶
                   </button>
@@ -588,8 +589,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                     className={clsx(
                       "flex-1 py-1 px-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer",
                       !lectureDateFilter
-                        ? "bg-emerald-500/20 border border-emerald-500/40 text-[#00ff88]"
-                        : "bg-slate-900/90 border border-slate-700/60 text-slate-400 hover:text-white"
+                        ? "bg-[#0f172a] text-white font-bold shadow-xs"
+                        : "bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200"
                     )}
                   >
                     All
@@ -601,9 +602,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
 
           {/* Sessions List (Desktop Table + Mobile Cards) */}
           {filteredSessions.length === 0 ? (
-            <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
-              <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="font-semibold text-slate-300">No lecture attendance sessions match the filter criteria</p>
+            <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs">
+              <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="font-semibold text-slate-800">No lecture attendance sessions match the filter criteria</p>
               <p className="text-xs text-slate-500 mt-1">Adjust your filters or verify that faculty have saved attendance for these lectures</p>
             </div>
           ) : (
@@ -625,16 +626,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                   const percent = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
                   return (
-                    <div key={session.id} className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3">
+                    <div key={session.id} className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-xs font-black text-emerald-400">{sub?.subject_code}</span>
-                            <span className="text-xs text-slate-500">•</span>
-                            <span className="text-xs font-bold text-white">Sec {sec?.name}</span>
+                            <span className="font-mono text-xs font-bold text-slate-900">{sub?.subject_code}</span>
+                            <span className="text-xs text-slate-400">•</span>
+                            <span className="text-xs font-bold text-slate-900">Sec {sec?.name}</span>
                             <span className="text-[10px] text-slate-400">({yr?.name || 'Year'})</span>
                           </div>
-                          <h4 className="text-sm font-bold text-white mt-0.5">{sub?.subject_name}</h4>
+                          <h4 className="text-sm font-bold text-slate-900 mt-0.5">{sub?.subject_name}</h4>
                           <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                             <span>{fac?.full_name}</span>
                             <span>•</span>
@@ -645,16 +646,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                         <span className={clsx(
                           'px-2.5 py-1 rounded-xl text-xs font-black border font-mono shrink-0',
                           percent >= 75
-                            ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                            : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            : 'bg-amber-50 border-amber-200 text-amber-800'
                         )}>
                           {presentCount}/{totalCount} ({percent}%)
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-emerald-500/10 text-xs text-slate-400">
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white">{session.session_date}</span>
+                          <span className="font-semibold text-slate-900">{session.session_date}</span>
                           <span className="font-mono text-[11px] text-slate-500">
                             {session.start_time?.substring(0, 5)} - {session.end_time?.substring(0, 5)}
                           </span>
@@ -673,7 +674,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                           {!isFacultyMode && (role === 'super_admin' || role === 'hod') && (
                             <button
                               onClick={() => setSessionToDelete(session)}
-                              className="p-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"
+                              className="p-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all cursor-pointer"
                               title="Delete lecture session"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -687,10 +688,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
               </div>
 
               {/* DESKTOP VIEW */}
-              <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+              <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                    <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                       <tr>
                         <th className="px-5 py-3.5">Date & Slot</th>
                         <th className="px-5 py-3.5">Subject</th>
@@ -701,7 +702,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                         <th className="px-5 py-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-emerald-500/10">
+                    <tbody className="divide-y divide-slate-100 bg-white">
                       {filteredSessions.map(session => {
                         const sec = sections.find(s => s.id === session.section_id);
                         const sem = semesters.find(s => s.id === sec?.semester_id);
@@ -717,34 +718,34 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                         const percent = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
                         return (
-                          <tr key={session.id} className="hover:bg-emerald-500/5 transition-colors">
+                          <tr key={session.id} className="hover:bg-slate-50/80 transition-colors">
                             <td className="px-5 py-3.5 font-mono">
-                              <span className="font-bold text-white block">{session.session_date}</span>
+                              <span className="font-bold text-slate-900 block">{session.session_date}</span>
                               <span className="text-[11px] text-slate-400">
                                 {session.start_time?.substring(0, 5)} – {session.end_time?.substring(0, 5)}
                               </span>
                             </td>
                             <td className="px-5 py-3.5">
-                              <span className="font-mono font-bold text-emerald-400 block">{sub?.subject_code}</span>
-                              <span className="font-bold text-white">{sub?.subject_name}</span>
+                              <span className="font-mono font-bold text-slate-900 block">{sub?.subject_code}</span>
+                              <span className="font-semibold text-slate-800">{sub?.subject_name}</span>
                             </td>
                             <td className="px-5 py-3.5 text-center">
-                              <span className="font-bold text-white block">Sec {sec?.name}</span>
+                              <span className="font-bold text-slate-900 block">Sec {sec?.name}</span>
                               <span className="text-[10px] text-slate-400">{yr?.name || 'Year'}</span>
                             </td>
                             <td className="px-5 py-3.5">
-                              <span className="font-bold text-white block">{fac?.full_name}</span>
+                              <span className="font-bold text-slate-900 block">{fac?.full_name}</span>
                               <span className="font-mono text-[10px] text-slate-500">{fac?.employee_code || fac?.faculty_code || ''}</span>
                             </td>
-                            <td className="px-5 py-3.5 text-center font-mono font-bold text-slate-300">
+                            <td className="px-5 py-3.5 text-center font-mono font-bold text-slate-700">
                               {room}
                             </td>
                             <td className="px-5 py-3.5 text-center">
                               <span className={clsx(
                                 'px-2.5 py-1 rounded-xl text-xs font-black border font-mono inline-block',
                                 percent >= 75
-                                  ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                                  : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                  : 'bg-amber-50 border-amber-200 text-amber-800'
                               )}>
                                 {presentCount} / {totalCount} ({percent}%)
                               </span>
@@ -763,7 +764,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                                 {!isFacultyMode && (role === 'super_admin' || role === 'hod') && (
                                   <button
                                     onClick={() => setSessionToDelete(session)}
-                                    className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"
+                                    className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all cursor-pointer"
                                     title="Delete lecture session and student records"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -789,7 +790,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
       {activeTab === 'cumulative' && (
         <div className="space-y-6">
           {/* Filter Toolbar */}
-          <div className="glass-card rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 border border-slate-200/80 shadow-xs">
             <div className="relative w-full md:w-72">
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -797,18 +798,18 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                 placeholder="Search by student or roll number..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               {/* Section Filter */}
               <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-slate-400 font-semibold">Section:</span>
+                <span className="text-slate-600 font-semibold">Section:</span>
                 <select
                   value={selectedSection}
                   onChange={(e) => setSelectedSection(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 >
                   <option value="ALL">All Sections</option>
                   {availableSections.map(sec => (
@@ -819,11 +820,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
 
               {/* Status Filter */}
               <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-slate-400 font-semibold">Eligibility:</span>
+                <span className="text-slate-600 font-semibold">Eligibility:</span>
                 <select
                   value={selectedStatusFilter}
                   onChange={(e) => setSelectedStatusFilter(e.target.value as any)}
-                  className="px-3 py-1.5 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 >
                   <option value="ALL">All Students</option>
                   <option value="ELIGIBLE">Eligible (&ge;75%)</option>
@@ -836,9 +837,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
           {/* Reports Data Container */}
           <div>
             {filteredStats.length === 0 ? (
-              <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20">
-                <FileSpreadsheet className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                <p className="font-semibold text-slate-300">No attendance records found</p>
+              <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs">
+                <FileSpreadsheet className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                <p className="font-semibold text-slate-800">No attendance records found</p>
                 <p className="text-xs text-slate-500 mt-1">Audit statistics will populate once faculty mark lecture attendance</p>
               </div>
             ) : (
@@ -851,37 +852,37 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                     return (
                       <div
                         key={s.studentId}
-                        className="glass-card rounded-2xl p-4 border border-emerald-500/20 space-y-3"
+                        className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <span className="font-mono text-xs font-black text-emerald-400">{s.rollNumber}</span>
-                            <h4 className="text-sm font-bold text-white mt-0.5">{s.fullName}</h4>
+                            <span className="font-mono text-xs font-bold text-slate-900">{s.rollNumber}</span>
+                            <h4 className="text-sm font-bold text-slate-900 mt-0.5">{s.fullName}</h4>
                           </div>
                           <span className={clsx(
                             'px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0',
                             !hasData
-                              ? 'bg-slate-800 border-slate-700 text-slate-400'
+                              ? 'bg-slate-100 border-slate-200 text-slate-600'
                               : isDefaulter
-                                ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                                : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                           )}>
                             {!hasData ? 'No attendance recorded' : isDefaulter ? '<75% Defaulter' : 'Eligible'}
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-500/10 text-center text-xs">
-                          <div className="p-2 rounded-xl bg-slate-950/60">
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center text-xs">
+                          <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
                             <span className="text-[10px] text-slate-400 block">Section</span>
-                            <span className="font-bold text-white">Sec {s.sectionName}</span>
+                            <span className="font-bold text-slate-900">Sec {s.sectionName}</span>
                           </div>
-                          <div className="p-2 rounded-xl bg-slate-950/60">
+                          <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
                             <span className="text-[10px] text-slate-400 block">Attended</span>
-                            <span className="font-bold text-emerald-400">{s.presentLectures}/{s.totalLectures}</span>
+                            <span className="font-bold text-slate-900">{s.presentLectures}/{s.totalLectures}</span>
                           </div>
-                          <div className="p-2 rounded-xl bg-slate-950/60">
+                          <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
                             <span className="text-[10px] text-slate-400 block">Percentage</span>
-                            <span className="font-black font-mono text-[#00ff88]">
+                            <span className="font-bold font-mono text-slate-900">
                               {hasData ? `${s.percentage}%` : 'No data'}
                             </span>
                           </div>
@@ -892,10 +893,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                 </div>
 
                 {/* DESKTOP VIEW */}
-                <div className="hidden md:block glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden shadow-2xl">
+                <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-950/80 text-slate-300 font-bold uppercase tracking-wider border-b border-emerald-500/15">
+                      <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                         <tr>
                           <th className="px-5 py-3.5">Roll Number</th>
                           <th className="px-5 py-3.5">Student Name</th>
@@ -906,38 +907,38 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                           <th className="px-5 py-3.5 text-right">Audit Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-emerald-500/10">
+                      <tbody className="divide-y divide-slate-100 bg-white">
                         {filteredStats.map((s) => {
                           const hasData = s.totalLectures > 0 && s.percentage !== null;
                           const isDefaulter = hasData && s.percentage !== null && s.percentage < 75;
                           return (
                             <tr key={s.studentId} className="hover:bg-emerald-500/5 transition-colors">
-                              <td className="px-5 py-3.5 font-mono font-bold text-emerald-400">
+                              <td className="px-5 py-3.5 font-mono font-bold text-slate-900">
                                 {s.rollNumber}
                               </td>
-                              <td className="px-5 py-3.5 font-bold text-white">
+                              <td className="px-5 py-3.5 font-bold text-slate-900">
                                 {s.fullName}
                               </td>
-                              <td className="px-5 py-3.5 text-center font-bold text-slate-300">
+                              <td className="px-5 py-3.5 text-center font-bold text-slate-700">
                                 Section {s.sectionName}
                               </td>
-                              <td className="px-5 py-3.5 text-center text-slate-300">
+                              <td className="px-5 py-3.5 text-center text-slate-600">
                                 {s.totalLectures}
                               </td>
-                              <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
+                              <td className="px-5 py-3.5 text-center font-bold text-slate-900">
                                 {s.presentLectures}
                               </td>
-                              <td className="px-5 py-3.5 text-center font-mono font-black text-sm text-[#00ff88]">
+                              <td className="px-5 py-3.5 text-center font-mono font-bold text-sm text-slate-900">
                                 {hasData ? `${s.percentage}%` : 'No data'}
                               </td>
                               <td className="px-5 py-3.5 text-right">
                                 <span className={clsx(
                                   'px-2.5 py-0.5 rounded-full text-[10px] font-bold border',
                                   !hasData
-                                    ? 'bg-slate-800 border-slate-700 text-slate-400'
+                                    ? 'bg-slate-100 border-slate-200 text-slate-600'
                                     : isDefaulter
-                                      ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                                      : 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
+                                      ? 'bg-rose-50 border-rose-200 text-rose-800'
+                                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                                 )}>
                                   {!hasData ? 'No attendance recorded' : isDefaulter ? 'Defaulter (<75%)' : 'Eligible for Exams'}
                                 </span>
@@ -989,22 +990,22 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
           return (
             <div className="space-y-4 pt-2">
               {/* Session Context Banner */}
-              <div className="p-4 rounded-2xl bg-slate-900/90 border border-emerald-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-black text-emerald-400">{sub?.subject_code}</span>
-                    <span className="text-xs text-slate-500">•</span>
-                    <span className="text-xs font-bold text-white">Section {sec?.name}</span>
+                    <span className="font-mono text-xs font-bold text-slate-900">{sub?.subject_code}</span>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs font-bold text-slate-900">Section {sec?.name}</span>
                   </div>
-                  <h4 className="text-sm font-bold text-white mt-0.5">{sub?.subject_name}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Faculty: {fac?.full_name}</p>
+                  <h4 className="text-sm font-bold text-slate-900 mt-0.5">{sub?.subject_name}</h4>
+                  <p className="text-xs text-slate-500 mt-1">Faculty: {fac?.full_name}</p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-bold text-[#00ff88]">
+                  <span className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
                     {presentCount} Present
                   </span>
-                  <span className="px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/30 text-xs font-bold text-rose-400">
+                  <span className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800">
                     {absentCount} Absent
                   </span>
                 </div>
@@ -1018,26 +1019,26 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                   placeholder="Filter roster by student name or roll number..."
                   value={rosterSearch}
                   onChange={(e) => setRosterSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                 />
               </div>
 
               {/* Roster Items */}
-              <div className="max-h-80 overflow-y-auto space-y-2 pr-1 divide-y divide-emerald-500/10">
+              <div className="max-h-80 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100">
                 {filteredRosterRecords.map((rec) => {
                   const stud = students.find(s => s.id === rec.student_id);
                   const isPresent = rec.status === 'Present';
                   return (
                     <div key={rec.id} className="pt-2 flex items-center justify-between gap-3 text-xs">
                       <div>
-                        <span className="font-mono font-bold text-emerald-400">{stud?.roll_number}</span>
-                        <p className="font-bold text-white">{stud?.full_name}</p>
+                        <span className="font-mono font-bold text-slate-900">{stud?.roll_number}</span>
+                        <p className="font-bold text-slate-900">{stud?.full_name}</p>
                       </div>
                       <span className={clsx(
                         'px-2.5 py-1 rounded-xl text-[11px] font-black border flex items-center gap-1.5 shrink-0',
                         isPresent
-                          ? 'bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]'
-                          : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-rose-50 border-rose-200 text-rose-800'
                       )}>
                         {isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                         {rec.status}
@@ -1055,7 +1056,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ forceFacultyMode = fal
                     setRosterSession(null);
                     setRosterSearch('');
                   }}
-                  className="text-xs text-slate-400 hover:text-white"
+                  className="text-xs text-slate-600 hover:text-slate-900"
                 >
                   Close Roster
                 </Button>

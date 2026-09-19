@@ -57,17 +57,17 @@ const StudentAccountsPage = lazy(() => import('./pages/admin/StudentAccountsPage
 const AcademicManagementPage = lazy(() => import('./pages/admin/AcademicManagementPage').then(m => ({ default: m.AcademicManagementPage })));
 const RecordsArchivePage = lazy(() => import('./pages/admin/RecordsArchivePage').then(m => ({ default: m.RecordsArchivePage })));
 
-// Lightweight Cyber Skeleton Loader for Fast Transitions
+// Lightweight Institutional Skeleton Loader for Fast Transitions
 const PageSkeletonLoader: React.FC = () => (
   <div className="space-y-6 animate-pulse p-2">
-    <div className="h-24 rounded-3xl bg-slate-900/60 border border-emerald-500/15" />
+    <div className="h-24 rounded-3xl bg-white border border-slate-200/80 shadow-xs" />
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
-      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
-      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
-      <div className="h-28 rounded-2xl bg-slate-900/40 border border-emerald-500/10" />
+      <div className="h-28 rounded-2xl bg-white border border-slate-200/80 shadow-xs" />
+      <div className="h-28 rounded-2xl bg-white border border-slate-200/80 shadow-xs" />
+      <div className="h-28 rounded-2xl bg-white border border-slate-200/80 shadow-xs" />
+      <div className="h-28 rounded-2xl bg-white border border-slate-200/80 shadow-xs" />
     </div>
-    <div className="h-96 rounded-3xl bg-slate-900/50 border border-emerald-500/15" />
+    <div className="h-96 rounded-3xl bg-white border border-slate-200/80 shadow-xs" />
   </div>
 );
 
@@ -103,13 +103,16 @@ export const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#070b14] flex flex-col items-center justify-center gap-4 text-white">
-        <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-emerald-500/30 p-1 animate-bounce shadow-[0_0_25px_rgba(0,255,136,0.3)] flex items-center justify-center overflow-hidden">
-          <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-cover rounded-xl" />
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-4 text-slate-900">
+        <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 p-2 shadow-md flex items-center justify-center overflow-hidden">
+          <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain rounded-xl" />
         </div>
-        <p className="text-xs font-bold tracking-wider text-[#00ff88]">
-          Connecting to VCTM ERP Cloud...
-        </p>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-slate-900 animate-pulse" />
+          <p className="text-xs font-bold tracking-wider text-slate-700">
+            Connecting to VCTM ERP Cloud...
+          </p>
+        </div>
       </div>
     );
   }
@@ -244,19 +247,19 @@ export const AppContent: React.FC = () => {
 
         if (!facultyId) {
           return (
-            <div className="glass-panel p-8 rounded-3xl border border-rose-500/30 text-center max-w-xl mx-auto space-y-4 my-12">
-              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center mx-auto">
+            <div className="bg-white p-8 rounded-3xl border border-rose-200 text-center max-w-xl mx-auto space-y-4 my-12 shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center mx-auto">
                 <AlertTriangle className="w-7 h-7" />
               </div>
-              <h2 className="text-lg font-black text-white">Faculty Profile Not Configured</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Your account is authenticated as <strong className="text-white">Head of Department</strong>, but no active teaching faculty profile was resolved for your user record ({user?.email}).
+              <h2 className="text-lg font-black text-slate-900 font-serif-institutional">Faculty Profile Not Configured</h2>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Your account is authenticated as <strong className="text-slate-900">Head of Department</strong>, but no active teaching faculty profile was resolved for your user record ({user?.email}).
               </p>
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => handleToggleTeachingMode(false)}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs hover:bg-[#00ff88] transition-all cursor-pointer shadow-md"
+                  className="px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-black text-xs hover:bg-black transition-all cursor-pointer shadow-xs"
                 >
                   Return to HOD Dashboard
                 </button>
@@ -344,28 +347,28 @@ export const AppContent: React.FC = () => {
         return (
           <div className="space-y-6">
             {/* Top Mode Banner */}
-            <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-[#00ff88]/30 bg-gradient-to-r from-emerald-950/70 via-slate-900/90 to-slate-950/80 shadow-[0_0_25px_rgba(0,255,136,0.12)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="px-2.5 py-0.5 rounded-md bg-[#00ff88]/20 border border-[#00ff88]/40 text-[#00ff88] text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+                  <div className="px-2.5 py-0.5 rounded-md bg-[#0f172a] text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     FACULTY MODE
                   </div>
-                  <span className="text-[11px] font-bold text-slate-400">•</span>
-                  <span className="text-xs font-bold text-slate-300">
-                    Role: <span className="text-emerald-400">HOD + Faculty</span>
+                  <span className="text-[11px] font-bold text-slate-300">•</span>
+                  <span className="text-xs font-bold text-slate-700">
+                    Role: <span className="text-slate-900 font-semibold">HOD + Faculty</span>
                   </span>
-                  <span className="text-[11px] font-bold text-slate-400">•</span>
-                  <span className="text-xs font-medium text-slate-400">
-                    You are currently acting as: <strong className="text-white">FACULTY</strong>
+                  <span className="text-[11px] font-bold text-slate-300">•</span>
+                  <span className="text-xs font-medium text-slate-600">
+                    You are currently acting as: <strong className="text-slate-900">FACULTY</strong>
                   </span>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-[#00ff88]" />
+                <h2 className="text-base sm:text-lg font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-slate-900" />
                   Teaching / Faculty Mode
                 </h2>
-                <p className="text-xs text-slate-300">
-                  Welcome, <strong className="text-white">{user?.full_name || 'HOD'}</strong>. Manage attendance, tests, marks, and assignments strictly for your assigned classes.
+                <p className="text-xs text-slate-600">
+                  Welcome, <strong className="text-slate-900">{user?.full_name || 'HOD'}</strong>. Manage attendance, tests, marks, and assignments strictly for your assigned classes.
                 </p>
               </div>
 
@@ -373,9 +376,9 @@ export const AppContent: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleToggleTeachingMode(false)}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/40 hover:border-rose-400/60 text-slate-200 hover:text-white hover:bg-rose-500/15 text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md group"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs group"
                 >
-                  <RotateCcw className="w-4 h-4 text-amber-400 group-hover:rotate-180 transition-transform duration-300" />
+                  <RotateCcw className="w-4 h-4 text-slate-500 group-hover:rotate-180 transition-transform duration-300" />
                   <span>Exit Faculty Mode</span>
                 </button>
               </div>

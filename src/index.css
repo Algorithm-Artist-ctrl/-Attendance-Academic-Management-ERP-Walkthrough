@@ -1,39 +1,41 @@
 @import "tailwindcss";
 
 @theme {
-  --color-cyber-bg: #050b14;
-  --color-cyber-surface: #0a1322;
-  --color-cyber-card: #0d1a2d;
-  --color-cyber-card-hover: #11223b;
-  --color-cyber-border: rgba(16, 185, 129, 0.2);
-  --color-cyber-border-active: rgba(0, 255, 136, 0.6);
+  --color-vctm-black: #0f172a;
+  --color-vctm-charcoal: #1e293b;
   
-  --color-neon-green: #00ff88;
-  --color-neon-green-hover: #10b981;
-  --color-neon-green-glow: rgba(0, 255, 136, 0.25);
+  --color-cyber-bg: #f8fafc;
+  --color-cyber-surface: #ffffff;
+  --color-cyber-card: #ffffff;
+  --color-cyber-card-hover: #f1f5f9;
+  --color-cyber-border: #e2e8f0;
+  --color-cyber-border-active: #0f172a;
   
-  --color-vctm-navy-950: #040810;
-  --color-vctm-navy-900: #07101e;
-  --color-vctm-navy-800: #0d1b32;
-  --color-vctm-navy-700: #14284b;
-  --color-vctm-navy-600: #1e3a68;
+  --color-neon-green: #0f172a;
+  --color-neon-green-hover: #1e293b;
+  --color-neon-green-glow: rgba(15, 23, 42, 0.08);
+  
+  --color-vctm-navy-950: #ffffff;
+  --color-vctm-navy-900: #f8fafc;
+  --color-vctm-navy-800: #f1f5f9;
+  --color-vctm-navy-700: #e2e8f0;
+  --color-vctm-navy-600: #cbd5e1;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
-  background-color: #050b14;
-  color: #f1f5f9;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(at 10% 20%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
-    radial-gradient(at 90% 80%, rgba(0, 255, 136, 0.03) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.02) 0px, transparent 60%);
+    radial-gradient(at 10% 20%, rgba(15, 23, 42, 0.02) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(15, 23, 42, 0.015) 0px, transparent 50%);
   background-attachment: fixed;
 }
 
@@ -45,70 +47,68 @@ body {
   font-family: 'Dancing Script', cursive, sans-serif;
 }
 
-/* Glassmorphic Cyber Panels */
+/* Institutional Panels & Cards */
 .glass-panel {
-  background: rgba(10, 19, 34, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(16, 185, 129, 0.18);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
 .glass-card {
-  background: rgba(13, 26, 45, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(16, 185, 129, 0.15);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(0, 255, 136, 0.35);
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.08);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
 }
 
 .glass-card-active {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(0, 255, 136, 0.5);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+  background: #ffffff;
+  border: 2px solid #0f172a;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
-/* Neon Glow Accents */
+/* Institutional Contrast Accents (Replaces neon glow) */
 .neon-glow {
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.35), 0 0 40px rgba(0, 255, 136, 0.15);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
 }
 
 .neon-glow-sm {
-  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
 .neon-text {
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  color: #0f172a;
+  text-shadow: none;
+  font-weight: 700;
 }
 
 .neon-border {
-  border-color: #00ff88;
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
+  border-color: #0f172a;
+  box-shadow: 0 0 0 1px #0f172a;
 }
 
-/* Custom Cyber Scrollbars */
+/* Clean Institutional Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #060d19;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #152945;
+  background: #cbd5e1;
   border-radius: 4px;
-  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00ff88;
+  background: #94a3b8;
 }
 
 @media print {

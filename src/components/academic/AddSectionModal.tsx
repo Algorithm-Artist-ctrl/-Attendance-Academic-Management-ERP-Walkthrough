@@ -132,8 +132,10 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2 text-white">
-          <Layers className="w-5 h-5 text-[#00ff88]" />
+        <div className="flex items-center gap-2 text-slate-900 font-bold">
+          <div className="p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700">
+            <Layers className="w-4 h-4" />
+          </div>
           <span>Add Academic Section</span>
         </div>
       }
@@ -142,31 +144,31 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* Department (locked if HOD) */}
         <div>
-          <label className="block text-xs font-bold text-slate-300 mb-1">Academic Department</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Academic Department</label>
           {isHOD ? (
-            <div className="px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-bold text-white">
+            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900">
               {departments.find(d => d.id === hodDeptId)?.name || 'Computer Science & Engineering'}
             </div>
           ) : (
             <select
               value={selectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             >
               {departments.map(d => (
                 <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
@@ -178,11 +180,11 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
         {/* Academic Year & Semester */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Academic Year</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Academic Year</label>
             <select
               value={selectedYearId}
               onChange={(e) => handleYearChange(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             >
               {years.map(y => (
                 <option key={y.id} value={y.id}>{y.name}</option>
@@ -191,11 +193,11 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Semester</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Semester</label>
             <select
               value={selectedSemesterId}
               onChange={(e) => setSelectedSemesterId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             >
               {availableSemesters.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -207,7 +209,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
         {/* Section Name & Room Number */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Section Identifier</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Section Identifier</label>
             <input
               type="text"
               value={sectionName}
@@ -215,30 +217,30 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
               placeholder="e.g. A, B, C, D"
               maxLength={10}
               required
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-black text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
             <span className="text-[10px] text-slate-500 mt-0.5 block">Not restricted to A/B/C.</span>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">Default Room / Classroom</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Default Room / Classroom</label>
             <input
               type="text"
               value={roomNumber}
               onChange={(e) => setRoomNumber(e.target.value)}
               placeholder="e.g. A006, A007"
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
         </div>
 
         {/* Class Coordinator (Optional) */}
         <div>
-          <label className="block text-xs font-bold text-slate-300 mb-1">Class Coordinator (Optional)</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Class Coordinator (Optional)</label>
           <select
             value={coordinatorId}
             onChange={(e) => setCoordinatorId(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/20 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#00ff88]"
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
           >
             <option value="">-- None Assigned --</option>
             {faculty
@@ -249,10 +251,10 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           </select>
         </div>
 
-        <div className="pt-3 border-t border-emerald-500/10 flex items-center justify-end gap-2">
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onClose}
             disabled={isSubmitting}

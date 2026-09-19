@@ -186,36 +186,36 @@ export const LeaveApplicationPage: React.FC = () => {
     switch (status) {
       case 'APPROVED':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1.5 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center gap-1.5 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Approved
           </span>
         );
       case 'PENDING_HOD':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 flex items-center gap-1.5 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 border border-blue-200 text-blue-700 flex items-center gap-1.5 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
             Pending HOD Review
           </span>
         );
       case 'PENDING_COORDINATOR':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-1.5 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-1.5 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             Pending Coordinator Review
           </span>
         );
       case 'REJECTED_BY_COORDINATOR':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-1.5 shadow-xs" title="Rejected by Class Coordinator">
-            <XCircle className="w-3.5 h-3.5 text-rose-400" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1.5 shadow-xs" title="Rejected by Class Coordinator">
+            <XCircle className="w-3.5 h-3.5 text-rose-600" />
             Rejected
           </span>
         );
       case 'REJECTED_BY_HOD':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-1.5 shadow-xs" title="Rejected by Head of Department">
-            <XCircle className="w-3.5 h-3.5 text-rose-400" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1.5 shadow-xs" title="Rejected by Head of Department">
+            <XCircle className="w-3.5 h-3.5 text-rose-600" />
             Rejected
           </span>
         );
@@ -227,17 +227,17 @@ export const LeaveApplicationPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header Banner */}
-      <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+            <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800">
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight">
                 Student Leave & OD Application Portal
               </h1>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 Two-tier institutional approval workflow: Class Coordinator ➔ Head of Department
               </p>
             </div>
@@ -245,17 +245,17 @@ export const LeaveApplicationPage: React.FC = () => {
 
           {/* Academic Scoping Details */}
           <div className="flex flex-wrap items-center gap-3 mt-4 text-xs">
-            <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#00ff88]" />
-              <span>Coordinator: <strong className="text-white">{hierarchyData.coordinator?.name || 'Assigned Coordinator'}</strong></span>
+            <div className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5 font-medium">
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span>Coordinator: <strong className="text-slate-900">{hierarchyData.coordinator?.name || 'Assigned Coordinator'}</strong></span>
             </div>
-            <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex items-center gap-1.5">
-              <Building className="w-3.5 h-3.5 text-cyan-400" />
-              <span>HOD: <strong className="text-white">{hierarchyData.hod?.name || 'Head of Department'}</strong></span>
+            <div className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5 font-medium">
+              <Building className="w-3.5 h-3.5 text-slate-500" />
+              <span>HOD: <strong className="text-slate-900">{hierarchyData.hod?.name || 'Head of Department'}</strong></span>
             </div>
             {hierarchyData.sectionName && (
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300">
-                Section: <strong className="text-emerald-400">{hierarchyData.sectionName}</strong>
+              <div className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-medium">
+                Section: <strong className="text-slate-900">{hierarchyData.sectionName}</strong>
               </div>
             )}
           </div>
@@ -267,19 +267,19 @@ export const LeaveApplicationPage: React.FC = () => {
             size="sm"
             onClick={() => loadApplications(false)}
             isLoading={isRefreshing}
-            leftIcon={<RefreshCw className="w-3.5 h-3.5 text-slate-400" />}
+            leftIcon={<RefreshCw className="w-3.5 h-3.5 text-slate-500" />}
           >
             Refresh
           </Button>
 
           <Button
-            variant="neon"
+            variant="primary"
             size="sm"
             onClick={() => {
               setSubmitError(null);
               setIsModalOpen(true);
             }}
-            leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+            leftIcon={<Plus className="w-4 h-4 text-white" />}
           >
             Apply for Leave
           </Button>
@@ -287,8 +287,8 @@ export const LeaveApplicationPage: React.FC = () => {
       </div>
 
       {submitSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95 shadow-md">
-          <CheckCircle2 className="w-5 h-5 text-[#00ff88] shrink-0" />
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2.5 animate-in zoom-in-95 shadow-xs">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>{submitSuccess}</span>
         </div>
       )}
@@ -296,30 +296,30 @@ export const LeaveApplicationPage: React.FC = () => {
       {/* Applications List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Submitted Applications ({leaveApplications.length})
           </h2>
-          <span className="text-[11px] text-slate-500">Real-time sync active</span>
+          <span className="text-[11px] text-slate-400 font-medium">Real-time sync active</span>
         </div>
 
         {isLoading ? (
-          <div className="glass-panel p-12 rounded-3xl border border-emerald-500/15 text-center text-slate-400 space-y-3">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-400" />
+          <div className="bg-white p-12 rounded-3xl border border-slate-200/80 text-center text-slate-500 space-y-3 shadow-xs">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-slate-700" />
             <p className="text-xs font-medium">Loading your leave records from database...</p>
           </div>
         ) : leaveApplications.length === 0 ? (
-          <div className="glass-panel rounded-3xl border border-emerald-500/15 p-12 text-center text-slate-400">
-            <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="font-bold text-slate-200">No leave applications submitted yet</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center text-slate-500 shadow-xs">
+            <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+            <p className="font-bold text-slate-900">No leave applications submitted yet</p>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
               Submit a medical leave or duty permission (OD) whenever needed. Requests are automatically dispatched to your Class Coordinator for approval.
             </p>
             <Button
-              variant="neon"
+              variant="primary"
               size="sm"
               className="mt-5"
               onClick={() => setIsModalOpen(true)}
-              leftIcon={<Plus className="w-4 h-4 text-slate-950" />}
+              leftIcon={<Plus className="w-4 h-4 text-white" />}
             >
               Submit First Application
             </Button>
@@ -335,20 +335,20 @@ export const LeaveApplicationPage: React.FC = () => {
               return (
                 <div 
                   key={app.id} 
-                  className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/20 bg-slate-900/70 hover:border-emerald-500/40 transition-all space-y-5 shadow-lg"
+                  className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 hover:border-slate-300 transition-all space-y-5 shadow-xs"
                 >
                   {/* Top Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/25">
+                        <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
                           {app.application_number}
                         </span>
-                        <span className="font-black text-white text-base">
+                        <span className="font-black text-slate-900 text-base">
                           {app.leave_type}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500 font-medium">
                         Submitted on: {new Date(app.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
@@ -358,11 +358,11 @@ export const LeaveApplicationPage: React.FC = () => {
                       
                       {isApproved && (
                         <Button
-                          variant="neon"
+                          variant="outline"
                           size="sm"
                           onClick={() => handleDownloadPdf(app)}
-                          leftIcon={<Download className="w-3.5 h-3.5 text-slate-950" />}
-                          className="shadow-sm"
+                          leftIcon={<Download className="w-3.5 h-3.5 text-slate-700" />}
+                          className="shadow-xs text-slate-800"
                         >
                           Download Approved PDF
                         </Button>
@@ -372,25 +372,25 @@ export const LeaveApplicationPage: React.FC = () => {
 
                   {/* Core Details Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                      <span className="text-slate-400 font-semibold block text-[11px]">Period of Absence</span>
-                      <div className="font-mono font-bold text-white text-sm">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                      <span className="text-slate-500 font-semibold block text-[11px]">Period of Absence</span>
+                      <div className="font-mono font-bold text-slate-900 text-sm">
                         {new Date(app.from_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        <span className="text-slate-500 mx-1.5">➔</span>
+                        <span className="text-slate-400 mx-1.5">➔</span>
                         {new Date(app.to_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </div>
-                      <span className="text-[11px] text-emerald-400 font-semibold">
+                      <span className="text-[11px] text-slate-700 font-semibold">
                         Total: {app.number_of_days} Day(s)
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1 md:col-span-2">
-                      <span className="text-slate-400 font-semibold block text-[11px]">Purpose / Explanation</span>
-                      <p className="text-slate-200 italic leading-relaxed">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1 md:col-span-2">
+                      <span className="text-slate-500 font-semibold block text-[11px]">Purpose / Explanation</span>
+                      <p className="text-slate-700 italic leading-relaxed">
                         "{app.reason}"
                       </p>
                       {app.attachment_name && (
-                        <span className="inline-block text-[11px] text-slate-400 font-mono mt-1">
+                        <span className="inline-block text-[11px] text-slate-500 font-mono mt-1">
                           📎 Attached document: {app.attachment_name}
                         </span>
                       )}
@@ -399,21 +399,21 @@ export const LeaveApplicationPage: React.FC = () => {
 
                   {/* Multi-Stage Visual Timeline */}
                   <div className="pt-2">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">
                       Application Review Timeline
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {/* Step 1: Submission */}
-                      <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-emerald-500/30 space-y-1">
-                        <div className="flex items-center justify-between text-xs font-bold text-emerald-400">
+                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-900">
                           <span className="flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                             1. Application Submitted
                           </span>
-                          <span className="text-[10px] text-slate-400">Completed</span>
+                          <span className="text-[10px] text-slate-500">Completed</span>
                         </div>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-slate-600">
                           Dispatched to Class Coordinator
                         </p>
                       </div>
@@ -421,38 +421,38 @@ export const LeaveApplicationPage: React.FC = () => {
                       {/* Step 2: Class Coordinator */}
                       <div className={`p-3.5 rounded-2xl border space-y-1 ${
                         isPendingCoord
-                          ? 'bg-amber-500/10 border-amber-500/40'
+                          ? 'bg-amber-50 border-amber-200'
                           : app.status === 'REJECTED_BY_COORDINATOR'
-                          ? 'bg-rose-500/10 border-rose-500/40'
-                          : 'bg-slate-950/70 border-emerald-500/30'
+                          ? 'bg-rose-50 border-rose-200'
+                          : 'bg-slate-50 border-slate-200'
                       }`}>
                         <div className="flex items-center justify-between text-xs font-bold">
                           <span className={`flex items-center gap-1.5 ${
                             isPendingCoord 
-                              ? 'text-amber-300' 
+                              ? 'text-amber-800' 
                               : app.status === 'REJECTED_BY_COORDINATOR' 
-                              ? 'text-rose-400' 
-                              : 'text-emerald-400'
+                              ? 'text-rose-700' 
+                              : 'text-slate-900'
                           }`}>
-                            {isPendingCoord && <Clock className="w-4 h-4 text-amber-400 animate-spin" />}
-                            {app.status === 'REJECTED_BY_COORDINATOR' && <XCircle className="w-4 h-4 text-rose-400" />}
-                            {!isPendingCoord && app.status !== 'REJECTED_BY_COORDINATOR' && <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
+                            {isPendingCoord && <Clock className="w-4 h-4 text-amber-600 animate-spin" />}
+                            {app.status === 'REJECTED_BY_COORDINATOR' && <XCircle className="w-4 h-4 text-rose-600" />}
+                            {!isPendingCoord && app.status !== 'REJECTED_BY_COORDINATOR' && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
                             2. Class Coordinator
                           </span>
                           <span className="text-[10px] font-mono">
                             {isPendingCoord ? 'Pending' : app.status === 'REJECTED_BY_COORDINATOR' ? 'Rejected' : 'Approved ✓'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-300">
+                        <p className="text-[11px] text-slate-700 font-medium">
                           {app.coordinator_approver?.full_name || app.coordinator?.full_name || hierarchyData.coordinator?.name || 'Class Coordinator'}
                         </p>
                         {app.coordinator_approved_at && (
-                          <p className="text-[10px] text-slate-400 font-mono">
+                          <p className="text-[10px] text-slate-500 font-mono">
                             {new Date(app.coordinator_approved_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         )}
                         {app.status === 'REJECTED_BY_COORDINATOR' && app.rejection_reason && (
-                          <p className="text-[11px] text-rose-300 font-semibold mt-1">
+                          <p className="text-[11px] text-rose-700 font-semibold mt-1">
                             Reason: {app.rejection_reason}
                           </p>
                         )}
@@ -461,43 +461,43 @@ export const LeaveApplicationPage: React.FC = () => {
                       {/* Step 3: HOD Review */}
                       <div className={`p-3.5 rounded-2xl border space-y-1 ${
                         isApproved
-                          ? 'bg-slate-950/70 border-emerald-500/30'
+                          ? 'bg-slate-50 border-slate-200'
                           : isPendingHod
-                          ? 'bg-cyan-500/10 border-cyan-500/40'
+                          ? 'bg-blue-50 border-blue-200'
                           : app.status === 'REJECTED_BY_HOD'
-                          ? 'bg-rose-500/10 border-rose-500/40'
-                          : 'bg-slate-950/40 border-slate-800 opacity-60'
+                          ? 'bg-rose-50 border-rose-200'
+                          : 'bg-slate-50/50 border-slate-100 opacity-60'
                       }`}>
                         <div className="flex items-center justify-between text-xs font-bold">
                           <span className={`flex items-center gap-1.5 ${
                             isApproved
-                              ? 'text-emerald-400'
+                              ? 'text-slate-900'
                               : isPendingHod
-                              ? 'text-cyan-300'
+                              ? 'text-blue-700'
                               : app.status === 'REJECTED_BY_HOD'
-                              ? 'text-rose-400'
-                              : 'text-slate-400'
+                              ? 'text-rose-700'
+                              : 'text-slate-500'
                           }`}>
-                            {isApproved && <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />}
-                            {isPendingHod && <Clock className="w-4 h-4 text-cyan-400 animate-spin" />}
-                            {app.status === 'REJECTED_BY_HOD' && <XCircle className="w-4 h-4 text-rose-400" />}
-                            {!isApproved && !isPendingHod && app.status !== 'REJECTED_BY_HOD' && <ShieldCheck className="w-4 h-4 text-slate-500" />}
+                            {isApproved && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                            {isPendingHod && <Clock className="w-4 h-4 text-blue-600 animate-spin" />}
+                            {app.status === 'REJECTED_BY_HOD' && <XCircle className="w-4 h-4 text-rose-600" />}
+                            {!isApproved && !isPendingHod && app.status !== 'REJECTED_BY_HOD' && <ShieldCheck className="w-4 h-4 text-slate-400" />}
                             3. Head of Department
                           </span>
                           <span className="text-[10px] font-mono">
                             {isApproved ? 'Approved ✓' : isPendingHod ? 'Pending' : app.status === 'REJECTED_BY_HOD' ? 'Rejected' : 'Waiting'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-300">
+                        <p className="text-[11px] text-slate-700 font-medium">
                           {app.hod_approver?.full_name || app.hod?.full_name || hierarchyData.hod?.name || 'Head of Department'}
                         </p>
                         {app.hod_approved_at && (
-                          <p className="text-[10px] text-slate-400 font-mono">
+                          <p className="text-[10px] text-slate-500 font-mono">
                             {new Date(app.hod_approved_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         )}
                         {app.status === 'REJECTED_BY_HOD' && app.rejection_reason && (
-                          <p className="text-[11px] text-rose-300 font-semibold mt-1">
+                          <p className="text-[11px] text-rose-700 font-semibold mt-1">
                             Reason: {app.rejection_reason}
                           </p>
                         )}
@@ -521,18 +521,18 @@ export const LeaveApplicationPage: React.FC = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {submitError && (
-            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{submitError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Leave Category</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Leave Category</label>
             <select
               value={leaveType}
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               <option value="Medical Leave">Medical Leave (Health / Illness)</option>
               <option value="Duty Leave (OD)">On-Duty Leave (Sports / Hackathon / College Events)</option>
@@ -544,66 +544,66 @@ export const LeaveApplicationPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">From Date</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">From Date</label>
               <input
                 type="date"
                 required
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">To Date</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">To Date</label>
               <input
                 type="date"
                 required
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
           </div>
 
-          <div className="px-3 py-2 rounded-xl bg-slate-950/50 border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+          <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center justify-between">
             <span>Calculated Duration:</span>
-            <strong className="text-emerald-400 font-mono text-sm">{calculatedDays} Day(s)</strong>
+            <strong className="text-slate-900 font-mono text-sm">{calculatedDays} Day(s)</strong>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Reason / Purpose of Leave</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Reason / Purpose of Leave</label>
             <textarea
               rows={3}
               required
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="State clear purpose of leave (e.g., severe viral fever with doctor advised rest)..."
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Supporting Document / Certificate (Optional)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Supporting Document / Certificate (Optional)</label>
             <input
               type="file"
               onChange={(e) => setFileName(e.target.files?.[0]?.name || null)}
-              className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-slate-300 focus:outline-none"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none"
             />
           </div>
 
           {/* Workflow Notice */}
-          <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-[11px] text-slate-300 space-y-1">
-            <span className="font-bold text-[#00ff88] block">Approval Hierarchy Routing:</span>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+            <span className="font-bold text-slate-900 block">Approval Hierarchy Routing:</span>
             <p className="leading-relaxed">
               Your request will be routed to Class Coordinator <strong>{hierarchyData.coordinator?.name || 'Assigned Coordinator'}</strong>, and upon their recommendation, will be forwarded to HOD <strong>{hierarchyData.hod?.name || 'Head of Department'}</strong> for final sanction.
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-emerald-500/15">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="neon" size="sm" isLoading={isSubmitting}>
+            <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
               Submit Application
             </Button>
           </div>

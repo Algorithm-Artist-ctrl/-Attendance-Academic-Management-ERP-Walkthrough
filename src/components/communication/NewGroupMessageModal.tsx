@@ -233,41 +233,41 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2.5 text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800">
+            <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
             <div>{error}</div>
           </div>
         )}
 
         {isSuccess && (
-          <div className="p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl flex items-center gap-2.5 text-xs text-[#00ff88] animate-in fade-in duration-200">
-            <CheckCircle2 className="w-4 h-4 text-[#00ff88] shrink-0" />
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-800 animate-in fade-in duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-semibold">Announcement broadcast successfully to class group!</span>
           </div>
         )}
 
         {/* Guided 3-Step Selection */}
-        <div className="p-4 bg-slate-900/80 border border-emerald-500/25 rounded-2xl space-y-3 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
-            <ShieldCheck className="w-4 h-4 text-[#00ff88]" />
+        <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-slate-600" />
             <span>Target Class Group (Role Authorized)</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Step 1: Academic Year */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 mb-1.5 block">
+              <label className="text-[11px] font-semibold text-slate-700 mb-1.5 block">
                 1. Academic Year *
               </label>
               <select
                 value={selectedYearId}
                 onChange={(e) => handleYearChange(e.target.value)}
                 required
-                className="w-full text-xs bg-slate-950/90 border border-emerald-500/30 text-white rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] focus:outline-none transition-all hover:border-emerald-400/60"
+                className="w-full text-xs bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-medium focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none shadow-xs transition-all"
               >
-                <option value="" className="bg-slate-950 text-slate-400">Select Year...</option>
+                <option value="" className="text-slate-400">Select Year...</option>
                 {eligibleYears.map(y => (
-                  <option key={y.id} value={y.id} className="bg-slate-950 text-white">
+                  <option key={y.id} value={y.id} className="text-slate-900">
                     {y.name}
                   </option>
                 ))}
@@ -276,7 +276,7 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
 
             {/* Step 2: Section */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 mb-1.5 block">
+              <label className="text-[11px] font-semibold text-slate-700 mb-1.5 block">
                 2. Section *
               </label>
               <select
@@ -284,11 +284,11 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
                 onChange={(e) => handleSectionChange(e.target.value)}
                 disabled={!selectedYearId || eligibleSections.length === 0}
                 required
-                className="w-full text-xs bg-slate-950/90 border border-emerald-500/30 text-white rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] focus:outline-none disabled:bg-slate-900/40 disabled:border-slate-800 disabled:text-slate-500 transition-all hover:border-emerald-400/60"
+                className="w-full text-xs bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-medium focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 shadow-xs transition-all"
               >
-                <option value="" className="bg-slate-950 text-slate-400">Select Section...</option>
+                <option value="" className="text-slate-400">Select Section...</option>
                 {eligibleSections.map(s => (
-                  <option key={s.id} value={s.id} className="bg-slate-950 text-white">
+                  <option key={s.id} value={s.id} className="text-slate-900">
                     Section {s.name} {s.room_number ? `(${s.room_number})` : ''}
                   </option>
                 ))}
@@ -297,26 +297,26 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
 
             {/* Step 3: Subject (Optional) */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
                 <span>3. Subject</span>
-                <span className="text-[10px] text-[#00ff88] font-normal">Optional</span>
+                <span className="text-[10px] text-slate-500 font-normal">Optional</span>
               </label>
               <select
                 value={selectedSubjectId}
                 onChange={(e) => setSelectedSubjectId(e.target.value)}
                 disabled={!selectedSectionId}
-                className="w-full text-xs bg-slate-950/90 border border-emerald-500/30 text-white rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] focus:outline-none disabled:bg-slate-900/40 disabled:border-slate-800 disabled:text-slate-500 transition-all hover:border-emerald-400/60"
+                className="w-full text-xs bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-2 font-medium focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 shadow-xs transition-all"
               >
-                <option value="" className="bg-slate-950 text-[#00ff88] font-semibold">
+                <option value="" className="text-slate-900 font-semibold">
                   Entire Class (All Subjects / Section Announcement)
                 </option>
                 {eligibleSubjects.length === 0 ? (
-                  <option value="" disabled className="bg-slate-950 text-slate-500">
+                  <option value="" disabled className="text-slate-400">
                     No assigned subjects for this class
                   </option>
                 ) : (
                   eligibleSubjects.map(sub => (
-                    <option key={sub.id} value={sub.id} className="bg-slate-950 text-white">
+                    <option key={sub.id} value={sub.id} className="text-slate-900">
                       {sub.subject_name}
                     </option>
                   ))
@@ -325,14 +325,14 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
             </div>
           </div>
 
-          <p className="text-[10px] text-slate-400 leading-normal">
+          <p className="text-[10px] text-slate-500 leading-normal">
             Choose a subject to target a specific course, or leave as Entire Class for general section announcements.
           </p>
         </div>
 
         {/* Message Title (Optional) */}
         <div>
-          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
             Announcement Title (Optional)
           </label>
           <input
@@ -340,13 +340,13 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
             placeholder="e.g., Tomorrow's Class Schedule Update / Assignment Submission"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full text-xs bg-slate-950/90 border border-emerald-500/20 text-white placeholder-slate-500 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] focus:outline-none transition-all"
+            className="w-full text-xs bg-white border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl px-3 py-2.5 focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none shadow-xs transition-all"
           />
         </div>
 
         {/* Message Body */}
         <div>
-          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
             Message Content *
           </label>
           <textarea
@@ -355,7 +355,7 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             required
-            className="w-full text-xs bg-slate-950/90 border border-emerald-500/20 text-white placeholder-slate-500 rounded-xl p-3 focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] focus:outline-none resize-none leading-relaxed transition-all"
+            className="w-full text-xs bg-white border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl p-3 focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none shadow-xs resize-none leading-relaxed transition-all"
           />
         </div>
 
@@ -370,13 +370,13 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
               className="hidden"
             />
             {attachment ? (
-              <div className="flex items-center gap-2 bg-emerald-500/15 text-[#00ff88] text-xs px-3 py-1.5 rounded-xl border border-emerald-500/30">
-                <FileText className="w-3.5 h-3.5 shrink-0" />
+              <div className="flex items-center gap-2 bg-slate-100 text-slate-800 text-xs px-3 py-1.5 rounded-xl border border-slate-200">
+                <FileText className="w-3.5 h-3.5 shrink-0 text-slate-600" />
                 <span className="truncate max-w-[180px] font-medium">{attachment.file.name}</span>
                 <button
                   type="button"
                   onClick={() => setAttachment(null)}
-                  className="hover:text-red-400 transition-colors ml-1"
+                  className="hover:text-rose-600 transition-colors ml-1"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -385,9 +385,9 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-[#00ff88] font-medium px-3 py-1.5 rounded-xl hover:bg-emerald-500/10 border border-emerald-500/20 transition-all"
+                className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 font-semibold px-3 py-1.5 rounded-xl hover:bg-slate-50 border border-slate-200 shadow-xs transition-all"
               >
-                <Paperclip className="w-3.5 h-3.5 text-[#00ff88]" />
+                <Paperclip className="w-3.5 h-3.5 text-slate-500" />
                 <span>Add Attachment</span>
               </button>
             )}
@@ -399,21 +399,21 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
               type="checkbox"
               checked={allowStudentReplies}
               onChange={(e) => setAllowStudentReplies(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-[#00ff88] focus:ring-[#00ff88] focus:ring-offset-slate-950"
+              className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
             />
-            <span className="text-xs font-medium text-slate-300">
+            <span className="text-xs font-medium text-slate-700">
               Allow student replies
             </span>
           </label>
         </div>
 
         {/* Modal Actions */}
-        <div className="pt-3 border-t border-emerald-500/15 flex items-center justify-end gap-2.5">
+        <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl transition-all disabled:opacity-50"
+            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all disabled:opacity-50 shadow-xs"
           >
             Cancel
           </button>
@@ -421,12 +421,12 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
           <button
             type="submit"
             disabled={isSubmitting || isSuccess || !selectedYearId || !selectedSectionId || !message.trim()}
-            className={`px-5 py-2 text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] flex items-center gap-1.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`px-5 py-2 text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 font-semibold active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
               isSuccess
-                ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                ? 'bg-emerald-600 text-white'
                 : error
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                : 'text-slate-950 bg-[#00ff88] hover:bg-[#00e67a]'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                : 'text-white bg-[#0f172a] hover:bg-black'
             }`}
           >
             {isSubmitting ? (
@@ -436,7 +436,7 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
               </>
             ) : isSuccess ? (
               <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                 <span>Broadcast ✓</span>
               </>
             ) : error ? (

@@ -302,17 +302,16 @@ export const FacultyAssignmentsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
                 <FileText className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Assignment Management & Grading</h1>
-                <p className="text-slate-400 text-sm mt-0.5">
+                <h1 className="text-2xl font-black text-slate-900 font-serif-institutional tracking-tight">Assignment Management & Grading</h1>
+                <p className="text-slate-600 text-sm mt-0.5">
                   Create Google Form & file upload assignments, evaluate student submissions, and record marks.
                 </p>
               </div>
@@ -320,14 +319,14 @@ export const FacultyAssignmentsPage: React.FC = () => {
           </div>
           <Button 
             onClick={handleOpenCreateModal}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+            className="bg-[#0f172a] hover:bg-black text-white shadow-xs font-bold rounded-xl flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Create New Assignment
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
@@ -335,7 +334,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
               placeholder="Search assignments by title..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -343,7 +342,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
             <select
               value={selectedSubjectFilter}
               onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               <option value="ALL">All Assigned Subjects ({myAssignedSubjects.length})</option>
               {myAssignedSubjects.map(s => (
@@ -356,7 +355,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
             <select
               value={selectedSectionFilter}
               onChange={(e) => setSelectedSectionFilter(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             >
               <option value="ALL">All Assigned Sections ({myAssignedSections.length})</option>
               {myAssignedSections.map(sec => {
@@ -374,13 +373,13 @@ export const FacultyAssignmentsPage: React.FC = () => {
       </div>
 
       {/* Active Class & Section Context Banner */}
-      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/80 border border-blue-500/30 text-xs text-slate-300">
+      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-slate-400 font-semibold">Active Managing Context:</span>
-          <span className="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-bold font-mono">
+          <span className="text-slate-500 font-semibold">Active Managing Context:</span>
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold font-mono border border-slate-200">
             {selectedSubjectFilter === 'ALL' ? 'All Assigned Subjects' : subjects.find(s => s.id === selectedSubjectFilter)?.subject_code + ' — ' + subjects.find(s => s.id === selectedSubjectFilter)?.subject_name}
           </span>
-          <span className="px-2.5 py-0.5 rounded-md bg-slate-900 text-white font-bold border border-blue-500/20">
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold border border-slate-200">
             {selectedSectionFilter === 'ALL' ? 'All Assigned Sections' : 'Section ' + sections.find(s => s.id === selectedSectionFilter)?.name}
           </span>
           {(() => {
@@ -390,13 +389,13 @@ export const FacultyAssignmentsPage: React.FC = () => {
             const sem = semesters.find(s => s.id === activeSec?.semester_id);
             const yr = years.find(y => y.id === sem?.academic_year_id);
             return (
-              <span className="text-slate-400">
+              <span className="text-slate-500 font-medium">
                 • {sem?.name || 'Odd Semester 2026–2027'} {yr?.name ? `(${yr.name})` : ''}
               </span>
             );
           })()}
         </div>
-        <span className="text-[11px] text-blue-400 font-semibold hidden sm:inline">
+        <span className="text-[11px] text-slate-600 font-semibold hidden sm:inline">
           ✓ Section-Specific Isolation Active
         </span>
       </div>
@@ -404,9 +403,9 @@ export const FacultyAssignmentsPage: React.FC = () => {
       {/* Assignment List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredAssignments.length === 0 ? (
-          <div className="col-span-full py-16 text-center bg-slate-900/50 border border-slate-800/60 rounded-2xl">
-            <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
-            <h3 className="text-lg font-semibold text-slate-300">No Assignments Found</h3>
+          <div className="col-span-full py-16 text-center bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+            <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-slate-800 font-serif-institutional">No Assignments Found</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto mt-1">
               Click "Create New Assignment" to publish an academic task with a Google Form or file upload requirement.
             </p>
@@ -420,17 +419,17 @@ export const FacultyAssignmentsPage: React.FC = () => {
             return (
               <div 
                 key={assignment.id} 
-                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg"
+                className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between shadow-2xs"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                       {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || ''} • Odd Semester 2026–27
                     </span>
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => handleDelete(assignment.id, assignment.title)}
-                        className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                         title="Delete Assignment"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -438,25 +437,25 @@ export const FacultyAssignmentsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white mb-1 line-clamp-1">{assignment.title}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-1">{assignment.title}</h3>
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-4">
                     {assignment.description || 'No specific instructions provided.'}
                   </p>
 
-                  <div className="space-y-2 py-3 border-y border-slate-800/80 text-xs">
-                    <div className="flex items-center justify-between text-slate-400">
+                  <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Max Marks:</span>
-                      <span className="font-semibold text-emerald-400">{assignment.max_marks} Marks</span>
+                      <span className="font-semibold text-emerald-800">{assignment.max_marks} Marks</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Submission Type:</span>
-                      <span className="font-semibold text-slate-200 capitalize">
+                      <span className="font-semibold text-slate-800 capitalize">
                         {assignment.submission_type === 'google_form' ? 'Google Form' : assignment.submission_type === 'file_upload' ? 'File Upload' : 'Google Form + File'}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-slate-600">
                       <span>Due Date:</span>
-                      <span className={clsx("font-semibold flex items-center gap-1", isDuePassed ? "text-amber-400" : "text-slate-300")}>
+                      <span className={clsx("font-semibold flex items-center gap-1", isDuePassed ? "text-amber-800" : "text-slate-700")}>
                         <Clock className="w-3.5 h-3.5" />
                         {new Date(assignment.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -465,13 +464,13 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
                   {/* Submission Statistics */}
                   <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-                    <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
-                      <div className="text-lg font-bold text-white">{subs.length}</div>
-                      <div className="text-[11px] text-slate-400">Submitted</div>
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <div className="text-lg font-bold text-slate-900">{subs.length}</div>
+                      <div className="text-[11px] text-slate-500">Submitted</div>
                     </div>
-                    <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
-                      <div className="text-lg font-bold text-emerald-400">{gradedCount}</div>
-                      <div className="text-[11px] text-slate-400">Graded</div>
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <div className="text-lg font-bold text-emerald-800">{gradedCount}</div>
+                      <div className="text-[11px] text-slate-500">Graded</div>
                     </div>
                   </div>
                 </div>
@@ -482,14 +481,14 @@ export const FacultyAssignmentsPage: React.FC = () => {
                       href={assignment.google_form_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-700"
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-300 shadow-xs"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-blue-400" /> Form
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-600" /> Form
                     </a>
                   )}
                   <Button
                     onClick={() => setActiveAssignmentForGrading(assignment)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20"
+                    className="flex-1 bg-[#0f172a] hover:bg-black text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
                   >
                     <Eye className="w-3.5 h-3.5" /> View & Grade
                   </Button>
@@ -508,31 +507,31 @@ export const FacultyAssignmentsPage: React.FC = () => {
       >
         <form onSubmit={handleCreateAssignment} className="space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {errorMsg}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Assignment Title *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Assignment Title *</label>
             <input
               type="text"
               required
               placeholder="e.g. Unit 2 Tree Traversal Assignment"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Subject *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Subject *</label>
               <select
                 value={selectedSubjectId}
                 onChange={(e) => handleSubjectChange(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               >
                 {myAssignedSubjects.map(s => (
                   <option key={s.subject.id} value={s.subject.id}>
@@ -542,11 +541,11 @@ export const FacultyAssignmentsPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Section *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Section *</label>
               <select
                 value={selectedSectionId}
                 onChange={(e) => setSelectedSectionId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-medium"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 font-medium"
               >
                 {myAssignedSubjects
                   .find(s => s.subject.id === selectedSubjectId)
@@ -569,11 +568,11 @@ export const FacultyAssignmentsPage: React.FC = () => {
             const currentSecObj = currentSubObj?.sections.find(sec => sec.id === selectedSectionId) || sections.find(s => s.id === selectedSectionId);
             if (!currentSecObj) return null;
             return (
-              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-xs text-blue-300 flex items-start gap-2.5">
-                <Users className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5">
+                <Users className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white">Target Scope: Section {currentSecObj.name} {currentSecObj.room_number ? `(Room ${currentSecObj.room_number})` : ''}</span>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <span className="font-semibold text-slate-900">Target Scope: Section {currentSecObj.name} {currentSecObj.room_number ? `(Room ${currentSecObj.room_number})` : ''}</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     This assignment will be published strictly to students enrolled in Section {currentSecObj.name}. Other sections will not have access.
                   </p>
                 </div>
@@ -582,23 +581,23 @@ export const FacultyAssignmentsPage: React.FC = () => {
           })()}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Instructions / Description</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Instructions / Description</label>
             <textarea
               rows={3}
               placeholder="Specify requirements, reference pages, or formatting rules..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Submission Type *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Submission Type *</label>
               <select
                 value={submissionType}
                 onChange={(e) => setSubmissionType(e.target.value as SubmissionType)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               >
                 <option value="both">Google Form + File Upload</option>
                 <option value="google_form">Google Form Only</option>
@@ -606,7 +605,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Maximum Marks *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Maximum Marks *</label>
               <input
                 type="number"
                 min="1"
@@ -614,34 +613,34 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 required
                 value={maxMarks}
                 onChange={(e) => setMaxMarks(Number(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
             </div>
           </div>
 
           {(submissionType === 'google_form' || submissionType === 'both') && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Google Form Link *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Google Form Link *</label>
               <input
                 type="url"
                 required={submissionType === 'google_form'}
                 placeholder="https://forms.google.com/..."
                 value={googleFormUrl}
                 onChange={(e) => setGoogleFormUrl(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
               />
               <p className="text-[11px] text-slate-500 mt-1">Students will be redirected to this secure external link.</p>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Due Date & Time *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Due Date & Time *</label>
             <input
               type="datetime-local"
               required
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
@@ -651,14 +650,14 @@ export const FacultyAssignmentsPage: React.FC = () => {
               id="lateSub"
               checked={allowLateSubmission}
               onChange={(e) => setAllowLateSubmission(e.target.checked)}
-              className="rounded bg-slate-950 border-slate-800 text-blue-600 focus:ring-0"
+              className="rounded bg-white border-slate-300 text-slate-900 focus:ring-0"
             />
-            <label htmlFor="lateSub" className="text-xs text-slate-300">
+            <label htmlFor="lateSub" className="text-xs text-slate-700">
               Allow late submissions (flagged as "Late Submission" in portal)
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
@@ -669,11 +668,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
             <Button
               type="submit"
               disabled={isSubmitting || createSuccess}
-              className={`transition-all ${
-                createSuccess
-                  ? '!bg-emerald-500 !text-slate-950 font-bold'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              }`}
+              className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl shadow-xs"
             >
               {isSubmitting ? (
                 <span className="flex items-center">
@@ -703,18 +698,18 @@ export const FacultyAssignmentsPage: React.FC = () => {
         title={`Submissions & Grading — ${activeAssignmentForGrading?.title || ''}`}
       >
         <div className="space-y-4">
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs text-slate-700">
             <div>
-              <span className="text-slate-400">Subject: </span>
-              <span className="text-white font-medium">{activeAssignmentForGrading?.subject?.subject_name}</span>
+              <span className="text-slate-500">Subject: </span>
+              <span className="text-slate-900 font-semibold">{activeAssignmentForGrading?.subject?.subject_name}</span>
             </div>
             <div>
-              <span className="text-slate-400">Max Marks: </span>
-              <span className="text-emerald-400 font-bold">{activeAssignmentForGrading?.max_marks}</span>
+              <span className="text-slate-500">Max Marks: </span>
+              <span className="text-emerald-800 font-bold">{activeAssignmentForGrading?.max_marks}</span>
             </div>
             <div>
-              <span className="text-slate-400">Section: </span>
-              <span className="text-blue-400 font-medium">Section {activeAssignmentForGrading?.section?.name}</span>
+              <span className="text-slate-500">Section: </span>
+              <span className="text-slate-900 font-semibold">Section {activeAssignmentForGrading?.section?.name}</span>
             </div>
           </div>
 
@@ -722,7 +717,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
           <div className="overflow-x-auto max-h-[400px]">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/80 sticky top-0">
+                <tr className="border-b border-slate-200 text-slate-600 bg-slate-50/90 sticky top-0 font-semibold uppercase tracking-wider">
                   <th className="py-2.5 px-3">Roll No.</th>
                   <th className="py-2.5 px-3">Student</th>
                   <th className="py-2.5 px-3">Status</th>
@@ -731,24 +726,24 @@ export const FacultyAssignmentsPage: React.FC = () => {
                   <th className="py-2.5 px-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-100">
                 {activeSectionStudents.map(student => {
                   const sub = activeSubmissionsMap.get(student.id);
                   const isSubmitted = !!sub;
 
                   return (
-                    <tr key={student.id} className="hover:bg-slate-800/40">
-                      <td className="py-2.5 px-3 font-mono text-slate-300">{student.roll_number}</td>
-                      <td className="py-2.5 px-3 font-medium text-white">{student.full_name}</td>
+                    <tr key={student.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-2.5 px-3 font-mono text-slate-700">{student.roll_number}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">{student.full_name}</td>
                       <td className="py-2.5 px-3">
                         {!isSubmitted ? (
-                          <span className="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-400">Not Submitted</span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] bg-slate-100 text-slate-600 border border-slate-200">Not Submitted</span>
                         ) : sub.status === 'graded' ? (
-                          <span className="px-2 py-0.5 rounded text-[11px] bg-emerald-500/20 text-emerald-300 font-semibold">Graded</span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">Graded</span>
                         ) : sub.status === 'late_submission' ? (
-                          <span className="px-2 py-0.5 rounded text-[11px] bg-amber-500/20 text-amber-300 font-medium">Late Submission</span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold">Late Submission</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded text-[11px] bg-blue-500/20 text-blue-300 font-medium">Submitted</span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] bg-slate-100 text-slate-800 border border-slate-200 font-semibold">Submitted</span>
                         )}
                       </td>
                       <td className="py-2.5 px-3">
@@ -757,20 +752,20 @@ export const FacultyAssignmentsPage: React.FC = () => {
                             href={sub.file_path}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium"
+                            className="text-slate-900 hover:underline flex items-center gap-1 font-semibold"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <Download className="w-3.5 h-3.5 text-slate-600" />
                             {sub.file_name || 'Download File'}
                           </a>
                         ) : sub?.google_form_submitted ? (
-                          <span className="text-slate-400 flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Google Form
+                          <span className="text-slate-700 flex items-center gap-1 font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Google Form
                           </span>
                         ) : (
-                          <span className="text-slate-500">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-white">
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                         {sub?.marks_obtained !== undefined && sub?.marks_obtained !== null 
                           ? `${sub.marks_obtained} / ${activeAssignmentForGrading?.max_marks}` 
                           : '—'}
@@ -779,9 +774,9 @@ export const FacultyAssignmentsPage: React.FC = () => {
                         <Button
                           variant="ghost"
                           onClick={() => handleOpenGradingForStudent(student)}
-                          className="text-blue-400 hover:text-blue-300 p-1 text-xs"
+                          className="text-slate-800 hover:text-slate-950 p-1 text-xs font-semibold"
                         >
-                          <Edit3 className="w-3.5 h-3.5 mr-1" /> Grade
+                          <Edit3 className="w-3.5 h-3.5 mr-1 text-slate-600" /> Grade
                         </Button>
                       </td>
                     </tr>
@@ -793,15 +788,15 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
           {/* Quick Grading Drawer for single student */}
           {selectedStudentForGrading && (
-            <div className="p-4 bg-slate-950 border border-blue-500/30 rounded-2xl space-y-3 mt-4">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 mt-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Award className="w-4 h-4 text-blue-400" />
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-slate-700" />
                   Grading: {selectedStudentForGrading.full_name} ({selectedStudentForGrading.roll_number})
                 </h4>
                 <button
                   onClick={() => setSelectedStudentForGrading(null)}
-                  className="text-slate-500 hover:text-slate-300 text-xs"
+                  className="text-slate-500 hover:text-slate-800 text-xs font-medium"
                 >
                   Close
                 </button>
@@ -809,7 +804,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">
+                  <label className="block text-xs text-slate-600 font-semibold mb-1">
                     Marks Obtained (Max: {activeAssignmentForGrading?.max_marks})
                   </label>
                   <input
@@ -818,17 +813,17 @@ export const FacultyAssignmentsPage: React.FC = () => {
                     max={activeAssignmentForGrading?.max_marks || 100}
                     value={gradeMarks}
                     onChange={(e) => setGradeMarks(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Feedback Comments</label>
+                  <label className="block text-xs text-slate-600 font-semibold mb-1">Feedback Comments</label>
                   <input
                     type="text"
                     placeholder="e.g. Excellent work, detailed explanation"
                     value={gradeFeedback}
                     onChange={(e) => setGradeFeedback(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
                   />
                 </div>
               </div>
@@ -837,11 +832,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 <Button
                   onClick={handleSaveGrade}
                   disabled={isSavingGrade || saveGradeSuccess}
-                  className={`text-xs py-1.5 transition-all flex items-center gap-1.5 ${
-                    saveGradeSuccess
-                      ? '!bg-emerald-500 !text-slate-950 font-bold'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                  }`}
+                  className="bg-[#0f172a] hover:bg-black text-white text-xs py-1.5 px-4 rounded-xl font-bold shadow-xs flex items-center gap-1.5"
                 >
                   {isSavingGrade ? (
                     <>

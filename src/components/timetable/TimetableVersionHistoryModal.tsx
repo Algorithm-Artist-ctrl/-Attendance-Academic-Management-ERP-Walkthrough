@@ -88,15 +88,15 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2.5 text-white">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
             <History className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight">
+            <h2 className="text-lg font-black tracking-tight text-slate-900">
               Timetable Version History
             </h2>
-            <p className="text-xs text-slate-400 font-normal">
+            <p className="text-xs text-slate-500 font-normal">
               Auditable record of published academic schedule versions {sectionName ? `• Section ${sectionName}` : ''}
             </p>
           </div>
@@ -110,26 +110,26 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
           <div className={clsx(
             'p-3 rounded-2xl border text-xs flex items-center gap-2 font-bold animate-in fade-in',
             statusMsg.type === 'success' 
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' 
-              : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+              : 'bg-rose-50 border-rose-200 text-rose-800'
           )}>
             {statusMsg.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-[#00ff88] shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
             )}
             <span>{statusMsg.text}</span>
           </div>
         )}
 
         {isLoading ? (
-          <div className="p-8 text-center text-xs text-slate-400 font-bold">
+          <div className="p-8 text-center text-xs text-slate-500 font-bold">
             Loading version logs from Supabase Cloud...
           </div>
         ) : versions.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-slate-950/40 border border-emerald-500/15 text-center text-xs text-slate-400 space-y-1">
-            <History className="w-6 h-6 text-slate-500 mx-auto mb-2" />
-            <p className="font-bold text-white">Initial Timetable Active</p>
+          <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-xs text-slate-500 space-y-1">
+            <History className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+            <p className="font-bold text-slate-900">Initial Timetable Active</p>
             <p>No historical revision snapshots have been published yet.</p>
           </div>
         ) : (
@@ -140,30 +140,30 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
                 className={clsx(
                   'p-4 rounded-2xl border transition-all text-xs space-y-2',
                   ver.status === 'active'
-                    ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_15px_rgba(0,255,136,0.1)]'
-                    : 'bg-slate-950/80 border-emerald-500/10 hover:border-emerald-500/30'
+                    ? 'bg-slate-50 border-slate-300 shadow-xs'
+                    : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-xs'
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-emerald-500/30 font-black text-white text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-black text-slate-800 text-[11px]">
                       Version {ver.version_number}
                     </span>
                     <span className={clsx(
-                      'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                      'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
                       ver.status === 'active'
-                        ? 'bg-emerald-500/20 text-[#00ff88]'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                         : ver.status === 'superseded'
-                        ? 'bg-amber-500/20 text-amber-300'
-                        : 'bg-slate-800 text-slate-400'
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
                     )}>
                       {ver.status === 'active' ? 'Active Schedule' : ver.status === 'superseded' ? 'Superseded' : 'Archived'}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      W.E.F. <strong className="text-emerald-300">{ver.effective_from}</strong>
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      W.E.F. <strong className="text-slate-900 font-bold">{ver.effective_from}</strong>
                     </span>
 
                     {ver.status !== 'active' && user?.role !== 'super_admin' && (
@@ -172,8 +172,8 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
                         size="sm"
                         onClick={() => handleRollback(ver)}
                         isLoading={restoringVersionId === ver.id}
-                        leftIcon={<RotateCcw className="w-3.5 h-3.5 text-amber-400" />}
-                        className="text-[11px] font-bold border-amber-500/30 text-amber-300 hover:bg-amber-500/10 py-1 px-2.5 h-auto"
+                        leftIcon={<RotateCcw className="w-3.5 h-3.5 text-amber-700" />}
+                        className="text-[11px] font-bold border-amber-200 text-amber-800 hover:bg-amber-50 py-1 px-2.5 h-auto"
                       >
                         Restore
                       </Button>
@@ -181,23 +181,23 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-400 pt-1">
+                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500 pt-1">
                   <div className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Approved by: <strong className="text-white">{ver.approved_by || 'HOD'}</strong></span>
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Approved by: <strong className="text-slate-900">{ver.approved_by || 'HOD'}</strong></span>
                   </div>
 
                   <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
                     <span>{new Date(ver.approved_at || ver.created_at).toLocaleString()}</span>
                   </div>
                 </div>
 
                 {ver.changes_summary && (
-                  <div className="p-2.5 rounded-xl bg-slate-950/60 border border-emerald-500/10 text-[11px] text-slate-300 flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 flex items-center justify-between">
                     <div>
                       <span>Summary: </span>
-                      <span className="font-semibold text-emerald-400">
+                      <span className="font-semibold text-slate-900">
                         {ver.changes_summary.total_slots 
                           ? `${ver.changes_summary.total_slots} slots (${ver.changes_summary.source_type || 'Published'})` 
                           : ver.changes_summary.stats 
@@ -205,7 +205,7 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
                           : 'Schedule revision'}
                       </span>
                       {ver.changes_summary.room && (
-                        <span className="text-slate-400 ml-2">• Room: {ver.changes_summary.room}</span>
+                        <span className="text-slate-500 ml-2">• Room: {ver.changes_summary.room}</span>
                       )}
                     </div>
                   </div>

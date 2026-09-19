@@ -499,7 +499,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       {/* ======================================================== */}
       {/* 1. TOP HEADER & CLASS / SECTION SWITCHER */}
       {/* ======================================================== */}
-      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-500/25 relative overflow-hidden flex flex-col gap-4">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col gap-4">
         
         {/* Navigation & Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -507,7 +507,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
             {onBack && (
               <button
                 onClick={onBack}
-                className="p-2 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-300 hover:text-white hover:border-[#00ff88] transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer shadow-xs"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -515,19 +515,19 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
             )}
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 border border-slate-200 text-slate-800 font-mono">
                   {currentSubject?.subject_code || 'COURSE'}
                 </span>
-                <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                <h1 className="text-lg sm:text-xl font-serif-institutional font-black text-slate-900 tracking-tight">
                   {currentSubject?.subject_name || 'Academic Class Workspace'}
                 </h1>
               </div>
-              <p className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-2">
-                {currentYear && <span>Year: <strong className="text-white">{currentYear.name}</strong></span>}
+              <p className="text-xs text-slate-500 mt-1 font-medium flex items-center gap-2">
+                {currentYear && <span>Year: <strong className="text-slate-800 font-bold">{currentYear.name}</strong></span>}
                 {currentYear && <span>•</span>}
-                <span>Room: <strong className="text-white">{currentSection?.room_number || 'Room TBD'}</strong></span>
+                <span>Room: <strong className="text-slate-800 font-bold">{currentSection?.room_number || 'Room TBD'}</strong></span>
                 <span>•</span>
-                <span>Enrolled: <strong className="text-[#00ff88]">{sectionStudents.length} Students</strong></span>
+                <span>Enrolled: <strong className="text-slate-900 font-bold">{sectionStudents.length} Students</strong></span>
               </p>
             </div>
           </div>
@@ -535,22 +535,22 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           {/* Quick Action Button */}
           <div className="flex items-center gap-2 shrink-0">
             <Button
-              variant="neon"
               size="sm"
               onClick={() => onTakeAttendance ? onTakeAttendance(sectionTimetable[0]?.id) : null}
-              leftIcon={<CheckSquare className="w-3.5 h-3.5 text-slate-950" />}
+              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-1.5"
             >
+              <CheckSquare className="w-3.5 h-3.5 text-white" />
               Take Attendance
             </Button>
           </div>
         </div>
 
         {/* SECTION SELECTION TABS & SUBJECT SWITCHER */}
-        <div className="pt-2 border-t border-emerald-500/15 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
           
           {/* Section Selector Pills */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-xs font-bold text-slate-400 shrink-0">Select Section:</span>
+            <span className="text-xs font-semibold text-slate-500 shrink-0">Select Section:</span>
             {availableSectionsForSubject.map(sec => {
               const sem = semesters.find(s => s.id === sec.semester_id);
               const yr = years.find(y => y.id === sem?.academic_year_id);
@@ -559,10 +559,10 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                   key={sec.id}
                   onClick={() => setSelectedSectionId(sec.id)}
                   className={clsx(
-                    'px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5',
+                    'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5 shadow-xs',
                     selectedSectionId === sec.id
-                      ? 'bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.35)] font-black'
-                      : 'bg-slate-950/80 text-slate-400 hover:text-white hover:bg-slate-900 border border-emerald-500/20'
+                      ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                      : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
                   )}
                 >
                   <Layers className="w-3.5 h-3.5" />
@@ -575,7 +575,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           {/* Subject Switcher Dropdown (if faculty teaches multiple subjects) */}
           {distinctSubjects.length > 1 && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400 shrink-0">Subject:</span>
+              <span className="text-xs font-semibold text-slate-500 shrink-0">Subject:</span>
               <select
                 value={selectedSubjectId}
                 onChange={(e) => {
@@ -584,7 +584,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                   const firstSec = myAssignedClasses.find(item => item.subject.id === newSubId)?.section;
                   if (firstSec) setSelectedSectionId(firstSec.id);
                 }}
-                className="bg-slate-950/80 border border-emerald-500/25 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               >
                 {distinctSubjects.map(sub => (
                   <option key={sub.id} value={sub.id}>
@@ -601,7 +601,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       {/* ======================================================== */}
       {/* 2. SECTION WORKSPACE SUB-NAVIGATION TABS */}
       {/* ======================================================== */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 overflow-x-auto no-scrollbar text-xs font-bold">
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-x-auto no-scrollbar text-xs font-semibold">
         {[
           { id: 'overview', label: '📊 Section Overview', count: undefined },
           { id: 'students', label: '👥 Students', count: sectionStudents.length },
@@ -616,15 +616,15 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
             className={clsx(
               'px-3.5 py-2 rounded-xl transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5',
               activeTab === tab.id
-                ? 'bg-slate-800 text-white border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             )}
           >
             <span>{tab.label}</span>
             {tab.count !== undefined && (
               <span className={clsx(
-                'px-1.5 py-0.2 rounded-full text-[10px] font-mono',
-                activeTab === tab.id ? 'bg-[#00ff88] text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'
+                'px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold',
+                activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
               )}>
                 {tab.count}
               </span>
@@ -642,93 +642,93 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
         <div className="space-y-6 animate-in fade-in">
           {/* KPI Cards for this section */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
-              <p className="text-[11px] text-slate-400 font-semibold">Enrolled Students</p>
-              <h3 className="text-xl sm:text-2xl font-black text-white mt-1">{sectionStudents.length}</h3>
-              <span className="text-[10px] text-emerald-400">Section {currentSection?.name}</span>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+              <p className="text-[11px] text-slate-500 font-semibold">Enrolled Students</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{sectionStudents.length}</h3>
+              <span className="text-[10px] text-slate-400">Section {currentSection?.name}</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
-              <p className="text-[11px] text-slate-400 font-semibold">Weekly Classes</p>
-              <h3 className="text-xl sm:text-2xl font-black text-[#00ff88] mt-1">{sectionTimetable.length}</h3>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+              <p className="text-[11px] text-slate-500 font-semibold">Weekly Classes</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{sectionTimetable.length}</h3>
               <span className="text-[10px] text-slate-400">Mon – Sat</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
-              <p className="text-[11px] text-slate-400 font-semibold">Assignments</p>
-              <h3 className="text-xl sm:text-2xl font-black text-blue-400 mt-1">{sectionAssignments.length}</h3>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+              <p className="text-[11px] text-slate-500 font-semibold">Assignments</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{sectionAssignments.length}</h3>
               <span className="text-[10px] text-slate-400">Created for Sec {currentSection?.name}</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
-              <p className="text-[11px] text-slate-400 font-semibold">Active Quizzes</p>
-              <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">{sectionQuizzes.length}</h3>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+              <p className="text-[11px] text-slate-500 font-semibold">Active Quizzes</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{sectionQuizzes.length}</h3>
               <span className="text-[10px] text-slate-400">Google Forms</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
-              <p className="text-[11px] text-slate-400 font-semibold">Sessionals</p>
-              <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">{sectionSessionals.length}</h3>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+              <p className="text-[11px] text-slate-500 font-semibold">Sessionals</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{sectionSessionals.length}</h3>
               <span className="text-[10px] text-slate-400">Exams Conducted</span>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-emerald-500/20">
-              <p className="text-[11px] text-slate-400 font-semibold">Attendance Avg</p>
-              <h3 className="text-xl sm:text-2xl font-black text-emerald-300 mt-1">{avgAttendance}%</h3>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+              <p className="text-[11px] text-slate-500 font-semibold">Attendance Avg</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{avgAttendance}%</h3>
               <span className="text-[10px] text-slate-400">Section Average</span>
             </div>
           </div>
 
           {/* Quick Section Academic Actions */}
-          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20 space-y-4">
-            <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#00ff88]" />
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 tracking-wide flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-slate-700" />
               Manage Section {currentSection?.name} Academic Activities
             </h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <button
                 onClick={() => { setActiveTab('assignments'); setIsAssignmentModalOpen(true); }}
-                className="p-4 rounded-2xl bg-slate-950/80 border border-blue-500/20 hover:border-blue-500/50 text-left transition-all group cursor-pointer"
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group cursor-pointer shadow-xs"
               >
-                <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-800 mb-2.5 shadow-xs">
                   <FileText className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-bold text-white group-hover:text-blue-400">+ New Assignment</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Publish assignment for Section {currentSection?.name}</p>
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-black">+ New Assignment</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Publish assignment for Section {currentSection?.name}</p>
               </button>
 
               <button
                 onClick={() => { setActiveTab('quizzes'); setIsQuizModalOpen(true); }}
-                className="p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/50 text-left transition-all group cursor-pointer"
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group cursor-pointer shadow-xs"
               >
-                <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-800 mb-2.5 shadow-xs">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-bold text-white group-hover:text-purple-400">+ New Quiz</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Share Google Form quiz for Section {currentSection?.name}</p>
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-black">+ New Quiz</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Share Google Form quiz for Section {currentSection?.name}</p>
               </button>
 
               <button
                 onClick={() => { setActiveTab('sessionals'); setIsSessionalModalOpen(true); }}
-                className="p-4 rounded-2xl bg-slate-950/80 border border-amber-500/20 hover:border-amber-500/50 text-left transition-all group cursor-pointer"
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group cursor-pointer shadow-xs"
               >
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-800 mb-2.5 shadow-xs">
                   <Award className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-bold text-white group-hover:text-amber-400">+ Add Sessional</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Create Sessional 1, 2, 3, PUT for Section {currentSection?.name}</p>
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-black">+ Add Sessional</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Create Sessional 1, 2, 3, PUT for Section {currentSection?.name}</p>
               </button>
 
               <button
                 onClick={() => setActiveTab('sessionals')}
-                className="p-4 rounded-2xl bg-slate-950/80 border border-emerald-500/20 hover:border-emerald-500/50 text-left transition-all group cursor-pointer"
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group cursor-pointer shadow-xs"
               >
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88] mb-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-800 mb-2.5 shadow-xs">
                   <Edit3 className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-bold text-white group-hover:text-[#00ff88]">Enter Sessional Marks</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Open {sectionStudents.length} student marks roster</p>
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-black">Enter Sessional Marks</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Open {sectionStudents.length} student marks roster</p>
               </button>
             </div>
           </div>
@@ -738,9 +738,9 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       {/* TAB 2: STUDENTS */}
       {activeTab === 'students' && (
         <div className="space-y-4 animate-in fade-in">
-          <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative w-full sm:w-80">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                 <Search className="w-4 h-4" />
               </div>
               <input
@@ -748,10 +748,10 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 value={listSearch}
                 onChange={(e) => setListSearch(e.target.value)}
                 placeholder="Search students in Section..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88]"
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
-            <span className="text-xs font-semibold text-slate-400">
+            <span className="text-xs font-semibold text-slate-500">
               Total {sectionStudents.length} Enrolled in Section {currentSection?.name}
             </span>
           </div>
@@ -768,27 +768,27 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 const pct = (subStat && subStat.percentage !== null) ? subStat.percentage : null;
 
                 return (
-                  <div key={stud.id} className="glass-card rounded-2xl p-4 border border-emerald-500/15 space-y-2">
+                  <div key={stud.id} className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-2 hover:border-slate-300 transition-all">
                     <div className="flex items-start justify-between">
                       <div>
                         <span className="text-[10px] font-mono text-slate-500">#{idx + 1} • {stud.roll_number}</span>
-                        <h4 className="text-sm font-bold text-white mt-0.5">{stud.full_name}</h4>
+                        <h4 className="text-sm font-bold text-slate-900 mt-0.5">{stud.full_name}</h4>
                       </div>
                       <span className={clsx(
                         'px-2 py-0.5 rounded-full text-[10px] font-bold font-mono',
                         pct === null
-                          ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                          ? 'bg-slate-100 text-slate-600 border border-slate-200'
                           : pct >= 75
-                            ? 'bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30'
-                            : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-800 border border-rose-200'
                       )}>
                         {pct === null ? 'No data' : `${pct}% Att.`}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-emerald-500/10">
+                    <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
                       <span>{stud.admission_type}</span>
-                      <span className="text-[11px] font-mono text-slate-300">{stud.email || `${stud.roll_number}@vctm.in`}</span>
+                      <span className="text-[11px] font-mono text-slate-600">{stud.email || `${stud.roll_number}@vctm.in`}</span>
                     </div>
                   </div>
                 );
@@ -800,9 +800,9 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       {/* TAB 3: TIMETABLE */}
       {activeTab === 'timetable' && (
         <div className="space-y-4 animate-in fade-in">
-          <div className="glass-panel rounded-3xl p-6 border border-emerald-500/20">
-            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#00ff88]" />
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-slate-700" />
               Weekly Lecture Schedule: {currentSubject?.subject_name} • Section {currentSection?.name}
             </h3>
 
@@ -811,23 +811,22 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {sectionTimetable.map(entry => (
-                  <div key={entry.id} className="p-4 rounded-2xl bg-slate-950/80 border border-emerald-500/20 flex items-center justify-between gap-3">
+                  <div key={entry.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 shadow-xs">
                     <div>
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-500/20 text-[#00ff88]">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-200 text-slate-800">
                         {entry.day_of_week}
                       </span>
-                      <h4 className="text-xs font-bold text-white mt-1">Period {entry.period_number}</h4>
-                      <p className="text-[11px] font-mono text-slate-400">{entry.start_time?.substring(0, 5)} – {entry.end_time?.substring(0, 5)}</p>
+                      <h4 className="text-xs font-bold text-slate-900 mt-1">Period {entry.period_number}</h4>
+                      <p className="text-[11px] font-mono text-slate-600">{entry.start_time?.substring(0, 5)} – {entry.end_time?.substring(0, 5)}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5">Room {entry.room_number || currentSection?.room_number}</p>
                     </div>
 
                     <Button
-                      variant="neon"
                       size="sm"
                       onClick={() => onTakeAttendance ? onTakeAttendance(entry.id) : null}
-                      leftIcon={<CheckSquare className="w-3 h-3 text-slate-950" />}
-                      className="text-[11px] py-1.5 px-2.5 shrink-0"
+                      className="bg-[#0f172a] hover:bg-black text-white text-[11px] py-1.5 px-3 rounded-xl shadow-xs flex items-center gap-1.5 shrink-0"
                     >
+                      <CheckSquare className="w-3 h-3 text-white" />
                       Attendance
                     </Button>
                   </div>
@@ -842,24 +841,24 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       {activeTab === 'assignments' && (
         <div className="space-y-4 animate-in fade-in">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-400" />
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-slate-700" />
               Assignments for Section {currentSection?.name} ({sectionAssignments.length})
             </h3>
             <Button
-              variant="neon"
               size="sm"
               onClick={() => setIsAssignmentModalOpen(true)}
-              leftIcon={<Plus className="w-3.5 h-3.5 text-slate-950" />}
+              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-1.5"
             >
+              <Plus className="w-3.5 h-3.5 text-white" />
               + Create Assignment
             </Button>
           </div>
 
           {sectionAssignments.length === 0 ? (
-            <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20 space-y-2">
-              <FileText className="w-10 h-10 text-slate-600 mx-auto" />
-              <p className="font-semibold text-white">No assignments created for Section {currentSection?.name} yet.</p>
+            <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs space-y-2">
+              <FileText className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="font-bold text-slate-900">No assignments created for Section {currentSection?.name} yet.</p>
               <p className="text-xs text-slate-500">Click "+ Create Assignment" to publish an assignment for this section.</p>
             </div>
           ) : (
@@ -868,21 +867,21 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 const submissions = assignmentSubmissions.filter(s => s.assignment_id === asgn.id);
 
                 return (
-                  <div key={asgn.id} className="glass-panel rounded-3xl p-5 border border-emerald-500/20 space-y-3">
+                  <div key={asgn.id} className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                             Section {currentSection?.name}
                           </span>
-                          <span className="text-[10px] text-slate-400">Max: {asgn.max_marks} Marks</span>
+                          <span className="text-[10px] text-slate-500">Max: {asgn.max_marks} Marks</span>
                         </div>
-                        <h4 className="text-sm font-bold text-white mt-1">{asgn.title}</h4>
+                        <h4 className="text-sm font-bold text-slate-900 mt-1">{asgn.title}</h4>
                       </div>
 
                       <button
                         onClick={() => deleteCourseAssignment(asgn.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors"
                         title="Delete Assignment"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -890,12 +889,12 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                     </div>
 
                     {asgn.description && (
-                      <p className="text-xs text-slate-400 line-clamp-2">{asgn.description}</p>
+                      <p className="text-xs text-slate-500 line-clamp-2">{asgn.description}</p>
                     )}
 
-                    <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-emerald-500/10">
+                    <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
                       <span>Due: {asgn.due_date ? asgn.due_date.substring(0, 10) : 'No deadline'}</span>
-                      <span className="text-emerald-400 font-bold">
+                      <span className="text-slate-900 font-bold">
                         {submissions.length} / {sectionStudents.length} Submitted
                       </span>
                     </div>
@@ -906,7 +905,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                           href={asgn.google_form_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[11px] font-semibold text-blue-400 hover:underline"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-black hover:underline"
                         >
                           <ExternalLink className="w-3 h-3" /> Form Link
                         </a>
@@ -924,24 +923,24 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       {activeTab === 'quizzes' && (
         <div className="space-y-4 animate-in fade-in">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-slate-700" />
               Quizzes for Section {currentSection?.name} ({sectionQuizzes.length})
             </h3>
             <Button
-              variant="neon"
               size="sm"
               onClick={() => setIsQuizModalOpen(true)}
-              leftIcon={<Plus className="w-3.5 h-3.5 text-slate-950" />}
+              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-1.5"
             >
+              <Plus className="w-3.5 h-3.5 text-white" />
               + Create Quiz
             </Button>
           </div>
 
           {sectionQuizzes.length === 0 ? (
-            <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 border border-emerald-500/20 space-y-2">
-              <Sparkles className="w-10 h-10 text-slate-600 mx-auto" />
-              <p className="font-semibold text-white">No quizzes created for Section {currentSection?.name} yet.</p>
+            <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 shadow-xs space-y-2">
+              <Sparkles className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="font-bold text-slate-900">No quizzes created for Section {currentSection?.name} yet.</p>
               <p className="text-xs text-slate-500">Click "+ Create Quiz" to share a Google Form quiz with this section.</p>
             </div>
           ) : (
@@ -950,21 +949,21 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 const results = quizResults.filter(r => r.quiz_id === quiz.id);
 
                 return (
-                  <div key={quiz.id} className="glass-panel rounded-3xl p-5 border border-emerald-500/20 space-y-3">
+                  <div key={quiz.id} className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                             Section {currentSection?.name}
                           </span>
-                          <span className="text-[10px] text-slate-400">Max: {quiz.max_marks} Marks</span>
+                          <span className="text-[10px] text-slate-500">Max: {quiz.max_marks} Marks</span>
                         </div>
-                        <h4 className="text-sm font-bold text-white mt-1">{quiz.title}</h4>
+                        <h4 className="text-sm font-bold text-slate-900 mt-1">{quiz.title}</h4>
                       </div>
 
                       <button
                         onClick={() => deleteQuiz(quiz.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors"
                         title="Delete Quiz"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -972,12 +971,12 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                     </div>
 
                     {quiz.description && (
-                      <p className="text-xs text-slate-400 line-clamp-2">{quiz.description}</p>
+                      <p className="text-xs text-slate-500 line-clamp-2">{quiz.description}</p>
                     )}
 
-                    <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-emerald-500/10">
+                    <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
                       <span>Google Form Quiz</span>
-                      <span className="text-purple-400 font-bold">
+                      <span className="text-slate-900 font-bold">
                         {results.length} / {sectionStudents.length} Marked
                       </span>
                     </div>
@@ -988,7 +987,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                           href={quiz.google_form_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[11px] font-semibold text-purple-400 hover:underline"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-black hover:underline"
                         >
                           <ExternalLink className="w-3 h-3" /> Open Form
                         </a>
@@ -1005,7 +1004,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                           }
                           setQuizMarksRoster(roster);
                         }}
-                        className="ml-auto text-xs py-1 px-3"
+                        className="ml-auto text-xs py-1 px-3 border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
                       >
                         Enter Quiz Marks
                       </Button>
@@ -1024,22 +1023,22 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           {/* Header Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Award className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Award className="w-4 h-4 text-slate-700" />
                 Sessional Examination Ledger: Section {currentSection?.name}
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Dynamic continuous internal assessments & marks entry for {sectionStudents.length} students
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <Button
-                variant="neon"
                 size="sm"
                 onClick={() => setIsSessionalModalOpen(true)}
-                leftIcon={<Plus className="w-3.5 h-3.5 text-slate-950" />}
+                className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-1.5"
               >
+                <Plus className="w-3.5 h-3.5 text-white" />
                 + Add Sessional
               </Button>
             </div>
@@ -1048,16 +1047,16 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           {/* Sessional Selector Pills */}
           {sectionSessionals.length > 0 ? (
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              <span className="text-xs font-bold text-slate-400 shrink-0">Select Assessment:</span>
+              <span className="text-xs font-semibold text-slate-500 shrink-0">Select Assessment:</span>
               {sectionSessionals.map(sa => (
                 <button
                   key={sa.id}
                   onClick={() => setSelectedSessionalId(sa.id)}
                   className={clsx(
-                    'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5',
+                    'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none shrink-0 flex items-center gap-1.5 shadow-xs',
                     selectedSessionalId === sa.id
-                      ? 'bg-amber-400 text-slate-950 shadow-[0_0_12px_rgba(251,191,36,0.35)] font-black'
-                      : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800'
+                      ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                      : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
                   )}
                 >
                   <Award className="w-3.5 h-3.5" />
@@ -1066,38 +1065,38 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
               ))}
             </div>
           ) : (
-            <div className="glass-panel rounded-3xl p-8 text-center text-slate-400 border border-emerald-500/20 space-y-2">
-              <Award className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="font-semibold text-white">No sessional assessments created for Section {currentSection?.name} yet.</p>
+            <div className="bg-white rounded-3xl p-8 text-center text-slate-500 border border-slate-200/80 shadow-xs space-y-2">
+              <Award className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="font-bold text-slate-900">No sessional assessments created for Section {currentSection?.name} yet.</p>
               <p className="text-xs text-slate-500">Click "+ Add Sessional" above to create Sessional 1, 2, 3, or PUT for this section.</p>
             </div>
           )}
 
           {/* Sessional Marks Entry Table */}
           {currentActiveSessional && (
-            <div className="glass-panel rounded-3xl p-5 border border-emerald-500/20 space-y-4">
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-white">
+                    <h4 className="text-sm font-bold text-slate-900">
                       Marks Entry Roster — {currentActiveSessional.title} (Max: {currentActiveSessional.max_marks})
                     </h4>
                     <span className={clsx(
                       "text-[10px] font-bold px-2 py-0.5 rounded-full border",
                       (currentActiveSessional.status === 'published' || currentActiveSessional.status === 'completed')
-                        ? "bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]"
-                        : "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                        : "bg-amber-50 border-amber-200 text-amber-800"
                     )}>
                       {(currentActiveSessional.status === 'published' || currentActiveSessional.status === 'completed') ? 'Published' : 'Draft'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Exam Date: {currentActiveSessional.exam_date || 'N/A'}</p>
+                  <p className="text-xs text-slate-500">Exam Date: {currentActiveSessional.exam_date || 'N/A'}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   {sessionalSaveSuccess && (
-                    <span className="text-xs font-bold text-[#00ff88] flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> {sessionalSaveSuccess}
+                    <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {sessionalSaveSuccess}
                     </span>
                   )}
                   <Button
@@ -1105,21 +1104,20 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                     size="sm"
                     onClick={() => handleSaveSessionalMarks('draft')}
                     disabled={isSavingSessionalMarks}
-                    leftIcon={<Save className="w-3.5 h-3.5" />}
-                    className="border-slate-700 text-slate-300 hover:text-white text-xs"
+                    className="border-slate-200 hover:bg-slate-50 text-slate-700 text-xs shadow-xs"
                   >
+                    <Save className="w-3.5 h-3.5 text-slate-500" />
                     Save Draft
                   </Button>
                   {(currentActiveSessional.status === 'published' || currentActiveSessional.status === 'completed') ? (
                     <>
                       <Button
-                        variant="neon"
                         size="sm"
                         onClick={() => handleSaveSessionalMarks('published')}
                         disabled={isSavingSessionalMarks}
-                        leftIcon={<Save className="w-3.5 h-3.5 text-slate-950" />}
-                        className="text-xs font-bold"
+                        className="bg-[#0f172a] hover:bg-black text-white text-xs font-semibold shadow-xs rounded-xl flex items-center gap-1.5"
                       >
+                        <Save className="w-3.5 h-3.5 text-white" />
                         Save & Update Marks
                       </Button>
                       <Button
@@ -1127,20 +1125,19 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                         size="sm"
                         onClick={handleUnpublishAssessment}
                         disabled={isSavingSessionalMarks}
-                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs"
+                        className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs shadow-xs"
                       >
                         Unpublish
                       </Button>
                     </>
                   ) : (
                     <Button
-                      variant="neon"
                       size="sm"
                       onClick={() => handleSaveSessionalMarks('published')}
                       disabled={isSavingSessionalMarks}
-                      leftIcon={<Sparkles className="w-3.5 h-3.5 text-slate-950" />}
-                      className="text-xs font-bold"
+                      className="bg-[#0f172a] hover:bg-black text-white text-xs font-semibold shadow-xs rounded-xl flex items-center gap-1.5"
                     >
+                      <Sparkles className="w-3.5 h-3.5 text-white" />
                       Publish Marks to Students
                     </Button>
                   )}
@@ -1148,9 +1145,9 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
               </div>
 
               {/* Roster Table */}
-              <div className="overflow-x-auto rounded-2xl border border-emerald-500/15">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 font-bold border-b border-emerald-500/15">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200">
                     <tr>
                       <th className="p-3">#</th>
                       <th className="p-3">Roll Number</th>
@@ -1159,15 +1156,15 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                       <th className="p-3">Remarks</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-emerald-500/10">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {sectionStudents.map((stud, idx) => {
                       const entry = sessionalMarksRoster[stud.id] || { marks: '', remarks: '' };
 
                       return (
-                        <tr key={stud.id} className="hover:bg-slate-900/40">
-                          <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
-                          <td className="p-3 font-mono font-bold text-emerald-400">{stud.roll_number}</td>
-                          <td className="p-3 font-bold text-white">{stud.full_name}</td>
+                        <tr key={stud.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-3 font-mono text-slate-400">{idx + 1}</td>
+                          <td className="p-3 font-mono font-bold text-slate-700">{stud.roll_number}</td>
+                          <td className="p-3 font-bold text-slate-900">{stud.full_name}</td>
                           <td className="p-3">
                             <input
                               type="number"
@@ -1185,7 +1182,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                                 }));
                               }}
                               placeholder={`0 - ${currentActiveSessional.max_marks}`}
-                              className="w-28 px-3 py-1.5 bg-slate-950 border border-emerald-500/25 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:border-[#00ff88]"
+                              className="w-28 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
                             />
                           </td>
                           <td className="p-3">
@@ -1202,7 +1199,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                                 }));
                               }}
                               placeholder="Optional note"
-                              className="w-full max-w-xs px-3 py-1.5 bg-slate-950 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:border-[#00ff88]"
+                              className="w-full max-w-xs px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
                             />
                           </td>
                         </tr>
@@ -1228,59 +1225,59 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       >
         <form onSubmit={handleCreateAssignment} className="space-y-4 text-xs">
           {asgnError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
               {asgnError}
             </div>
           )}
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Target Subject & Section</label>
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/20 text-white font-bold">
-              {currentSubject?.subject_name} • <span className="text-[#00ff88]">Section {currentSection?.name}</span>
+            <label className="block text-slate-700 font-semibold mb-1">Target Subject & Section</label>
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold">
+              {currentSubject?.subject_name} • <span className="text-slate-800">Section {currentSection?.name}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Assignment Title *</label>
+            <label className="block text-slate-700 font-semibold mb-1">Assignment Title *</label>
             <input
               type="text"
               required
               value={asgnTitle}
               onChange={(e) => setAsgnTitle(e.target.value)}
               placeholder="e.g. Assignment 1: Dynamic Arrays & Linked Lists"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Max Marks</label>
+              <label className="block text-slate-700 font-semibold mb-1">Max Marks</label>
               <input
                 type="number"
                 min={1}
                 max={100}
                 value={asgnMaxMarks}
                 onChange={(e) => setAsgnMaxMarks(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white font-mono focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Due Date</label>
+              <label className="block text-slate-700 font-semibold mb-1">Due Date</label>
               <input
                 type="date"
                 value={asgnDueDate}
                 onChange={(e) => setAsgnDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Submission Mode</label>
+            <label className="block text-slate-700 font-semibold mb-1">Submission Mode</label>
             <select
               value={asgnSubmissionType}
               onChange={(e) => setAsgnSubmissionType(e.target.value as any)}
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
             >
               <option value="both">Both (File Upload + Google Form)</option>
               <option value="file_upload">File Upload Only (PDF / DOCX)</option>
@@ -1290,33 +1287,33 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
 
           {(asgnSubmissionType === 'google_form' || asgnSubmissionType === 'both') && (
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Google Form URL</label>
+              <label className="block text-slate-700 font-semibold mb-1">Google Form URL</label>
               <input
                 type="url"
                 value={asgnGoogleFormUrl}
                 onChange={(e) => setAsgnGoogleFormUrl(e.target.value)}
                 placeholder="https://forms.google.com/..."
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Instructions / Description</label>
+            <label className="block text-slate-700 font-semibold mb-1">Instructions / Description</label>
             <textarea
               rows={3}
               value={asgnDesc}
               onChange={(e) => setAsgnDesc(e.target.value)}
               placeholder="Provide guidelines for Section students..."
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 shadow-xs"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsAssignmentModalOpen(false)}>
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsAssignmentModalOpen(false)} className="border-slate-200 text-slate-700 hover:bg-slate-50">
               Cancel
             </Button>
-            <Button variant="neon" size="sm" type="submit" disabled={asgnSubmitting}>
+            <Button size="sm" type="submit" disabled={asgnSubmitting} className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl">
               {asgnSubmitting ? 'Publishing...' : 'Publish to Section ' + currentSection?.name}
             </Button>
           </div>
@@ -1331,81 +1328,81 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       >
         <form onSubmit={handleCreateQuiz} className="space-y-4 text-xs">
           {quizError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
               {quizError}
             </div>
           )}
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Target Subject & Section</label>
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/20 text-white font-bold">
-              {currentSubject?.subject_name} • <span className="text-purple-400">Section {currentSection?.name}</span>
+            <label className="block text-slate-700 font-semibold mb-1">Target Subject & Section</label>
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold">
+              {currentSubject?.subject_name} • <span className="text-slate-800">Section {currentSection?.name}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Quiz Title *</label>
+            <label className="block text-slate-700 font-semibold mb-1">Quiz Title *</label>
             <input
               type="text"
               required
               value={quizTitle}
               onChange={(e) => setQuizTitle(e.target.value)}
               placeholder="e.g. Unit 1 Quiz: Data Structures & Algorithms"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Google Form URL *</label>
+            <label className="block text-slate-700 font-semibold mb-1">Google Form URL *</label>
             <input
               type="url"
               required
               value={quizGoogleFormUrl}
               onChange={(e) => setQuizGoogleFormUrl(e.target.value)}
               placeholder="https://forms.gle/... or https://docs.google.com/forms/..."
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Max Marks</label>
+              <label className="block text-slate-700 font-semibold mb-1">Max Marks</label>
               <input
                 type="number"
                 min={1}
                 max={100}
                 value={quizMaxMarks}
                 onChange={(e) => setQuizMaxMarks(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white font-mono focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Active Window (Optional)</label>
+              <label className="block text-slate-700 font-semibold mb-1">Active Window (Optional)</label>
               <input
                 type="date"
                 value={quizStartTime}
                 onChange={(e) => setQuizStartTime(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Description / Instructions</label>
+            <label className="block text-slate-700 font-semibold mb-1">Description / Instructions</label>
             <textarea
               rows={3}
               value={quizDesc}
               onChange={(e) => setQuizDesc(e.target.value)}
               placeholder="Provide quiz rules or time limit guidelines..."
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 shadow-xs"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsQuizModalOpen(false)}>
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsQuizModalOpen(false)} className="border-slate-200 text-slate-700 hover:bg-slate-50">
               Cancel
             </Button>
-            <Button variant="neon" size="sm" type="submit" disabled={quizSubmitting}>
+            <Button size="sm" type="submit" disabled={quizSubmitting} className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl">
               {quizSubmitting ? 'Publishing...' : 'Publish Quiz to Section ' + currentSection?.name}
             </Button>
           </div>
@@ -1420,33 +1417,33 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
       >
         <form onSubmit={handleCreateSessional} className="space-y-4 text-xs">
           {sessError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
               {sessError}
             </div>
           )}
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Target Subject & Section</label>
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/20 text-white font-bold">
-              {currentSubject?.subject_name} • <span className="text-amber-400">Section {currentSection?.name}</span>
+            <label className="block text-slate-700 font-semibold mb-1">Target Subject & Section</label>
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold">
+              {currentSubject?.subject_name} • <span className="text-slate-800">Section {currentSection?.name}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Sessional Name / Assessment Title *</label>
+            <label className="block text-slate-700 font-semibold mb-1">Sessional Name / Assessment Title *</label>
             <input
               type="text"
               required
               value={sessTitle}
               onChange={(e) => setSessTitle(e.target.value)}
               placeholder="e.g. Sessional 1, Sessional 2, Sessional 3, PUT, Unit Test"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Maximum Marks *</label>
+              <label className="block text-slate-700 font-semibold mb-1">Maximum Marks *</label>
               <input
                 type="number"
                 required
@@ -1454,37 +1451,37 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 max={100}
                 value={sessMaxMarks}
                 onChange={(e) => setSessMaxMarks(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white font-mono focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Exam Date *</label>
+              <label className="block text-slate-700 font-semibold mb-1">Exam Date *</label>
               <input
                 type="date"
                 required
                 value={sessExamDate}
                 onChange={(e) => setSessExamDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Syllabus Covered / Description</label>
+            <label className="block text-slate-700 font-semibold mb-1">Syllabus Covered / Description</label>
             <textarea
               rows={2}
               value={sessDesc}
               onChange={(e) => setSessDesc(e.target.value)}
               placeholder="e.g. Units 1 and 2: Stacks, Queues, Trees"
-              className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/25 rounded-xl text-white focus:outline-none focus:border-[#00ff88]"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 shadow-xs"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsSessionalModalOpen(false)}>
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsSessionalModalOpen(false)} className="border-slate-200 text-slate-700 hover:bg-slate-50">
               Cancel
             </Button>
-            <Button variant="neon" size="sm" type="submit" disabled={sessSubmitting}>
+            <Button size="sm" type="submit" disabled={sessSubmitting} className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl">
               {sessSubmitting ? 'Creating...' : 'Create Sessional for Section ' + currentSection?.name}
             </Button>
           </div>
@@ -1499,7 +1496,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           title={`Quiz Marks Roster — ${activeQuizForMarks.title} (Section ${currentSection?.name})`}
         >
           <div className="space-y-4 text-xs">
-            <p className="text-slate-400">
+            <p className="text-slate-500">
               Enter quiz scores out of <strong>{activeQuizForMarks.max_marks}</strong> for enrolled students in Section {currentSection?.name}.
             </p>
 
@@ -1508,10 +1505,10 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                 const currentEntry = quizMarksRoster[stud.id] || { marks: '', remarks: '' };
 
                 return (
-                  <div key={stud.id} className="p-2.5 rounded-xl bg-slate-950/80 border border-emerald-500/15 flex items-center justify-between gap-3">
+                  <div key={stud.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 shadow-xs">
                     <div>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">{stud.roll_number}</span>
-                      <h5 className="text-xs font-bold text-white">{stud.full_name}</h5>
+                      <span className="text-[10px] font-mono text-slate-600 font-bold">{stud.roll_number}</span>
+                      <h5 className="text-xs font-bold text-slate-900">{stud.full_name}</h5>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1531,21 +1528,20 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                           }));
                         }}
                         placeholder={`0 - ${activeQuizForMarks.max_marks}`}
-                        className="w-24 px-2.5 py-1 bg-slate-900 border border-emerald-500/25 rounded-lg text-xs font-mono font-bold text-white text-right focus:outline-none focus:border-[#00ff88]"
+                        className="w-24 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900 text-right focus:outline-none focus:border-slate-400 shadow-xs"
                       />
-                      <span className="text-slate-500 text-[10px]">/ {activeQuizForMarks.max_marks}</span>
+                      <span className="text-slate-400 text-[10px]">/ {activeQuizForMarks.max_marks}</span>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-emerald-500/15">
-              <Button variant="outline" size="sm" onClick={() => setActiveQuizForMarks(null)}>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button variant="outline" size="sm" onClick={() => setActiveQuizForMarks(null)} className="border-slate-200 text-slate-700 hover:bg-slate-50">
                 Cancel
               </Button>
               <Button
-                variant="neon"
                 size="sm"
                 disabled={isSavingQuizMarks}
                 onClick={async () => {
@@ -1573,6 +1569,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                     setIsSavingQuizMarks(false);
                   }
                 }}
+                className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl"
               >
                 {isSavingQuizMarks ? 'Saving...' : 'Save Quiz Marks'}
               </Button>
@@ -1584,3 +1581,4 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     </div>
   );
 };
+
