@@ -62,51 +62,62 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden bg-slate-50 flex flex-col justify-between select-none">
+    <div className="min-h-screen relative overflow-x-hidden bg-white flex flex-col justify-between select-none">
       {/* 1. BACKGROUND CAMPUS PHOTO & SUBTLE GRADIENTS */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
           src={vctmCampusImage}
           alt="Vivekananda College of Technology & Management Campus"
-          className="w-full h-full object-cover object-[center_35%] opacity-90 transition-opacity duration-700"
+          className="w-full h-full object-cover object-[center_35%] opacity-90"
           loading="eager"
         />
-        {/* Soft Left & Top White Gradient to guarantee crisp text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent w-full md:w-3/5" />
-        <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-white via-white/85 to-transparent" />
-        {/* Mobile light wash */}
-        <div className="absolute inset-0 bg-white/75 lg:hidden" />
+        {/* Soft Left White Gradient: Hero text sits cleanly on pure white */}
+        <div className="absolute inset-y-0 left-0 w-full md:w-3/5 lg:w-[52%] bg-gradient-to-r from-white via-white/95 to-transparent" />
+        {/* Soft Top White Gradient: Header & Navigation sit on pure white */}
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white via-white/90 to-transparent" />
+        {/* Mobile light wash for optimal readability */}
+        <div className="absolute inset-0 bg-white/80 lg:hidden" />
       </div>
 
-      {/* 2. TOP RIGHT ANGLED GEOMETRIC SLICE */}
-      <div 
-        className="absolute top-0 right-0 z-10 hidden xl:flex items-center justify-end pr-8 pl-20 py-4 text-right bg-[#111827] text-white shadow-2xl"
-        style={{ clipPath: 'polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
-      >
-        <p className="font-serif-institutional italic text-xs lg:text-sm text-slate-100 tracking-wide font-normal">
-          &ldquo;Education Today, A Better Tomorrow&rdquo;
-        </p>
+      {/* 2. TOP RIGHT ANGLED GEOMETRIC SLICE WITH QUOTE */}
+      <div className="absolute top-0 right-0 z-10 hidden lg:block pointer-events-none">
+        {/* Secondary light gray underlay facet */}
+        <div 
+          className="absolute top-0 right-0 w-80 xl:w-96 h-36 xl:h-40 bg-slate-300/40"
+          style={{ clipPath: 'polygon(12% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+        />
+        {/* Main dark facet */}
+        <div 
+          className="relative w-72 xl:w-88 h-32 xl:h-36 bg-[#111827] flex items-center justify-end pr-8 pl-12 text-right shadow-2xl"
+          style={{ clipPath: 'polygon(18% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+        >
+          <p className="font-serif-institutional italic text-xs xl:text-sm text-slate-100 tracking-wide font-normal leading-relaxed">
+            &ldquo;Education<br />
+            Today, A Better<br />
+            Tomorrow&rdquo;
+          </p>
+        </div>
       </div>
 
       {/* 3. BOTTOM RIGHT ANGLED GEOMETRIC SLICE */}
       <div 
-        className="absolute bottom-12 right-0 z-10 hidden xl:flex flex-col items-end pr-8 pl-16 py-3 bg-[#111827] text-white shadow-2xl"
-        style={{ clipPath: 'polygon(12% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+        className="absolute bottom-12 right-0 z-10 hidden xl:flex flex-col items-end pr-8 pl-16 py-3.5 bg-[#111827] text-white shadow-2xl pointer-events-none"
+        style={{ clipPath: 'polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
       >
-        <span className="font-script-accent text-base text-slate-100 tracking-wider">
+        <span className="font-script-accent text-lg text-slate-100 tracking-wider">
           Together
         </span>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="h-[1px] w-8 bg-slate-400/80"></span>
+          <span className="h-[1px] w-8 bg-slate-400"></span>
           <span className="font-serif-institutional italic text-xs text-slate-300">
             for a Better Future
           </span>
         </div>
       </div>
 
-      {/* 4. TOP NAVIGATION BAR */}
+      {/* 4. TOP HEADER BAR */}
       <header className="relative z-20 w-full px-5 sm:px-10 lg:px-14 pt-4 pb-2 flex items-center justify-between">
-        {/* Left: Official College Logo & Branding */}
+        {/* Left: Official College Logo & Institutional Branding */}
         <div className="flex items-center gap-3.5">
           <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
             <img 
@@ -116,7 +127,7 @@ export const LoginPage: React.FC = () => {
             />
           </div>
           <div className="flex flex-col">
-            <h1 className="font-serif-institutional font-black text-2xl sm:text-3xl text-slate-900 tracking-wider leading-none">
+            <h1 className="font-serif-institutional font-bold text-2xl sm:text-3xl text-slate-900 tracking-wider leading-none">
               VCTM ERP
             </h1>
             <span className="text-[11px] sm:text-xs text-slate-700 font-medium tracking-normal mt-0.5">
@@ -130,8 +141,8 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Center-Right: Core Institutional Values Nav */}
-        <nav className="hidden lg:flex items-center gap-4 text-xs font-semibold text-slate-800 tracking-[0.25em] uppercase pr-4 xl:pr-72">
+        {/* Center-Right: Core Institutional Values Navigation */}
+        <nav className="hidden lg:flex items-center gap-4 text-xs font-semibold text-slate-800 tracking-[0.25em] uppercase pr-4 xl:pr-80">
           <span>LEARN</span>
           <span className="text-slate-400 font-normal">|</span>
           <span>INNOVATE</span>
@@ -145,48 +156,48 @@ export const LoginPage: React.FC = () => {
       {/* 5. MAIN HERO & FLOATING LOGIN CARD GRID */}
       <main className="relative z-20 max-w-7xl mx-auto w-full px-5 sm:px-10 lg:px-14 py-6 sm:py-8 lg:py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
         
-        {/* Left Column: Hero Text & Bottom Feature Pills */}
+        {/* Left Column: Hero Text & Bottom Feature Bar */}
         <div className="lg:col-span-7 flex flex-col justify-between">
           <div className="space-y-3 max-w-xl">
-            <h2 className="text-4xl sm:text-5xl lg:text-[54px] font-serif-institutional font-black text-slate-950 tracking-tight leading-[1.12]">
+            <h2 className="text-4xl sm:text-5xl lg:text-[54px] font-serif-institutional font-bold text-slate-950 tracking-tight leading-[1.12]">
               Empowering <br />
-              Education <span className="font-normal font-sans italic text-slate-800">with Technology</span>
+              Education <span className="font-normal font-serif-institutional text-slate-900">with Technology</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-700 font-normal tracking-normal pt-1">
               A Smarter Campus for a Brighter Tomorrow
             </p>
           </div>
 
-          {/* Bottom Floating Dark Feature Pill Card */}
-          <div className="mt-12 sm:mt-16 lg:mt-24 bg-[#0a0f18]/95 backdrop-blur-md text-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-800/80 max-w-2xl">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-800/80">
+          {/* Bottom Floating Dark Feature Bar */}
+          <div className="mt-10 sm:mt-14 lg:mt-20 bg-[#111827] text-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-800/80 max-w-2xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/60">
               
               {/* Feature 1 */}
-              <div className="flex flex-col sm:px-3 pt-2 sm:pt-0">
-                <GraduationCap className="w-5 h-5 text-slate-300 mb-1.5" />
+              <div className="flex flex-col sm:px-3.5 pt-2 sm:pt-0">
+                <GraduationCap className="w-5 h-5 text-white mb-2" />
                 <span className="text-xs font-bold text-white leading-tight">Academic Management</span>
-                <span className="text-[10px] text-slate-400 mt-0.5 leading-snug">Classes, Subjects & Timetable</span>
+                <span className="text-[10px] text-slate-400 mt-1 leading-snug">Classes, Subjects & Timetable</span>
               </div>
 
               {/* Feature 2 */}
-              <div className="flex flex-col sm:px-3 pt-2 sm:pt-0">
-                <Users className="w-5 h-5 text-slate-300 mb-1.5" />
+              <div className="flex flex-col sm:px-3.5 pt-2 sm:pt-0">
+                <Users className="w-5 h-5 text-white mb-2" />
                 <span className="text-xs font-bold text-white leading-tight">Student Information</span>
-                <span className="text-[10px] text-slate-400 mt-0.5 leading-snug">Profiles, Records & Performance</span>
+                <span className="text-[10px] text-slate-400 mt-1 leading-snug">Profiles, Records & Performance</span>
               </div>
 
               {/* Feature 3 */}
-              <div className="flex flex-col sm:px-3 pt-2 sm:pt-0">
-                <FileText className="w-5 h-5 text-slate-300 mb-1.5" />
+              <div className="flex flex-col sm:px-3.5 pt-2 sm:pt-0">
+                <FileText className="w-5 h-5 text-white mb-2" />
                 <span className="text-xs font-bold text-white leading-tight">Assignments & Grading</span>
-                <span className="text-[10px] text-slate-400 mt-0.5 leading-snug">Sessional, Quizzes & Evaluations</span>
+                <span className="text-[10px] text-slate-400 mt-1 leading-snug">Sessional, Quizzes & Evaluations</span>
               </div>
 
               {/* Feature 4 */}
-              <div className="flex flex-col sm:px-3 pt-2 sm:pt-0">
-                <TrendingUp className="w-5 h-5 text-slate-300 mb-1.5" />
+              <div className="flex flex-col sm:px-3.5 pt-2 sm:pt-0">
+                <TrendingUp className="w-5 h-5 text-white mb-2" />
                 <span className="text-xs font-bold text-white leading-tight">Attendance & Reports</span>
-                <span className="text-[10px] text-slate-400 mt-0.5 leading-snug">Real-time Tracking & Insights</span>
+                <span className="text-[10px] text-slate-400 mt-1 leading-snug">Real-time Tracking & Insights</span>
               </div>
 
             </div>
@@ -195,24 +206,24 @@ export const LoginPage: React.FC = () => {
 
         {/* Right Column: Floating White Login Card matching Reference Image */}
         <div className="lg:col-span-5 w-full max-w-md mx-auto">
-          <div className="bg-white rounded-3xl sm:rounded-[32px] p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.22)] border border-slate-100 relative overflow-hidden transition-all duration-300">
+          <div className="bg-white rounded-[32px] p-7 sm:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] border border-slate-100 relative overflow-hidden transition-all duration-300">
             
             {/* Card Emblem & Title */}
             <div className="text-center mb-5">
-              <div className="w-16 h-16 mx-auto mb-2 flex items-center justify-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 flex items-center justify-center">
                 <img 
                   src={vctmOfficialLogo} 
                   alt="VCTM Emblem" 
                   className="w-full h-full object-contain drop-shadow-sm" 
                 />
               </div>
-              <h3 className="font-serif-institutional font-black text-2xl text-slate-900 tracking-wider">
+              <h3 className="font-serif-institutional font-bold text-2xl text-slate-900 tracking-wider">
                 VCTM ERP
               </h3>
-              <p className="text-xs text-slate-600 font-medium mt-0.5">
+              <p className="text-xs text-slate-700 font-medium mt-0.5">
                 Vivekananda College of Technology & Management
               </p>
-              <div className="flex items-center justify-center gap-2 mt-1 text-[9.5px] font-bold text-slate-500 tracking-[0.25em]">
+              <div className="flex items-center justify-center gap-2 mt-1 text-[9.5px] font-bold text-slate-600 tracking-[0.25em]">
                 <span className="h-[1px] w-6 bg-slate-300"></span>
                 <span>ALIGARH</span>
                 <span className="h-[1px] w-6 bg-slate-300"></span>
@@ -220,14 +231,14 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Role Selection Tabs (Student / Faculty / Admin) */}
-            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-1.5 rounded-2xl mb-5 border border-slate-200/80 text-xs">
+            <div className="grid grid-cols-3 gap-2 bg-slate-50/80 p-1.5 rounded-2xl mb-5 border border-slate-200/80 text-xs">
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('student')}
                 className={clsx(
-                  'py-2 px-2 rounded-xl transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
+                  'py-2.5 px-2 rounded-xl transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
                   activeRoleTab === 'student'
-                    ? 'bg-[#0f172a] text-white shadow-md font-bold'
+                    ? 'bg-[#111827] text-white shadow-md font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
                 )}
               >
@@ -239,9 +250,9 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('faculty')}
                 className={clsx(
-                  'py-2 px-2 rounded-xl transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
+                  'py-2.5 px-2 rounded-xl transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
                   activeRoleTab === 'faculty'
-                    ? 'bg-[#0f172a] text-white shadow-md font-bold'
+                    ? 'bg-[#111827] text-white shadow-md font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
                 )}
               >
@@ -253,9 +264,9 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('admin')}
                 className={clsx(
-                  'py-2 px-2 rounded-xl transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
+                  'py-2.5 px-2 rounded-xl transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
                   activeRoleTab === 'admin'
-                    ? 'bg-[#0f172a] text-white shadow-md font-bold'
+                    ? 'bg-[#111827] text-white shadow-md font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
                 )}
               >
@@ -297,9 +308,9 @@ export const LoginPage: React.FC = () => {
                         ? 'Enter your college roll number' 
                         : activeRoleTab === 'faculty' 
                         ? 'Enter your college ID / faculty ID' 
-                        : 'Enter admin identifier'
+                        : 'Enter admin identifier / email'
                     }
-                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-sm"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -313,7 +324,7 @@ export const LoginPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(true)}
-                    className="text-xs font-semibold text-slate-700 hover:text-slate-950 transition-colors"
+                    className="text-xs font-semibold text-slate-700 hover:text-slate-950 transition-colors cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -328,12 +339,12 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-sm"
+                    className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -346,7 +357,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 px-6 rounded-xl bg-[#0f172a] hover:bg-black text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#111827] hover:bg-black text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -364,31 +375,40 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* Bottom Helper Note inside Card */}
-            <div className="mt-5 pt-3 border-t border-slate-200/80 text-center">
-              <p className="text-[11.5px] text-slate-500 font-normal leading-relaxed max-w-xs mx-auto">
-                {activeRoleTab === 'student' 
-                  ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
-                  : activeRoleTab === 'faculty' 
-                  ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
-                  : 'Access institutional administration, department oversight, and academic records.'}
-              </p>
+            <div className="mt-5 pt-3 border-t border-slate-100 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <span className="h-[1px] w-6 bg-slate-300"></span>
+                <p className="text-[11.5px] text-slate-600 font-normal leading-relaxed max-w-xs">
+                  {activeRoleTab === 'student' 
+                    ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
+                    : activeRoleTab === 'faculty' 
+                    ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
+                    : 'Access institutional administration, department oversight, and academic records.'}
+                </p>
+                <span className="h-[1px] w-6 bg-slate-300"></span>
+              </div>
             </div>
 
-            {/* Subtle light wavy gradient decoration at the bottom of the card */}
-            <div className="absolute -bottom-6 -left-6 -right-6 h-12 bg-gradient-to-t from-slate-100/90 to-transparent pointer-events-none rounded-b-3xl" />
+            {/* Subtle silver wavy layer accent at base of card */}
+            <div className="absolute -bottom-1 left-0 right-0 h-10 overflow-hidden pointer-events-none rounded-b-[32px]">
+              <svg viewBox="0 0 500 120" preserveAspectRatio="none" className="w-full h-full opacity-60">
+                <path d="M0,40 C150,90 350,10 500,60 L500,120 L0,120 Z" fill="#e2e8f0" />
+                <path d="M0,70 C200,110 300,40 500,80 L500,120 L0,120 Z" fill="#cbd5e1" opacity="0.7" />
+              </svg>
+            </div>
           </div>
         </div>
 
       </main>
 
       {/* 6. PAGE FOOTER */}
-      <footer className="relative z-20 w-full px-5 sm:px-10 lg:px-14 py-4 border-t border-slate-200/90 bg-white/80 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+      <footer className="relative z-20 w-full px-5 sm:px-10 lg:px-14 py-4 border-t border-slate-200/80 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
         <p className="text-center sm:text-left">
           © 2026 Vivekananda College of Technology & Management, Aligarh. All Rights Reserved.
         </p>
 
         <div className="flex items-center gap-2 text-slate-500">
-          <span className="hidden sm:inline-block h-[1px] w-8 bg-slate-300"></span>
+          <span className="hidden sm:inline-block h-[1px] w-12 bg-slate-400"></span>
           <span>
             Designed & Developed by <strong className="text-slate-900 font-semibold">Tarun Kushwah</strong>
           </span>
