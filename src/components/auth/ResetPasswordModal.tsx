@@ -102,7 +102,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
           <div className="flex justify-end pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="neon"
+              variant="primary"
               onClick={handleCancel}
             >
               Back to Login
@@ -179,7 +179,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
             </Button>
             <Button
               type="submit"
-              variant="neon"
+              variant="primary"
               isLoading={isSubmitting}
               rightIcon={<ArrowRight className="w-4 h-4 text-white" />}
             >

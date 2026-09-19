@@ -85,7 +85,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           <div className="flex justify-center pt-2 border-t border-slate-100">
             <Button
               type="button"
-              variant="neon"
+              variant="primary"
               onClick={onClose}
               className="w-full font-bold text-xs py-2.5"
             >
@@ -120,7 +120,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             <span>Recovery Dispatched</span>
           </div>
           <p>{statusMessage}</p>
-          <Button variant="neon" size="sm" onClick={onClose} className="w-full mt-2">
+          <Button variant="primary" size="sm" onClick={onClose} className="w-full mt-2">
             Return to Sign In
           </Button>
         </div>
@@ -156,7 +156,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" variant="neon" isLoading={isSubmitting} rightIcon={<ArrowRight className="w-4 h-4 text-white" />}>
+            <Button type="submit" variant="primary" isLoading={isSubmitting} rightIcon={<ArrowRight className="w-4 h-4 text-white" />}>
               Send Reset Link
             </Button>
           </div>
