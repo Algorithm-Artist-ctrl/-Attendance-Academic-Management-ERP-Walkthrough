@@ -101,15 +101,9 @@ export const StudentMarksPage: React.FC = () => {
                   </div>
                   <div className="text-right pl-4 border-l border-slate-800">
                     <div className="text-[11px] text-slate-400">Internal Score</div>
-                    {item.maxInternalScore > 0 ? (
-                      <div className="text-sm font-bold font-mono text-emerald-400">
-                        {item.totalInternalScore} <span className="text-xs text-slate-500">/ {item.maxInternalScore}</span>
-                      </div>
-                    ) : (
-                      <div className="text-xs font-semibold text-slate-400 mt-1">
-                        Marks not published yet
-                      </div>
-                    )}
+                    <div className="text-sm font-bold font-mono text-emerald-400">
+                      {item.totalInternalScore} <span className="text-xs text-slate-500">/ {item.maxInternalScore}</span>
+                    </div>
                   </div>
                 </div>
               </div>

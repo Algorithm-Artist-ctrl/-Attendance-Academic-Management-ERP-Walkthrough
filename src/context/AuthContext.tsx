@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { UserProfile, UserRole, Student, Faculty, Section, AdmissionType } from '../types/database.types';
 import { AuthState, LoginCredentials, SignUpData } from '../types/auth.types';
 import { supabase } from '../lib/supabase/supabaseClient';
@@ -73,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const emailCacheRef = useRef<Map<string, string>>(new Map());
   const inFlightProfileRef = useRef<Map<string, Promise<UserProfile | null>>>(new Map());
+  const cachedProfileRef = useRef<Map<string, { profile: UserProfile; timestamp: number }>>(new Map());
 
   // Helper to resolve official email from any identifier (Roll Number, Employee ID, Faculty Code, 'admin')
   const resolveUserEmail = async (rawIdentifier: string): Promise<string | null> => {
@@ -180,8 +181,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Helper to load and deeply hydrate user profile from authenticated Supabase identity (Deduplicated Single Flight)
-  const loadHydratedProfile = (authUserId: string, authUserEmail?: string, authUser?: any): Promise<UserProfile | null> => {
+  const loadHydratedProfile = (authUserId: string, authUserEmail?: string, authUser?: any, forceFresh = false): Promise<UserProfile | null> => {
     if (!authUserId) return Promise.resolve(null);
+    if (!forceFresh) {
+      const cached = cachedProfileRef.current.get(authUserId);
+      if (cached && (Date.now() - cached.timestamp < 60000)) {
+        return Promise.resolve(cached.profile);
+      }
+    }
     const existing = inFlightProfileRef.current.get(authUserId);
     if (existing) {
       return existing;
@@ -356,7 +363,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
 
           if (student) {
-            return {
+            const hydrated = {
               ...profile,
               student_id: student.id,
               student: {
@@ -364,6 +371,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 section_id: (student.section as any)?.id || student.section_id,
               },
             };
+            cachedProfileRef.current.set(authUserId, { profile: hydrated, timestamp: Date.now() });
+            return hydrated;
           }
         }
 
@@ -377,14 +386,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
 
           if (fac) {
-            return {
+            const hydrated = {
               ...profile,
               faculty_id: fac.id,
               faculty: fac,
             };
+            cachedProfileRef.current.set(authUserId, { profile: hydrated, timestamp: Date.now() });
+            return hydrated;
           }
         }
 
+        if (profile) {
+          cachedProfileRef.current.set(authUserId, { profile, timestamp: Date.now() });
+        }
         return profile;
       } catch (err) {
         console.error('Failed to load hydrated profile:', err);
@@ -539,6 +553,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else if (event === 'SIGNED_OUT') {
         if (isMounted) {
+          cachedProfileRef.current.clear();
           erpStorage.setCurrentSessionUser(null);
           setAuthState({
             user: null,
@@ -551,10 +566,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
       } else if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-        const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user);
+        const forceFresh = event === 'USER_UPDATED';
+        const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user, forceFresh);
         if (isMounted && profile) {
           if (profile.status === 'BLOCKED' || profile.status === 'ARCHIVED') {
             await supabase.auth.signOut().catch(() => {});
+            cachedProfileRef.current.clear();
             erpStorage.setCurrentSessionUser(null);
             setAuthState({
               user: null,
@@ -571,15 +588,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           erpStorage.setCurrentSessionUser(profile);
-          setAuthState(prev => ({
-            ...prev,
-            user: profile,
-            role: profile.role,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-            pendingNewEmail: session.user.new_email || null,
-          }));
+          setAuthState(prev => {
+            if (prev.isAuthenticated && prev.user?.id === profile.id && prev.role === profile.role && !prev.isLoading && prev.pendingNewEmail === (session.user.new_email || null)) {
+              return prev;
+            }
+            return {
+              ...prev,
+              user: profile,
+              role: profile.role,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+              pendingNewEmail: session.user.new_email || null,
+            };
+          });
         }
       }
     });
@@ -672,19 +694,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: errorMsg };
     }
 
-    // Update last_sign_in_at timestamp in profiles
-    try {
-      await supabase.from('profiles').update({
+    // Update last_sign_in_at and record audit log asynchronously in background (Non-blocking)
+    Promise.resolve(
+      supabase.from('profiles').update({
         last_sign_in_at: new Date().toISOString()
-      }).eq('id', hydratedProfile.id);
-    } catch (e) {
-      console.warn('Could not update last_sign_in_at:', e);
-    }
+      }).eq('id', hydratedProfile.id)
+    ).catch((e: any) => console.warn('Could not update last_sign_in_at:', e));
 
-    // Session successfully established
-    erpStorage.setCurrentSessionUser(hydratedProfile);
-    try {
-      await supabase.from('audit_logs').insert([{
+    Promise.resolve(
+      supabase.from('audit_logs').insert([{
         actor_id: hydratedProfile.id,
         actor_name: hydratedProfile.full_name,
         actor_role: hydratedProfile.role,
@@ -693,8 +711,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         entity_id: hydratedProfile.id,
         new_values: { email: hydratedProfile.email, timestamp: new Date().toISOString() },
         created_at: new Date().toISOString(),
-      }]);
-    } catch {}
+      }])
+    ).catch(() => {});
+
+    // Session successfully established
+    erpStorage.setCurrentSessionUser(hydratedProfile);
 
     setAuthState({
       user: hydratedProfile,
@@ -1353,26 +1374,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const adminUpdateAccountCredentials = useCallback((params: any) => {
+    return supabaseService.adminUpdateAccountCredentials(params);
+  }, []);
+
+  const authContextValue = useMemo(() => ({
+    ...authState,
+    login,
+    logout,
+    signUp,
+    changePassword,
+    changeEmail,
+    resendEmailVerification,
+    resetPasswordForEmail,
+    completePasswordRecovery,
+    cancelPasswordRecovery,
+    sendEmailOtp,
+    verifyEmailOtp,
+    updateUserProfile,
+    resolveUserEmail,
+    adminUpdateAccountCredentials,
+  }), [authState, adminUpdateAccountCredentials]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        ...authState,
-        login,
-        logout,
-        signUp,
-        changePassword,
-        changeEmail,
-        resendEmailVerification,
-        resetPasswordForEmail,
-        completePasswordRecovery,
-        cancelPasswordRecovery,
-        sendEmailOtp,
-        verifyEmailOtp,
-        updateUserProfile,
-        resolveUserEmail,
-        adminUpdateAccountCredentials: (params) => supabaseService.adminUpdateAccountCredentials(params),
-      }}
-    >
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );

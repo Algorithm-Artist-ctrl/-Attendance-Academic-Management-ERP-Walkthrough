@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   CheckCircle2,
   FileText,
-  UploadCloud
+  UploadCloud,
+  RotateCcw
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { useAcademic } from '../../context/AcademicContext';
@@ -99,10 +100,17 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
     return map;
   }, [facultyAssignments, facultyTimetableSlots]);
 
-  // Available assigned sections
+  // Available assigned sections (including class coordinator sections)
+  const coordinatorSectionIds = useMemo(() => {
+    if (isSuperAdmin || isHOD) return new Set<string>();
+    return new Set(sections.filter(s => s.class_coordinator_id === facultyId).map(s => s.id));
+  }, [sections, facultyId, isSuperAdmin, isHOD]);
+
   const assignedSectionIds = useMemo(() => {
-    return new Set(validSectionSubjectMap.keys());
-  }, [validSectionSubjectMap]);
+    const set = new Set(validSectionSubjectMap.keys());
+    coordinatorSectionIds.forEach(id => set.add(id));
+    return set;
+  }, [validSectionSubjectMap, coordinatorSectionIds]);
 
   // Step 1: Available Academic Years where Faculty teaches
   const eligibleYears = useMemo(() => {
@@ -170,8 +178,8 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    if (!selectedYearId || !selectedSectionId || !selectedSubjectId) {
-      setError('Please select Academic Year, Section, and Subject.');
+    if (!selectedYearId || !selectedSectionId) {
+      setError('Please select Academic Year and Section.');
       return;
     }
 
@@ -185,7 +193,7 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
       const res = await sendGroupMessage({
         academicYearId: selectedYearId,
         sectionId: selectedSectionId,
-        subjectId: selectedSubjectId,
+        subjectId: selectedSubjectId ? selectedSubjectId : undefined,
         message: message.trim(),
         title: title.trim() || undefined,
         attachmentUrl: attachment?.dataUrl,
@@ -201,14 +209,14 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
       } else {
         setIsSuccess(true);
         const groupId = res.data?.group_id;
+        if (onSuccess && groupId) {
+          onSuccess(groupId);
+        }
         setTimeout(() => {
-          if (onSuccess && groupId) {
-            onSuccess(groupId);
-          }
           setIsSuccess(false);
           setIsSubmitting(false);
           onClose();
-        }, 800);
+        }, 350);
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred while sending.');
@@ -260,7 +268,7 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
                 <option value="" className="bg-slate-950 text-slate-400">Select Year...</option>
                 {eligibleYears.map(y => (
                   <option key={y.id} value={y.id} className="bg-slate-950 text-white">
-                    {y.year_number}th Year ({y.name})
+                    {y.name}
                   </option>
                 ))}
               </select>
@@ -287,30 +295,38 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
               </select>
             </div>
 
-            {/* Step 3: Subject */}
+            {/* Step 3: Subject (Optional) */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 mb-1.5 block">
-                3. Subject *
+              <label className="text-[11px] font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>3. Subject</span>
+                <span className="text-[10px] text-[#00ff88] font-normal">Optional</span>
               </label>
               <select
                 value={selectedSubjectId}
                 onChange={(e) => setSelectedSubjectId(e.target.value)}
-                disabled={!selectedSectionId || eligibleSubjects.length === 0}
-                required
+                disabled={!selectedSectionId}
                 className="w-full text-xs bg-slate-950/90 border border-emerald-500/30 text-white rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-[#00ff88] focus:border-[#00ff88] focus:outline-none disabled:bg-slate-900/40 disabled:border-slate-800 disabled:text-slate-500 transition-all hover:border-emerald-400/60"
               >
-                <option value="" className="bg-slate-950 text-slate-400">Select Subject...</option>
-                {eligibleSubjects.map(sub => (
-                  <option key={sub.id} value={sub.id} className="bg-slate-950 text-white">
-                    {sub.subject_name}
+                <option value="" className="bg-slate-950 text-[#00ff88] font-semibold">
+                  Entire Class (All Subjects / Section Announcement)
+                </option>
+                {eligibleSubjects.length === 0 ? (
+                  <option value="" disabled className="bg-slate-950 text-slate-500">
+                    No assigned subjects for this class
                   </option>
-                ))}
+                ) : (
+                  eligibleSubjects.map(sub => (
+                    <option key={sub.id} value={sub.id} className="bg-slate-950 text-white">
+                      {sub.subject_name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
 
           <p className="text-[10px] text-slate-400 leading-normal">
-            Only classes and subjects assigned to you in the official VCTM timetable are selectable.
+            Choose a subject to target a specific course, or leave as Entire Class for general section announcements.
           </p>
         </div>
 
@@ -404,13 +420,29 @@ export const NewGroupMessageModal: React.FC<NewGroupMessageModalProps> = ({
 
           <button
             type="submit"
-            disabled={isSubmitting || !selectedSubjectId || !message.trim()}
-            className="px-5 py-2 text-xs font-semibold text-slate-950 bg-[#00ff88] hover:bg-[#00e67a] rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] flex items-center gap-1.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || isSuccess || !selectedYearId || !selectedSectionId || !message.trim()}
+            className={`px-5 py-2 text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)] flex items-center gap-1.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed ${
+              isSuccess
+                ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                : error
+                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                : 'text-slate-950 bg-[#00ff88] hover:bg-[#00e67a]'
+            }`}
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>Broadcasting...</span>
+              </>
+            ) : isSuccess ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                <span>Broadcast ✓</span>
+              </>
+            ) : error ? (
+              <>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Retry Broadcast</span>
               </>
             ) : (
               <>

@@ -60,6 +60,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     notifications,
     unreadNotificationCount,
     unreadMessagesCount,
+    leaveApplications,
     setActiveConversationId,
     setActiveGroupId,
     activeToast,
@@ -82,6 +83,30 @@ export const AppShell: React.FC<AppShellProps> = ({
            (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
     ) || user?.faculty;
   }, [faculty, user]);
+
+  const pendingLeavesCount = React.useMemo(() => {
+    if (role === 'student') {
+      const studId = user?.student_id || user?.student?.id || user?.id;
+      const activePending = leaveApplications.filter(
+        l => (l.student_id === studId || !l.student_id) && 
+             (l.status === 'PENDING_COORDINATOR' || l.status === 'PENDING_HOD')
+      ).length;
+      const unreadLeaveNotifs = notifications.filter(
+        n => !n.is_read && (n.type?.startsWith('LEAVE_') || n.reference_type === 'leave_application')
+      ).length;
+      return Math.max(activePending, unreadLeaveNotifs);
+    }
+    if (role === 'faculty' || (role === 'hod' && isTeachingMode)) {
+      return leaveApplications.filter(l => l.status === 'PENDING_COORDINATOR').length;
+    }
+    if (role === 'hod') {
+      return leaveApplications.filter(l => l.status === 'PENDING_HOD').length;
+    }
+    if (role === 'super_admin') {
+      return leaveApplications.filter(l => l.status === 'PENDING_COORDINATOR' || l.status === 'PENDING_HOD').length;
+    }
+    return 0;
+  }, [leaveApplications, notifications, role, user, isTeachingMode]);
 
   const pendingCorrectionsCount = React.useMemo(() => {
     if (role === 'student') {
@@ -216,7 +241,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             icon: MessageSquare, 
             badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined 
           },
-          { id: 'leave', label: 'Leave Application', icon: FileText },
+          { id: 'leave', label: 'Leave Application', icon: FileText, badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined },
           { id: 'feedback', label: 'Feedback', icon: MessageCircle },
           { 
             id: 'corrections', 
@@ -245,7 +270,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
           },
           { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
-          { id: 'leave', label: 'Leave Applications', icon: FileText },
+          { id: 'leave', label: 'Leave Applications', icon: FileText, badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined },
           { id: 'notices', label: 'Notices', icon: Bell },
           { 
             id: 'messages', 
@@ -275,7 +300,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
             },
             { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
-            { id: 'leave', label: 'Leave Applications', icon: FileText },
+            { id: 'leave', label: 'Leave Applications', icon: FileText, badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined },
             { id: 'notices', label: 'Notices', icon: Bell },
             { 
               id: 'messages', 
@@ -301,7 +326,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             icon: RotateCcw, 
             badge: pendingCorrectionsCount > 0 ? pendingCorrectionsCount : undefined 
           },
-          { id: 'leave', label: 'Leave Approvals', icon: FileText },
+          { id: 'leave', label: 'Leave Approvals', icon: FileText, badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined },
           { id: 'notices', label: 'Notices', icon: Bell },
           { 
             id: 'messages', 
@@ -324,7 +349,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'faculty_assignments', label: 'Faculty Assignments', icon: CheckSquare },
           { id: 'import', label: 'Student Data / CSV Import', icon: FileSpreadsheet },
           { id: 'timetable', label: 'Timetable Overview', icon: Calendar },
-          { id: 'leave', label: 'Leave Oversight', icon: FileText },
+          { id: 'leave', label: 'Leave Oversight', icon: FileText, badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined },
           { id: 'notices', label: 'Notices', icon: Bell },
           { id: 'audit_logs', label: 'Audit Logs', icon: ShieldCheck },
           { id: 'settings', label: 'Settings', icon: Settings },

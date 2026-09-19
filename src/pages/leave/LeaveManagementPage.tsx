@@ -411,6 +411,10 @@ export const LeaveManagementPage: React.FC = () => {
   };
 
   const handleDownloadPdf = (app: LeaveApplication) => {
+    if (app.status !== 'APPROVED') {
+      console.warn('Cannot download PDF: leave application is not approved yet.');
+      return;
+    }
     generateApprovedLeavePdf({
       application: app,
       studentName: app.student?.full_name || 'Student',
@@ -430,31 +434,31 @@ export const LeaveManagementPage: React.FC = () => {
       case 'APPROVED':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88]">
-            APPROVED
+            Approved
           </span>
         );
       case 'PENDING_HOD':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-cyan-500/15 border border-cyan-500/30 text-cyan-300">
-            PENDING HOD
+            Pending HOD Review
           </span>
         );
       case 'PENDING_COORDINATOR':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/15 border border-amber-500/30 text-amber-300">
-            PENDING COORDINATOR
+            Pending Coordinator Review
           </span>
         );
       case 'REJECTED_BY_COORDINATOR':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/15 border border-rose-500/30 text-rose-400">
-            REJECTED BY COORDINATOR
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/15 border border-rose-500/30 text-rose-400" title="Rejected by Class Coordinator">
+            Rejected
           </span>
         );
       case 'REJECTED_BY_HOD':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/15 border border-rose-500/30 text-rose-400">
-            REJECTED BY HOD
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500/15 border border-rose-500/30 text-rose-400" title="Rejected by Head of Department">
+            Rejected
           </span>
         );
       default:

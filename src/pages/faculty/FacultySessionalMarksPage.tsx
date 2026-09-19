@@ -16,7 +16,9 @@ import {
   Edit3,
   Sparkles,
   FileCheck,
-  Eye
+  Eye,
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -144,6 +146,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
   const [newMaxMarks, setNewMaxMarks] = useState<number>(30);
   const [newExamDate, setNewExamDate] = useState(getISTTodayDate());
   const [newDescription, setNewDescription] = useState('');
+  const [newStatus, setNewStatus] = useState<'draft' | 'published'>('published');
   const [isCreating, setIsCreating] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -151,12 +154,18 @@ export const FacultySessionalMarksPage: React.FC = () => {
   const [activeAssessmentForMarks, setActiveAssessmentForMarks] = useState<SessionalAssessment | null>(null);
   const [marksRoster, setMarksRoster] = useState<Record<string, { marks: number | ''; remarks: string; oldMarks?: number; updatedAt?: string }>>({});
   const [isSavingMarks, setIsSavingMarks] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [rosterSearch, setRosterSearch] = useState('');
 
-  // History Modal State
+  // History & Toast Modal State
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState('');
   const [saveMarksError, setSaveMarksError] = useState('');
+  const [saveMarksSuccess, setSaveMarksSuccess] = useState(false);
+  const [saveDraftSuccess, setSaveDraftSuccess] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState<string | null>(null);
 
   const handleSubjectChange = (subId: string) => {
     setSelectedSubjectId(subId);
@@ -172,6 +181,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
     setNewMaxMarks(30);
     setNewExamDate(getISTTodayDate());
     setNewDescription('');
+    setNewStatus('published');
     setIsAddModalOpen(true);
   };
 
@@ -202,16 +212,39 @@ export const FacultySessionalMarksPage: React.FC = () => {
         max_marks: Number(newMaxMarks),
         exam_date: newExamDate,
         description: newDescription.trim() || undefined,
-        status: 'published',
+        status: newStatus,
       });
 
       setIsAddModalOpen(false);
-      setSuccessToast(`Created assessment "${newTitle.trim()}" successfully!`);
+      setSuccessToast(
+        newStatus === 'published'
+          ? `Created assessment "${newTitle.trim()}" (Published). Visible once marks entered.`
+          : `Created assessment "${newTitle.trim()}" as Draft (Hidden from students).`
+      );
       setTimeout(() => setSuccessToast(''), 4000);
     } catch (err: any) {
       setModalError(err.message || 'Failed to create assessment.');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleToggleAssessmentStatus = async (assessment: SessionalAssessment) => {
+    const isCurrentlyPublished = assessment.status === 'published' || assessment.status === 'completed';
+    const nextStatus = isCurrentlyPublished ? 'draft' : 'published';
+    try {
+      setIsTogglingStatus(assessment.id);
+      await updateSessionalAssessment(assessment.id, { status: nextStatus });
+      setSuccessToast(
+        nextStatus === 'published'
+          ? `Published "${assessment.title}". Visible to students.`
+          : `Unpublished "${assessment.title}". Reverted to draft (hidden from students).`
+      );
+      setTimeout(() => setSuccessToast(''), 4000);
+    } catch (err: any) {
+      alert(`Failed to update assessment status: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsTogglingStatus(null);
     }
   };
 
@@ -246,7 +279,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
     setRosterSearch('');
   };
 
-  const handleSaveMarksRoster = async () => {
+  const handleSaveMarksRoster = async (publishMode: 'draft' | 'published' = 'published') => {
     if (!activeAssessmentForMarks) return;
 
     const studentList: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }> = [];
@@ -272,9 +305,17 @@ export const FacultySessionalMarksPage: React.FC = () => {
       return;
     }
 
+    const isPub = publishMode === 'published';
+
     try {
       setIsSavingMarks(true);
+      if (isPub) setIsPublishing(true);
+      else setIsSavingDraft(true);
       setSaveMarksError('');
+      setSaveMarksSuccess(false);
+      setSaveDraftSuccess(false);
+      setPublishSuccess(false);
+
       await saveSessionalMarks({
         sessionalAssessmentId: activeAssessmentForMarks.id,
         facultyId: currentFacultyId,
@@ -283,13 +324,47 @@ export const FacultySessionalMarksPage: React.FC = () => {
         sessionalType: activeAssessmentForMarks.title,
         maxMarks: activeAssessmentForMarks.max_marks,
         studentMarks: studentList,
+        isPublished: isPub,
       });
 
-      setActiveAssessmentForMarks(null);
-      setSuccessToast(`Saved marks for ${studentList.length} students in "${activeAssessmentForMarks.title}"!`);
+      if (isPub) {
+        setPublishSuccess(true);
+        setSaveMarksSuccess(true);
+        setSuccessToast(`Published marks for ${studentList.length} students in "${activeAssessmentForMarks.title}"! Visible to students.`);
+      } else {
+        setSaveDraftSuccess(true);
+        setSuccessToast(`Saved draft marks for ${studentList.length} students in "${activeAssessmentForMarks.title}". Hidden from students.`);
+      }
+
+      setTimeout(() => {
+        setActiveAssessmentForMarks(null);
+        setSaveMarksSuccess(false);
+        setPublishSuccess(false);
+        setSaveDraftSuccess(false);
+      }, 600);
       setTimeout(() => setSuccessToast(''), 4000);
     } catch (err: any) {
+      setSaveMarksSuccess(false);
+      setPublishSuccess(false);
+      setSaveDraftSuccess(false);
       setSaveMarksError(err.message || 'Failed to save sessional marks. Entered marks have been preserved.');
+    } finally {
+      setIsSavingMarks(false);
+      setIsPublishing(false);
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleUnpublishCurrentAssessment = async () => {
+    if (!activeAssessmentForMarks) return;
+    try {
+      setIsSavingMarks(true);
+      await updateSessionalAssessment(activeAssessmentForMarks.id, { status: 'draft' });
+      setActiveAssessmentForMarks(prev => prev ? { ...prev, status: 'draft' } : null);
+      setSuccessToast(`Assessment "${activeAssessmentForMarks.title}" reverted to draft. Marks hidden from student dashboard.`);
+      setTimeout(() => setSuccessToast(''), 4000);
+    } catch (err: any) {
+      alert(`Failed to unpublish: ${err.message || 'Unknown error'}`);
     } finally {
       setIsSavingMarks(false);
     }
@@ -458,16 +533,48 @@ export const FacultySessionalMarksPage: React.FC = () => {
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      {assessment.subject?.subject_code || selectedSubject?.subject_code} • Section {assessment.section?.name || selectedSection?.name}
-                    </span>
-                    <button 
-                      onClick={() => handleDeleteAssessment(assessment.id, assessment.title)}
-                      className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-                      title="Delete Sessional"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {assessment.subject?.subject_code || selectedSubject?.subject_code} • Section {assessment.section?.name || selectedSection?.name}
+                      </span>
+                      {assessment.status === 'published' || assessment.status === 'completed' ? (
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/15 text-[#00ff88] border border-emerald-500/30 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Published
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Draft (Hidden)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleToggleAssessmentStatus(assessment)}
+                        disabled={isTogglingStatus === assessment.id}
+                        className={clsx(
+                          "px-2 py-1 rounded-lg text-[11px] font-medium transition-colors border flex items-center gap-1",
+                          assessment.status === 'published' || assessment.status === 'completed'
+                            ? "border-slate-700 text-slate-400 hover:text-amber-300 hover:border-amber-500/30"
+                            : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                        )}
+                        title={assessment.status === 'published' ? 'Unpublish and hide from students' : 'Publish marks to students'}
+                      >
+                        {isTogglingStatus === assessment.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : assessment.status === 'published' || assessment.status === 'completed' ? (
+                          'Unpublish'
+                        ) : (
+                          'Publish'
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteAssessment(assessment.id, assessment.title)}
+                        className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                        title="Delete Sessional"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <h3 className="text-lg font-bold text-white mb-1">{assessment.title}</h3>
@@ -592,6 +699,43 @@ export const FacultySessionalMarksPage: React.FC = () => {
               onChange={(e) => setNewDescription(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Publication Status *</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setNewStatus('published')}
+                className={clsx(
+                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all",
+                  newStatus === 'published'
+                    ? "bg-emerald-500/20 border-emerald-500/50 text-[#00ff88]"
+                    : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                )}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Published (Live)
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewStatus('draft')}
+                className={clsx(
+                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all",
+                  newStatus === 'draft'
+                    ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
+                    : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                )}
+              >
+                <Clock className="w-4 h-4" />
+                Draft (Hidden)
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {newStatus === 'published'
+                ? "Marks will be visible to students once scores are saved."
+                : "Marks will be kept private as a draft until explicitly published."}
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
@@ -726,21 +870,95 @@ export const FacultySessionalMarksPage: React.FC = () => {
             </table>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-            <Button
-              variant="outline"
-              onClick={() => setActiveAssessmentForMarks(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveMarksRoster}
-              disabled={isSavingMarks}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5"
-            >
-              <FileCheck className="w-4 h-4" />
-              {isSavingMarks ? 'Saving...' : 'Save & Update Marks'}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+            <div>
+              {activeAssessmentForMarks && (activeAssessmentForMarks.status === 'published' || activeAssessmentForMarks.status === 'completed') ? (
+                <button
+                  type="button"
+                  onClick={handleUnpublishCurrentAssessment}
+                  disabled={isSavingMarks}
+                  className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Revert to Draft (Hide from Students)
+                </button>
+              ) : (
+                <span className="text-xs text-amber-400 flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <Clock className="w-3.5 h-3.5" /> Currently Draft (Hidden from students)
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setActiveAssessmentForMarks(null)}
+                disabled={isSavingMarks}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleSaveMarksRoster('draft')}
+                disabled={isSavingMarks}
+                className={clsx(
+                  "flex items-center gap-1.5 transition-all text-xs",
+                  saveDraftSuccess && "bg-amber-500/20 border-amber-500/50 text-amber-300",
+                  !saveDraftSuccess && "border-slate-700 text-slate-300 hover:text-white"
+                )}
+              >
+                {isSavingDraft ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Saving Draft...
+                  </>
+                ) : saveDraftSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                    Draft Saved ✓
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    Save Draft
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={() => handleSaveMarksRoster('published')}
+                disabled={isSavingMarks}
+                className={clsx(
+                  'flex items-center gap-1.5 font-bold transition-all text-xs',
+                  publishSuccess && 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.3)]',
+                  saveMarksError && 'bg-rose-600 hover:bg-rose-500 text-white',
+                  !publishSuccess && !saveMarksError && 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                )}
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Publishing...
+                  </>
+                ) : publishSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Published ✓
+                  </>
+                ) : saveMarksError ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Publishing Failed — Retry
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {activeAssessmentForMarks?.status === 'draft' ? 'Publish Marks to Students' : 'Save & Update Marks'}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>

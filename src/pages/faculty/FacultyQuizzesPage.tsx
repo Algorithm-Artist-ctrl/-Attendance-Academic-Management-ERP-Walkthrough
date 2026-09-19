@@ -14,7 +14,8 @@ import {
   Edit3, 
   CheckCircle2,
   FileCheck,
-  Layers
+  Layers,
+  Loader2
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -141,6 +142,7 @@ export const FacultyQuizzesPage: React.FC = () => {
   const [activeQuizForMarks, setActiveQuizForMarks] = useState<Quiz | null>(null);
   const [marksRoster, setMarksRoster] = useState<Record<string, { marks: number | ''; remarks: string }>>({});
   const [isSavingMarks, setIsSavingMarks] = useState(false);
+  const [saveMarksSuccess, setSaveMarksSuccess] = useState(false);
 
   const filteredQuizzes = useMemo(() => {
     return myQuizzes.filter(q => {
@@ -279,14 +281,19 @@ export const FacultyQuizzesPage: React.FC = () => {
 
     try {
       setIsSavingMarks(true);
+      setSaveMarksSuccess(false);
       await saveQuizMarks({
         quizId: activeQuizForMarks.id,
         facultyId: currentFacultyId,
         studentMarks: studentList,
       });
-      setActiveQuizForMarks(null);
+      setSaveMarksSuccess(true);
+      setTimeout(() => {
+        setSaveMarksSuccess(false);
+        setActiveQuizForMarks(null);
+      }, 600);
     } catch (err: any) {
-      alert(err.message || 'Failed to save quiz marks.');
+      alert(err.message || 'Failed to save quiz marks. All entered scores have been preserved.');
     } finally {
       setIsSavingMarks(false);
     }
@@ -735,11 +742,29 @@ export const FacultyQuizzesPage: React.FC = () => {
             </Button>
             <Button
               onClick={handleSaveMarksRoster}
-              disabled={isSavingMarks}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5"
+              disabled={isSavingMarks || saveMarksSuccess}
+              className={`flex items-center gap-1.5 transition-all ${
+                saveMarksSuccess
+                  ? '!bg-emerald-500 !text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)] font-bold'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
             >
-              <FileCheck className="w-4 h-4" />
-              {isSavingMarks ? 'Saving Records...' : 'Save & Record All Marks'}
+              {isSavingMarks ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving Records...
+                </>
+              ) : saveMarksSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                  Saved ✓
+                </>
+              ) : (
+                <>
+                  <FileCheck className="w-4 h-4" />
+                  Save & Record All Marks
+                </>
+              )}
             </Button>
           </div>
         </div>

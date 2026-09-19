@@ -599,7 +599,7 @@ export interface Conversation {
   id: string;
   student_id: string;
   faculty_id: string;
-  subject_id: string;
+  subject_id?: string | null;
   section_id: string;
   academic_year_id: string;
   category: ConversationCategory;
@@ -612,7 +612,7 @@ export interface Conversation {
   // Joins / expanded relations
   student?: Student;
   faculty?: Faculty;
-  subject?: Subject;
+  subject?: Subject | null;
   section?: Section;
   academic_year?: AcademicYear;
   unread_count?: number;
@@ -625,7 +625,7 @@ export interface Message {
   receiver_user_id: string;
   student_id: string;
   faculty_id: string;
-  subject_id: string;
+  subject_id?: string | null;
   sender_role: 'student' | 'faculty' | 'hod' | 'super_admin';
   message: string;
   attachment_url?: string | null;
@@ -658,11 +658,12 @@ export interface EligibleStudentForFaculty {
   admission_number?: string;
   section_id: string;
   section_name: string;
-  subject_id: string;
-  subject_name: string;
-  subject_code: string;
+  subject_id?: string;
+  subject_name?: string;
+  subject_code?: string;
   academic_year_id: string;
   year_name?: string;
+  subjects?: Array<{ id: string; name: string; code: string }>;
 }
 
 export type LeaveStatus = 
@@ -756,7 +757,7 @@ export interface MessageGroup {
   department_id: string;
   academic_year_id: string;
   section_id: string;
-  subject_id: string;
+  subject_id?: string | null;
   created_by_faculty_id?: string | null;
   allow_student_replies: boolean;
   last_message_at: string;
@@ -764,7 +765,7 @@ export interface MessageGroup {
   created_at: string;
   updated_at: string;
   // Relational joins
-  subject?: Subject;
+  subject?: Subject | null;
   section?: Section;
   academic_year?: AcademicYear;
   department?: Department;

@@ -19,6 +19,7 @@ import {
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { useAcademic } from '../../context/AcademicContext';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { supabase } from '../../lib/supabase/supabaseClient';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
@@ -27,6 +28,7 @@ import { LeaveApplication, LeaveType, LeaveStatus } from '../../types/database.t
 
 export const LeaveApplicationPage: React.FC = () => {
   const { user } = useAuth();
+  const { refreshLeaveApplications, notifications, markNotificationAsRead } = useAcademic();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,6 +118,16 @@ export const LeaveApplicationPage: React.FC = () => {
     };
   }, [studentId, loadApplications]);
 
+  // Acknowledge/clear unread leave notifications when student views this page
+  useEffect(() => {
+    const unreadLeaveNotifs = notifications.filter(
+      n => !n.is_read && (n.type?.startsWith('LEAVE_') || n.reference_type === 'leave_application')
+    );
+    for (const notif of unreadLeaveNotifs) {
+      markNotificationAsRead(notif.id);
+    }
+  }, [notifications, markNotificationAsRead]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) {
@@ -148,9 +160,14 @@ export const LeaveApplicationPage: React.FC = () => {
     setSubmitSuccess(`Leave application ${result.data?.application_number || ''} submitted and routed to your Class Coordinator!`);
     setTimeout(() => setSubmitSuccess(null), 5000);
     loadApplications(false);
+    refreshLeaveApplications();
   };
 
   const handleDownloadPdf = (app: LeaveApplication) => {
+    if (app.status !== 'APPROVED') {
+      console.warn('Cannot download PDF: leave application is not approved yet.');
+      return;
+    }
     generateApprovedLeavePdf({
       application: app,
       studentName: app.student?.full_name || user?.full_name || 'Student',
@@ -171,35 +188,35 @@ export const LeaveApplicationPage: React.FC = () => {
         return (
           <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1.5 shadow-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]" />
-            APPROVED
+            Approved
           </span>
         );
       case 'PENDING_HOD':
         return (
           <span className="px-3 py-1 rounded-full text-xs font-black bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 flex items-center gap-1.5 shadow-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            PENDING HOD
+            Pending HOD Review
           </span>
         );
       case 'PENDING_COORDINATOR':
         return (
           <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-1.5 shadow-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            PENDING COORDINATOR
+            Pending Coordinator Review
           </span>
         );
       case 'REJECTED_BY_COORDINATOR':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-1.5 shadow-xs">
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-1.5 shadow-xs" title="Rejected by Class Coordinator">
             <XCircle className="w-3.5 h-3.5 text-rose-400" />
-            REJECTED BY COORDINATOR
+            Rejected
           </span>
         );
       case 'REJECTED_BY_HOD':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-1.5 shadow-xs">
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-1.5 shadow-xs" title="Rejected by Head of Department">
             <XCircle className="w-3.5 h-3.5 text-rose-400" />
-            REJECTED BY HOD
+            Rejected
           </span>
         );
       default:

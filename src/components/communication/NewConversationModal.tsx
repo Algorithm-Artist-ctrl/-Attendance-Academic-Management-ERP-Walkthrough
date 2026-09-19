@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Send, 
@@ -7,9 +7,13 @@ import {
   User, 
   BookOpen, 
   Tag, 
-  FileText,
-  Loader2,
-  Trash2
+  FileText, 
+  Loader2, 
+  Trash2,
+  Search,
+  Filter,
+  CheckCircle2,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -59,9 +63,13 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
   const [eligibleFaculty, setEligibleFaculty] = useState<EligibleFacultyForStudent[]>([]);
   const [selectedFacultySubject, setSelectedFacultySubject] = useState<string>('');
 
-  // Faculty mode options
+  // Faculty mode: deduplicated students & search/filter state
   const [eligibleStudents, setEligibleStudents] = useState<EligibleStudentForFaculty[]>([]);
-  const [selectedStudentSubject, setSelectedStudentSubject] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterYearId, setFilterYearId] = useState('');
+  const [filterSectionId, setFilterSectionId] = useState('');
 
   // Common form fields
   const [category, setCategory] = useState<ConversationCategory>('General');
@@ -102,7 +110,8 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             const list = await fetchEligibleStudentsForFaculty(facultyId);
             setEligibleStudents(list);
             if (list.length > 0) {
-              setSelectedStudentSubject(`${list[0].student_id}_${list[0].subject_id}`);
+              setSelectedStudentId(list[0].student_id);
+              setSelectedSubjectId(list[0].subjects?.[0]?.id || list[0].subject_id || '');
             }
           }
         }
@@ -123,15 +132,77 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
     setAttachment(null);
     setError(null);
     setSubmitting(false);
+    setSearchQuery('');
+    setFilterYearId('');
+    setFilterSectionId('');
+  };
+
+  // Distinct academic years available to this faculty
+  const availableYears = useMemo(() => {
+    const map = new Map<string, string>();
+    eligibleStudents.forEach(s => {
+      if (s.academic_year_id && s.year_name) {
+        map.set(s.academic_year_id, s.year_name);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [eligibleStudents]);
+
+  // Distinct sections available for selected year
+  const availableSections = useMemo(() => {
+    const map = new Map<string, string>();
+    eligibleStudents.forEach(s => {
+      if (!filterYearId || s.academic_year_id === filterYearId) {
+        if (s.section_id && s.section_name) {
+          map.set(s.section_id, s.section_name);
+        }
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [eligibleStudents, filterYearId]);
+
+  // Filtered and searched student list
+  const displayedStudents = useMemo(() => {
+    return eligibleStudents.filter(s => {
+      if (filterYearId && s.academic_year_id !== filterYearId) return false;
+      if (filterSectionId && s.section_id !== filterSectionId) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = s.student_name.toLowerCase().includes(q);
+        const matchRoll = (s.roll_number || s.admission_number || '').toLowerCase().includes(q);
+        if (!matchName && !matchRoll) return false;
+      }
+      return true;
+    });
+  }, [eligibleStudents, filterYearId, filterSectionId, searchQuery]);
+
+  // Currently selected student object
+  const selectedStudent = useMemo(() => {
+    return eligibleStudents.find(s => s.student_id === selectedStudentId);
+  }, [eligibleStudents, selectedStudentId]);
+
+  // Available subjects for currently selected student
+  const availableSubjectsForStudent = useMemo(() => {
+    if (!selectedStudent || !selectedStudent.subjects) return [];
+    return selectedStudent.subjects;
+  }, [selectedStudent]);
+
+  const handleSelectStudent = (student: EligibleStudentForFaculty) => {
+    setSelectedStudentId(student.student_id);
+    if (student.subjects && student.subjects.length > 0) {
+      setSelectedSubjectId(student.subjects[0].id);
+    } else {
+      setSelectedSubjectId(student.subject_id || '');
+    }
+    setError(null);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit: 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be under 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be under 10MB');
       return;
     }
 
@@ -160,32 +231,32 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
     setError(null);
 
     try {
-      let facultyId = '';
-      let subjectId = '';
+      let convRes;
 
       if (isStudent) {
         if (!selectedFacultySubject) {
           throw new Error('Please select an assigned faculty and subject.');
         }
         const [fId, sId] = selectedFacultySubject.split('_');
-        facultyId = fId;
-        subjectId = sId;
+        convRes = await getOrCreateConversation({
+          facultyId: fId,
+          subjectId: sId,
+          category,
+          topic: topic.trim() || undefined,
+        });
       } else {
-        if (!selectedStudentSubject) {
-          throw new Error('Please select a student and subject.');
+        if (!selectedStudentId) {
+          throw new Error('Please select a student.');
         }
-        const [, sId] = selectedStudentSubject.split('_');
-        facultyId = user?.faculty_id || user?.faculty?.id || (faculty.find(f => f.id === user?.faculty_id || f.id === user?.id)?.id) || '';
-        subjectId = sId;
+        const fId = user?.faculty_id || user?.faculty?.id || (faculty.find(f => f.id === user?.faculty_id || f.id === user?.id)?.id) || '';
+        convRes = await getOrCreateConversation({
+          studentId: selectedStudentId,
+          facultyId: fId,
+          subjectId: selectedSubjectId || undefined,
+          category,
+          topic: topic.trim() || undefined,
+        });
       }
-
-      // 1. Get or create the conversation
-      const convRes = await getOrCreateConversation({
-        facultyId,
-        subjectId,
-        category,
-        topic: topic.trim() || undefined,
-      });
 
       if (convRes.error || !convRes.data) {
         throw new Error(convRes.error?.message || 'Failed to start conversation.');
@@ -193,7 +264,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
 
       const conversation = convRes.data;
 
-      // 2. Send the initial message
+      // Send the initial message
       const msgRes = await sendMessage({
         conversationId: conversation.id,
         message: message.trim(),
@@ -220,21 +291,21 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-[#0e1726] border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-white flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-[#0e1726] border border-emerald-500/25 rounded-2xl shadow-2xl overflow-hidden text-white flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-500/15 bg-white/[0.02]">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center text-[#00ff88]">
               <Send className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-wide">
-                {isStudent ? 'Start Discussion with Faculty' : 'Start Discussion with Student'}
+              <h2 className="text-base font-bold text-white tracking-wide">
+                {isStudent ? 'Start Discussion with Faculty' : 'Start Direct Discussion with Student'}
               </h2>
               <p className="text-xs text-slate-400">
                 {isStudent 
-                  ? 'Send a direct inquiry or report an issue to your assigned teacher' 
-                  : 'Communicate directly with students in your assigned classes'}
+                  ? 'Send a direct academic inquiry or report an issue to your assigned teacher' 
+                  : 'Search and message a student enrolled in your assigned sections'}
               </p>
             </div>
           </div>
@@ -249,7 +320,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
         {/* Content / Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="flex items-center space-x-2 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs">
+            <div className="flex items-center space-x-2 p-3 bg-red-500/10 border border-red-500/25 text-red-400 rounded-xl text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -258,19 +329,21 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
               <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
-              <p className="text-xs text-slate-400">Loading your assigned subjects and teachers...</p>
+              <p className="text-xs text-slate-400">
+                {isStudent ? 'Loading your assigned subjects and teachers...' : 'Loading enrolled students from your assigned classes...'}
+              </p>
             </div>
           ) : (
             <>
-              {/* Recipient / Subject Selection */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center space-x-2">
-                  <User className="w-3.5 h-3.5 text-[#00ff88]" />
-                  <span>{isStudent ? 'Assigned Faculty & Subject' : 'Select Student & Subject'}</span>
-                </label>
+              {/* Recipient Selection */}
+              {isStudent ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center space-x-2">
+                    <User className="w-3.5 h-3.5 text-[#00ff88]" />
+                    <span>Assigned Faculty & Subject</span>
+                  </label>
 
-                {isStudent ? (
-                  eligibleFaculty.length === 0 ? (
+                  {eligibleFaculty.length === 0 ? (
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs">
                       No assigned faculty found for your enrolled section and subjects.
                     </div>
@@ -278,7 +351,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                     <select
                       value={selectedFacultySubject}
                       onChange={(e) => setSelectedFacultySubject(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+                      className="w-full px-4 py-2.5 bg-black/40 border border-emerald-500/30 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#00ff88] transition-colors"
                       required
                     >
                       {eligibleFaculty.map((item) => (
@@ -291,44 +364,162 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                         </option>
                       ))}
                     </select>
-                  )
-                ) : (
-                  eligibleStudents.length === 0 ? (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs">
-                      No active students found in your assigned sections.
+                  )}
+                </div>
+              ) : (
+                /* FACULTY VIEW: Searchable, Filtered, Deduplicated Student Selector */
+                <div className="space-y-3 p-3.5 bg-slate-900/80 border border-emerald-500/20 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-[#00ff88]" />
+                      <span>Select Student (Single Identity)</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {displayedStudents.length} {displayedStudents.length === 1 ? 'student' : 'students'} found
+                    </span>
+                  </div>
+
+                  {/* Filter Bar: Academic Year & Section & Search */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Academic Year Filter */}
+                    <div className="relative">
+                      <select
+                        value={filterYearId}
+                        onChange={(e) => {
+                          setFilterYearId(e.target.value);
+                          setFilterSectionId('');
+                        }}
+                        className="w-full text-xs bg-slate-950/90 border border-emerald-500/30 text-white rounded-xl px-2.5 py-2 font-medium focus:ring-2 focus:ring-[#00ff88] focus:outline-none transition-all"
+                      >
+                        <option value="">All Academic Years</option>
+                        {availableYears.map(y => (
+                          <option key={y.id} value={y.id} className="bg-slate-950 text-white">
+                            {y.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    <select
-                      value={selectedStudentSubject}
-                      onChange={(e) => setSelectedStudentSubject(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00ff88] transition-colors"
-                      required
-                    >
-                      {eligibleStudents.map((item) => (
-                        <option 
-                          key={`${item.student_id}_${item.subject_id}`} 
-                          value={`${item.student_id}_${item.subject_id}`}
-                          className="bg-[#0e1726] text-white"
-                        >
-                          {item.student_name} ({item.roll_number || item.admission_number || 'ID'}) — {item.subject_name} ({item.section_name})
+
+                    {/* Section Filter */}
+                    <div className="relative">
+                      <select
+                        value={filterSectionId}
+                        onChange={(e) => setFilterSectionId(e.target.value)}
+                        className="w-full text-xs bg-slate-950/90 border border-emerald-500/30 text-white rounded-xl px-2.5 py-2 font-medium focus:ring-2 focus:ring-[#00ff88] focus:outline-none transition-all"
+                      >
+                        <option value="">All Sections</option>
+                        {availableSections.map(s => (
+                          <option key={s.id} value={s.id} className="bg-slate-950 text-white">
+                            Section {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search student or roll no..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full text-xs pl-8 pr-3 py-2 bg-slate-950/90 border border-emerald-500/30 text-white placeholder-slate-500 rounded-xl focus:ring-2 focus:ring-[#00ff88] focus:outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Student List (Deduplicated, scrollable) */}
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 border border-slate-800 rounded-xl p-1 bg-slate-950/60">
+                    {displayedStudents.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-400">
+                        No students match your filter or search criteria.
+                      </div>
+                    ) : (
+                      displayedStudents.map((s) => {
+                        const isSelected = s.student_id === selectedStudentId;
+                        return (
+                          <div
+                            key={s.student_id}
+                            onClick={() => handleSelectStudent(s)}
+                            className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between text-xs ${
+                              isSelected
+                                ? 'bg-emerald-500/20 border border-[#00ff88] shadow-[0_0_12px_rgba(0,255,136,0.2)]'
+                                : 'bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-emerald-500/30'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                                isSelected ? 'bg-[#00ff88] text-slate-950' : 'bg-slate-800 text-slate-300'
+                              }`}>
+                                {s.student_name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-white truncate flex items-center gap-1.5">
+                                  <span>{s.student_name}</span>
+                                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88] shrink-0" />}
+                                </div>
+                                <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                  <span className="text-[#00ff88] font-mono font-semibold">
+                                    {s.roll_number || s.admission_number || 'Roll N/A'}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{s.year_name || 'Year'}</span>
+                                  <span>•</span>
+                                  <span>Sec {s.section_name}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Subjects count badge */}
+                            <div className="text-[10px] text-slate-400 shrink-0 font-medium px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
+                              {s.subjects && s.subjects.length > 0 
+                                ? `${s.subjects.length} assigned ${s.subjects.length === 1 ? 'subject' : 'subjects'}`
+                                : 'Class student'}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Optional Subject for Selected Student */}
+                  {selectedStudent && (
+                    <div className="pt-2 border-t border-slate-800/80">
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                        <span>Subject Context (Optional)</span>
+                        <span className="text-[10px] text-[#00ff88]">Optional</span>
+                      </label>
+                      <select
+                        value={selectedSubjectId}
+                        onChange={(e) => setSelectedSubjectId(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950/90 border border-emerald-500/30 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#00ff88] transition-colors"
+                      >
+                        <option value="" className="bg-slate-950 text-[#00ff88] font-semibold">
+                          General Academic Discussion (No specific subject)
                         </option>
-                      ))}
-                    </select>
-                  )
-                )}
-              </div>
+                        {availableSubjectsForStudent.map(sub => (
+                          <option key={sub.id} value={sub.id} className="bg-slate-950 text-white">
+                            {sub.name} {sub.code ? `(${sub.code})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Category & Topic */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center space-x-2">
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center space-x-2">
                     <Tag className="w-3.5 h-3.5 text-[#00ff88]" />
-                    <span>Issue Category</span>
+                    <span>Inquiry Category</span>
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ConversationCategory)}
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+                    className="w-full px-3 py-2 bg-slate-950/90 border border-emerald-500/25 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#00ff88] transition-colors"
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat} value={cat} className="bg-[#0e1726] text-white">
@@ -339,7 +530,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center space-x-2">
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center space-x-2">
                     <FileText className="w-3.5 h-3.5 text-[#00ff88]" />
                     <span>Topic / Title (Optional)</span>
                   </label>
@@ -347,31 +538,31 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g. Attendance on Monday, Unit 2 doubts"
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] transition-colors"
+                    placeholder="e.g. Unit 3 doubts, Project progress, Attendance query"
+                    className="w-full px-3 py-2 bg-slate-950/90 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88] transition-colors"
                   />
                 </div>
               </div>
 
               {/* Initial Message */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center space-x-2">
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center space-x-2">
                   <BookOpen className="w-3.5 h-3.5 text-[#00ff88]" />
-                  <span>Message Content</span>
+                  <span>Message Content *</span>
                 </label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Describe your question, request, or issue clearly..."
+                  placeholder="Describe your inquiry, instructions, or message clearly..."
                   rows={4}
-                  className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] transition-colors resize-none"
+                  className="w-full px-3 py-2.5 bg-slate-950/90 border border-emerald-500/25 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88] transition-colors resize-none leading-relaxed"
                   required
                 />
               </div>
 
               {/* Attachment Preview */}
               {attachment && (
-                <div className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/10 rounded-xl">
+                <div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
                   <div className="flex items-center space-x-2.5 overflow-hidden">
                     <Paperclip className="w-4 h-4 text-[#00ff88] shrink-0" />
                     <span className="text-xs text-slate-200 truncate">{attachment.file.name}</span>
@@ -392,10 +583,10 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
           )}
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between pt-3 border-t border-emerald-500/15">
             <div>
-              <label className="cursor-pointer inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">
-                <Paperclip className="w-4 h-4 text-[#00ff88]" />
+              <label className="cursor-pointer inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 hover:text-white transition-colors">
+                <Paperclip className="w-3.5 h-3.5 text-[#00ff88]" />
                 <span>{attachment ? 'Change Attachment' : 'Add Attachment'}</span>
                 <input
                   type="file"
@@ -406,29 +597,29 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
               </label>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2.5">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={submitting || loading || (isStudent && eligibleFaculty.length === 0)}
-                className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-[#00ff88] text-black font-semibold text-xs tracking-wide shadow-lg shadow-[#00ff88]/20 hover:bg-[#00ff88]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={submitting || loading || (isStudent && eligibleFaculty.length === 0) || (!isStudent && !selectedStudentId) || !message.trim()}
+                className="flex items-center space-x-1.5 px-5 py-2 rounded-xl bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 font-bold text-xs tracking-wide shadow-lg shadow-[#00ff88]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     <span>Sending...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
-                    <span>Send Message</span>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Start Discussion</span>
                   </>
                 )}
               </button>

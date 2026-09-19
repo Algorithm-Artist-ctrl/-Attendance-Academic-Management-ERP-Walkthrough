@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Institution,
   Department,
@@ -44,7 +44,8 @@ import {
   GroupMessage,
   GroupMember,
   DetailedStudentProfile,
-  SectionReferenceCheckResult
+  SectionReferenceCheckResult,
+  LeaveApplication
 } from '../types/database.types';
 
 import {
@@ -142,10 +143,12 @@ interface AcademicContextType {
   activeGroupId: string | null;
   setActiveGroupId: (id: string | null) => void;
   refreshMessageGroups: () => Promise<void>;
+  leaveApplications: LeaveApplication[];
+  refreshLeaveApplications: (forcedStudentId?: string, forcedFacultyId?: string) => Promise<LeaveApplication[]>;
   sendGroupMessage: (params: {
     academicYearId: string;
     sectionId: string;
-    subjectId: string;
+    subjectId?: string | null;
     message: string;
     title?: string;
     attachmentUrl?: string;
@@ -166,8 +169,9 @@ interface AcademicContextType {
     attachmentSize?: number;
   }) => Promise<{ data: Message | null; error: any }>;
   getOrCreateConversation: (params: {
-    facultyId: string;
-    subjectId: string;
+    facultyId?: string;
+    studentId?: string;
+    subjectId?: string | null;
     category?: ConversationCategory;
     topic?: string;
   }) => Promise<{ data: Conversation | null; error: any }>;
@@ -248,6 +252,7 @@ interface AcademicContextType {
     sessionalType?: string;
     maxMarks: number;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+    isPublished?: boolean;
   }) => Promise<SessionalMark[]>;
   getStudentAcademicScorecard: (studentId: string) => StudentSubjectAcademicReport[];
   addDepartment: (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => Promise<Department>;
@@ -469,7 +474,7 @@ interface AcademicContextType {
 const AcademicContext = createContext<AcademicContextType | undefined>(undefined);
 
 export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, role } = useAuth();
+  const { user, role, isLoading: authLoading, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [claimWindowDays, setClaimWindowDays] = useState<number>(7);
   const seenNotificationIdsRef = useRef<Set<string>>(new Set());
@@ -521,6 +526,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0) +
     messageGroups.reduce((acc, g) => acc + (g.unread_count || 0), 0);
 
+  const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
+
   const [activeToast, setActiveToast] = useState<{
     id: string;
     title: string;
@@ -571,11 +578,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   yearsRef.current = years;
   const lastFullLoadRef = useRef<number>(0);
 
-  // Function to load and enrich latest records from Supabase
+  // Function to load and enrich latest records from Supabase (Role-Scoped Fast Pipeline)
   const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
     try {
       lastFullLoadRef.current = Date.now();
-      const data = await supabaseService.fetchAllData(forceRefreshMaster);
+      const currentAuthUser = user || erpStorage.getCurrentSessionUser();
+      const currentRole = role || currentAuthUser?.role;
+      const studentId = currentAuthUser?.student_id || currentAuthUser?.student?.id;
+      const sectionId = currentAuthUser?.student?.section_id || (currentAuthUser as any)?.section_id;
+      const facultyId = currentAuthUser?.faculty_id || currentAuthUser?.faculty?.id || currentAuthUser?.id;
+      const departmentId = currentAuthUser?.department_id || currentAuthUser?.faculty?.department_id;
+
+      const data = await supabaseService.fetchScopedData({
+        role: currentRole,
+        studentId: currentRole === 'student' ? studentId : undefined,
+        sectionId: currentRole === 'student' ? sectionId : undefined,
+        facultyId: (currentRole === 'faculty' || currentRole === 'hod') ? facultyId : undefined,
+        departmentId,
+        forceRefreshMaster,
+      });
       if (data) {
         const loadedInst = data.institutions[0] || erpStorage.getInstitution();
         const loadedDepts = data.departments || [];
@@ -651,7 +672,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
 
         // Enriched Attendance Sessions
-        const enrichedSessions: AttendanceSession[] = data.attendanceSessions.map(sess => ({
+        const enrichedSessions: AttendanceSession[] = (data.attendanceSessions || []).map(sess => ({
           ...sess,
           faculty: loadedFaculty.find(f => f.id === sess.faculty_id),
           subject: loadedSubjects.find(s => s.id === sess.subject_id),
@@ -659,14 +680,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }));
 
         // Enriched Attendance Records
-        const enrichedRecords: AttendanceRecord[] = data.attendanceRecords.map(rec => ({
+        const enrichedRecords: AttendanceRecord[] = (data.attendanceRecords || []).map(rec => ({
           ...rec,
           student: enrichedStudents.find(s => s.id === rec.student_id),
           session: enrichedSessions.find(sess => sess.id === rec.attendance_session_id),
         }));
 
         // Enriched Corrections
-        const enrichedCorrections: AttendanceCorrection[] = data.corrections.map(c => {
+        const enrichedCorrections: AttendanceCorrection[] = (data.corrections || []).map(c => {
           const rec = enrichedRecords.find(r => r.id === c.attendance_record_id);
           const matchedSession = rec?.session || enrichedSessions.find(s => s.id === rec?.attendance_session_id);
           const matchedStudent = enrichedStudents.find(s => s.id === c.student_id);
@@ -785,7 +806,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id, role]);
 
   // Granular Entity Refreshers for Targeted UI Updates Without Full-App Reload
   const refreshStudents = useCallback(async () => {
@@ -966,48 +987,62 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const refreshAssessments = useCallback(async () => {
     try {
-      const data = await supabaseService.fetchAssessments();
+      const activeUser = erpStorage.getCurrentSessionUser() || user;
+      const currentRole = role || activeUser?.role;
+      const studentId = activeUser?.student_id || activeUser?.student?.id;
+      const sectionId = activeUser?.student?.section_id || (activeUser as any)?.section_id;
+      const facultyId = activeUser?.faculty_id || activeUser?.faculty?.id || activeUser?.id;
+
+      let data: any;
+      if (currentRole === 'student' && studentId) {
+        data = await supabaseService.fetchStudentAcademicRecords(studentId, sectionId);
+      } else if ((currentRole === 'faculty' || currentRole === 'hod') && facultyId) {
+        data = await supabaseService.fetchFacultyAcademicRecords(facultyId);
+      } else {
+        data = await supabaseService.fetchAssessments();
+      }
+
       const curSubjects = subjectsRef.current;
       const curFaculty = facultyRef.current;
       const curSections = sectionsRef.current;
       const curStudents = studentsRef.current;
 
-      const enrichedCourseAssignments: Assignment[] = data.courseAssignments.map(a => ({
+      const enrichedCourseAssignments: Assignment[] = (data.courseAssignments || []).map((a: any) => ({
         ...a,
         subject: curSubjects.find(s => s.id === a.subject_id),
         faculty: curFaculty.find(f => f.id === a.faculty_id),
         section: curSections.find(sec => sec.id === a.section_id),
       }));
 
-      const enrichedSubmissions: AssignmentSubmission[] = data.assignmentSubmissions.map(sub => ({
+      const enrichedSubmissions: AssignmentSubmission[] = (data.assignmentSubmissions || []).map((sub: any) => ({
         ...sub,
         student: curStudents.find(s => s.id === sub.student_id),
         assignment: enrichedCourseAssignments.find(a => a.id === sub.assignment_id),
         grader: curFaculty.find(f => f.id === sub.graded_by),
       }));
 
-      const enrichedQuizzes: Quiz[] = data.quizzes.map(q => ({
+      const enrichedQuizzes: Quiz[] = (data.quizzes || []).map((q: any) => ({
         ...q,
         subject: curSubjects.find(s => s.id === q.subject_id),
         faculty: curFaculty.find(f => f.id === q.faculty_id),
         section: curSections.find(sec => sec.id === q.section_id),
       }));
 
-      const enrichedQuizResults: QuizResult[] = data.quizResults.map(qr => ({
+      const enrichedQuizResults: QuizResult[] = (data.quizResults || []).map((qr: any) => ({
         ...qr,
         student: curStudents.find(s => s.id === qr.student_id),
         quiz: enrichedQuizzes.find(q => q.id === qr.quiz_id),
         grader: curFaculty.find(f => f.id === qr.graded_by),
       }));
 
-      const enrichedAssessments: SessionalAssessment[] = data.sessionalAssessments.map(sa => ({
+      const enrichedAssessments: SessionalAssessment[] = (data.sessionalAssessments || []).map((sa: any) => ({
         ...sa,
         subject: curSubjects.find(s => s.id === sa.subject_id),
         faculty: curFaculty.find(f => f.id === sa.faculty_id),
         section: curSections.find(sec => sec.id === sa.section_id),
       }));
 
-      const enrichedSessionalMarks: SessionalMark[] = data.sessionalMarks.map(sm => ({
+      const enrichedSessionalMarks: SessionalMark[] = (data.sessionalMarks || []).map((sm: any) => ({
         ...sm,
         student: curStudents.find(s => s.id === sm.student_id),
         subject: curSubjects.find(s => s.id === sm.subject_id),
@@ -1016,7 +1051,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sessional_assessment: enrichedAssessments.find(a => a.id === sm.sessional_assessment_id),
       }));
 
-      const enrichedMarksHistory: MarksHistory[] = data.marksHistory.map(mh => ({
+      const enrichedMarksHistory: MarksHistory[] = (data.marksHistory || []).map((mh: any) => ({
         ...mh,
         student: curStudents.find(s => s.id === mh.student_id),
         subject: curSubjects.find(s => s.id === mh.subject_id),
@@ -1032,7 +1067,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (err) {
       console.error('Failed to refresh assessments:', err);
     }
-  }, []);
+  }, [user?.id, role]);
 
   const refreshCoordinatorAssignments = useCallback(async (facultyId?: string) => {
     try {
@@ -1091,6 +1126,34 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [user]);
 
+  const refreshLeaveApplications = useCallback(async (forcedStudentId?: string, forcedFacultyId?: string): Promise<LeaveApplication[]> => {
+    try {
+      const activeUser = erpStorage.getCurrentSessionUser() || user;
+      const role = activeUser?.role;
+      const studId = forcedStudentId || activeUser?.student_id || activeUser?.student?.id || (role === 'student' ? activeUser?.id : undefined);
+      const facId = forcedFacultyId || activeUser?.faculty_id || activeUser?.faculty?.id || (role === 'faculty' ? activeUser?.id : undefined);
+      const deptId = activeUser?.department_id || activeUser?.faculty?.department_id;
+
+      let apps: LeaveApplication[] = [];
+      if (role === 'student' && studId) {
+        apps = await supabaseService.fetchStudentLeaveApplications(studId);
+      } else if (role === 'faculty') {
+        apps = await supabaseService.fetchCoordinatorLeaveApplications(facId);
+      } else if (role === 'hod') {
+        apps = await supabaseService.fetchHODLeaveApplications(deptId || undefined);
+      } else if (role === 'super_admin') {
+        apps = await supabaseService.fetchHODLeaveApplications();
+      } else if (studId) {
+        apps = await supabaseService.fetchStudentLeaveApplications(studId);
+      }
+      setLeaveApplications(apps);
+      return apps;
+    } catch (err) {
+      console.warn('Notice: Error refreshing leave applications:', err);
+      return [];
+    }
+  }, [user]);
+
   // Network online/offline listener with automatic reconnection and refresh
   useEffect(() => {
     const handleOnline = () => {
@@ -1099,6 +1162,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       refreshNotifications();
       refreshConversations();
       refreshMessageGroups();
+      refreshLeaveApplications();
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -1111,7 +1175,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [loadDataFromSupabase, refreshNotifications, refreshConversations]);
+  }, [loadDataFromSupabase, refreshNotifications, refreshConversations, refreshLeaveApplications]);
 
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
@@ -1138,9 +1202,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Initial load & automatic refresh on auth state changes (no manual browser refresh needed)
   useEffect(() => {
-    loadDataFromSupabase(true);
-    refreshNotifications();
-    refreshConversations();
+    if (authLoading) return;
+
+    loadDataFromSupabase(false);
+    if (isAuthenticated) {
+      refreshNotifications();
+      refreshConversations();
+      refreshLeaveApplications();
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
@@ -1149,6 +1218,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         refreshNotifications();
         refreshConversations();
+        refreshLeaveApplications();
       } else if (event === 'SIGNED_OUT') {
         setAttendanceSessions([]);
         setAttendanceRecords([]);
@@ -1156,13 +1226,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAdminAccounts([]);
         setNotifications([]);
         setConversations([]);
+        setLeaveApplications([]);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [loadDataFromSupabase, refreshNotifications, refreshConversations]);
+  }, [authLoading, isAuthenticated, loadDataFromSupabase, refreshNotifications, refreshConversations, refreshLeaveApplications]);
 
   // Stable ref for realtime event handlers to eliminate channel resubscription churn
   const realtimeHandlersRef = useRef({
@@ -1179,6 +1250,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshNotifications,
     refreshConversations,
     refreshMessageGroups,
+    refreshLeaveApplications,
   });
 
   useEffect(() => {
@@ -1196,6 +1268,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       refreshNotifications,
       refreshConversations,
       refreshMessageGroups,
+      refreshLeaveApplications,
     };
   });
 
@@ -1308,6 +1381,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_applications' }, () => {
         debounceTableSync('leave_applications', () => {
+          realtimeHandlersRef.current.refreshLeaveApplications();
           realtimeHandlersRef.current.refreshNotifications();
         });
       });
@@ -1330,6 +1404,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             });
           }
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, (payload: any) => {
           const studId = payload?.new?.student_id || payload?.old?.student_id;
           if (!activeStudentId || studId === activeStudentId) {
@@ -1339,8 +1416,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, (payload: any) => {
+          const studId = payload?.new?.student_id || payload?.old?.student_id;
+          if (!activeStudentId || studId === activeStudentId) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, (payload: any) => {
+          const studId = payload?.new?.student_id || payload?.old?.student_id;
+          if (!activeStudentId || studId === activeStudentId) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
           debounceTableSync('attendance_corrections', () => {
@@ -2760,6 +2849,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     sessionalType?: string;
     maxMarks: number;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+    isPublished?: boolean;
   }) => {
     const res = await supabaseService.saveSessionalMarks(params);
     if (res && res.length > 0) {
@@ -2771,10 +2861,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [...res, ...filtered];
       });
     }
+    if (params.isPublished !== undefined && params.sessionalAssessmentId) {
+      setSessionalAssessments(prev =>
+        prev.map(sa =>
+          sa.id === params.sessionalAssessmentId
+            ? { ...sa, status: params.isPublished ? 'published' : 'draft' }
+            : sa
+        )
+      );
+    }
+    await refreshAssessments();
     return res;
   };
 
-  const getStudentAcademicScorecard = (studentId: string): StudentSubjectAcademicReport[] => {
+  const getStudentAcademicScorecard = useCallback((studentId: string): StudentSubjectAcademicReport[] => {
     const student = students.find(s => s.id === studentId);
     if (!student) return [];
 
@@ -2782,11 +2882,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const result: StudentSubjectAcademicReport[] = [];
 
     for (const stat of studentAtt.subjectStats) {
-      // Dynamic Sessional Assessments for student's section & subject
+      // Dynamic Sessional Assessments for student's section & subject that are strictly published or completed
       const subAssessments = sessionalAssessments.filter(
         sa => sa.subject_id === stat.subjectId && 
-              (!sa.section_id || sa.section_id === student.section_id) &&
-              (sa.status === 'published' || sa.status === 'completed' || !sa.status)
+              (!sa.section_id || sa.section_id === student.section_id || sessionalMarks.some(m => m.sessional_assessment_id === sa.id && m.student_id === studentId)) &&
+              (sa.status === 'published' || sa.status === 'completed')
       );
 
       // Deduplicate assessments by title to prevent duplicate rows
@@ -2805,33 +2905,35 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           assessmentId: sa.id,
           title: sa.title,
           maxMarks: sa.max_marks,
-          obtainedMarks: hasScore ? sm.marks_obtained : undefined,
-          examDate: sa.exam_date,
+          obtainedMarks: hasScore ? Number(sm.marks_obtained) : undefined,
+          examDate: sa.exam_date || '',
         };
       });
 
-      // Legacy sessional entries (if any were entered directly by type)
-      const subSessional = sessionalMarks.filter(sm => sm.student_id === studentId && sm.subject_id === stat.subjectId);
+      // Legacy sessional entries (ONLY for true legacy rows where sessional_assessment_id IS NULL)
+      // Any marks belonging to dynamic assessments MUST go through uniqueAssessments above (which requires status = published)
+      const subSessional = sessionalMarks.filter(
+        sm => sm.student_id === studentId && sm.subject_id === stat.subjectId && !sm.sessional_assessment_id
+      );
       for (const sm of subSessional) {
         const alreadyInDynamic = dynamicSessionals.some(
-          ds => ds.assessmentId === sm.sessional_assessment_id || 
-                ds.title.toLowerCase() === sm.sessional_type?.toLowerCase()
+          ds => ds.title.toLowerCase() === sm.sessional_type?.toLowerCase()
         );
         if (!alreadyInDynamic && sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
           dynamicSessionals.push({
             assessmentId: sm.id,
             title: sm.sessional_type || 'Sessional Assessment',
             maxMarks: sm.max_marks || 30,
-            obtainedMarks: sm.marks_obtained,
-            examDate: sm.created_at,
+            obtainedMarks: Number(sm.marks_obtained),
+            examDate: sm.created_at || '',
           });
         }
       }
 
-      // Filter visible sessionals: show ONLY if marks were entered OR if assessment is explicitly published
+      // CRITICAL MARKS RULE: Visible sessionals MUST have actual published/entered marks for this student
+      // Genuine 0 marks (marks_obtained === 0) are valid published marks and are strictly preserved!
       const visibleSessionals = dynamicSessionals.filter(s => 
-        s.obtainedMarks !== undefined || 
-        subAssessments.some(sa => sa.id === s.assessmentId && (sa.status === 'published' || sa.status === 'completed'))
+        s.obtainedMarks !== undefined && s.obtainedMarks !== null
       );
 
       const s1Dyn = visibleSessionals.find(s => s.title.toLowerCase() === 'sessional 1' || s.title.toLowerCase().startsWith('sessional 1'));
@@ -2850,44 +2952,74 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const sessional1Val = (s1Dyn && s1Dyn.obtainedMarks !== undefined) 
         ? { obtained: s1Dyn.obtainedMarks, max: s1Dyn.maxMarks }
-        : (s1 && s1.marks_obtained !== undefined && s1.marks_obtained !== null ? { obtained: s1.marks_obtained, max: s1.max_marks || 30 } : undefined);
+        : (s1 && s1.marks_obtained !== undefined && s1.marks_obtained !== null ? { obtained: Number(s1.marks_obtained), max: s1.max_marks || 30 } : undefined);
 
       const sessional2Val = (s2Dyn && s2Dyn.obtainedMarks !== undefined) 
         ? { obtained: s2Dyn.obtainedMarks, max: s2Dyn.maxMarks }
-        : (s2 && s2.marks_obtained !== undefined && s2.marks_obtained !== null ? { obtained: s2.marks_obtained, max: s2.max_marks || 30 } : undefined);
+        : (s2 && s2.marks_obtained !== undefined && s2.marks_obtained !== null ? { obtained: Number(s2.marks_obtained), max: s2.max_marks || 30 } : undefined);
 
       const putVal = (putDyn && putDyn.obtainedMarks !== undefined) 
         ? { obtained: putDyn.obtainedMarks, max: putDyn.maxMarks }
-        : (put && put.marks_obtained !== undefined && put.marks_obtained !== null ? { obtained: put.marks_obtained, max: put.max_marks || 100 } : undefined);
+        : (put && put.marks_obtained !== undefined && put.marks_obtained !== null ? { obtained: Number(put.marks_obtained), max: put.max_marks || 100 } : undefined);
 
       const otherSessionals = visibleSessionals.filter(s => 
         s !== s1Dyn && s !== s2Dyn && s !== putDyn
       );
 
-      const subQuizzes = quizzes.filter(q => q.subject_id === stat.subjectId && q.section_id === student.section_id);
-      const quizMarksList = subQuizzes.map(q => {
+      // Quizzes: only include quizzes where quiz is published/completed AND student has entered marks
+      const subQuizzes = quizzes.filter(
+        q => q.subject_id === stat.subjectId && 
+             q.section_id === student.section_id && 
+             q.active &&
+             (q.status === 'published' || q.status === 'completed' || !q.status)
+      );
+      const quizMarksList: Array<{ quizId: string; title: string; maxMarks: number; obtainedMarks?: number; quizDate: string }> = [];
+      for (const q of subQuizzes) {
         const qr = quizResults.find(r => r.quiz_id === q.id && r.student_id === studentId);
-        return {
-          quizId: q.id,
-          title: q.title,
-          maxMarks: q.max_marks,
-          obtainedMarks: (qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null) ? qr.marks_obtained : undefined,
-          quizDate: q.quiz_date,
-        };
-      });
+        if (qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null) {
+          quizMarksList.push({
+            quizId: q.id,
+            title: q.title,
+            maxMarks: q.max_marks,
+            obtainedMarks: Number(qr.marks_obtained),
+            quizDate: q.quiz_date || '',
+          });
+        }
+      }
 
-      const subAssignments = courseAssignments.filter(a => a.subject_id === stat.subjectId && a.section_id === student.section_id);
-      const assignmentMarksList = subAssignments.map(a => {
+      // Assignments: only include assignments where student submission is actively graded with marks by faculty
+      const subAssignments = courseAssignments.filter(
+        a => a.subject_id === stat.subjectId && 
+             a.section_id === student.section_id && 
+             a.active
+      );
+      const assignmentMarksList: Array<{ assignmentId: string; title: string; maxMarks: number; obtainedMarks?: number; status: string; dueDate: string }> = [];
+      for (const a of subAssignments) {
         const sub = assignmentSubmissions.find(s => s.assignment_id === a.id && s.student_id === studentId);
-        return {
-          assignmentId: a.id,
-          title: a.title,
-          maxMarks: a.max_marks,
-          obtainedMarks: (sub && sub.marks_obtained !== undefined && sub.marks_obtained !== null) ? sub.marks_obtained : undefined,
-          status: sub ? sub.status : 'not_started',
-          dueDate: a.due_date,
-        };
-      });
+        if (sub && sub.status === 'graded' && sub.marks_obtained !== undefined && sub.marks_obtained !== null) {
+          assignmentMarksList.push({
+            assignmentId: a.id,
+            title: a.title,
+            maxMarks: a.max_marks,
+            obtainedMarks: Number(sub.marks_obtained),
+            status: sub.status,
+            dueDate: a.due_date || '',
+          });
+        }
+      }
+
+      // Check whether faculty has ACTUALLY published marks for this subject
+      const hasPublishedSessional = visibleSessionals.length > 0;
+      const hasPublishedQuiz = quizMarksList.length > 0;
+      const hasPublishedAssignment = assignmentMarksList.length > 0;
+      const hasPublishedMarks = hasPublishedSessional || hasPublishedQuiz || hasPublishedAssignment;
+
+      // CRITICAL RULE: If faculty has NOT entered/published marks for this subject:
+      // That subject MUST NOT appear in the Student Dashboard's Marks/Sessional section.
+      // Under NO circumstances should it appear with "Marks not published yet", "0 / 20" (unless genuine 0 was published), or empty cards.
+      if (!hasPublishedMarks) {
+        continue;
+      }
 
       let totalScore = 0;
       let maxScore = 0;
@@ -2924,7 +3056,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           sessional1: sessional1Val,
           sessional2: sessional2Val,
           put: putVal,
-          final: (fin && fin.marks_obtained !== undefined && fin.marks_obtained !== null) ? { obtained: fin.marks_obtained, max: fin.max_marks || 30 } : undefined,
+          final: (fin && fin.marks_obtained !== undefined && fin.marks_obtained !== null) ? { obtained: Number(fin.marks_obtained), max: fin.max_marks || 30 } : undefined,
           otherSessionals,
           sessionals: visibleSessionals,
         },
@@ -2936,7 +3068,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     return result;
-  };
+  }, [students, getStudentAttendance, sessionalAssessments, sessionalMarks, quizzes, quizResults, courseAssignments, assignmentSubmissions]);
 
   const refreshAdminAccounts = useCallback(async () => {
     try {
@@ -3041,8 +3173,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [refreshConversations]);
 
   const getOrCreateConversation = useCallback(async (params: {
-    facultyId: string;
-    subjectId: string;
+    facultyId?: string;
+    studentId?: string;
+    subjectId?: string | null;
     category?: ConversationCategory;
     topic?: string;
   }) => {
@@ -3085,7 +3218,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const sendGroupMessage = useCallback(async (params: {
     academicYearId: string;
     sectionId: string;
-    subjectId: string;
+    subjectId?: string | null;
     message: string;
     title?: string;
     attachmentUrl?: string;
@@ -3117,164 +3250,314 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return await supabaseService.fetchStudentProfile(studentId);
   }, []);
 
-  const resetToInitialSeed = () => {
+  const resetToInitialSeed = useCallback(() => {
     erpStorage.init(true);
     refreshData();
-  };
+  }, [refreshData]);
+
+  const contextValue = useMemo(() => ({
+    institution,
+    departments,
+    programs,
+    sessions,
+    years,
+    semesters,
+    sections,
+    classrooms,
+    subjects,
+    faculty,
+    assignments,
+    classCoordinatorAssignments,
+    students,
+    timetable,
+    attendanceSessions,
+    attendanceRecords,
+    corrections,
+    auditLogs,
+    courseAssignments,
+    assignmentSubmissions,
+    quizzes,
+    quizResults,
+    sessionalAssessments,
+    sessionalMarks,
+    marksHistory,
+    adminAccounts,
+    notifications,
+    unreadNotificationCount,
+    conversations,
+    unreadMessagesCount,
+    activeConversationId,
+    setActiveConversationId,
+    refreshConversations,
+    messageGroups,
+    activeGroupId,
+    setActiveGroupId,
+    refreshMessageGroups,
+    leaveApplications,
+    refreshLeaveApplications,
+    sendGroupMessage,
+    markGroupRead,
+    fetchGroupMembers,
+    fetchStudentProfile,
+    sendMessage,
+    getOrCreateConversation,
+    markConversationRead,
+    updateConversationStatus,
+    fetchEligibleFacultyForStudent,
+    fetchEligibleStudentsForFaculty,
+    activeToast,
+    dismissToast,
+    isOnline,
+    isLoading,
+    claimWindowDays,
+    setClaimWindowDays,
+    refreshData,
+    refreshAdminAccounts,
+    refreshNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    refreshStudents,
+    refreshTimetable,
+    refreshAttendance,
+    refreshCorrections,
+    refreshFaculty,
+    refreshSections,
+    refreshSubjects,
+    refreshAssignments,
+    refreshAssessments,
+    getFacultyCoordinatorAssignments,
+    refreshCoordinatorAssignments,
+    updateAccountStatus,
+    updateAccountCredentials,
+    requestPasswordReset,
+    createAssignment,
+    updateAssignment,
+    deleteCourseAssignment,
+    submitAssignment,
+    gradeAssignmentSubmission,
+    createQuiz,
+    updateQuiz,
+    deleteQuiz,
+    saveQuizMarks,
+    createSessionalAssessment,
+    updateSessionalAssessment,
+    deleteSessionalAssessment,
+    saveSessionalMarks,
+    getStudentAcademicScorecard,
+    addDepartment,
+    updateDepartment,
+    deleteDepartment,
+    addProgram,
+    updateProgram,
+    deleteProgram,
+    addSection,
+    updateSection,
+    deleteSection,
+    archiveSection,
+    restoreSection,
+    checkSectionReferences,
+    addAcademicYear,
+    updateAcademicYear,
+    deleteAcademicYear,
+    addSemester,
+    updateSemester,
+    deleteSemester,
+    addFaculty,
+    createFacultyWithAssignments,
+    updateFaculty,
+    updateFacultyWithAssignments,
+    setFacultyStatus,
+    checkFacultyHistoricalRecords,
+    safeDeleteFaculty,
+    deleteFaculty,
+    addSubject,
+    updateSubject,
+    deleteSubject,
+    addAssignment,
+    updateFacultyAssignment,
+    deleteAssignment,
+    addStudent,
+    updateStudent,
+    deleteStudent,
+    transferStudentSection,
+    batchImportSectionStudents,
+    addTimetableEntry,
+    updateTimetableEntry,
+    deleteTimetableEntry,
+    deleteSectionTimetable,
+    findOrCreateFaculty,
+    findOrCreateSubject,
+    findOrCreateClassroom,
+    saveSingleTimetableSlot,
+    saveSectionTimetable,
+    rollbackToVersion,
+    checkTimetableConflict,
+    saveAttendance,
+    deleteAttendanceSession,
+    submitCorrectionRequest,
+    reviewCorrectionRequest,
+    canSubmitClaim,
+    getStudentAttendance,
+    getPublishedTimetable,
+    getFacultyTimetable,
+    getStudentTimetable,
+    getTodayLecturesForStudent,
+    getDateLecturesForStudent,
+    getFacultyCorrectionRequests,
+    getTodaySchedule,
+    resetToInitialSeed,
+  }), [
+    institution,
+    departments,
+    programs,
+    sessions,
+    years,
+    semesters,
+    sections,
+    classrooms,
+    subjects,
+    faculty,
+    assignments,
+    classCoordinatorAssignments,
+    students,
+    timetable,
+    attendanceSessions,
+    attendanceRecords,
+    corrections,
+    auditLogs,
+    courseAssignments,
+    assignmentSubmissions,
+    quizzes,
+    quizResults,
+    sessionalAssessments,
+    sessionalMarks,
+    marksHistory,
+    adminAccounts,
+    notifications,
+    unreadNotificationCount,
+    conversations,
+    unreadMessagesCount,
+    activeConversationId,
+    messageGroups,
+    activeGroupId,
+    leaveApplications,
+    activeToast,
+    isOnline,
+    isLoading,
+    claimWindowDays,
+    refreshData,
+    refreshAdminAccounts,
+    refreshNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    refreshStudents,
+    refreshTimetable,
+    refreshAttendance,
+    refreshCorrections,
+    refreshFaculty,
+    refreshSections,
+    refreshSubjects,
+    refreshAssignments,
+    refreshAssessments,
+    getFacultyCoordinatorAssignments,
+    refreshCoordinatorAssignments,
+    updateAccountStatus,
+    updateAccountCredentials,
+    requestPasswordReset,
+    createAssignment,
+    updateAssignment,
+    deleteCourseAssignment,
+    submitAssignment,
+    gradeAssignmentSubmission,
+    createQuiz,
+    updateQuiz,
+    deleteQuiz,
+    saveQuizMarks,
+    createSessionalAssessment,
+    updateSessionalAssessment,
+    deleteSessionalAssessment,
+    saveSessionalMarks,
+    getStudentAcademicScorecard,
+    addDepartment,
+    updateDepartment,
+    deleteDepartment,
+    addProgram,
+    updateProgram,
+    deleteProgram,
+    addSection,
+    updateSection,
+    deleteSection,
+    archiveSection,
+    restoreSection,
+    checkSectionReferences,
+    addAcademicYear,
+    updateAcademicYear,
+    deleteAcademicYear,
+    addSemester,
+    updateSemester,
+    deleteSemester,
+    addFaculty,
+    createFacultyWithAssignments,
+    updateFaculty,
+    updateFacultyWithAssignments,
+    setFacultyStatus,
+    checkFacultyHistoricalRecords,
+    safeDeleteFaculty,
+    deleteFaculty,
+    addSubject,
+    updateSubject,
+    deleteSubject,
+    addAssignment,
+    updateFacultyAssignment,
+    deleteAssignment,
+    addStudent,
+    updateStudent,
+    deleteStudent,
+    transferStudentSection,
+    batchImportSectionStudents,
+    addTimetableEntry,
+    updateTimetableEntry,
+    deleteTimetableEntry,
+    deleteSectionTimetable,
+    findOrCreateFaculty,
+    findOrCreateSubject,
+    findOrCreateClassroom,
+    saveSingleTimetableSlot,
+    saveSectionTimetable,
+    rollbackToVersion,
+    checkTimetableConflict,
+    saveAttendance,
+    deleteAttendanceSession,
+    submitCorrectionRequest,
+    reviewCorrectionRequest,
+    canSubmitClaim,
+    getStudentAttendance,
+    getPublishedTimetable,
+    getFacultyTimetable,
+    getStudentTimetable,
+    getTodayLecturesForStudent,
+    getDateLecturesForStudent,
+    getFacultyCorrectionRequests,
+    getTodaySchedule,
+    resetToInitialSeed,
+    sendGroupMessage,
+    markGroupRead,
+    fetchGroupMembers,
+    fetchStudentProfile,
+    sendMessage,
+    getOrCreateConversation,
+    markConversationRead,
+    updateConversationStatus,
+    fetchEligibleFacultyForStudent,
+    fetchEligibleStudentsForFaculty,
+    dismissToast,
+    refreshConversations,
+    refreshMessageGroups,
+    refreshLeaveApplications,
+  ]);
 
   return (
-    <AcademicContext.Provider
-      value={{
-        institution,
-        departments,
-        programs,
-        sessions,
-        years,
-        semesters,
-        sections,
-        classrooms,
-        subjects,
-        faculty,
-        assignments,
-        classCoordinatorAssignments,
-        students,
-        timetable,
-        attendanceSessions,
-        attendanceRecords,
-        corrections,
-        auditLogs,
-        courseAssignments,
-        assignmentSubmissions,
-        quizzes,
-        quizResults,
-        sessionalAssessments,
-        sessionalMarks,
-        marksHistory,
-        adminAccounts,
-        notifications,
-        unreadNotificationCount,
-        conversations,
-        unreadMessagesCount,
-        activeConversationId,
-        setActiveConversationId,
-        refreshConversations,
-        messageGroups,
-        activeGroupId,
-        setActiveGroupId,
-        refreshMessageGroups,
-        sendGroupMessage,
-        markGroupRead,
-        fetchGroupMembers,
-        fetchStudentProfile,
-        sendMessage,
-        getOrCreateConversation,
-        markConversationRead,
-        updateConversationStatus,
-        fetchEligibleFacultyForStudent,
-        fetchEligibleStudentsForFaculty,
-        activeToast,
-        dismissToast,
-        isOnline,
-        isLoading,
-        claimWindowDays,
-        setClaimWindowDays,
-        refreshData,
-        refreshAdminAccounts,
-        refreshNotifications,
-        markNotificationAsRead,
-        markAllNotificationsAsRead,
-        refreshStudents,
-        refreshTimetable,
-        refreshAttendance,
-        refreshCorrections,
-        refreshFaculty,
-        refreshSections,
-        refreshSubjects,
-        refreshAssignments,
-        refreshAssessments,
-        getFacultyCoordinatorAssignments,
-        refreshCoordinatorAssignments,
-        updateAccountStatus,
-        updateAccountCredentials,
-        requestPasswordReset,
-        createAssignment,
-        updateAssignment,
-        deleteCourseAssignment,
-        submitAssignment,
-        gradeAssignmentSubmission,
-        createQuiz,
-        updateQuiz,
-        deleteQuiz,
-        saveQuizMarks,
-        createSessionalAssessment,
-        updateSessionalAssessment,
-        deleteSessionalAssessment,
-        saveSessionalMarks,
-        getStudentAcademicScorecard,
-        addDepartment,
-        updateDepartment,
-        deleteDepartment,
-        addProgram,
-        updateProgram,
-        deleteProgram,
-        addSection,
-        updateSection,
-        deleteSection,
-        archiveSection,
-        restoreSection,
-        checkSectionReferences,
-        addAcademicYear,
-        updateAcademicYear,
-        deleteAcademicYear,
-        addSemester,
-        updateSemester,
-        deleteSemester,
-        addFaculty,
-        createFacultyWithAssignments,
-        updateFaculty,
-        updateFacultyWithAssignments,
-        setFacultyStatus,
-        checkFacultyHistoricalRecords,
-        safeDeleteFaculty,
-        deleteFaculty,
-        addSubject,
-        updateSubject,
-        deleteSubject,
-        addAssignment,
-        updateFacultyAssignment,
-        deleteAssignment,
-        addStudent,
-        updateStudent,
-        deleteStudent,
-        transferStudentSection,
-        batchImportSectionStudents,
-        addTimetableEntry,
-        updateTimetableEntry,
-        deleteTimetableEntry,
-        deleteSectionTimetable,
-        findOrCreateFaculty,
-        findOrCreateSubject,
-        findOrCreateClassroom,
-        saveSingleTimetableSlot,
-        saveSectionTimetable,
-        rollbackToVersion,
-        checkTimetableConflict,
-        saveAttendance,
-        deleteAttendanceSession,
-        submitCorrectionRequest,
-        reviewCorrectionRequest,
-        canSubmitClaim,
-        getStudentAttendance,
-        getPublishedTimetable,
-        getFacultyTimetable,
-        getStudentTimetable,
-        getTodayLecturesForStudent,
-        getDateLecturesForStudent,
-        getFacultyCorrectionRequests,
-        getTodaySchedule,
-        resetToInitialSeed,
-      }}
-    >
+    <AcademicContext.Provider value={contextValue}>
       {children}
     </AcademicContext.Provider>
   );

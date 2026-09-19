@@ -29,6 +29,7 @@ import {
   SessionalType,
   SessionalAssessment,
   UserProfile,
+  UserRole,
   Classroom,
   AdmissionType,
   AccountStatus,
@@ -487,7 +488,229 @@ export const supabaseService = {
     }
   },
 
-  // 1E. Fetch All Master & Operational Data (Composed in parallel with Promise deduplication)
+  // 1E. Scoped Student Attendance Query (Only student's records & section sessions)
+  async fetchStudentAttendance(studentId: string, sectionId?: string) {
+    try {
+      const [recordsRes, sessionsRes] = await Promise.all([
+        supabase
+          .from('attendance_records')
+          .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false })
+          .limit(300),
+        sectionId
+          ? supabase
+              .from('attendance_sessions')
+              .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at')
+              .eq('section_id', sectionId)
+              .order('session_date', { ascending: false })
+              .limit(100)
+          : supabase
+              .from('attendance_sessions')
+              .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at')
+              .order('session_date', { ascending: false })
+              .limit(100),
+      ]);
+
+      return {
+        attendanceRecords: (recordsRes.data as unknown as AttendanceRecord[]) || [],
+        attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
+      };
+    } catch (err) {
+      console.error('Error in fetchStudentAttendance:', err);
+      return { attendanceRecords: [], attendanceSessions: [] };
+    }
+  },
+
+  // 1F. Scoped Student Academic Records (Only student's submissions, marks, and section assessments)
+  async fetchStudentAcademicRecords(studentId: string, sectionId?: string) {
+    try {
+      const [
+        assignmentsRes,
+        submissionsRes,
+        quizzesRes,
+        quizResultsRes,
+        sessionalMarksRes,
+        assessmentsRes,
+      ] = await Promise.all([
+        sectionId
+          ? supabase.from('assignments').select('*').eq('section_id', sectionId).eq('active', true).limit(50)
+          : supabase.from('assignments').select('*').eq('active', true).limit(50),
+        supabase.from('assignment_submissions').select('*').eq('student_id', studentId).limit(50),
+        sectionId
+          ? supabase.from('quizzes').select('*').eq('section_id', sectionId).eq('active', true).limit(50)
+          : supabase.from('quizzes').select('*').eq('active', true).limit(50),
+        supabase.from('quiz_results').select('*').eq('student_id', studentId).limit(50),
+        supabase.from('sessional_marks').select('*').eq('student_id', studentId).limit(50),
+        sectionId
+          ? supabase.from('sessional_assessments').select('*').eq('section_id', sectionId).or('status.eq.published,status.eq.completed').limit(50)
+          : supabase.from('sessional_assessments').select('*').or('status.eq.published,status.eq.completed').limit(50),
+      ]);
+
+      return {
+        courseAssignments: (assignmentsRes.data as Assignment[]) || [],
+        assignmentSubmissions: (submissionsRes.data as AssignmentSubmission[]) || [],
+        quizzes: (quizzesRes.data as Quiz[]) || [],
+        quizResults: (quizResultsRes.data as QuizResult[]) || [],
+        sessionalMarks: (sessionalMarksRes.data as SessionalMark[]) || [],
+        sessionalAssessments: (assessmentsRes.data as SessionalAssessment[]) || [],
+      };
+    } catch (err) {
+      console.error('Error in fetchStudentAcademicRecords:', err);
+      return {
+        courseAssignments: [],
+        assignmentSubmissions: [],
+        quizzes: [],
+        quizResults: [],
+        sessionalMarks: [],
+        sessionalAssessments: [],
+      };
+    }
+  },
+
+  // 1F-2. Scoped Faculty Academic Records (Only faculty's assignments, submissions, quizzes, marks)
+  async fetchFacultyAcademicRecords(facultyId: string) {
+    try {
+      const [
+        assignmentsRes,
+        quizzesRes,
+        assessmentsRes,
+        sessionalMarksRes,
+      ] = await Promise.all([
+        supabase.from('assignments').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('quizzes').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('sessional_assessments').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('sessional_marks').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(500),
+      ]);
+
+      const assignmentIds = (assignmentsRes.data || []).map(a => a.id);
+      const quizIds = (quizzesRes.data || []).map(q => q.id);
+
+      const [submissionsRes, quizResultsRes] = await Promise.all([
+        assignmentIds.length > 0
+          ? supabase.from('assignment_submissions').select('*').in('assignment_id', assignmentIds).limit(300)
+          : Promise.resolve({ data: [] }),
+        quizIds.length > 0
+          ? supabase.from('quiz_results').select('*').in('quiz_id', quizIds).limit(300)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      return {
+        courseAssignments: (assignmentsRes.data as Assignment[]) || [],
+        assignmentSubmissions: (submissionsRes.data as AssignmentSubmission[]) || [],
+        quizzes: (quizzesRes.data as Quiz[]) || [],
+        quizResults: (quizResultsRes.data as QuizResult[]) || [],
+        sessionalMarks: (sessionalMarksRes.data as SessionalMark[]) || [],
+        sessionalAssessments: (assessmentsRes.data as SessionalAssessment[]) || [],
+        marksHistory: [],
+      };
+    } catch (err) {
+      console.error('Error in fetchFacultyAcademicRecords:', err);
+      return {
+        courseAssignments: [],
+        assignmentSubmissions: [],
+        quizzes: [],
+        quizResults: [],
+        sessionalMarks: [],
+        sessionalAssessments: [],
+        marksHistory: [],
+      };
+    }
+  },
+
+  // 1G. Role-Scoped Fast ERP Data Loader (P0/P1 Priority Pipeline)
+  async fetchScopedData(params: {
+    role?: UserRole | null;
+    studentId?: string;
+    sectionId?: string;
+    facultyId?: string;
+    departmentId?: string;
+    forceRefreshMaster?: boolean;
+  }): Promise<FullERPData | null> {
+    try {
+      // 1. Master Structure (Cached in-memory / localStorage, sub-millisecond if fresh)
+      const masterData = await this.fetchMasterData(params.forceRefreshMaster || false);
+      if (!masterData) return null;
+
+      // 2. Role-Scoped Operational Slice
+      if (params.role === 'student' && params.studentId) {
+        const [studentAtt, studentAcad, { data: timetable }, correctionsRes] = await Promise.all([
+          this.fetchStudentAttendance(params.studentId, params.sectionId),
+          this.fetchStudentAcademicRecords(params.studentId, params.sectionId),
+          params.sectionId
+            ? supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('section_id', params.sectionId).eq('active', true).order('period_number', { ascending: true })
+            : supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
+          supabase.from('attendance_corrections').select('*').eq('student_id', params.studentId).order('created_at', { ascending: false }).limit(20),
+        ]);
+
+        return {
+          ...masterData,
+          timetable: (timetable as unknown as TimetableEntry[]) || [],
+          attendanceSessions: studentAtt.attendanceSessions,
+          attendanceRecords: studentAtt.attendanceRecords,
+          corrections: (correctionsRes.data as AttendanceCorrection[]) || [],
+          auditLogs: [],
+          timetableVersions: [],
+          courseAssignments: studentAcad.courseAssignments,
+          assignmentSubmissions: studentAcad.assignmentSubmissions,
+          quizzes: studentAcad.quizzes,
+          quizResults: studentAcad.quizResults,
+          sessionalMarks: studentAcad.sessionalMarks,
+          marksHistory: [],
+          sessionalAssessments: studentAcad.sessionalAssessments,
+        };
+      }
+
+      if (params.role === 'faculty' && params.facultyId) {
+        const [
+          { data: timetable },
+          sessionsRes,
+          correctionsRes,
+          { data: assignmentsList },
+          { data: quizzesList },
+          { data: assessmentsList },
+        ] = await Promise.all([
+          supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('faculty_id', params.facultyId).eq('active', true).order('period_number', { ascending: true }),
+          supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').eq('faculty_id', params.facultyId).order('session_date', { ascending: false }).limit(100),
+          this.fetchCorrections(50),
+          supabase.from('assignments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('quizzes').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('sessional_assessments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+        ]);
+
+        return {
+          ...masterData,
+          timetable: (timetable as unknown as TimetableEntry[]) || [],
+          attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
+          attendanceRecords: [],
+          corrections: correctionsRes,
+          auditLogs: [],
+          timetableVersions: [],
+          courseAssignments: (assignmentsList as Assignment[]) || [],
+          assignmentSubmissions: [],
+          quizzes: (quizzesList as Quiz[]) || [],
+          quizResults: [],
+          sessionalMarks: [],
+          marksHistory: [],
+          sessionalAssessments: (assessmentsList as SessionalAssessment[]) || [],
+        };
+      }
+
+      // Default for Admin or initial load before auth resolves: delegate to fetchOperationalData
+      const operationalData = await this.fetchOperationalData();
+      if (!operationalData) return null;
+
+      return {
+        ...masterData,
+        ...operationalData,
+      };
+    } catch (err) {
+      console.error('Error in fetchScopedData:', err);
+      return this.fetchAllData(params.forceRefreshMaster);
+    }
+  },
+
+  // 1H. Fetch All Master & Operational Data (Composed in parallel with Promise deduplication)
   fetchAllData(forceRefreshMaster = false): Promise<FullERPData | null> {
     if (_inFlightFetchAll) {
       return _inFlightFetchAll;
@@ -522,7 +745,7 @@ export const supabaseService = {
     return fetchPromise;
   },
 
-  // 2. Save Live Attendance Session & Student Records (Authoritative Atomic Supabase Flow)
+  // 2. Save Live Attendance Session & Student Records (Fast Single-Round-Trip Atomic Supabase Flow)
   async saveAttendance(params: {
     timetableEntryId?: string;
     facultyId: string;
@@ -545,7 +768,7 @@ export const supabaseService = {
       recordCount: params.studentRecords?.length
     });
 
-    // 1. Validation: Prevent future attendance dates
+    // 1. Fast Synchronous Validations
     const today = getISTTodayDate();
     if (params.sessionDate > today) {
       console.error('ATTENDANCE_SAVE_FAILED', `Invalid date: ${params.sessionDate}`);
@@ -557,24 +780,11 @@ export const supabaseService = {
       throw new Error('Missing section, subject, or faculty information.');
     }
 
-    // Verify target faculty account is active and not blocked
-    const { data: facStatusCheck } = await supabase
-      .from('faculty')
-      .select('id, status, active')
-      .eq('id', params.facultyId)
-      .maybeSingle();
-
-    if (facStatusCheck && (facStatusCheck.status === 'BLOCKED' || facStatusCheck.active === false)) {
-      console.error('ATTENDANCE_SAVE_FAILED', `Faculty ${params.facultyId} account is blocked or inactive`);
-      throw new Error('Unauthorized: Faculty account is blocked or inactive. Attendance marking is disabled.');
-    }
-
     if (!params.studentRecords || params.studentRecords.length === 0) {
       console.error('ATTENDANCE_SAVE_FAILED', 'No student records provided');
       throw new Error('Cannot submit empty attendance roster.');
     }
 
-    // Check for any invalid status
     for (const sr of params.studentRecords) {
       if (!sr.studentId || (sr.status !== 'Present' && sr.status !== 'Absent' && sr.status !== 'Unmarked')) {
         console.error('ATTENDANCE_SAVE_FAILED', `Invalid status for student ${sr.studentId}: ${sr.status}`);
@@ -582,110 +792,7 @@ export const supabaseService = {
       }
     }
 
-    // 2. Auth Resolution & Authorization Validation
-    const { data: authUserRes } = await supabase.auth.getUser();
-    const callerUser = authUserRes?.user;
-
-    if (callerUser) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, role, faculty_id, department_id')
-        .eq('id', callerUser.id)
-        .maybeSingle();
-
-      if (profile?.role === 'student') {
-        console.error('ATTENDANCE_SAVE_FAILED', 'Student attempted to record attendance');
-        throw new Error('Unauthorized: Students cannot record or modify attendance.');
-      }
-
-      if (profile?.role === 'faculty' || (profile?.role === 'hod' && profile.faculty_id)) {
-        const callerFacultyId = profile.faculty_id || callerUser.id;
-        if (profile.role === 'faculty' || (profile.role === 'hod' && params.facultyId === callerFacultyId)) {
-          if (callerFacultyId && callerFacultyId !== params.facultyId) {
-            console.error('ATTENDANCE_SAVE_FAILED', `Caller faculty ${callerFacultyId} does not match requested ${params.facultyId}`);
-            throw new Error('You are not authorized to record attendance for this class.');
-          }
-
-          // Verify faculty is assigned to this section and subject via assignments or timetable
-          const { data: directAssign } = await supabase
-            .from('faculty_subject_assignments')
-            .select('id')
-            .eq('faculty_id', params.facultyId)
-            .eq('section_id', params.sectionId)
-            .eq('subject_id', params.subjectId)
-            .eq('active', true)
-            .maybeSingle();
-
-          const { data: ttSlot } = await supabase
-            .from('timetable_entries')
-            .select('id')
-            .eq('faculty_id', params.facultyId)
-            .eq('section_id', params.sectionId)
-            .eq('subject_id', params.subjectId)
-            .eq('active', true)
-            .maybeSingle();
-
-          if (!directAssign && !ttSlot) {
-            console.error('ATTENDANCE_SAVE_FAILED', `Faculty ${params.facultyId} not assigned to section ${params.sectionId} and subject ${params.subjectId}`);
-            throw new Error('You are not authorized or assigned to mark attendance for this subject and section.');
-          }
-        }
-      }
-    }
-    console.log('ATTENDANCE_AUTH_VALIDATED', { callerId: callerUser?.id, facultyId: params.facultyId });
-
-    // 3. Timetable Entry Validation (if provided)
-    if (params.timetableEntryId) {
-      const { data: ttEntry, error: ttErr } = await supabase
-        .from('timetable_entries')
-        .select('id, section_id, subject_id, faculty_id, active, start_time, end_time')
-        .eq('id', params.timetableEntryId)
-        .maybeSingle();
-
-      if (ttErr || !ttEntry) {
-        console.error('ATTENDANCE_SAVE_FAILED', `Timetable entry not found: ${params.timetableEntryId}`);
-        throw new Error(`Specified timetable entry not found: ${params.timetableEntryId}`);
-      }
-
-      if (ttEntry.active === false) {
-        console.error('ATTENDANCE_SAVE_FAILED', `Timetable entry is archived/inactive: ${params.timetableEntryId}`);
-        throw new Error('Cannot record attendance for an archived or inactive timetable entry.');
-      }
-
-      if (ttEntry.section_id !== params.sectionId) {
-        console.error('ATTENDANCE_SAVE_FAILED', `Section mismatch: tt ${ttEntry.section_id} vs param ${params.sectionId}`);
-        throw new Error('Timetable entry section mismatch with selected class.');
-      }
-
-      if (ttEntry.subject_id && ttEntry.subject_id !== params.subjectId) {
-        console.error('ATTENDANCE_SAVE_FAILED', `Subject mismatch: tt ${ttEntry.subject_id} vs param ${params.subjectId}`);
-        throw new Error('Timetable entry subject mismatch with selected class.');
-      }
-
-      console.log('ATTENDANCE_TIMETABLE_VALIDATED', { timetableEntryId: params.timetableEntryId });
-    }
-
-    // 4. Student Roster Validation against live database
-    const { data: liveStudents, error: studentsErr } = await supabase
-      .from('students')
-      .select('id')
-      .eq('section_id', params.sectionId)
-      .eq('active', true);
-
-    if (studentsErr || !liveStudents || liveStudents.length === 0) {
-      console.error('ATTENDANCE_SAVE_FAILED', `Failed to load active students for section ${params.sectionId}`);
-      throw new Error(`Failed to load active student roster for section ${params.sectionId}.`);
-    }
-
-    const liveStudentIds = new Set(liveStudents.map(s => s.id));
-    for (const sr of params.studentRecords) {
-      if (!liveStudentIds.has(sr.studentId)) {
-        console.error('ATTENDANCE_SAVE_FAILED', `Student ${sr.studentId} not enrolled in section ${params.sectionId}`);
-        throw new Error(`Student ${sr.studentId} is not an active student enrolled in this section.`);
-      }
-    }
-
-    // 5. Atomic PostgreSQL RPC Save
+    // 2. Atomic PostgreSQL RPC Save (Handles authorization, student verification, session upsert, record upsert in 1 transaction)
     const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_attendance_session', {
       p_timetable_entry_id: params.timetableEntryId || null,
       p_faculty_id: params.facultyId,
@@ -707,28 +814,22 @@ export const supabaseService = {
     }
 
     const sessionId = rpcRes.session_id;
-    console.log('ATTENDANCE_SESSION_CREATED_OR_UPDATED', { sessionId });
-    console.log('ATTENDANCE_RECORDS_UPSERTED', { recordCount: rpcRes.record_count });
 
-    // 6. Verify Persisted Rows from Live Supabase
-    const [sessVerify, recsVerify] = await Promise.all([
-      supabase.from('attendance_sessions').select('*').eq('id', sessionId).single(),
-      supabase.from('attendance_records').select('*').eq('attendance_session_id', sessionId),
-    ]);
+    // Direct return of session and records from RPC payload (0 secondary round trips)
+    let sessionData = rpcRes.session as AttendanceSession | undefined;
+    let recordsData = rpcRes.records as AttendanceRecord[] | undefined;
 
-    if (sessVerify.error || !sessVerify.data || recsVerify.error || !recsVerify.data || recsVerify.data.length !== rpcRes.record_count) {
-      console.error('ATTENDANCE_SAVE_FAILED', 'Database verification mismatch after save');
-      throw new Error('Database verification mismatch: Saved records could not be verified in live Supabase.');
+    // Fallback if legacy response without embedded json
+    if (!sessionData || !recordsData) {
+      const [sessVerify, recsVerify] = await Promise.all([
+        supabase.from('attendance_sessions').select('*').eq('id', sessionId).single(),
+        supabase.from('attendance_records').select('*').eq('attendance_session_id', sessionId),
+      ]);
+      sessionData = sessVerify.data as AttendanceSession;
+      recordsData = (recsVerify.data as AttendanceRecord[]) || [];
     }
 
-    console.log('ATTENDANCE_SAVE_VERIFIED', {
-      sessionId,
-      recordsVerified: recsVerify.data.length,
-      presentCount: rpcRes.present_count,
-      absentCount: rpcRes.absent_count,
-    });
-
-    // 7. Broadcast Realtime Attendance Update
+    // 3. Broadcast Realtime Attendance Update
     try {
       const channel = supabase.channel('vctm-erp-realtime-channel');
       await channel.send({
@@ -744,11 +845,9 @@ export const supabaseService = {
       });
     } catch {}
 
-    this.invalidateMasterCache();
-
     return { 
-      session: sessVerify.data as AttendanceSession, 
-      records: recsVerify.data as AttendanceRecord[],
+      session: sessionData, 
+      records: recordsData,
       stats: rpcRes
     };
   },
@@ -785,8 +884,7 @@ export const supabaseService = {
       .eq('id', sessionId);
     if (sessErr) throw sessErr;
 
-    // 4. Invalidate cache and broadcast Realtime event
-    this.invalidateMasterCache();
+    // 4. Broadcast Realtime event (do not invalidate master static setup cache)
     try {
       const channel = supabase.channel('vctm-erp-realtime-channel');
       await channel.send({
@@ -4107,6 +4205,7 @@ export const supabaseService = {
     maxMarks?: number;
     facultyId: string;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+    isPublished?: boolean;
   }): Promise<SessionalMark[]> {
     if (params.sessionalAssessmentId && (!params.subjectId || !params.sectionId || params.maxMarks === undefined)) {
       const { data: sa } = await supabase.from('sessional_assessments').select('*').eq('id', params.sessionalAssessmentId).single();
@@ -4120,6 +4219,17 @@ export const supabaseService = {
 
     if (params.maxMarks === undefined || params.maxMarks <= 0) {
       throw new Error('Maximum marks must be defined and greater than 0.');
+    }
+
+    // If isPublished is specified, update the sessional assessment status accordingly
+    if (params.sessionalAssessmentId && params.isPublished !== undefined) {
+      await supabase
+        .from('sessional_assessments')
+        .update({
+          status: params.isPublished ? 'published' : 'draft',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', params.sessionalAssessmentId);
     }
 
     const rows = params.studentMarks.map(sm => {
@@ -4173,42 +4283,54 @@ export const supabaseService = {
       }
     }
 
-    // Trigger Real-time notifications for affected students
+    // Trigger Real-time notifications ONLY when marks are actually published
     try {
-      let subjectName = 'Course Subject';
-      if (params.subjectId) {
-        const { data: subData } = await supabase.from('subjects').select('subject_name').eq('id', params.subjectId).maybeSingle();
-        if (subData?.subject_name) subjectName = subData.subject_name;
+      let shouldNotify = params.isPublished ?? true;
+      if (params.sessionalAssessmentId && params.isPublished === undefined) {
+        const { data: currentSa } = await supabase
+          .from('sessional_assessments')
+          .select('status')
+          .eq('id', params.sessionalAssessmentId)
+          .maybeSingle();
+        shouldNotify = currentSa?.status === 'published' || currentSa?.status === 'completed';
       }
 
-      // Batch fetch all student auth user IDs in a single query (N+1 query elimination)
-      const studentIds = params.studentMarks.map(sm => sm.studentId);
-      const { data: studentsData } = await supabase
-        .from('students')
-        .select('id, auth_user_id')
-        .in('id', studentIds);
+      if (shouldNotify) {
+        let subjectName = 'Course Subject';
+        if (params.subjectId) {
+          const { data: subData } = await supabase.from('subjects').select('subject_name').eq('id', params.subjectId).maybeSingle();
+          if (subData?.subject_name) subjectName = subData.subject_name;
+        }
 
-      const studentMap = new Map((studentsData || []).map(s => [s.id, s.auth_user_id]));
+        // Batch fetch all student auth user IDs in a single query (N+1 query elimination)
+        const studentIds = params.studentMarks.map(sm => sm.studentId);
+        const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, auth_user_id')
+          .in('id', studentIds);
 
-      const notifRows: any[] = params.studentMarks.map(sm => {
-        const isUpdate = sm.oldMarks !== undefined && sm.oldMarks !== null;
-        return {
-          recipient_user_id: studentMap.get(sm.studentId) || null,
-          recipient_student_id: sm.studentId,
-          recipient_role: 'student',
-          type: (isUpdate ? 'MARKS_UPDATED' : 'MARKS_PUBLISHED') as NotificationType,
-          title: isUpdate ? 'Marks Updated' : 'New Marks Published',
-          message: `${subjectName} — ${params.sessionalType || 'Sessional'}: ${sm.marksObtained}/${params.maxMarks}`,
-          reference_type: 'sessional_mark',
-          reference_id: params.sessionalAssessmentId || null,
-          is_read: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-      });
+        const studentMap = new Map((studentsData || []).map(s => [s.id, s.auth_user_id]));
 
-      if (notifRows.length > 0) {
-        await supabase.from('notifications').insert(notifRows);
+        const notifRows: any[] = params.studentMarks.map(sm => {
+          const isUpdate = sm.oldMarks !== undefined && sm.oldMarks !== null;
+          return {
+            recipient_user_id: studentMap.get(sm.studentId) || null,
+            recipient_student_id: sm.studentId,
+            recipient_role: 'student',
+            type: (isUpdate ? 'MARKS_UPDATED' : 'MARKS_PUBLISHED') as NotificationType,
+            title: isUpdate ? 'Marks Updated' : 'New Marks Published',
+            message: `${subjectName} — ${params.sessionalType || 'Sessional'}: ${sm.marksObtained}/${params.maxMarks}`,
+            reference_type: 'sessional_mark',
+            reference_id: params.sessionalAssessmentId || null,
+            is_read: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+        });
+
+        if (notifRows.length > 0) {
+          await supabase.from('notifications').insert(notifRows);
+        }
       }
     } catch (notifErr) {
       console.warn('Notice: Background notification dispatch for marks:', notifErr);
@@ -5094,17 +5216,19 @@ export const supabaseService = {
   },
 
   async getOrCreateConversation(params: {
-    facultyId: string;
-    subjectId: string;
+    facultyId?: string;
+    studentId?: string;
+    subjectId?: string | null;
     category?: ConversationCategory;
     topic?: string;
   }): Promise<{ data: Conversation | null; error: any }> {
     try {
       const { data, error } = await supabase.rpc('get_or_create_conversation', {
-        p_faculty_id: params.facultyId,
-        p_subject_id: params.subjectId,
+        p_faculty_id: params.facultyId || null,
+        p_subject_id: params.subjectId || null,
         p_category: params.category || 'General',
         p_topic: params.topic || null,
+        p_student_id: params.studentId || null,
       });
 
       if (error) {
@@ -5284,6 +5408,11 @@ export const supabaseService = {
         .eq('faculty_id', facultyId)
         .eq('active', true);
 
+      const { data: coordData } = await supabase
+        .from('sections')
+        .select('id, name, semester_id, semesters:semester_id(academic_year_id, academic_years:academic_year_id(id, name))')
+        .eq('class_coordinator_id', facultyId);
+
       const sectionSubjectPairs = new Map<string, { sectionId: string; sectionName: string; subjectId: string; subjectName: string; subjectCode: string; academicYearId: string; yearName: string }>();
 
       const registerPair = (item: any) => {
@@ -5308,15 +5437,26 @@ export const supabaseService = {
       if (fsaData) fsaData.forEach(registerPair);
       if (ttData) ttData.forEach(registerPair);
 
-      const pairs = Array.from(sectionSubjectPairs.values());
-      if (pairs.length === 0) return [];
+      const coordSectionMap = new Map<string, { sectionName: string; academicYearId: string; yearName: string }>();
+      (coordData || []).forEach((cs: any) => {
+        const sem = Array.isArray(cs.semesters) ? cs.semesters[0] : cs.semesters;
+        const year = Array.isArray(sem?.academic_years) ? sem.academic_years[0] : sem?.academic_years;
+        coordSectionMap.set(cs.id, {
+          sectionName: cs.name || 'Section',
+          academicYearId: year?.id || '',
+          yearName: year?.name || '',
+        });
+      });
 
-      const sectionIds = Array.from(new Set(pairs.map(p => p.sectionId)));
+      const pairs = Array.from(sectionSubjectPairs.values());
+      const sectionIds = Array.from(new Set([...pairs.map(p => p.sectionId), ...Array.from(coordSectionMap.keys())]));
+      if (sectionIds.length === 0) return [];
 
       const { data: students, error: stuErr } = await supabase
         .from('students')
         .select('id, full_name, roll_number, section_id, academic_year_id')
         .in('section_id', sectionIds)
+        .eq('active', true)
         .order('full_name', { ascending: true });
 
       if (stuErr || !students) return [];
@@ -5325,21 +5465,29 @@ export const supabaseService = {
 
       for (const stu of students) {
         const matchingPairs = pairs.filter(p => p.sectionId === stu.section_id);
-        for (const pair of matchingPairs) {
-          results.push({
-            student_id: stu.id,
-            student_name: stu.full_name,
-            roll_number: stu.roll_number,
-            admission_number: stu.roll_number,
-            section_id: pair.sectionId,
-            section_name: pair.sectionName,
-            subject_id: pair.subjectId,
-            subject_name: pair.subjectName,
-            subject_code: pair.subjectCode,
-            academic_year_id: stu.academic_year_id || pair.academicYearId,
-            year_name: pair.yearName,
-          });
-        }
+        const coordInfo = coordSectionMap.get(stu.section_id);
+        const firstPair = matchingPairs[0];
+
+        const studentSubjects = matchingPairs.map(p => ({
+          id: p.subjectId,
+          name: p.subjectName,
+          code: p.subjectCode,
+        }));
+
+        results.push({
+          student_id: stu.id,
+          student_name: stu.full_name,
+          roll_number: stu.roll_number,
+          admission_number: stu.roll_number,
+          section_id: stu.section_id,
+          section_name: firstPair?.sectionName || coordInfo?.sectionName || 'Section',
+          subject_id: firstPair?.subjectId || '',
+          subject_name: firstPair?.subjectName || '',
+          subject_code: firstPair?.subjectCode || '',
+          academic_year_id: stu.academic_year_id || firstPair?.academicYearId || coordInfo?.academicYearId || '',
+          year_name: firstPair?.yearName || coordInfo?.yearName || '',
+          subjects: studentSubjects,
+        });
       }
 
       return results;
@@ -5679,6 +5827,8 @@ export const supabaseService = {
       if (role === 'student') {
         if (!studentSectionId || !studentYearId) return [];
         query = query.eq('section_id', studentSectionId).eq('academic_year_id', studentYearId);
+      } else if (role === 'hod' && profile?.department_id) {
+        query = query.eq('department_id', profile.department_id);
       }
 
       const { data: groups, error } = await query;
@@ -5689,7 +5839,7 @@ export const supabaseService = {
 
       let filteredGroups = groups as MessageGroup[];
 
-      // For faculty, refine by assigned combinations
+      // For faculty, refine by assigned combinations and section-wide announcements
       if (role === 'faculty' && facultyId) {
         const { data: fsaList } = await supabase
           .from('faculty_subject_assignments')
@@ -5703,29 +5853,55 @@ export const supabaseService = {
           .eq('faculty_id', facultyId)
           .eq('active', true);
 
-        const validPairs = new Set<string>();
-        (fsaList || []).forEach(f => validPairs.add(`${f.section_id}_${f.subject_id}`));
-        (teList || []).forEach(t => {
-          if (t.section_id && t.subject_id) validPairs.add(`${t.section_id}_${t.subject_id}`);
-        });
+        const { data: coordData } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('class_coordinator_id', facultyId);
 
-        filteredGroups = filteredGroups.filter(g => validPairs.has(`${g.section_id}_${g.subject_id}`));
+        const validPairs = new Set<string>();
+        const assignedSectionIds = new Set<string>();
+
+        (fsaList || []).forEach(f => {
+          validPairs.add(`${f.section_id}_${f.subject_id}`);
+          assignedSectionIds.add(f.section_id);
+        });
+        (teList || []).forEach(t => {
+          if (t.section_id && t.subject_id) {
+            validPairs.add(`${t.section_id}_${t.subject_id}`);
+            assignedSectionIds.add(t.section_id);
+          }
+        });
+        (coordData || []).forEach(c => assignedSectionIds.add(c.id));
+
+        filteredGroups = filteredGroups.filter(g => {
+          if (g.subject_id) {
+            return validPairs.has(`${g.section_id}_${g.subject_id}`);
+          }
+          // Section-wide announcement: accessible if faculty teaches in section or is coordinator
+          return assignedSectionIds.has(g.section_id);
+        });
       }
 
       if (filteredGroups.length === 0) return [];
 
       const groupIds = filteredGroups.map(g => g.id);
+      const relevantSectionIds = Array.from(new Set(filteredGroups.map(g => g.section_id)));
 
-      // Fetch member counts (students count per section & year)
+      // Fetch member counts (distinct active students per section & year)
       const { data: studentCounts } = await supabase
         .from('students')
-        .select('section_id, academic_year_id')
+        .select('id, section_id, academic_year_id')
+        .in('section_id', relevantSectionIds)
         .eq('active', true);
 
       const countMap: Record<string, number> = {};
+      const seenStudents = new Set<string>();
       (studentCounts || []).forEach(s => {
-        const key = `${s.section_id}_${s.academic_year_id}`;
-        countMap[key] = (countMap[key] || 0) + 1;
+        if (!seenStudents.has(s.id)) {
+          seenStudents.add(s.id);
+          const key = `${s.section_id}_${s.academic_year_id}`;
+          countMap[key] = (countMap[key] || 0) + 1;
+        }
       });
 
       // Fetch user's read state for these groups
@@ -5760,6 +5936,7 @@ export const supabaseService = {
       const { data: fsaAssignments } = await supabase
         .from('faculty_subject_assignments')
         .select('section_id, subject_id, faculty:faculty(id, full_name, designation, email)')
+        .in('section_id', relevantSectionIds)
         .eq('active', true);
 
       const facultyMap: Record<string, any> = {};
@@ -5773,11 +5950,15 @@ export const supabaseService = {
       return filteredGroups.map(g => {
         const countKey = `${g.section_id}_${g.academic_year_id}`;
         const facKey = `${g.section_id}_${g.subject_id}`;
-        const subName = (g.subject as any)?.subject_name || (g.subject as any)?.name || 'Class';
+        const subName = (g.subject as any)?.subject_name || (g.subject as any)?.name || '';
         const subCode = (g.subject as any)?.subject_code || (g.subject as any)?.code || '';
+        const displayName = subName 
+          ? `${subName} • Sec ${g.section?.name || ''}`
+          : `Class Announcement • Sec ${g.section?.name || ''}`;
+
         return {
           ...g,
-          name: `${subName} • Sec ${g.section?.name || ''}`,
+          name: displayName,
           subject: g.subject ? {
             id: g.subject.id,
             name: subName,
@@ -5820,7 +6001,7 @@ export const supabaseService = {
   async sendGroupMessage(params: {
     academicYearId: string;
     sectionId: string;
-    subjectId: string;
+    subjectId?: string | null;
     message: string;
     title?: string;
     attachmentUrl?: string;
@@ -5833,7 +6014,7 @@ export const supabaseService = {
       const { data, error } = await supabase.rpc('send_group_message', {
         p_academic_year_id: params.academicYearId,
         p_section_id: params.sectionId,
-        p_subject_id: params.subjectId,
+        p_subject_id: params.subjectId || null,
         p_message: params.message,
         p_title: params.title || null,
         p_attachment_url: params.attachmentUrl || null,

@@ -74,12 +74,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     assignmentSubmissions,
     quizzes,
     quizResults,
-    submitAssignment
+    submitAssignment,
+    getStudentAcademicScorecard
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
   const student = currentStudent;
   const studentId = currentStudent?.id || '';
+
+  const publishedScorecard = useMemo(() => {
+    if (!studentId) return [];
+    return getStudentAcademicScorecard(studentId);
+  }, [studentId, getStudentAcademicScorecard]);
+
   const mySectionQuizzes = useMemo(() => {
     if (!currentStudent?.section_id) return [];
     return quizzes.filter(q => q.section_id === currentStudent.section_id && q.active);
@@ -583,12 +590,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               <Award className="w-4 h-4 text-emerald-400" />
             </div>
             <h3 className="text-2xl font-black text-white mt-2">
-              View Marks
+              {publishedScorecard.length > 0 ? `${publishedScorecard.length} Published` : 'No Marks Yet'}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Sessional 1, 2, PUT & internal scores</p>
+            <p className="text-xs text-slate-400 mt-1">
+              {publishedScorecard.length > 0 
+                ? `${publishedScorecard.length} subject${publishedScorecard.length > 1 ? 's' : ''} with published scores`
+                : 'Awaiting faculty evaluation'}
+            </p>
           </div>
           <div className="mt-4 pt-3 border-t border-emerald-500/15 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:underline">
-            <span>Open Scorecard</span>
+            <span>Open Detailed Scorecard</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
         </div>
@@ -704,6 +715,82 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         </div>
 
       </div>
+
+      {/* 6.5. PUBLISHED MARKS & CONTINUOUS ASSESSMENTS (ONLY SUBJECTS WITH PUBLISHED MARKS) */}
+      {publishedScorecard.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                  Published Continuous Assessments
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] font-semibold">
+                    {publishedScorecard.length} Subject{publishedScorecard.length > 1 ? 's' : ''}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Official sessional and internal marks published by faculty
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigate('marks')}
+              className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
+            >
+              Full Scorecard →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {publishedScorecard.map((item) => (
+              <div
+                key={item.subjectId}
+                onClick={() => onNavigate('marks')}
+                className="glass-panel rounded-2xl p-4 border border-emerald-500/20 hover:border-emerald-500/45 transition-all flex flex-col justify-between space-y-3 cursor-pointer group"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 font-bold border border-blue-500/20">
+                      {item.subjectCode}
+                    </span>
+                    <span className="font-mono font-bold text-emerald-400 text-sm">
+                      {item.totalInternalScore} <span className="text-xs text-slate-500">/ {item.maxInternalScore}</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#00ff88] transition-colors line-clamp-1">
+                      {item.subjectName}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">Faculty: {item.facultyName}</p>
+                  </div>
+
+                  {item.sessionalMarks.sessionals.length > 0 && (
+                    <div className="space-y-1 pt-2 border-t border-slate-800 text-xs">
+                      {item.sessionalMarks.sessionals.slice(0, 2).map((s, idx) => (
+                        <div key={s.assessmentId || idx} className="flex justify-between items-center text-[11px]">
+                          <span className="text-slate-400 truncate max-w-[140px]">{s.title}:</span>
+                          <span className="font-mono font-bold text-white">
+                            {s.obtainedMarks} / {s.maxMarks}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between text-xs text-[#00ff88] font-bold group-hover:underline">
+                  <span>View Details</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 7. ACADEMIC ASSIGNMENTS & QUIZZES (SECTION SCOPED) */}
       <div className="space-y-4">

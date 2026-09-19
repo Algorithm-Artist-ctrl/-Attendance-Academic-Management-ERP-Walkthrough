@@ -30,7 +30,8 @@ import {
   Sparkles,
   Lock,
   Unlock,
-  Building2
+  Building2,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -43,6 +44,7 @@ import {
   GroupMessage 
 } from '../../types/database.types';
 import { supabaseService } from '../../lib/services/supabaseService';
+import { supabase } from '../../lib/supabase/supabaseClient';
 import { NewConversationModal } from '../../components/communication/NewConversationModal';
 import { NewGroupMessageModal } from '../../components/communication/NewGroupMessageModal';
 import { GroupMembersModal } from '../../components/communication/GroupMembersModal';
@@ -97,6 +99,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [groupInputTitle, setGroupInputTitle] = useState('');
   const [showTitleInput, setShowTitleInput] = useState(false);
   const [groupSending, setGroupSending] = useState(false);
+  const [groupSendSuccess, setGroupSendSuccess] = useState(false);
   const [groupAttachment, setGroupAttachment] = useState<{
     file: File;
     dataUrl: string;
@@ -116,6 +119,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [directCategoryFilter, setDirectCategoryFilter] = useState<string>('ALL');
   const [directInputMessage, setDirectInputMessage] = useState('');
   const [directSending, setDirectSending] = useState(false);
+  const [directSendSuccess, setDirectSendSuccess] = useState(false);
   const [directAttachment, setDirectAttachment] = useState<{
     file: File;
     dataUrl: string;
@@ -179,7 +183,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   }, [activeTab, selectedGroupId, messageGroups]);
 
-  // Load group messages when selectedGroupId changes
+  // Load group messages when selectedGroupId changes (with Scoped Realtime)
   useEffect(() => {
     if (!selectedGroupId) {
       setGroupMessages([]);
@@ -193,7 +197,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         const msgs = await supabaseService.fetchGroupMessages(selectedGroupId);
         if (isMounted) {
           setGroupMessages(msgs);
-          // Mark group read
           markGroupRead(selectedGroupId);
         }
       } catch (err) {
@@ -207,8 +210,35 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
     loadGroupMessages();
 
+    // Scoped Realtime channel for currently active group thread
+    const channel = supabase
+      .channel(`active_group_${selectedGroupId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${selectedGroupId}` },
+        async (payload) => {
+          if (!isMounted) return;
+          const newMsg = payload.new as GroupMessage;
+          if (newMsg && newMsg.id) {
+            setGroupMessages(prev => {
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            markGroupRead(selectedGroupId);
+          } else {
+            const freshMsgs = await supabaseService.fetchGroupMessages(selectedGroupId);
+            if (isMounted) {
+              setGroupMessages(freshMsgs);
+              markGroupRead(selectedGroupId);
+            }
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [selectedGroupId, markGroupRead]);
 
@@ -219,7 +249,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   }, [groupMessages, activeTab]);
 
-  // Load direct messages when selectedConvId changes
+  // Load direct messages when selectedConvId changes (with Scoped Realtime)
   useEffect(() => {
     if (!selectedConvId) {
       setDirectMessages([]);
@@ -246,8 +276,35 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
     loadDirect();
 
+    // Scoped Realtime channel for currently active direct conversation thread
+    const channel = supabase
+      .channel(`active_direct_${selectedConvId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConvId}` },
+        async (payload) => {
+          if (!isMounted) return;
+          const newMsg = payload.new as Message;
+          if (newMsg && newMsg.id) {
+            setDirectMessages(prev => {
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            markConversationRead(selectedConvId);
+          } else {
+            const freshMsgs = await supabaseService.fetchConversationMessages(selectedConvId);
+            if (isMounted) {
+              setDirectMessages(freshMsgs);
+              markConversationRead(selectedConvId);
+            }
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [selectedConvId, markConversationRead]);
 
@@ -334,7 +391,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       const res = await sendGroupMessage({
         academicYearId: selectedGroup.academic_year_id,
         sectionId: selectedGroup.section_id,
-        subjectId: selectedGroup.subject_id,
+        subjectId: selectedGroup.subject_id || undefined,
         message: groupInputMessage.trim(),
         title: groupInputTitle.trim() || undefined,
         attachmentUrl: groupAttachment?.dataUrl,
@@ -349,6 +406,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setShowTitleInput(false);
         setGroupAttachment(null);
         setMessageSendError(null);
+        setGroupSendSuccess(true);
+        setTimeout(() => setGroupSendSuccess(false), 1200);
         // Refresh local group messages
         const updatedMsgs = await supabaseService.fetchGroupMessages(selectedGroup.id);
         setGroupMessages(updatedMsgs);
@@ -383,6 +442,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setDirectInputMessage('');
         setDirectAttachment(null);
         setMessageSendError(null);
+        setDirectSendSuccess(true);
+        setTimeout(() => setDirectSendSuccess(false), 1200);
         const updated = await supabaseService.fetchConversationMessages(selectedConvId);
         setDirectMessages(updated);
       } else {
@@ -612,12 +673,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <h3 className={`text-xs truncate ${isSelected || hasUnread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
-                              {group.subject?.subject_name || 'Academic Subject'}
+                              {group.subject?.subject_name || 'Class Announcement'}
                             </h3>
                           </div>
 
                           <p className="text-[11px] font-semibold text-[#00ff88] mt-0.5">
-                            {group.academic_year?.year_number || '1'}th Year • Section {group.section?.name || 'A'}
+                            {group.academic_year?.name || `${group.academic_year?.year_number || '1'} Year`} • Section {group.section?.name || 'A'}
                             {group.section?.room_number ? ` (Room ${group.section.room_number})` : ''}
                           </p>
 
@@ -770,10 +831,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h2 className="text-sm font-bold text-white truncate">
-                          {selectedGroup.subject?.subject_name}
+                          {selectedGroup.subject?.subject_name || 'Class Announcement'}
                         </h2>
                         <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] rounded-full shrink-0">
-                          {selectedGroup.academic_year?.year_number}th Year • Sec {selectedGroup.section?.name}
+                          {selectedGroup.academic_year?.name || `${selectedGroup.academic_year?.year_number || '1'} Year`} • Sec {selectedGroup.section?.name}
                         </span>
                       </div>
 
@@ -786,6 +847,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                   {/* Header Actions */}
                   <div className="flex items-center gap-2 shrink-0">
+                    {loadingGroupMessages && (
+                      <div className="flex items-center gap-1 text-[11px] text-[#00ff88] animate-pulse mr-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span className="hidden sm:inline">Syncing...</span>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setIsMembersModalOpen(true)}
@@ -810,7 +878,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Group Messages Thread */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-[#050b14]/70">
-                  {loadingGroupMessages ? (
+                  {loadingGroupMessages && groupMessages.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-2">
                       <Loader2 className="w-6 h-6 text-[#00ff88] animate-spin" />
                       <span className="text-xs text-slate-400 font-medium">Loading group communication thread...</span>
@@ -991,10 +1059,17 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       <button
                         type="submit"
                         disabled={groupSending || !groupInputMessage.trim()}
-                        className="p-2 bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.25)] font-bold disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        className={`p-2 rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center ${
+                          groupSendSuccess
+                            ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                            : 'bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.25)]'
+                        }`}
+                        title={groupSendSuccess ? 'Sent!' : 'Send Message'}
                       >
                         {groupSending ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : groupSendSuccess ? (
+                          <CheckCircle2 className="w-4 h-4 text-slate-950" />
                         ) : (
                           <Send className="w-4 h-4" />
                         )}
@@ -1040,13 +1115,20 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         {isStudent ? selectedConversation.faculty?.full_name : selectedConversation.student?.full_name}
                       </h2>
                       <p className="text-[11px] text-slate-400 truncate">
-                        {selectedConversation.subject?.subject_name} • Category: <span className="font-semibold text-slate-200">{selectedConversation.category}</span>
+                        {selectedConversation.subject?.subject_name || 'Academic Discussion'} • Category: <span className="font-semibold text-slate-200">{selectedConversation.category}</span>
                       </p>
                     </div>
                   </div>
 
                   {/* Status Dropdown */}
                   <div className="flex items-center gap-2">
+                    {loadingDirectMessages && (
+                      <div className="flex items-center gap-1 text-[11px] text-[#00ff88] animate-pulse mr-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span className="hidden sm:inline">Syncing...</span>
+                      </div>
+                    )}
+
                     <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
                       selectedConversation.status === 'OPEN' ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' :
                       selectedConversation.status === 'IN_PROGRESS' ? 'bg-blue-500/15 border-blue-500/30 text-blue-300' :
@@ -1060,7 +1142,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Direct Messages Thread */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[#050b14]/70">
-                  {loadingDirectMessages ? (
+                  {loadingDirectMessages && directMessages.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center gap-2">
                       <Loader2 className="w-6 h-6 text-[#00ff88] animate-spin" />
                       <span className="text-xs text-slate-400">Loading conversation...</span>
@@ -1157,9 +1239,20 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     <button
                       type="submit"
                       disabled={directSending || !directInputMessage.trim()}
-                      className="p-2 bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,136,0.25)] font-bold disabled:opacity-50"
+                      className={`p-2 rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center ${
+                        directSendSuccess
+                          ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                          : 'bg-[#00ff88] hover:bg-[#00e67a] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.25)]'
+                      }`}
+                      title={directSendSuccess ? 'Sent!' : 'Send Message'}
                     >
-                      {directSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {directSending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : directSendSuccess ? (
+                        <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </form>
@@ -1192,7 +1285,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
       <GroupMembersModal
         groupId={selectedGroupId}
-        groupTitle={selectedGroup ? `${selectedGroup.subject?.subject_name} (${selectedGroup.academic_year?.year_number}th Yr Sec ${selectedGroup.section?.name})` : 'Class Group'}
+        groupTitle={selectedGroup ? `${selectedGroup.subject?.subject_name || 'Class Announcement'} (${selectedGroup.academic_year?.name || `${selectedGroup.academic_year?.year_number} Yr`} Sec ${selectedGroup.section?.name})` : 'Class Group'}
         isOpen={isMembersModalOpen}
         onClose={() => setIsMembersModalOpen(false)}
       />

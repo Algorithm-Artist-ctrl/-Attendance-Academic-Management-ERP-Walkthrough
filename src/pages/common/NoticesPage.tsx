@@ -15,7 +15,11 @@ import {
   Sparkles,
   Users,
   Building2,
-  Layers
+  Layers,
+  Loader2,
+  CheckCircle2,
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -47,6 +51,8 @@ export const NoticesPage: React.FC = () => {
   const [newTargetSectionId, setNewTargetSectionId] = useState<string>('');
   const [newTargetDepartmentId, setNewTargetDepartmentId] = useState<string>('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState(false);
 
   const canPublish = user?.role === 'super_admin' || user?.role === 'hod';
 
@@ -102,9 +108,11 @@ export const NoticesPage: React.FC = () => {
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContent.trim()) return;
+    if (!newTitle.trim() || !newContent.trim() || isPublishing) return;
 
     setIsPublishing(true);
+    setPublishError(null);
+    setPublishSuccess(false);
     try {
       let targetAudience = 'ALL';
       let targetSectionId: string | null = null;
@@ -127,10 +135,10 @@ export const NoticesPage: React.FC = () => {
         targetDepartmentId = newTargetDepartmentId || null;
       }
 
-      await supabaseService.publishNotice({
+      const inserted = await supabaseService.publishNotice({
         title: newTitle.trim(),
         category: newCategory,
-        author: newAuthor.trim() || user?.full_name || 'Administration',
+        author: newAuthor.trim() || user?.full_name || 'Academic Administration',
         content: newContent.trim(),
         isPinned: newIsPinned,
         targetAudience,
@@ -141,16 +149,41 @@ export const NoticesPage: React.FC = () => {
         actorName: user?.full_name
       });
 
-      setIsModalOpen(false);
-      setNewTitle('');
-      setNewContent('');
-      setNewIsPinned(false);
-      setNewTargetScope('ALL');
-      setNewTargetSectionId('');
-      setNewTargetDepartmentId('');
-      await loadNotices();
-    } catch (err) {
+      if (inserted) {
+        const details = (inserted as any).new_values || {};
+        const newNoticeItem: NoticeItem = {
+          id: (inserted as any).id,
+          title: details.title || newTitle.trim(),
+          category: details.category || newCategory,
+          date: details.date || ((inserted as any).created_at ? (inserted as any).created_at.split('T')[0] : getISTTodayDate()),
+          author: details.author || newAuthor.trim() || user?.full_name || 'Academic Administration',
+          isPinned: !!details.isPinned,
+          content: details.content || newContent.trim(),
+          attachment: details.attachment,
+          targetAudience: details.targetAudience || targetAudience,
+          targetSectionId: details.targetSectionId || targetSectionId,
+          targetDepartmentId: details.targetDepartmentId || targetDepartmentId,
+          targetRole: details.targetRole || targetRole,
+          createdAt: (inserted as any).created_at || new Date().toISOString()
+        };
+        setNotices(prev => [newNoticeItem, ...prev]);
+      }
+
+      setPublishSuccess(true);
+      setTimeout(() => {
+        setPublishSuccess(false);
+        setIsModalOpen(false);
+        setNewTitle('');
+        setNewContent('');
+        setNewIsPinned(false);
+        setNewTargetScope('ALL');
+        setNewTargetSectionId('');
+        setNewTargetDepartmentId('');
+        setPublishError(null);
+      }, 700);
+    } catch (err: any) {
       console.error('Failed to publish notice:', err);
+      setPublishError(err.message || 'Failed to publish notice. All entered details have been preserved. Please retry.');
     } finally {
       setIsPublishing(false);
     }
@@ -445,6 +478,21 @@ export const NoticesPage: React.FC = () => {
         description="Publish a verified academic circular to the institutional bulletin board"
       >
         <form onSubmit={handlePublish} className="space-y-4">
+          {publishError && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{publishError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPublishError(null)}
+                className="text-rose-400 hover:text-white p-1 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Circular Title <span className="text-rose-400">*</span>
@@ -578,12 +626,30 @@ export const NoticesPage: React.FC = () => {
               Cancel
             </Button>
             <Button
-              variant="neon"
+              variant={publishError ? "danger" : "neon"}
               size="sm"
               type="submit"
-              isLoading={isPublishing}
+              disabled={isPublishing || publishSuccess}
+              className={publishSuccess ? "!bg-emerald-500 !text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)] font-bold" : ""}
             >
-              Publish Circular
+              {isPublishing ? (
+                <span className="flex items-center">
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  Publishing...
+                </span>
+              ) : publishSuccess ? (
+                <span className="flex items-center">
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  Published ✓
+                </span>
+              ) : publishError ? (
+                <span className="flex items-center">
+                  <RotateCcw className="w-4 h-4 mr-1.5" />
+                  Publish Failed — Retry
+                </span>
+              ) : (
+                'Publish Circular'
+              )}
             </Button>
           </div>
         </form>

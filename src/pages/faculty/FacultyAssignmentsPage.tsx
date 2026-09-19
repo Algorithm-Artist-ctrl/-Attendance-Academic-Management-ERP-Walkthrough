@@ -17,7 +17,8 @@ import {
   Eye,
   FileCheck,
   Sparkles,
-  Layers
+  Layers,
+  Loader2
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -138,6 +139,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
   const [dueDate, setDueDate] = useState('');
   const [allowLateSubmission, setAllowLateSubmission] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createSuccess, setCreateSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   // View Submissions Drawer State
@@ -146,6 +148,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
   const [gradeMarks, setGradeMarks] = useState<number>(0);
   const [gradeFeedback, setGradeFeedback] = useState('');
   const [isSavingGrade, setIsSavingGrade] = useState(false);
+  const [saveGradeSuccess, setSaveGradeSuccess] = useState(false);
 
   const filteredAssignments = useMemo(() => {
     return myAssignments.filter(a => {
@@ -212,6 +215,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
     try {
       setIsSubmitting(true);
+      setCreateSuccess(false);
       await createAssignment({
         faculty_id: currentFacultyId,
         subject_id: selectedSubjectId,
@@ -227,7 +231,11 @@ export const FacultyAssignmentsPage: React.FC = () => {
         active: true,
       });
 
-      setIsCreateModalOpen(false);
+      setCreateSuccess(true);
+      setTimeout(() => {
+        setCreateSuccess(false);
+        setIsCreateModalOpen(false);
+      }, 500);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to create assignment.');
     } finally {
@@ -270,6 +278,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
     try {
       setIsSavingGrade(true);
+      setSaveGradeSuccess(false);
       if (existingSub) {
         await gradeAssignmentSubmission({
           submissionId: existingSub.id,
@@ -278,9 +287,13 @@ export const FacultyAssignmentsPage: React.FC = () => {
           facultyId: currentFacultyId,
         });
       }
-      setSelectedStudentForGrading(null);
+      setSaveGradeSuccess(true);
+      setTimeout(() => {
+        setSaveGradeSuccess(false);
+        setSelectedStudentForGrading(null);
+      }, 500);
     } catch (err: any) {
-      alert(err.message || 'Failed to save grade.');
+      alert(err.message || 'Failed to save grade. Your entered score and feedback have been preserved.');
     } finally {
       setIsSavingGrade(false);
     }
@@ -655,10 +668,26 @@ export const FacultyAssignmentsPage: React.FC = () => {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              disabled={isSubmitting || createSuccess}
+              className={`transition-all ${
+                createSuccess
+                  ? '!bg-emerald-500 !text-slate-950 font-bold'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
             >
-              {isSubmitting ? 'Publishing...' : 'Publish Assignment'}
+              {isSubmitting ? (
+                <span className="flex items-center">
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  Publishing...
+                </span>
+              ) : createSuccess ? (
+                <span className="flex items-center">
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  Published ✓
+                </span>
+              ) : (
+                'Publish Assignment'
+              )}
             </Button>
           </div>
         </form>
@@ -807,10 +836,26 @@ export const FacultyAssignmentsPage: React.FC = () => {
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   onClick={handleSaveGrade}
-                  disabled={isSavingGrade}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-1.5"
+                  disabled={isSavingGrade || saveGradeSuccess}
+                  className={`text-xs py-1.5 transition-all flex items-center gap-1.5 ${
+                    saveGradeSuccess
+                      ? '!bg-emerald-500 !text-slate-950 font-bold'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  }`}
                 >
-                  {isSavingGrade ? 'Saving...' : 'Save & Record Grade'}
+                  {isSavingGrade ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : saveGradeSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Saved ✓
+                    </>
+                  ) : (
+                    'Save & Record Grade'
+                  )}
                 </Button>
               </div>
             </div>
