@@ -146,7 +146,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
   const [newMaxMarks, setNewMaxMarks] = useState<number>(30);
   const [newExamDate, setNewExamDate] = useState(getISTTodayDate());
   const [newDescription, setNewDescription] = useState('');
-  const [newStatus, setNewStatus] = useState<'draft' | 'published'>('published');
+  const [newStatus, setNewStatus] = useState<'draft' | 'published'>('draft');
   const [isCreating, setIsCreating] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -181,7 +181,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
     setNewMaxMarks(30);
     setNewExamDate(getISTTodayDate());
     setNewDescription('');
-    setNewStatus('published');
+    setNewStatus('draft');
     setIsAddModalOpen(true);
   };
 

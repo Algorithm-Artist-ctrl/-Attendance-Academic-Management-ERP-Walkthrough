@@ -54,6 +54,7 @@ const AuditLogsPage = lazy(() => import('./pages/admin/AuditLogsPage').then(m =>
 const FacultyAccountsPage = lazy(() => import('./pages/admin/FacultyAccountsPage').then(m => ({ default: m.FacultyAccountsPage })));
 const StudentAccountsPage = lazy(() => import('./pages/admin/StudentAccountsPage').then(m => ({ default: m.StudentAccountsPage })));
 const AcademicManagementPage = lazy(() => import('./pages/admin/AcademicManagementPage').then(m => ({ default: m.AcademicManagementPage })));
+const RecordsArchivePage = lazy(() => import('./pages/admin/RecordsArchivePage').then(m => ({ default: m.RecordsArchivePage })));
 
 // Lightweight Cyber Skeleton Loader for Fast Transitions
 const PageSkeletonLoader: React.FC = () => (
@@ -489,6 +490,8 @@ export const AppContent: React.FC = () => {
           return <LeaveManagementPage />;
         case 'audit_logs':
           return <AuditLogsPage />;
+        case 'records_archive':
+          return <RecordsArchivePage />;
         case 'settings':
           return <SettingsPage />;
         case 'dashboard':

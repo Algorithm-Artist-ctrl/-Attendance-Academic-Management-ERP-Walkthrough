@@ -11,6 +11,7 @@ import {
   TrendingUp,
   RotateCcw,
   CheckCircle2,
+  AlertCircle,
   BookOpen,
   Layers,
   GraduationCap,
@@ -67,6 +68,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     faculty: facultyList,
     attendanceSessions,
     attendanceRecords,
+    getAttendanceSummary,
+    ensureSessionAttendanceLoaded,
     getFacultyCorrectionRequests,
     getPublishedTimetable,
     getFacultyTimetable,
@@ -800,21 +803,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                 const isFuture = isDateInFuture(selectedScheduleDate, todayISO);
                 const isToday = isDateToday(selectedScheduleDate, todayISO);
 
-                // Look up live session for this specific calendar date
-                const existingSess = attendanceSessions.find(
-                  s => (s.session_date?.split('T')[0] || s.session_date) === selectedScheduleDate &&
-                       (s.timetable_entry_id === entry.id ||
-                        (s.section_id === entry.section_id &&
-                         s.subject_id === entry.subject_id &&
-                         (s.start_time?.substring(0, 5) === entry.start_time?.substring(0, 5) || !entry.start_time)))
-                );
-
-                const records = existingSess 
-                  ? attendanceRecords.filter(r => r.attendance_session_id === existingSess.id)
-                  : [];
-                const presentCount = records.filter(r => r.status === 'Present').length;
-                const totalEnrolled = students.filter(s => s.section_id === entry.section_id && s.active).length;
-                const denominator = records.length > 0 ? records.length : totalEnrolled;
+                // Authoritative attendance summary strictly for selectedScheduleDate and timetable entry
+                const summary = getAttendanceSummary({
+                  timetableEntryId: entry.id,
+                  sessionDate: selectedScheduleDate,
+                  sectionId: entry.section_id,
+                  subjectId: entry.subject_id || undefined,
+                  startTime: entry.start_time,
+                });
 
                 return (
                   <div
@@ -840,11 +836,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                         <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-700/60 text-slate-400">
                           Upcoming • Attendance not available yet
                         </span>
-                      ) : existingSess ? (
+                      ) : summary.status === 'FULLY_MARKED' ? (
                         <div className="flex items-center gap-2">
                           <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88] flex items-center gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>✓ Attendance Marked ({presentCount}/{denominator})</span>
+                            <span>✓ Marked ({summary.total}/{summary.total})</span>
                           </span>
                           <Button
                             variant="outline"
@@ -852,7 +848,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
                             className="shrink-0 text-xs font-bold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
                           >
-                            View Attendance →
+                            View / Update →
+                          </Button>
+                        </div>
+                      ) : summary.status === 'PARTIALLY_MARKED' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Marked ({summary.marked}/{summary.total})</span>
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
+                            className="shrink-0 text-xs font-bold border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                          >
+                            View / Update →
                           </Button>
                         </div>
                       ) : isToday ? (

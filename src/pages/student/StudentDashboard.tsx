@@ -728,33 +728,45 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
       </div>
 
       {/* 6.5. PUBLISHED MARKS & CONTINUOUS ASSESSMENTS (ONLY SUBJECTS WITH PUBLISHED MARKS) */}
-      {publishedScorecard.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[#00ff88]">
-                <Award className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-                  Published Continuous Assessments
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[#00ff88] font-semibold">
-                    {publishedScorecard.length} Subject{publishedScorecard.length > 1 ? 's' : ''}
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Official sessional and internal marks published by faculty
-                </p>
-              </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className={clsx(
+              "p-2 rounded-xl border",
+              publishedScorecard.length > 0
+                ? "bg-emerald-500/10 border-emerald-500/30 text-[#00ff88]"
+                : "bg-slate-800/60 border-slate-700/60 text-slate-400"
+            )}>
+              <Award className="w-5 h-5" />
             </div>
+            <div>
+              <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                Published Continuous Assessments
+                <span className={clsx(
+                  "text-xs px-2.5 py-0.5 rounded-full border font-semibold",
+                  publishedScorecard.length > 0
+                    ? "bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]"
+                    : "bg-slate-800 border-slate-700 text-slate-400"
+                )}>
+                  {publishedScorecard.length} Subject{publishedScorecard.length === 1 ? '' : 's'}
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Official sessional and internal marks published by faculty
+              </p>
+            </div>
+          </div>
+          {publishedScorecard.length > 0 && (
             <button
               onClick={() => onNavigate('marks')}
               className="text-xs font-bold text-[#00ff88] hover:underline cursor-pointer"
             >
               Full Scorecard →
             </button>
-          </div>
+          )}
+        </div>
 
+        {publishedScorecard.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {publishedScorecard.map((item) => (
               <div
@@ -800,8 +812,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="glass-panel rounded-2xl p-6 border border-slate-800/80 text-center space-y-2">
+            <Award className="w-8 h-8 text-slate-600 mx-auto" />
+            <p className="text-sm font-semibold text-white">No Published Continuous Assessments Yet</p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Faculty has not released any marks for this academic session yet. Saved drafts and internal evaluations will appear here once officially published.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* 7. ACADEMIC ASSIGNMENTS & QUIZZES (SECTION SCOPED) */}
       <div className="space-y-4">

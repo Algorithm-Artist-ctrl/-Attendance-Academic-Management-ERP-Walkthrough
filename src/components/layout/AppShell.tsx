@@ -25,7 +25,8 @@ import {
   UserCheck,
   Award,
   WifiOff,
-  ExternalLink
+  ExternalLink,
+  Archive
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -352,6 +353,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'leave', label: 'Leave Oversight', icon: FileText, badge: pendingLeavesCount > 0 ? pendingLeavesCount : undefined },
           { id: 'notices', label: 'Notices', icon: Bell },
           { id: 'audit_logs', label: 'Audit Logs', icon: ShieldCheck },
+          { id: 'records_archive', label: 'Records & Archive', icon: Archive },
           { id: 'settings', label: 'Settings', icon: Settings },
         ];
     }

@@ -28,6 +28,7 @@ import { Modal } from '../../components/common/Modal';
 import { AdmissionType, Student } from '../../types/database.types';
 import { studentSyncService, StudentSyncResult } from '../../lib/services/studentSyncService';
 import { StudentProfileModal } from '../../components/student/StudentProfileModal';
+import { ArchiveAccountModal, ArchiveTarget } from '../../components/admin/ArchiveAccountModal';
 import { clsx } from 'clsx';
 
 interface StudentDirectoryPageProps {
@@ -268,6 +269,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   });
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
   const pageSize = 25;
 
   useEffect(() => {
@@ -277,14 +279,16 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const paginatedStudents = filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to remove student "${name}" from the database?`)) {
-      try {
-        await deleteStudent(id);
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete student');
-      }
-    }
+  const handleDelete = (id: string, name: string) => {
+    const stud = students.find(s => s.id === id);
+    setArchiveTarget({
+      id,
+      name,
+      role: 'student',
+      identifier: stud?.roll_number,
+      currentStatus: stud?.status,
+      email: stud?.email,
+    });
   };
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -919,6 +923,17 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
           setSelectedStudentId(null);
         }}
         studentId={selectedStudentId}
+      />
+
+      {/* Archive / Departure Modal */}
+      <ArchiveAccountModal
+        isOpen={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        target={archiveTarget}
+        onSuccess={() => {
+          setArchiveTarget(null);
+          refreshData(true);
+        }}
       />
     </div>
   );

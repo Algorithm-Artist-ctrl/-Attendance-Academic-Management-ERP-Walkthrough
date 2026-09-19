@@ -32,6 +32,7 @@ import { AccountStatus } from '../../types/database.types';
 import { formatTimeAgo } from '../../lib/utils/dateUtils';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { StudentProfileModal } from '../../components/student/StudentProfileModal';
+import { ArchiveAccountModal } from '../../components/admin/ArchiveAccountModal';
 
 export const StudentAccountsPage: React.FC = () => {
   const { user: currentSessionUser } = useAuth();
@@ -92,6 +93,7 @@ export const StudentAccountsPage: React.FC = () => {
   const [blockReason, setBlockReason] = useState('');
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiveModalTarget, setArchiveModalTarget] = useState<any | null>(null);
 
   // Credential management local state
   const [editEmail, setEditEmail] = useState('');
@@ -936,48 +938,30 @@ export const StudentAccountsPage: React.FC = () => {
               {/* Soft Archive Option */}
               {selectedAccount.status !== 'ARCHIVED' && (
                 <div className="pt-3 border-t border-slate-800">
-                  {!showArchiveConfirm ? (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-300">Archive Student Account</p>
-                        <p className="text-[11px] text-slate-500">Soft-delete while preserving past grades, attendance, and audit history.</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowArchiveConfirm(true)}
-                        className="text-xs text-slate-400 hover:text-slate-200"
-                        leftIcon={<Archive className="w-3.5 h-3.5" />}
-                      >
-                        Archive
-                      </Button>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-300">Archive / Record Departure</p>
+                      <p className="text-[11px] text-slate-500">Graduation, withdrawal, or transfer. Permanently preserves attendance and grades.</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2 p-3 rounded-xl bg-slate-900 border border-slate-700">
-                      <p className="text-xs text-slate-300">
-                        Archive student {selectedAccount.full_name} ({selectedAccount.roll_number})? All attendance and sessional mark records are permanently retained.
-                      </p>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowArchiveConfirm(false)}
-                          className="text-xs text-slate-400"
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleArchive}
-                          isLoading={actionLoading}
-                          className="text-xs"
-                        >
-                          Confirm Archive
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setArchiveModalTarget({
+                          id: selectedAccount.id,
+                          name: selectedAccount.full_name,
+                          role: 'student',
+                          identifier: selectedAccount.roll_number,
+                          currentStatus: selectedAccount.status,
+                          email: selectedAccount.email,
+                        });
+                      }}
+                      className="text-xs text-amber-400 hover:text-amber-300 border-amber-500/30 hover:border-amber-500/60"
+                      leftIcon={<Archive className="w-3.5 h-3.5" />}
+                    >
+                      Archive / Exit
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1004,6 +988,19 @@ export const StudentAccountsPage: React.FC = () => {
           setProfileStudentId(null);
         }}
         studentId={profileStudentId}
+      />
+
+      {/* Archive / Departure Modal */}
+      <ArchiveAccountModal
+        isOpen={!!archiveModalTarget}
+        onClose={() => setArchiveModalTarget(null)}
+        target={archiveModalTarget}
+        onSuccess={() => {
+          setArchiveModalTarget(null);
+          setSelectedAccount(null);
+          refreshAdminAccounts();
+          refreshStudents();
+        }}
       />
     </div>
   );

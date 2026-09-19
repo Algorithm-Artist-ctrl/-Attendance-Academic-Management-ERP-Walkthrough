@@ -444,17 +444,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user);
         if (isMounted) {
           if (profile) {
-            if (profile.status === 'BLOCKED' || profile.status === 'ARCHIVED') {
+            const isInactiveStatus = profile.status && profile.status !== 'ACTIVE';
+            if (isInactiveStatus) {
               await supabase.auth.signOut().catch(() => {});
               erpStorage.setCurrentSessionUser(null);
+              let errorMsg = 'Your institutional account has been archived. Access is restricted. Please contact the administrator for historical records.';
+              if (profile.status === 'BLOCKED') {
+                errorMsg = 'Your account has been blocked by the administrator. Access is restricted.';
+              } else if (profile.status === 'WITHDRAWN') {
+                errorMsg = 'Your student account has been marked as Withdrawn. Access is restricted.';
+              } else if (profile.status === 'TRANSFERRED') {
+                errorMsg = 'Your institutional account has been marked as Transferred. Access is restricted.';
+              } else if (profile.status === 'DROPPED_OUT') {
+                errorMsg = 'Your student account has been marked as Dropped Out. Access is restricted.';
+              } else if (profile.status === 'GRADUATED') {
+                errorMsg = 'Your student account has graduated. Access to active operational portals is restricted.';
+              } else if (profile.status === 'RESIGNED') {
+                errorMsg = 'Your faculty account has been marked as Resigned. Access is restricted.';
+              } else if (profile.status === 'SUSPENDED') {
+                errorMsg = 'Your account is currently suspended. Please contact the administrator.';
+              }
+
               setAuthState({
                 user: null,
                 role: null,
                 isAuthenticated: false,
                 isLoading: false,
-                error: profile.status === 'BLOCKED'
-                  ? 'Your account has been blocked by the administrator. Access is restricted.'
-                  : 'Your account has been archived. Access is restricted.',
+                error: errorMsg,
                 isPasswordRecovery: false,
                 pendingNewEmail: null,
               });
@@ -675,13 +691,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: errorMsg };
     }
 
-    // Verify account status (BLOCKED / ARCHIVED check)
-    if (hydratedProfile.status === 'BLOCKED' || hydratedProfile.status === 'ARCHIVED') {
+    // Verify account status (all non-ACTIVE statuses are blocked from operational login)
+    const isInactive = hydratedProfile.status && hydratedProfile.status !== 'ACTIVE';
+    if (isInactive) {
       await supabase.auth.signOut().catch(() => {});
       erpStorage.setCurrentSessionUser(null);
-      const errorMsg = hydratedProfile.status === 'BLOCKED'
-        ? 'Your account has been blocked by the administrator. Access is restricted.'
-        : 'Your account has been archived. Access is restricted.';
+      let errorMsg = 'Your institutional account has been archived. Access is restricted. Please contact the administrator for historical records.';
+      if (hydratedProfile.status === 'BLOCKED') {
+        errorMsg = 'Your account has been blocked by the administrator. Access is restricted.';
+      } else if (hydratedProfile.status === 'WITHDRAWN') {
+        errorMsg = 'Your student account has been marked as Withdrawn. Access is restricted.';
+      } else if (hydratedProfile.status === 'TRANSFERRED') {
+        errorMsg = 'Your institutional account has been marked as Transferred. Access is restricted.';
+      } else if (hydratedProfile.status === 'DROPPED_OUT') {
+        errorMsg = 'Your student account has been marked as Dropped Out. Access is restricted.';
+      } else if (hydratedProfile.status === 'GRADUATED') {
+        errorMsg = 'Your student account has graduated. Access to active operational portals is restricted.';
+      } else if (hydratedProfile.status === 'RESIGNED') {
+        errorMsg = 'Your faculty account has been marked as Resigned. Access is restricted.';
+      } else if (hydratedProfile.status === 'SUSPENDED') {
+        errorMsg = 'Your account is currently suspended. Please contact the administrator.';
+      }
+
       setAuthState({
         user: null,
         role: null,

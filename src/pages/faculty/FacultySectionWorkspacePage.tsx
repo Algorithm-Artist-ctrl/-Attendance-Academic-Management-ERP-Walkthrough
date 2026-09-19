@@ -67,6 +67,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     deleteQuiz,
     saveQuizMarks,
     createSessionalAssessment,
+    updateSessionalAssessment,
     saveSessionalMarks,
     getStudentAttendance
   } = useAcademic();
@@ -286,7 +287,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
   const [selectedSessionalId, setSelectedSessionalId] = useState<string>('');
   const [sessionalMarksRoster, setSessionalMarksRoster] = useState<Record<string, { marks: number | ''; remarks: string }>>({});
   const [isSavingSessionalMarks, setIsSavingSessionalMarks] = useState(false);
-  const [sessionalSaveSuccess, setSessionalSaveSuccess] = useState(false);
+  const [sessionalSaveSuccess, setSessionalSaveSuccess] = useState<string | false>(false);
 
   // Search filter inside lists
   const [listSearch, setListSearch] = useState('');
@@ -416,7 +417,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
         max_marks: sessMaxMarks || 20,
         exam_date: sessExamDate || getISTTodayDate(),
         description: sessDesc.trim() || undefined,
-        status: 'published',
+        status: 'draft',
       });
 
       setIsSessionalModalOpen(false);
@@ -430,14 +431,16 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     }
   };
 
-  // Save Sessional Marks for Section
-  const handleSaveSessionalMarks = async () => {
+  // Save or Publish Sessional Marks for Section
+  const handleSaveSessionalMarks = async (publishMode: 'draft' | 'published' = 'published') => {
     if (!selectedSessionalId || !selectedSubjectId || !selectedSectionId) return;
     const activeAssessment = sectionSessionals.find(s => s.id === selectedSessionalId);
     if (!activeAssessment) return;
 
     setIsSavingSessionalMarks(true);
     setSessionalSaveSuccess(false);
+
+    const isPub = publishMode === 'published';
 
     try {
       const studentMarksPayload = sectionStudents.map(stud => {
@@ -461,12 +464,29 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
         sectionId: selectedSectionId,
         maxMarks: activeAssessment.max_marks,
         studentMarks: studentMarksPayload,
+        isPublished: isPub,
       });
 
-      setSessionalSaveSuccess(true);
-      setTimeout(() => setSessionalSaveSuccess(false), 3000);
-    } catch (err) {
+      setSessionalSaveSuccess(isPub ? 'Marks Published (Visible to students)' : 'Draft Saved (Hidden from students)');
+      setTimeout(() => setSessionalSaveSuccess(false), 4000);
+    } catch (err: any) {
       console.error('Failed to save sessional marks:', err);
+      alert(`Failed to save marks: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsSavingSessionalMarks(false);
+    }
+  };
+
+  const handleUnpublishAssessment = async () => {
+    if (!selectedSessionalId) return;
+    try {
+      setIsSavingSessionalMarks(true);
+      await updateSessionalAssessment(selectedSessionalId, { status: 'draft' });
+      setSessionalSaveSuccess('Assessment unpublished. Marks reverted to draft.');
+      setTimeout(() => setSessionalSaveSuccess(false), 4000);
+    } catch (err: any) {
+      console.error('Failed to unpublish sessional:', err);
+      alert(`Failed to unpublish: ${err.message || 'Unknown error'}`);
     } finally {
       setIsSavingSessionalMarks(false);
     }
@@ -1058,27 +1078,72 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
             <div className="glass-panel rounded-3xl p-5 border border-emerald-500/20 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-bold text-white">
-                    Marks Entry Roster — {currentActiveSessional.title} (Max: {currentActiveSessional.max_marks})
-                  </h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-white">
+                      Marks Entry Roster — {currentActiveSessional.title} (Max: {currentActiveSessional.max_marks})
+                    </h4>
+                    <span className={clsx(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                      (currentActiveSessional.status === 'published' || currentActiveSessional.status === 'completed')
+                        ? "bg-emerald-500/15 border-emerald-500/30 text-[#00ff88]"
+                        : "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                    )}>
+                      {(currentActiveSessional.status === 'published' || currentActiveSessional.status === 'completed') ? 'Published' : 'Draft'}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-400">Exam Date: {currentActiveSessional.exam_date || 'N/A'}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   {sessionalSaveSuccess && (
                     <span className="text-xs font-bold text-[#00ff88] flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> Marks Saved
+                      <CheckCircle2 className="w-4 h-4" /> {sessionalSaveSuccess}
                     </span>
                   )}
                   <Button
-                    variant="neon"
+                    variant="outline"
                     size="sm"
-                    onClick={handleSaveSessionalMarks}
+                    onClick={() => handleSaveSessionalMarks('draft')}
                     disabled={isSavingSessionalMarks}
-                    leftIcon={<Save className="w-3.5 h-3.5 text-slate-950" />}
+                    leftIcon={<Save className="w-3.5 h-3.5" />}
+                    className="border-slate-700 text-slate-300 hover:text-white text-xs"
                   >
-                    {isSavingSessionalMarks ? 'Saving...' : 'Save Marks'}
+                    Save Draft
                   </Button>
+                  {(currentActiveSessional.status === 'published' || currentActiveSessional.status === 'completed') ? (
+                    <>
+                      <Button
+                        variant="neon"
+                        size="sm"
+                        onClick={() => handleSaveSessionalMarks('published')}
+                        disabled={isSavingSessionalMarks}
+                        leftIcon={<Save className="w-3.5 h-3.5 text-slate-950" />}
+                        className="text-xs font-bold"
+                      >
+                        Save & Update Marks
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnpublishAssessment}
+                        disabled={isSavingSessionalMarks}
+                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs"
+                      >
+                        Unpublish
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="neon"
+                      size="sm"
+                      onClick={() => handleSaveSessionalMarks('published')}
+                      disabled={isSavingSessionalMarks}
+                      leftIcon={<Sparkles className="w-3.5 h-3.5 text-slate-950" />}
+                      className="text-xs font-bold"
+                    >
+                      Publish Marks to Students
+                    </Button>
+                  )}
                 </div>
               </div>
 

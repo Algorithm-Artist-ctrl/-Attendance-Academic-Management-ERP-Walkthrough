@@ -1,6 +1,20 @@
 export type UserRole = 'super_admin' | 'hod' | 'faculty' | 'student';
 
-export type AccountStatus = 'ACTIVE' | 'BLOCKED' | 'ARCHIVED' | 'PENDING' | 'SUSPENDED' | 'GRADUATED' | 'ALUMNI';
+export type AccountStatus = 
+  | 'ACTIVE' 
+  | 'BLOCKED' 
+  | 'ARCHIVED' 
+  | 'PENDING' 
+  | 'SUSPENDED' 
+  | 'WITHDRAWN' 
+  | 'TRANSFERRED' 
+  | 'DROPPED_OUT' 
+  | 'GRADUATED' 
+  | 'RESIGNED' 
+  | 'RETIRED'
+  | 'TERMINATED'
+  | 'ON_LEAVE' 
+  | 'ALUMNI';
 
 export type LectureType = 'Theory' | 'Practical' | 'Workshop' | 'Tutorial' | 'Project' | 'Sports' | 'Lunch' | 'Other' | 'Break';
 
@@ -117,6 +131,10 @@ export interface Faculty {
   phone?: string;
   active: boolean;
   status?: AccountStatus;
+  exit_date?: string | null;
+  exit_reason?: string | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
   department?: Department;
 }
 
@@ -173,6 +191,10 @@ export interface Student {
   avatar_url?: string;
   active: boolean;
   status?: AccountStatus;
+  exit_date?: string | null;
+  exit_reason?: string | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
   created_at: string;
   section?: Section;
   mentor?: Faculty;
@@ -319,6 +341,10 @@ export interface UserProfile {
   email_confirmed_at?: string | null;
   new_email?: string | null;
   pending_email?: string | null;
+  exit_date?: string | null;
+  exit_reason?: string | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
 }
 
 export interface AdminAccountDirectoryEntry {
@@ -338,7 +364,119 @@ export interface AdminAccountDirectoryEntry {
   academic_year_name?: string | null;
   section_name?: string | null;
   section_id?: string | null;
+  exit_date?: string | null;
+  exit_reason?: string | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
   created_at: string;
+}
+
+export interface AccountLifecycleEntry {
+  id: string;
+  user_id?: string | null;
+  entity_type: 'student' | 'faculty' | 'profile';
+  entity_id: string;
+  old_status?: string | null;
+  previous_status?: string | null;
+  new_status: AccountStatus;
+  reason?: string | null;
+  effective_date: string;
+  performed_by?: string | null;
+  performer?: { full_name: string; role: string };
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ArchivedStats {
+  former_students: number;
+  former_faculty: number;
+  graduated_students: number;
+  graduated_alumni?: number;
+  withdrawn_students: number;
+  transferred_students: number;
+  dropped_out_students: number;
+  resigned_faculty: number;
+  departures_this_year?: number;
+  total_archived: number;
+}
+
+export interface ArchivedRecordItem {
+  id: string;
+  auth_user_id?: string | null;
+  name: string;
+  role: 'student' | 'faculty';
+  identifier: string; // roll_number or employee_code
+  registration_number?: string;
+  department_id?: string;
+  department_name?: string;
+  department_code?: string;
+  program_name?: string;
+  year_name?: string;
+  section_name?: string;
+  designation?: string;
+  email?: string;
+  phone?: string;
+  status: AccountStatus;
+  last_active_date?: string | null;
+  exit_date?: string | null;
+  exit_reason?: string | null;
+  archived_at?: string | null;
+  archived_by_id?: string | null;
+  archived_by_name?: string;
+  created_at: string;
+}
+
+export interface StudentFullHistoricalRecord {
+  student: Student;
+  profile?: UserProfile | null;
+  academic_history: any[];
+  attendance: {
+    total_conducted: number;
+    total_attended: number;
+    percentage: number;
+    subject_wise: Array<{
+      subject_id: string;
+      subject_name: string;
+      subject_code: string;
+      conducted: number;
+      attended: number;
+      percentage: number;
+    }>;
+    recent_sessions: any[];
+  };
+  marks: {
+    sessional_assessments: any[];
+    quizzes: any[];
+    assignments: any[];
+  };
+  leaves: any[];
+  timetable: any[];
+  lifecycle_history: AccountLifecycleEntry[];
+  audit_logs: AuditLog[];
+}
+
+export interface FacultyFullHistoricalRecord {
+  faculty: Faculty;
+  profile?: UserProfile | null;
+  subject_assignments: any[];
+  class_coordinator_assignments: any[];
+  attendance_sessions: {
+    total_conducted: number;
+    recent_sessions: any[];
+    subject_wise: Array<{
+      subject_id: string;
+      subject_name: string;
+      subject_code: string;
+      session_count: number;
+    }>;
+  };
+  assessments_created: any[];
+  assessments_managed: any[];
+  timetable_entries: any[];
+  timetable: any[];
+  leaves: any[];
+  lifecycle_history: AccountLifecycleEntry[];
+  audit_logs: AuditLog[];
 }
 
 export interface TimetableVersion {
@@ -493,6 +631,7 @@ export interface SessionalMark {
   max_marks?: number;
   marks_obtained: number;
   remarks?: string;
+  status?: 'draft' | 'published';
   updated_by?: string;
   created_at: string;
   updated_at: string;

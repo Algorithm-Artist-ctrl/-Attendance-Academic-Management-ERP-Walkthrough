@@ -150,11 +150,11 @@ export const GroupMembersModal: React.FC<GroupMembersModalProps> = ({
                           {student.full_name}
                         </span>
                         <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${
-                          student.status === 'active' 
+                          (student.status || 'ACTIVE').toUpperCase() === 'ACTIVE' 
                             ? 'bg-emerald-500/15 text-[#00ff88] border-emerald-500/30' 
                             : 'bg-slate-800 text-slate-400 border-slate-700'
                         }`}>
-                          {student.status ? student.status.toUpperCase() : 'ACTIVE'}
+                          {(student.status || 'ACTIVE').toUpperCase() === 'ACTIVE' ? 'Enrolled / Active' : (student.status || 'ACTIVE').toUpperCase()}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400 font-mono">

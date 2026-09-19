@@ -45,7 +45,11 @@ import {
   GroupMember,
   DetailedStudentProfile,
   SectionReferenceCheckResult,
-  LeaveApplication
+  LeaveApplication,
+  ArchivedRecordItem,
+  ArchivedStats,
+  StudentFullHistoricalRecord,
+  FacultyFullHistoricalRecord,
 } from '../types/database.types';
 
 import {
@@ -68,6 +72,18 @@ import {
   getClaimWindowStatus,
   isClassCompleted
 } from '../lib/utils/dateUtils';
+
+export interface AttendanceSummary {
+  sessionId?: string;
+  total: number;
+  present: number;
+  absent: number;
+  unmarked: number;
+  marked: number;
+  progress: number;
+  status: 'NO_RECORDS' | 'PARTIALLY_MARKED' | 'FULLY_MARKED';
+  statusLabel: string;
+}
 
 export interface TodayAttendanceLecture {
   timetableEntryId: string;
@@ -416,6 +432,15 @@ interface AcademicContextType {
     }>;
   }) => Promise<{ session: AttendanceSession; records: AttendanceRecord[] }>;
   deleteAttendanceSession: (sessionId: string) => Promise<{ success: boolean; deletedSessionId?: string }>;
+  getAttendanceSummary: (lookup: string | {
+    sessionId?: string;
+    timetableEntryId?: string;
+    sessionDate?: string;
+    sectionId?: string;
+    subjectId?: string;
+    startTime?: string;
+  }) => AttendanceSummary;
+  ensureSessionAttendanceLoaded: (sessionId: string) => Promise<AttendanceRecord[]>;
   submitCorrectionRequest: (params: {
     attendanceRecordId?: string;
     timetableEntryId?: string;
@@ -469,6 +494,22 @@ interface AcademicContextType {
   refreshAssignments: () => Promise<void>;
   refreshAssessments: () => Promise<void>;
   resetToInitialSeed: () => void;
+  archiveAccount: (params: {
+    targetId: string;
+    entityType: 'student' | 'faculty';
+    exitStatus: AccountStatus;
+    exitDate?: string;
+    reason?: string;
+  }) => Promise<{ success: boolean; data?: any; error?: string }>;
+  restoreAccount: (params: {
+    targetId: string;
+    entityType: 'student' | 'faculty';
+    reason?: string;
+  }) => Promise<{ success: boolean; data?: any; error?: string }>;
+  fetchArchivedStats: () => Promise<ArchivedStats>;
+  fetchArchivedRecords: () => Promise<ArchivedRecordItem[]>;
+  fetchStudentHistoricalRecord: (studentId: string) => Promise<StudentFullHistoricalRecord | null>;
+  fetchFacultyHistoricalRecord: (facultyId: string) => Promise<FacultyFullHistoricalRecord | null>;
 }
 
 const AcademicContext = createContext<AcademicContextType | undefined>(undefined);
@@ -608,9 +649,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const loadedClassrooms = ((data as any).classrooms || []).filter((c: any) => c.active !== false);
         setClassrooms(loadedClassrooms);
         const loadedSubjects = (data.subjects || []).filter(s => s.active !== false);
-        const loadedFaculty = (data.faculty || []).filter(f => f.active !== false);
+        const loadedFaculty = (data.faculty || []).filter(f => f.active !== false && (!f.status || f.status === 'ACTIVE'));
         const loadedAssignments = (data.assignments || []).filter(a => a.active !== false);
-        const loadedStudents = (data.students || []).filter(s => s.active && loadedYears.some(y => y.id === s.academic_year_id));
+        const loadedStudents = (data.students || []).filter(s => s.active && (!s.status || s.status === 'ACTIVE') && loadedYears.some(y => y.id === s.academic_year_id));
         const rawTimetable = (data.timetable || []).filter(t => t.active !== false);
 
         // Enriched Timetable entries with joined references
@@ -1629,6 +1670,190 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
     return result;
   };
+
+  const pendingSessionLoadsRef = useRef<Set<string>>(new Set());
+
+  const ensureSessionAttendanceLoaded = useCallback(async (sessionId: string): Promise<AttendanceRecord[]> => {
+    if (!sessionId) return [];
+
+    const existing = attendanceRecordsRef.current.filter(r => r.attendance_session_id === sessionId);
+    if (existing.length > 0) {
+      return existing;
+    }
+
+    if (pendingSessionLoadsRef.current.has(sessionId)) {
+      return [];
+    }
+    pendingSessionLoadsRef.current.add(sessionId);
+
+    try {
+      const directRecords = await supabaseService.fetchSessionAttendanceRecords(sessionId);
+      if (!directRecords || directRecords.length === 0) {
+        return [];
+      }
+
+      const curStudents = studentsRef.current;
+      const curSessions = attendanceSessionsRef.current;
+      const matchedSession = curSessions.find(s => s.id === sessionId);
+
+      const enriched: AttendanceRecord[] = directRecords.map(rec => ({
+        ...rec,
+        student: curStudents.find(s => s.id === rec.student_id),
+        session: matchedSession || rec.session,
+      }));
+
+      setAttendanceRecords(prev => {
+        const existingIds = new Set(prev.map(r => r.id));
+        const toAdd = enriched.filter(r => !existingIds.has(r.id));
+        if (toAdd.length === 0) return prev;
+        const next = [...toAdd, ...prev];
+        erpStorage.setAttendanceRecords(next);
+        return next;
+      });
+
+      return enriched;
+    } catch (err) {
+      console.warn(`Failed to load attendance records for session ${sessionId}:`, err);
+      return [];
+    } finally {
+      pendingSessionLoadsRef.current.delete(sessionId);
+    }
+  }, []);
+
+  const getAttendanceSummary = useCallback((lookup: string | {
+    sessionId?: string;
+    timetableEntryId?: string;
+    sessionDate?: string;
+    sectionId?: string;
+    subjectId?: string;
+    startTime?: string;
+  }): AttendanceSummary => {
+    let session: AttendanceSession | undefined;
+
+    if (typeof lookup === 'string') {
+      session = attendanceSessions.find(s => s.id === lookup);
+    } else {
+      if (lookup.sessionId) {
+        session = attendanceSessions.find(s => s.id === lookup.sessionId);
+      }
+      if (!session) {
+        session = attendanceSessions.find(s => {
+          let sDate = '';
+          if (s.session_date) {
+            if ((s.session_date as any) instanceof Date) {
+              const d = s.session_date as any as Date;
+              sDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } else {
+              const str = String(s.session_date);
+              if (str.length === 10 && str.includes('-')) {
+                sDate = str;
+              } else if (str.includes('T')) {
+                const d = new Date(str);
+                if (!isNaN(d.getTime())) {
+                  sDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                } else {
+                  sDate = str.split('T')[0];
+                }
+              } else {
+                sDate = str;
+              }
+            }
+          }
+          const matchesDate = !lookup.sessionDate || sDate === lookup.sessionDate;
+          if (!matchesDate) return false;
+
+          if (lookup.timetableEntryId && s.timetable_entry_id === lookup.timetableEntryId) {
+            return true;
+          }
+
+          if (lookup.sectionId && lookup.subjectId && s.section_id === lookup.sectionId && s.subject_id === lookup.subjectId) {
+            const sStart = s.start_time?.substring(0, 5);
+            const lStart = lookup.startTime?.substring(0, 5);
+            if (!lStart || !sStart || sStart === lStart) {
+              return true;
+            }
+          }
+          return false;
+        });
+      }
+    }
+
+    const sectionId = session?.section_id || 
+      (typeof lookup !== 'string' ? lookup.sectionId : undefined) ||
+      (typeof lookup !== 'string' && lookup.timetableEntryId ? timetable.find(t => t.id === lookup.timetableEntryId)?.section_id : undefined);
+
+    const sectionStudents = sectionId
+      ? students.filter(s => s.section_id === sectionId && s.active)
+      : [];
+    const uniqueStudentIds = Array.from(new Set(sectionStudents.map(s => s.id)));
+    const total = uniqueStudentIds.length;
+
+    if (!session) {
+      return {
+        sessionId: undefined,
+        total,
+        present: 0,
+        absent: 0,
+        unmarked: total,
+        marked: 0,
+        progress: 0,
+        status: 'NO_RECORDS',
+        statusLabel: 'Not Recorded',
+      };
+    }
+
+    const sessionRecords = attendanceRecords.filter(r => r.attendance_session_id === session.id);
+
+    // If session is present in database but its records have not been loaded into local context yet, trigger lazy loading
+    if (sessionRecords.length === 0) {
+      ensureSessionAttendanceLoaded(session.id);
+    }
+
+    const studentStatusMap = new Map<string, string>();
+    for (const r of sessionRecords) {
+      if (uniqueStudentIds.length === 0 || uniqueStudentIds.includes(r.student_id)) {
+        studentStatusMap.set(r.student_id, r.status);
+      }
+    }
+
+    let present = 0;
+    let absent = 0;
+    studentStatusMap.forEach(status => {
+      if (status === 'Present') present++;
+      else if (status === 'Absent') absent++;
+    });
+
+    const marked = present + absent;
+    const effectiveTotal = total > 0 ? total : marked;
+    const unmarked = Math.max(0, effectiveTotal - marked);
+    const progress = effectiveTotal > 0 ? Math.round((marked / effectiveTotal) * 100) : 0;
+
+    let status: 'NO_RECORDS' | 'PARTIALLY_MARKED' | 'FULLY_MARKED' = 'NO_RECORDS';
+    let statusLabel = 'Not Recorded';
+
+    if (marked === 0) {
+      status = 'NO_RECORDS';
+      statusLabel = 'Not Recorded';
+    } else if (marked < effectiveTotal) {
+      status = 'PARTIALLY_MARKED';
+      statusLabel = `Marked (${marked}/${effectiveTotal})`;
+    } else {
+      status = 'FULLY_MARKED';
+      statusLabel = `Marked (${effectiveTotal}/${effectiveTotal})`;
+    }
+
+    return {
+      sessionId: session.id,
+      total: effectiveTotal,
+      present,
+      absent,
+      unmarked,
+      marked,
+      progress,
+      status,
+      statusLabel,
+    };
+  }, [attendanceSessions, attendanceRecords, students, timetable, ensureSessionAttendanceLoaded]);
 
   // 2. Submit Attendance Correction / Claim Request
   const submitCorrectionRequest = async (params: {
@@ -2831,6 +3056,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateSessionalAssessment = async (id: string, updates: Partial<SessionalAssessment>) => {
     const res = await supabaseService.updateSessionalAssessment(id, updates);
+    if (updates.status) {
+      const markStatus: 'draft' | 'published' = (updates.status === 'published' || updates.status === 'completed') ? 'published' : 'draft';
+      setSessionalMarks(prev =>
+        prev.map(m =>
+          m.sessional_assessment_id === id
+            ? { ...m, status: markStatus }
+            : m
+        )
+      );
+    }
     await refreshAssessments();
     return res;
   };
@@ -2861,12 +3096,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [...res, ...filtered];
       });
     }
-    if (params.isPublished !== undefined && params.sessionalAssessmentId) {
+    if (params.sessionalAssessmentId && params.isPublished !== undefined) {
+      const nextStatus: 'draft' | 'published' = params.isPublished ? 'published' : 'draft';
       setSessionalAssessments(prev =>
         prev.map(sa =>
           sa.id === params.sessionalAssessmentId
-            ? { ...sa, status: params.isPublished ? 'published' : 'draft' }
+            ? { ...sa, status: nextStatus }
             : sa
+        )
+      );
+      setSessionalMarks(prev =>
+        prev.map(m =>
+          m.sessional_assessment_id === params.sessionalAssessmentId
+            ? { ...m, status: nextStatus }
+            : m
         )
       );
     }
@@ -2900,7 +3143,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const dynamicSessionals = uniqueAssessments.map(sa => {
         const sm = sessionalMarks.find(m => m.sessional_assessment_id === sa.id && m.student_id === studentId);
-        const hasScore = sm !== undefined && sm.marks_obtained !== undefined && sm.marks_obtained !== null;
+        // Only include marks if explicitly published (or when assessment is published and status not explicitly draft)
+        const isMarkPublished = sm?.status === 'published' || (sm?.status === undefined && (sa.status === 'published' || sa.status === 'completed'));
+        const hasScore = sm !== undefined && isMarkPublished && sm.status !== 'draft' && sm.marks_obtained !== undefined && sm.marks_obtained !== null;
         return {
           assessmentId: sa.id,
           title: sa.title,
@@ -2910,10 +3155,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       });
 
-      // Legacy sessional entries (ONLY for true legacy rows where sessional_assessment_id IS NULL)
-      // Any marks belonging to dynamic assessments MUST go through uniqueAssessments above (which requires status = published)
+      // Legacy sessional entries (ONLY for true legacy rows where sessional_assessment_id IS NULL and status is explicitly published)
       const subSessional = sessionalMarks.filter(
-        sm => sm.student_id === studentId && sm.subject_id === stat.subjectId && !sm.sessional_assessment_id
+        sm => sm.student_id === studentId && sm.subject_id === stat.subjectId && !sm.sessional_assessment_id && sm.status === 'published'
       );
       for (const sm of subSessional) {
         const alreadyInDynamic = dynamicSessionals.some(
@@ -2971,7 +3215,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         q => q.subject_id === stat.subjectId && 
              q.section_id === student.section_id && 
              q.active &&
-             (q.status === 'published' || q.status === 'completed' || !q.status)
+             (q.status === 'published' || q.status === 'completed')
       );
       const quizMarksList: Array<{ quizId: string; title: string; maxMarks: number; obtainedMarks?: number; quizDate: string }> = [];
       for (const q of subQuizzes) {
@@ -3250,6 +3494,66 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return await supabaseService.fetchStudentProfile(studentId);
   }, []);
 
+  const archiveAccount = useCallback(async (params: {
+    targetId: string;
+    entityType: 'student' | 'faculty';
+    exitStatus: AccountStatus;
+    exitDate?: string;
+    reason?: string;
+  }) => {
+    const actor = user || erpStorage.getCurrentSessionUser();
+    const res = await supabaseService.archiveAccount({
+      ...params,
+      actorId: actor?.id,
+    });
+    if (res.success) {
+      await Promise.all([
+        refreshAdminAccounts(),
+        refreshStudents(),
+        refreshFaculty(),
+        loadDataFromSupabase(true),
+      ]);
+    }
+    return res;
+  }, [user, refreshAdminAccounts, refreshStudents, refreshFaculty, loadDataFromSupabase]);
+
+  const restoreAccount = useCallback(async (params: {
+    targetId: string;
+    entityType: 'student' | 'faculty';
+    reason?: string;
+  }) => {
+    const actor = user || erpStorage.getCurrentSessionUser();
+    const res = await supabaseService.restoreAccount({
+      ...params,
+      actorId: actor?.id,
+    });
+    if (res.success) {
+      await Promise.all([
+        refreshAdminAccounts(),
+        refreshStudents(),
+        refreshFaculty(),
+        loadDataFromSupabase(true),
+      ]);
+    }
+    return res;
+  }, [user, refreshAdminAccounts, refreshStudents, refreshFaculty, loadDataFromSupabase]);
+
+  const fetchArchivedStats = useCallback(async () => {
+    return await supabaseService.fetchArchivedStats();
+  }, []);
+
+  const fetchArchivedRecords = useCallback(async () => {
+    return await supabaseService.fetchArchivedRecords();
+  }, []);
+
+  const fetchStudentHistoricalRecord = useCallback(async (studentId: string) => {
+    return await supabaseService.fetchStudentHistoricalRecord(studentId);
+  }, []);
+
+  const fetchFacultyHistoricalRecord = useCallback(async (facultyId: string) => {
+    return await supabaseService.fetchFacultyHistoricalRecord(facultyId);
+  }, []);
+
   const resetToInitialSeed = useCallback(() => {
     erpStorage.init(true);
     refreshData();
@@ -3394,6 +3698,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     checkTimetableConflict,
     saveAttendance,
     deleteAttendanceSession,
+    getAttendanceSummary,
+    ensureSessionAttendanceLoaded,
     submitCorrectionRequest,
     reviewCorrectionRequest,
     canSubmitClaim,
@@ -3406,6 +3712,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getFacultyCorrectionRequests,
     getTodaySchedule,
     resetToInitialSeed,
+    archiveAccount,
+    restoreAccount,
+    fetchArchivedStats,
+    fetchArchivedRecords,
+    fetchStudentHistoricalRecord,
+    fetchFacultyHistoricalRecord,
   }), [
     institution,
     departments,
@@ -3528,6 +3840,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     checkTimetableConflict,
     saveAttendance,
     deleteAttendanceSession,
+    getAttendanceSummary,
+    ensureSessionAttendanceLoaded,
     submitCorrectionRequest,
     reviewCorrectionRequest,
     canSubmitClaim,
@@ -3554,6 +3868,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshConversations,
     refreshMessageGroups,
     refreshLeaveApplications,
+    archiveAccount,
+    restoreAccount,
+    fetchArchivedStats,
+    fetchArchivedRecords,
+    fetchStudentHistoricalRecord,
+    fetchFacultyHistoricalRecord,
   ]);
 
   return (

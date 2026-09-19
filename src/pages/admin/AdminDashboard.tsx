@@ -46,8 +46,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     }
   }, [adminAccounts.length, refreshAdminAccounts]);
 
-  const totalStudents = students.filter(s => s.active !== false && s.status !== 'ARCHIVED').length;
-  const totalFaculty = faculty.filter(f => f.active !== false && f.status !== 'ARCHIVED').length;
+  const totalStudents = students.filter(s => s.active !== false && (!s.status || s.status === 'ACTIVE')).length;
+  const totalFaculty = faculty.filter(f => f.active !== false && (!f.status || f.status === 'ACTIVE')).length;
   const totalDepts = departments.filter(d => d.active !== false).length;
   const totalPrograms = programs.filter(p => p.active !== false).length;
 
@@ -56,13 +56,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     ? adminAccounts.filter(a => a.status === 'ACTIVE').length
     : (totalStudents + totalFaculty);
   const blockedAccountsCount = adminAccounts.filter(a => a.status === 'BLOCKED').length;
-  const archivedAccountsCount = adminAccounts.filter(a => a.status === 'ARCHIVED').length;
+  const archivedAccountsCount = adminAccounts.length > 0
+    ? adminAccounts.filter(a => a.status !== 'ACTIVE' && a.status !== 'BLOCKED').length
+    : 0;
 
   const facultyAccountsCount = adminAccounts.length > 0
-    ? adminAccounts.filter(a => a.role === 'faculty' || a.role === 'hod').length
+    ? adminAccounts.filter(a => (a.role === 'faculty' || a.role === 'hod') && a.status === 'ACTIVE').length
     : totalFaculty;
   const studentAccountsCount = adminAccounts.length > 0
-    ? adminAccounts.filter(a => a.role === 'student').length
+    ? adminAccounts.filter(a => a.role === 'student' && a.status === 'ACTIVE').length
     : totalStudents;
 
   // Filter audit logs for account and security actions first, then fallback to recent logs
@@ -290,6 +292,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                 className="text-[#00ff88] font-bold hover:underline"
               >
                 Student Directory →
+              </button>
+              <span>•</span>
+              <button 
+                onClick={() => onNavigate('records_archive')}
+                className="text-amber-400 font-bold hover:underline flex items-center gap-1"
+              >
+                Records & Archive ({archivedAccountsCount}) →
               </button>
             </div>
           </div>

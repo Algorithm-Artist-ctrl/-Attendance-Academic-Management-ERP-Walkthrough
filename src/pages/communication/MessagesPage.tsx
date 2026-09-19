@@ -57,6 +57,21 @@ interface MessagesPageProps {
 type TabType = 'GROUPS' | 'DIRECT';
 type StatusFilter = 'ALL' | 'UNREAD' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 
+const isImageAttachment = (url?: string | null, type?: string | null, name?: string | null): boolean => {
+  if (!url) return false;
+  if (type && type.toLowerCase().startsWith('image/')) return true;
+  if (url.startsWith('data:image/')) return true;
+  const lower = (name || url).toLowerCase();
+  return (
+    lower.endsWith('.png') ||
+    lower.endsWith('.jpg') ||
+    lower.endsWith('.jpeg') ||
+    lower.endsWith('.webp') ||
+    lower.endsWith('.gif') ||
+    lower.endsWith('.svg')
+  );
+};
+
 export const MessagesPage: React.FC<MessagesPageProps> = ({ 
   initialConversationId,
   initialGroupId 
@@ -90,6 +105,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
   const [isNewDirectModalOpen, setIsNewDirectModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Group selection & state
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(initialGroupId || activeGroupId || null);
@@ -934,25 +950,47 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                             <p className="whitespace-pre-wrap">{msg.message}</p>
 
-                            {msg.attachment_url && (
-                              <div className={`mt-2.5 p-2 rounded-xl flex items-center justify-between gap-2 text-[11px] ${
-                                isMe ? 'bg-black/15 text-slate-950 font-semibold' : 'bg-slate-950/80 border border-emerald-500/20 text-[#00ff88]'
-                              }`}>
-                                <div className="flex items-center gap-2 truncate">
-                                  <FileText className="w-3.5 h-3.5 shrink-0" />
-                                  <span className="truncate">{msg.attachment_name || 'Attachment'}</span>
+                            {msg.attachment_url && (() => {
+                              const isImg = isImageAttachment(msg.attachment_url, msg.attachment_type, msg.attachment_name);
+                              return (
+                                <div className="mt-2.5 space-y-1.5">
+                                  {isImg && (
+                                    <div
+                                      onClick={() => setPreviewImageUrl(msg.attachment_url || null)}
+                                      className="cursor-pointer overflow-hidden rounded-xl border border-emerald-500/25 max-w-sm hover:opacity-90 transition-opacity bg-black/40 group relative"
+                                    >
+                                      <img
+                                        src={msg.attachment_url}
+                                        alt={msg.attachment_name || 'Attachment'}
+                                        className="w-full max-h-60 object-cover object-center rounded-xl"
+                                      />
+                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                        <span className="px-2.5 py-1 bg-black/75 text-white rounded-lg text-[11px] flex items-center gap-1 font-semibold shadow-lg backdrop-blur-xs">
+                                          <Eye className="w-3.5 h-3.5 text-[#00ff88]" /> View Image
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className={`p-2 rounded-xl flex items-center justify-between gap-2 text-[11px] ${
+                                    isMe ? 'bg-black/15 text-slate-950 font-semibold' : 'bg-slate-950/80 border border-emerald-500/20 text-[#00ff88]'
+                                  }`}>
+                                    <div className="flex items-center gap-2 truncate">
+                                      {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
+                                      <span className="truncate">{msg.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
+                                    </div>
+                                    <a
+                                      href={msg.attachment_url}
+                                      download={msg.attachment_name || 'download'}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 hover:bg-white/10 rounded transition-colors shrink-0"
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                    </a>
+                                  </div>
                                 </div>
-                                <a
-                                  href={msg.attachment_url}
-                                  download={msg.attachment_name || 'download'}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1 hover:bg-white/10 rounded transition-colors shrink-0"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </a>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         </div>
                       );
@@ -1165,16 +1203,41 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                               : 'bg-slate-900/90 border border-emerald-500/20 text-slate-100 rounded-tl-none'
                           }`}>
                             <p className="whitespace-pre-wrap">{m.message}</p>
-                            {m.attachment_url && (
-                              <div className={`mt-2 p-1.5 rounded flex items-center justify-between gap-2 text-[10px] ${
-                                isMe ? 'bg-black/15 text-slate-950 font-semibold' : 'bg-slate-950/80 border border-emerald-500/20 text-[#00ff88]'
-                              }`}>
-                                <span className="truncate">{m.attachment_name || 'Attachment'}</span>
-                                <a href={m.attachment_url} target="_blank" rel="noreferrer" download className="p-1 hover:bg-white/10 rounded transition-colors shrink-0">
-                                  <Download className="w-3.5 h-3.5" />
-                                </a>
-                              </div>
-                            )}
+                            {m.attachment_url && (() => {
+                              const isImg = isImageAttachment(m.attachment_url, m.attachment_type, m.attachment_name);
+                              return (
+                                <div className="mt-2 space-y-1.5">
+                                  {isImg && (
+                                    <div
+                                      onClick={() => setPreviewImageUrl(m.attachment_url || null)}
+                                      className="cursor-pointer overflow-hidden rounded-xl border border-emerald-500/25 max-w-xs hover:opacity-90 transition-opacity bg-black/40 group relative"
+                                    >
+                                      <img
+                                        src={m.attachment_url}
+                                        alt={m.attachment_name || 'Attachment'}
+                                        className="w-full max-h-52 object-cover object-center rounded-xl"
+                                      />
+                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                        <span className="px-2.5 py-1 bg-black/75 text-white rounded-lg text-[10px] flex items-center gap-1 font-semibold shadow-lg backdrop-blur-xs">
+                                          <Eye className="w-3 h-3 text-[#00ff88]" /> View Image
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className={`p-1.5 rounded flex items-center justify-between gap-2 text-[10px] ${
+                                    isMe ? 'bg-black/15 text-slate-950 font-semibold' : 'bg-slate-950/80 border border-emerald-500/20 text-[#00ff88]'
+                                  }`}>
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
+                                      <span className="truncate">{m.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
+                                    </div>
+                                    <a href={m.attachment_url} target="_blank" rel="noreferrer" download className="p-1 hover:bg-white/10 rounded transition-colors shrink-0">
+                                      <Download className="w-3.5 h-3.5" />
+                                    </a>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                           <span className="text-[10px] text-slate-500 mt-1 px-1">
                             {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1289,6 +1352,52 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         isOpen={isMembersModalOpen}
         onClose={() => setIsMembersModalOpen(false)}
       />
+
+      {/* Image Preview Lightbox Modal */}
+      {previewImageUrl && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] bg-slate-950 border border-emerald-500/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3.5 bg-slate-900/90 border-b border-emerald-500/20 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-[#00ff88]" />
+                Image Preview
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImageUrl}
+                  download="image_attachment"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl flex items-center gap-1.5 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-[#00ff88]" />
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageUrl(null)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-auto flex items-center justify-center max-h-[80vh] bg-black/50">
+              <img
+                src={previewImageUrl}
+                alt="Enlarged attachment preview"
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

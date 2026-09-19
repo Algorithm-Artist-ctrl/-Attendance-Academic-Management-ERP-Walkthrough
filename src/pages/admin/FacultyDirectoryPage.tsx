@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Faculty } from '../../types/database.types';
+import { ArchiveAccountModal, ArchiveTarget } from '../../components/admin/ArchiveAccountModal';
 
 interface StagedAssignment {
   section_id: string;
@@ -46,11 +47,13 @@ export const FacultyDirectoryPage: React.FC = () => {
     updateFacultyWithAssignments,
     setFacultyStatus,
     safeDeleteFaculty,
+    refreshData,
   } = useAcademic();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'BLOCKED' | 'ARCHIVED'>('ALL');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
 
   const isSuperAdmin = role === 'super_admin';
   const isHOD = role === 'hod';
@@ -434,18 +437,15 @@ export const FacultyDirectoryPage: React.FC = () => {
   };
 
   // Safe Delete / Archive
-  const handleSafeDelete = async (f: Faculty) => {
-    if (window.confirm(`Are you sure you want to remove or archive faculty member "${f.full_name}"?\n\nIf historical attendance or timetable records exist, the account will be safely archived without data loss.`)) {
-      try {
-        setActionLoading(`delete_${f.id}`);
-        const res = await safeDeleteFaculty(f.id, user?.full_name || 'Administrator');
-        alert(res.message);
-      } catch (err: any) {
-        alert(err.message || 'Failed to process faculty deletion');
-      } finally {
-        setActionLoading(null);
-      }
-    }
+  const handleSafeDelete = (f: Faculty) => {
+    setArchiveTarget({
+      id: f.id,
+      name: f.full_name,
+      role: 'faculty',
+      identifier: f.employee_code,
+      currentStatus: f.status,
+      email: f.email,
+    });
   };
 
   // Filtered Faculty List
@@ -1247,6 +1247,17 @@ export const FacultyDirectoryPage: React.FC = () => {
           </form>
         </Modal>
       )}
+
+      {/* Archive / Departure Modal */}
+      <ArchiveAccountModal
+        isOpen={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        target={archiveTarget}
+        onSuccess={() => {
+          setArchiveTarget(null);
+          refreshData(true);
+        }}
+      />
     </div>
   );
 };

@@ -58,7 +58,12 @@ import {
   StudentAcademicHistory,
   SectionReferenceCheckResult,
   BulkPromotionPayload,
-  BulkPromotionResult
+  BulkPromotionResult,
+  ArchivedRecordItem,
+  ArchivedStats,
+  StudentFullHistoricalRecord,
+  FacultyFullHistoricalRecord,
+  AccountLifecycleEntry,
 } from '../../types/database.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
@@ -232,7 +237,9 @@ export const supabaseService = {
   // 1C. Granular Table Fetchers for Target Realtime Invalidation (< 50ms)
   async fetchStudents(activeOnly = false): Promise<Student[]> {
     let q = supabase.from('students').select('*').order('roll_number', { ascending: true });
-    if (activeOnly) q = q.eq('active', true);
+    if (activeOnly) {
+      q = q.eq('active', true).or('status.is.null,status.eq.ACTIVE');
+    }
     const { data, error } = await q;
     if (error) {
       console.error('Error fetching students:', error.message);
@@ -243,7 +250,9 @@ export const supabaseService = {
 
   async fetchFaculty(activeOnly = false): Promise<Faculty[]> {
     let q = supabase.from('faculty').select('*').order('full_name', { ascending: true });
-    if (activeOnly) q = q.eq('active', true);
+    if (activeOnly) {
+      q = q.eq('active', true).or('status.is.null,status.eq.ACTIVE');
+    }
     const { data, error } = await q;
     if (error) {
       console.error('Error fetching faculty:', error.message);
@@ -339,11 +348,11 @@ export const supabaseService = {
     });
   },
 
-  async fetchAllAttendanceRecords(limit = 2500): Promise<AttendanceRecord[]> {
+  async fetchAllAttendanceRecords(limit = 5000): Promise<AttendanceRecord[]> {
     const { data, error } = await supabase
       .from('attendance_records')
       .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -356,7 +365,7 @@ export const supabaseService = {
   async fetchAllAttendanceSessions(limit = 500): Promise<AttendanceSession[]> {
     const { data, error } = await supabase
       .from('attendance_sessions')
-      .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at')
+      .select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, status, marked_at, created_at, updated_at')
       .order('session_date', { ascending: false })
       .limit(limit);
 
@@ -534,14 +543,14 @@ export const supabaseService = {
         assessmentsRes,
       ] = await Promise.all([
         sectionId
-          ? supabase.from('assignments').select('*').eq('section_id', sectionId).eq('active', true).limit(50)
-          : supabase.from('assignments').select('*').eq('active', true).limit(50),
+          ? supabase.from('assignments').select('*').eq('section_id', sectionId).eq('active', true).or('status.eq.published,status.eq.completed').limit(50)
+          : supabase.from('assignments').select('*').eq('active', true).or('status.eq.published,status.eq.completed').limit(50),
         supabase.from('assignment_submissions').select('*').eq('student_id', studentId).limit(50),
         sectionId
-          ? supabase.from('quizzes').select('*').eq('section_id', sectionId).eq('active', true).limit(50)
-          : supabase.from('quizzes').select('*').eq('active', true).limit(50),
+          ? supabase.from('quizzes').select('*').eq('section_id', sectionId).eq('active', true).or('status.eq.published,status.eq.completed').limit(50)
+          : supabase.from('quizzes').select('*').eq('active', true).or('status.eq.published,status.eq.completed').limit(50),
         supabase.from('quiz_results').select('*').eq('student_id', studentId).limit(50),
-        supabase.from('sessional_marks').select('*').eq('student_id', studentId).limit(50),
+        supabase.from('sessional_marks').select('*').eq('student_id', studentId).eq('status', 'published').limit(100),
         sectionId
           ? supabase.from('sessional_assessments').select('*').eq('section_id', sectionId).or('status.eq.published,status.eq.completed').limit(50)
           : supabase.from('sessional_assessments').select('*').or('status.eq.published,status.eq.completed').limit(50),
@@ -1764,7 +1773,24 @@ export const supabaseService = {
     return { added, updated, skipped, errors };
   },
 
-  async deleteStudent(id: string) {
+  async deleteStudent(id: string, reason = 'Student soft-archived to preserve institutional records') {
+    // Check if student has historical attendance or marks records
+    const [attCheck, marksCheck] = await Promise.all([
+      supabase.from('attendance_records').select('id', { count: 'exact', head: true }).eq('student_id', id),
+      supabase.from('sessional_marks').select('id', { count: 'exact', head: true }).eq('student_id', id),
+    ]);
+
+    const hasHistory = (attCheck.count || 0) > 0 || (marksCheck.count || 0) > 0;
+    if (hasHistory) {
+      await this.archiveAccount({
+        targetId: id,
+        entityType: 'student',
+        exitStatus: 'ARCHIVED',
+        reason,
+      });
+      return true;
+    }
+
     const { error } = await supabase.from('students').delete().eq('id', id);
     if (error) throw new Error(error.message);
     try {
@@ -2257,25 +2283,12 @@ export const supabaseService = {
     const check = await this.checkFacultyHistoricalRecords(facultyId);
 
     if (check.hasHistoricalData) {
-      await this.setFacultyStatus(facultyId, 'BLOCKED', 'Archived due to historical attendance/timetable records', actorName);
-      
-      await supabase.from('faculty').update({ status: 'ARCHIVED', active: false }).eq('id', facultyId);
-      await supabase.from('profiles').update({ status: 'ARCHIVED' }).or(`id.eq.${facultyId},faculty_id.eq.${facultyId}`);
-
-      try {
-        await supabase.from('audit_logs').insert({
-          action: 'FACULTY_ARCHIVED',
-          actor_name: actorName,
-          actor_role: 'admin',
-          entity_type: 'faculty',
-          entity_id: facultyId,
-          new_values: {
-            reason: 'Archived to preserve historical records',
-            attendance_sessions: check.attendanceCount,
-            timetable_entries: check.timetableCount,
-          },
-        });
-      } catch {}
+      await this.archiveAccount({
+        targetId: facultyId,
+        entityType: 'faculty',
+        exitStatus: 'RESIGNED',
+        reason: 'Archived due to historical attendance/timetable records to preserve official college history',
+      });
 
       this.invalidateMasterCache();
       return {
@@ -4155,7 +4168,7 @@ export const supabaseService = {
       .from('sessional_assessments')
       .insert({
         ...assessment,
-        status: assessment.status || 'published',
+        status: assessment.status || 'draft',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -4170,7 +4183,7 @@ export const supabaseService = {
       target_type: 'sessional_assessments',
       target_id: data.id,
       details: { title: assessment.title, maxMarks: assessment.max_marks, subjectId: assessment.subject_id },
-      reason: 'Dynamic Sessional Assessment Published'
+      reason: assessment.status === 'published' ? 'Dynamic Sessional Assessment Published' : 'Dynamic Sessional Assessment Created (Draft)'
     });
 
     return data as SessionalAssessment;
@@ -4188,6 +4201,19 @@ export const supabaseService = {
       .single();
 
     if (error) throw new Error(error.message);
+
+    // If assessment publication status was modified, cascade to all linked student marks
+    if (updates.status) {
+      const markStatus = (updates.status === 'published' || updates.status === 'completed') ? 'published' : 'draft';
+      await supabase
+        .from('sessional_marks')
+        .update({
+          status: markStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('sessional_assessment_id', id);
+    }
+
     return data as SessionalAssessment;
   },
 
@@ -4221,7 +4247,22 @@ export const supabaseService = {
       throw new Error('Maximum marks must be defined and greater than 0.');
     }
 
-    // If isPublished is specified, update the sessional assessment status accordingly
+    // Resolve target publication status
+    let targetStatus: 'draft' | 'published';
+    if (params.isPublished !== undefined) {
+      targetStatus = params.isPublished ? 'published' : 'draft';
+    } else if (params.sessionalAssessmentId) {
+      const { data: currentSa } = await supabase
+        .from('sessional_assessments')
+        .select('status')
+        .eq('id', params.sessionalAssessmentId)
+        .maybeSingle();
+      targetStatus = (currentSa?.status === 'published' || currentSa?.status === 'completed') ? 'published' : 'draft';
+    } else {
+      targetStatus = 'draft';
+    }
+
+    // If isPublished is specified, update the sessional assessment status and align existing marks
     if (params.sessionalAssessmentId && params.isPublished !== undefined) {
       await supabase
         .from('sessional_assessments')
@@ -4230,6 +4271,14 @@ export const supabaseService = {
           updated_at: new Date().toISOString(),
         })
         .eq('id', params.sessionalAssessmentId);
+
+      await supabase
+        .from('sessional_marks')
+        .update({
+          status: params.isPublished ? 'published' : 'draft',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('sessional_assessment_id', params.sessionalAssessmentId);
     }
 
     const rows = params.studentMarks.map(sm => {
@@ -4246,6 +4295,7 @@ export const supabaseService = {
         max_marks: params.maxMarks,
         marks_obtained: sm.marksObtained,
         remarks: sm.remarks,
+        status: targetStatus,
         updated_by: params.facultyId,
         updated_at: new Date().toISOString(),
       };
@@ -4285,15 +4335,7 @@ export const supabaseService = {
 
     // Trigger Real-time notifications ONLY when marks are actually published
     try {
-      let shouldNotify = params.isPublished ?? true;
-      if (params.sessionalAssessmentId && params.isPublished === undefined) {
-        const { data: currentSa } = await supabase
-          .from('sessional_assessments')
-          .select('status')
-          .eq('id', params.sessionalAssessmentId)
-          .maybeSingle();
-        shouldNotify = currentSa?.status === 'published' || currentSa?.status === 'completed';
-      }
+      const shouldNotify = targetStatus === 'published';
 
       if (shouldNotify) {
         let subjectName = 'Course Subject';
@@ -5774,6 +5816,14 @@ export const supabaseService = {
   // CLASS / SUBJECT GROUP COMMUNICATION METHODS
   // ============================================================================
 
+  async syncAcademicMessageGroups(): Promise<void> {
+    try {
+      await supabase.rpc('ensure_academic_message_groups');
+    } catch (err) {
+      console.warn('Could not run ensure_academic_message_groups RPC:', err);
+    }
+  },
+
   async fetchUserMessageGroups(userId: string, role: string): Promise<MessageGroup[]> {
     try {
       let facultyId: string | null = null;
@@ -5892,7 +5942,8 @@ export const supabaseService = {
         .from('students')
         .select('id, section_id, academic_year_id')
         .in('section_id', relevantSectionIds)
-        .eq('active', true);
+        .eq('active', true)
+        .or('status.eq.ACTIVE,status.is.null');
 
       const countMap: Record<string, number> = {};
       const seenStudents = new Set<string>();
@@ -6067,6 +6118,416 @@ export const supabaseService = {
     } catch (err) {
       console.error('Exception in fetchStudentProfile:', err);
       return { data: null, error: err };
+    }
+  },
+
+  // ============================================================================
+  // INSTITUTIONAL RECORDS & ARCHIVE SYSTEM METHODS
+  // ============================================================================
+
+  async archiveAccount(params: {
+    targetId: string;
+    entityType: 'student' | 'faculty';
+    exitStatus: AccountStatus;
+    exitDate?: string;
+    reason?: string;
+    actorId?: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('archive_account', {
+        p_target_id: params.targetId,
+        p_entity_type: params.entityType,
+        p_exit_status: params.exitStatus,
+        p_exit_date: params.exitDate || getISTTodayDate(),
+        p_reason: params.reason || 'Archived by Super Admin',
+        p_actor_id: params.actorId || undefined,
+      });
+
+      if (error) throw new Error(error.message);
+      this.invalidateMasterCache();
+      return { success: true, data };
+    } catch (err: any) {
+      console.error('Error in archiveAccount:', err);
+      return { success: false, error: err.message || 'Failed to archive account.' };
+    }
+  },
+
+  async restoreAccount(params: {
+    targetId: string;
+    entityType: 'student' | 'faculty';
+    actorId?: string;
+    reason?: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('restore_account', {
+        p_target_id: params.targetId,
+        p_entity_type: params.entityType,
+        p_actor_id: params.actorId || undefined,
+        p_reason: params.reason || 'Restored by Super Admin',
+      });
+
+      if (error) throw new Error(error.message);
+      this.invalidateMasterCache();
+      return { success: true, data };
+    } catch (err: any) {
+      console.error('Error in restoreAccount:', err);
+      return { success: false, error: err.message || 'Failed to restore account.' };
+    }
+  },
+
+  async fetchArchivedStats(): Promise<ArchivedStats> {
+    try {
+      const { data, error } = await supabase.rpc('get_archived_stats');
+      if (error) throw error;
+      return (data || {
+        former_students: 0,
+        former_faculty: 0,
+        graduated_students: 0,
+        withdrawn_students: 0,
+        transferred_students: 0,
+        dropped_out_students: 0,
+        resigned_faculty: 0,
+        total_archived: 0,
+      }) as ArchivedStats;
+    } catch (err) {
+      console.error('Error fetching archived stats:', err);
+      return {
+        former_students: 0,
+        former_faculty: 0,
+        graduated_students: 0,
+        withdrawn_students: 0,
+        transferred_students: 0,
+        dropped_out_students: 0,
+        resigned_faculty: 0,
+        total_archived: 0,
+      };
+    }
+  },
+
+  async fetchArchivedRecords(): Promise<ArchivedRecordItem[]> {
+    try {
+      const [studentsRes, facultyRes, profilesRes, deptsRes, progsRes, yearsRes, sectionsRes] = await Promise.all([
+        supabase
+          .from('students')
+          .select('*')
+          .or('status.neq.ACTIVE,active.eq.false')
+          .order('roll_number', { ascending: true }),
+        supabase
+          .from('faculty')
+          .select('*')
+          .or('status.neq.ACTIVE,active.eq.false')
+          .order('full_name', { ascending: true }),
+        supabase.from('profiles').select('id, full_name, email, last_sign_in_at'),
+        supabase.from('departments').select('id, name, code'),
+        supabase.from('programs').select('id, name, code'),
+        supabase.from('academic_years').select('id, name, year_number'),
+        supabase.from('sections').select('id, name'),
+      ]);
+
+      const profilesMap = new Map((profilesRes.data || []).map(p => [p.id, p]));
+      const deptsMap = new Map((deptsRes.data || []).map(d => [d.id, d]));
+      const progsMap = new Map((progsRes.data || []).map(p => [p.id, p]));
+      const yearsMap = new Map((yearsRes.data || []).map(y => [y.id, y]));
+      const sectionsMap = new Map((sectionsRes.data || []).map(s => [s.id, s]));
+
+      const studentItems: ArchivedRecordItem[] = (studentsRes.data || []).map(s => {
+        const prof = s.auth_user_id ? profilesMap.get(s.auth_user_id) : profilesMap.get(s.id);
+        const archiverProf = s.archived_by ? profilesMap.get(s.archived_by) : null;
+        const dept = deptsMap.get(s.department_id);
+        const prog = progsMap.get(s.program_id);
+        const yr = yearsMap.get(s.academic_year_id);
+        const sec = sectionsMap.get(s.section_id);
+
+        return {
+          id: s.id,
+          auth_user_id: s.auth_user_id,
+          name: s.full_name,
+          role: 'student' as const,
+          identifier: s.roll_number,
+          registration_number: s.admission_number || s.roll_number,
+          department_id: s.department_id,
+          department_name: dept?.name || 'Department of Engineering',
+          department_code: dept?.code || 'ENG',
+          program_name: prog?.name || 'B.Tech',
+          year_name: yr?.name || (yr?.year_number ? `${yr.year_number} Year` : '—'),
+          section_name: sec?.name || '—',
+          email: s.email || prof?.email,
+          phone: s.phone,
+          status: (s.status as AccountStatus) || 'ARCHIVED',
+          last_active_date: prof?.last_sign_in_at || null,
+          exit_date: s.exit_date || (s.archived_at ? s.archived_at.split('T')[0] : null),
+          exit_reason: s.exit_reason || null,
+          archived_at: s.archived_at || null,
+          archived_by_id: s.archived_by || null,
+          archived_by_name: archiverProf?.full_name || 'Super Admin',
+          created_at: s.created_at,
+        };
+      });
+
+      const facultyItems: ArchivedRecordItem[] = (facultyRes.data || []).map(f => {
+        const prof = f.auth_user_id ? profilesMap.get(f.auth_user_id) : profilesMap.get(f.id);
+        const archiverProf = f.archived_by ? profilesMap.get(f.archived_by) : null;
+        const dept = deptsMap.get(f.department_id);
+
+        return {
+          id: f.id,
+          auth_user_id: f.auth_user_id,
+          name: f.full_name,
+          role: 'faculty' as const,
+          identifier: f.employee_code,
+          department_id: f.department_id,
+          department_name: dept?.name || 'Department of Engineering',
+          department_code: dept?.code || 'ENG',
+          designation: f.designation,
+          email: f.email || prof?.email,
+          phone: f.phone,
+          status: (f.status as AccountStatus) || 'RESIGNED',
+          last_active_date: prof?.last_sign_in_at || null,
+          exit_date: f.exit_date || (f.archived_at ? f.archived_at.split('T')[0] : null),
+          exit_reason: f.exit_reason || null,
+          archived_at: f.archived_at || null,
+          archived_by_id: f.archived_by || null,
+          archived_by_name: archiverProf?.full_name || 'Super Admin',
+          created_at: f.created_at || new Date().toISOString(),
+        };
+      });
+
+      return [...studentItems, ...facultyItems];
+    } catch (err) {
+      console.error('Error in fetchArchivedRecords:', err);
+      return [];
+    }
+  },
+
+  async fetchStudentHistoricalRecord(studentId: string): Promise<StudentFullHistoricalRecord | null> {
+    try {
+      const { data: student, error: stErr } = await supabase
+        .from('students')
+        .select('*, department:departments(*), program:programs(*), section:sections(*)')
+        .eq('id', studentId)
+        .single();
+
+      if (stErr || !student) {
+        console.error('Error fetching student historical record:', stErr);
+        return null;
+      }
+
+      const [
+        profileRes,
+        academicHistoryRes,
+        attendanceRecordsRes,
+        sessionalMarksRes,
+        leavesRes,
+        timetableRes,
+        lifecycleRes,
+        auditLogsRes
+      ] = await Promise.all([
+        student.auth_user_id
+          ? supabase.from('profiles').select('*').eq('id', student.auth_user_id).maybeSingle()
+          : supabase.from('profiles').select('*').eq('id', student.id).maybeSingle(),
+        supabase.from('student_academic_history').select('*').eq('student_id', studentId).order('created_at', { ascending: false }),
+        supabase
+          .from('attendance_records')
+          .select('*, session:attendance_sessions(*, subject:subjects(*))')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('sessional_marks')
+          .select('*, assessment:sessional_assessments(*, subject:subjects(*))')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('leave_applications')
+          .select('*')
+          .or(`student_id.eq.${studentId},user_id.eq.${student.auth_user_id || studentId}`)
+          .order('created_at', { ascending: false }),
+        student.section_id
+          ? supabase.from('timetable_entries').select('*, subject:subjects(*), faculty:faculty(*)').eq('section_id', student.section_id).order('period_number', { ascending: true })
+          : Promise.resolve({ data: [] }),
+        supabase
+          .from('account_lifecycle')
+          .select('*, performer:profiles(full_name, role)')
+          .eq('entity_id', studentId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('audit_logs')
+          .select('*')
+          .or(`entity_id.eq.${studentId},actor_id.eq.${student.auth_user_id || studentId}`)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      // Calculate attendance aggregations
+      const attRecords = attendanceRecordsRes.data || [];
+      const totalAttended = attRecords.filter((r: any) => r.status === 'Present').length;
+      const totalConducted = attRecords.length;
+      const pct = totalConducted > 0 ? Math.round((totalAttended / totalConducted) * 100) : 0;
+
+      // Subject-wise attendance calculation
+      const subjectMap = new Map<string, { subject_name: string; subject_code: string; conducted: number; attended: number }>();
+      for (const r of attRecords) {
+        const sub = (r as any).session?.subject;
+        const subId = sub?.id || 'unknown';
+        if (!subjectMap.has(subId)) {
+          subjectMap.set(subId, {
+            subject_name: sub?.subject_name || 'Academic Subject',
+            subject_code: sub?.subject_code || 'SUB',
+            conducted: 0,
+            attended: 0,
+          });
+        }
+        const item = subjectMap.get(subId)!;
+        item.conducted++;
+        if (r.status === 'Present') item.attended++;
+      }
+
+      const subjectWise = Array.from(subjectMap.entries()).map(([subId, item]) => ({
+        subject_id: subId,
+        subject_name: item.subject_name,
+        subject_code: item.subject_code,
+        conducted: item.conducted,
+        attended: item.attended,
+        percentage: item.conducted > 0 ? Math.round((item.attended / item.conducted) * 100) : 0,
+      }));
+
+      return {
+        student: student as Student,
+        profile: profileRes.data as UserProfile | null,
+        academic_history: academicHistoryRes.data || [],
+        attendance: {
+          total_conducted: totalConducted,
+          total_attended: totalAttended,
+          percentage: pct,
+          subject_wise: subjectWise,
+          recent_sessions: attRecords.slice(0, 30),
+        },
+        marks: {
+          sessional_assessments: sessionalMarksRes.data || [],
+          quizzes: [],
+          assignments: [],
+        },
+        leaves: leavesRes.data || [],
+        timetable: timetableRes.data || [],
+        lifecycle_history: (lifecycleRes.data || []) as AccountLifecycleEntry[],
+        audit_logs: (auditLogsRes.data || []) as AuditLog[],
+      };
+    } catch (err) {
+      console.error('Error fetching student historical record:', err);
+      return null;
+    }
+  },
+
+  async fetchFacultyHistoricalRecord(facultyId: string): Promise<FacultyFullHistoricalRecord | null> {
+    try {
+      const { data: faculty, error: facErr } = await supabase
+        .from('faculty')
+        .select('*, department:departments(*)')
+        .eq('id', facultyId)
+        .single();
+
+      if (facErr || !faculty) {
+        console.error('Error fetching faculty historical record:', facErr);
+        return null;
+      }
+
+      const [
+        profileRes,
+        subjectAssignmentsRes,
+        coordinatorRes,
+        attendanceSessionsRes,
+        assessmentsRes,
+        timetableRes,
+        leavesRes,
+        lifecycleRes,
+        auditLogsRes
+      ] = await Promise.all([
+        faculty.auth_user_id
+          ? supabase.from('profiles').select('*').eq('id', faculty.auth_user_id).maybeSingle()
+          : supabase.from('profiles').select('*').eq('id', faculty.id).maybeSingle(),
+        supabase
+          .from('faculty_subject_assignments')
+          .select('*, subject:subjects(*), section:sections(*), session:academic_sessions(*)')
+          .eq('faculty_id', facultyId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('class_coordinator_assignments')
+          .select('*, section:sections(*)')
+          .eq('faculty_id', facultyId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('attendance_sessions')
+          .select('*, subject:subjects(*), section:sections(*)')
+          .eq('faculty_id', facultyId)
+          .order('session_date', { ascending: false }),
+        supabase
+          .from('sessional_assessments')
+          .select('*, subject:subjects(*), section:sections(*)')
+          .eq('faculty_id', facultyId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('timetable_entries')
+          .select('*, subject:subjects(*), section:sections(*)')
+          .eq('faculty_id', facultyId)
+          .order('day_of_week', { ascending: true }),
+        supabase
+          .from('leave_applications')
+          .select('*')
+          .or(`user_id.eq.${faculty.auth_user_id || facultyId},faculty_id.eq.${facultyId}`)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('account_lifecycle')
+          .select('*, performer:profiles(full_name, role)')
+          .eq('entity_id', facultyId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('audit_logs')
+          .select('*')
+          .or(`entity_id.eq.${facultyId},actor_id.eq.${faculty.auth_user_id || facultyId}`)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      const attSessions = attendanceSessionsRes.data || [];
+      const subMap = new Map<string, { subject_name: string; subject_code: string; count: number }>();
+      for (const s of attSessions) {
+        const sub = s.subject;
+        const subId = sub?.id || 'unknown';
+        if (!subMap.has(subId)) {
+          subMap.set(subId, {
+            subject_name: sub?.subject_name || 'Subject',
+            subject_code: sub?.subject_code || 'SUB',
+            count: 0,
+          });
+        }
+        subMap.get(subId)!.count++;
+      }
+
+      const subjectWise = Array.from(subMap.entries()).map(([subId, item]) => ({
+        subject_id: subId,
+        subject_name: item.subject_name,
+        subject_code: item.subject_code,
+        session_count: item.count,
+      }));
+
+      return {
+        faculty: faculty as Faculty,
+        profile: profileRes.data as UserProfile | null,
+        subject_assignments: subjectAssignmentsRes.data || [],
+        class_coordinator_assignments: coordinatorRes.data || [],
+        attendance_sessions: {
+          total_conducted: attSessions.length,
+          recent_sessions: attSessions.slice(0, 30),
+          subject_wise: subjectWise,
+        },
+        assessments_created: assessmentsRes.data || [],
+        assessments_managed: assessmentsRes.data || [],
+        timetable_entries: timetableRes.data || [],
+        timetable: timetableRes.data || [],
+        leaves: leavesRes.data || [],
+        lifecycle_history: (lifecycleRes.data || []) as AccountLifecycleEntry[],
+        audit_logs: (auditLogsRes.data || []) as AuditLog[],
+      };
+    } catch (err) {
+      console.error('Error fetching faculty historical record:', err);
+      return null;
     }
   }
 };

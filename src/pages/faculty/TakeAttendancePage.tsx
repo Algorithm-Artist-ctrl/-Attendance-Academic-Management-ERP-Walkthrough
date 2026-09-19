@@ -81,6 +81,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     attendanceRecords,
     saveAttendance,
     deleteAttendanceSession,
+    getAttendanceSummary,
+    ensureSessionAttendanceLoaded,
     getFacultyTimetable 
   } = useAcademic();
 
@@ -227,13 +229,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     setSaveStatus(hasAnySavedRecords ? 'saved' : 'idle');
   }, [activeClassId, sessionDate, activeSection?.id, existingSession, attendanceRecords, sectionStudents, currentSelectionKey]);
 
-  // Fallback: If session exists in DB but attendanceRecords does not contain records for it yet, fetch directly
+  // Fallback: If session exists in DB but attendanceRecords does not contain records for it yet, fetch and sync directly
   useEffect(() => {
     let isCancelled = false;
     if (existingSession?.id && activeClass && activeSection) {
       const records = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
       if (records.length === 0) {
-        supabaseService.fetchSessionAttendanceRecords(existingSession.id).then(directRecords => {
+        ensureSessionAttendanceLoaded(existingSession.id).then(directRecords => {
           if (isCancelled || !directRecords || directRecords.length === 0) return;
           const directMap: Record<string, MarkState> = {};
           sectionStudents.forEach(s => {
@@ -249,7 +251,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       }
     }
     return () => { isCancelled = true; };
-  }, [existingSession?.id, sectionStudents]);
+  }, [existingSession?.id, sectionStudents, ensureSessionAttendanceLoaded]);
 
   // Undo helper
   const pushState = useCallback((newMap: Record<string, MarkState>) => {
@@ -613,7 +615,7 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     } catch (err: any) {
       console.error('Failed to save attendance', err);
       setSaveStatus('error');
-      setSaveError(err?.message || 'Attendance could not be saved. Check connection and retry.');
+      setSaveError(err?.message ? `Attendance Save Failed — Retry: ${err.message}` : 'Attendance Save Failed — Retry');
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -818,21 +820,15 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               const sec = sections.find(s => s.id === cls.section_id) || cls.section;
               const enrolledStudents = students.filter(s => s.section_id === sec?.id && s.active);
 
-              // Look up live session strictly for sessionDate and class/slot
-              const existingSess = attendanceSessions.find(
-                s => (s.session_date?.split('T')[0] || s.session_date) === sessionDate && 
-                     (s.timetable_entry_id === cls.id || 
-                      (s.section_id === sec?.id && 
-                       s.subject_id === cls.subject_id && 
-                       (s.start_time?.substring(0, 5) === cls.start_time?.substring(0, 5) || !cls.start_time)))
-              );
-
-              const records = existingSess 
-                ? attendanceRecords.filter(r => r.attendance_session_id === existingSess.id)
-                : [];
-              const classPresentCount = records.filter(r => r.status === 'Present').length;
-              const enrolledCount = enrolledStudents.length;
-              const totalCount = records.length > 0 ? records.length : enrolledCount;
+              // Authoritative attendance summary strictly for sessionDate and class/slot
+              const summary = getAttendanceSummary({
+                timetableEntryId: cls.id,
+                sessionDate,
+                sectionId: sec?.id,
+                subjectId: cls.subject_id || undefined,
+                startTime: cls.start_time,
+              });
+              const enrolledCount = summary.total > 0 ? summary.total : enrolledStudents.length;
 
               return (
                 <div
@@ -891,11 +887,11 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                           Not Available Yet
                         </span>
                       </>
-                    ) : existingSess ? (
+                    ) : summary.status === 'FULLY_MARKED' ? (
                       <>
                         <div className="text-[11px] font-bold text-[#00ff88] flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>✓ Marked ({classPresentCount}/{totalCount})</span>
+                          <span>✓ Marked ({summary.total}/{summary.total})</span>
                         </div>
                         <Button
                           size="sm"
@@ -908,6 +904,25 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                           className="touch-target font-bold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
                         >
                           {isToday ? 'View / Update' : 'View Attendance'}
+                        </Button>
+                      </>
+                    ) : summary.status === 'PARTIALLY_MARKED' ? (
+                      <>
+                        <div className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Marked ({summary.marked}/{summary.total})</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSessionDate(sessionDate);
+                            setActiveClassId(cls.id);
+                          }}
+                          rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                          className="touch-target font-bold border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                        >
+                          View / Update
                         </Button>
                       </>
                     ) : isToday ? (
@@ -942,9 +957,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                             setSessionDate(sessionDate);
                             setActiveClassId(cls.id);
                           }}
-                          className="touch-target border-slate-800 text-slate-400 hover:text-white text-xs"
+                          rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                          className="touch-target font-medium border-slate-700 text-slate-400 hover:text-white"
                         >
-                          Mark Historical
+                          Review Past
                         </Button>
                       </>
                     )}
