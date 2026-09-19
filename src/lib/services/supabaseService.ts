@@ -112,6 +112,7 @@ let _staticCache: StaticSetupCache | null = null;
 let _masterCache: { timestamp: number; data: any } | null = null;
 const STATIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static institutional structure only
 let _inFlightFetchAll: Promise<FullERPData | null> | null = null;
+const _inFlightScopedData = new Map<string, Promise<FullERPData | null>>();
 
 export const supabaseService = {
   // Clear in-memory static cache when structural entities change
@@ -119,6 +120,7 @@ export const supabaseService = {
     _staticCache = null;
     _masterCache = null;
     _inFlightFetchAll = null;
+    _inFlightScopedData.clear();
   },
 
   // 1A. Fetch Static Academic Master Entities (Institutions, Depts, Programs, Sessions, Years, Semesters)
@@ -167,7 +169,7 @@ export const supabaseService = {
     }
   },
 
-  // 1B. Fetch Dynamic Academic Entities (Sections, Subjects, Faculty, Assignments, Students, Profiles) - ALWAYS FRESH
+  // 1B. Fetch Dynamic Structural Academic Entities (Sections, Subjects, Faculty, Assignments, Classrooms) - FAST & LIGHTWEIGHT
   async fetchAcademicEntities() {
     try {
       const [
@@ -175,16 +177,12 @@ export const supabaseService = {
         { data: subjects },
         { data: faculty },
         { data: assignments },
-        { data: students },
-        { data: profilesList },
         { data: classroomsList },
       ] = await Promise.all([
         supabase.from('sections').select('*').eq('active', true).order('name', { ascending: true }),
         supabase.from('subjects').select('*').eq('active', true).order('subject_code', { ascending: true }),
         supabase.from('faculty').select('*').order('full_name', { ascending: true }),
         supabase.from('faculty_subject_assignments').select('*').eq('active', true),
-        supabase.from('students').select('*').order('roll_number', { ascending: true }),
-        supabase.from('profiles').select('*'),
         supabase.from('classrooms').select('*').eq('active', true).order('room_number', { ascending: true }),
       ]);
 
@@ -193,8 +191,8 @@ export const supabaseService = {
         subjects: (subjects as Subject[]) || [],
         faculty: (faculty as Faculty[]) || [],
         assignments: (assignments as FacultySubjectAssignment[]) || [],
-        students: (students as Student[]) || [],
-        profiles: (profilesList as UserProfile[]) || [],
+        students: [] as Student[],
+        profiles: [] as UserProfile[],
         classrooms: (classroomsList as Classroom[]) || [],
       };
     } catch (err) {
@@ -443,7 +441,7 @@ export const supabaseService = {
     };
   },
 
-  // 1D. Fetch Dynamic Operational Data (Timetable, Attendance, Assessments, Audit)
+  // 1D. Fetch Dynamic Operational Data (Timetable, Attendance, Assessments, Audit) - LIGHTWEIGHT DASHBOARD SLICE
   async fetchOperationalData() {
     try {
       const [
@@ -462,18 +460,18 @@ export const supabaseService = {
         { data: sessionalAssessmentsList },
       ] = await Promise.all([
         supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
-        this.fetchAllAttendanceSessions(),
-        this.fetchAllAttendanceRecords(),
-        this.fetchCorrections(200),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(200),
-        supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(300),
-        supabase.from('quizzes').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase.from('quiz_results').select('*').order('created_at', { ascending: false }).limit(300),
-        supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }).limit(1000),
-        supabase.from('marks_history').select('*').order('updated_at', { ascending: false }).limit(200),
-        supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }).limit(100),
+        this.fetchAllAttendanceSessions(50),
+        this.fetchAllAttendanceRecords(200),
+        this.fetchCorrections(50),
+        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(25),
+        supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(10),
+        supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(30),
+        supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(50),
+        supabase.from('quizzes').select('*').order('created_at', { ascending: false }).limit(30),
+        supabase.from('quiz_results').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('sessional_marks').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('marks_history').select('*').order('updated_at', { ascending: false }).limit(30),
+        supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }).limit(30),
       ]);
 
       return {
@@ -526,46 +524,46 @@ export const supabaseService = {
         attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
       };
     } catch (err) {
-      console.error('Error in fetchStudentAttendance:', err);
+      console.error('Error fetching scoped student attendance:', err);
       return { attendanceRecords: [], attendanceSessions: [] };
     }
   },
 
-  // 1F. Scoped Student Academic Records (Only student's submissions, marks, and section assessments)
+  // 1F. Scoped Student Academic Records (Assignments, Submissions, Quizzes, Sessional Marks)
   async fetchStudentAcademicRecords(studentId: string, sectionId?: string) {
     try {
       const [
-        assignmentsRes,
-        submissionsRes,
-        quizzesRes,
-        quizResultsRes,
-        sessionalMarksRes,
-        assessmentsRes,
+        { data: assignmentsList },
+        { data: submissionsList },
+        { data: quizzesList },
+        { data: quizResultsList },
+        { data: sessionalMarksList },
+        { data: sessionalAssessmentsList },
       ] = await Promise.all([
         sectionId
-          ? supabase.from('assignments').select('*').eq('section_id', sectionId).eq('active', true).or('status.eq.published,status.eq.completed').limit(50)
-          : supabase.from('assignments').select('*').eq('active', true).or('status.eq.published,status.eq.completed').limit(50),
-        supabase.from('assignment_submissions').select('*').eq('student_id', studentId).limit(50),
+          ? supabase.from('assignments').select('*').eq('section_id', sectionId).eq('active', true).order('created_at', { ascending: false }).limit(50)
+          : supabase.from('assignments').select('*').eq('active', true).order('created_at', { ascending: false }).limit(50),
+        supabase.from('assignment_submissions').select('*').eq('student_id', studentId).order('submitted_at', { ascending: false }).limit(100),
         sectionId
-          ? supabase.from('quizzes').select('*').eq('section_id', sectionId).eq('active', true).or('status.eq.published,status.eq.completed').limit(50)
-          : supabase.from('quizzes').select('*').eq('active', true).or('status.eq.published,status.eq.completed').limit(50),
-        supabase.from('quiz_results').select('*').eq('student_id', studentId).limit(50),
-        supabase.from('sessional_marks').select('*').eq('student_id', studentId).eq('status', 'published').limit(100),
+          ? supabase.from('quizzes').select('*').eq('section_id', sectionId).eq('active', true).order('created_at', { ascending: false }).limit(50)
+          : supabase.from('quizzes').select('*').eq('active', true).order('created_at', { ascending: false }).limit(50),
+        supabase.from('quiz_results').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('sessional_marks').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
         sectionId
-          ? supabase.from('sessional_assessments').select('*').eq('section_id', sectionId).or('status.eq.published,status.eq.completed').limit(50)
-          : supabase.from('sessional_assessments').select('*').or('status.eq.published,status.eq.completed').limit(50),
+          ? supabase.from('sessional_assessments').select('*').eq('section_id', sectionId).order('created_at', { ascending: false }).limit(50)
+          : supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }).limit(50),
       ]);
 
       return {
-        courseAssignments: (assignmentsRes.data as Assignment[]) || [],
-        assignmentSubmissions: (submissionsRes.data as AssignmentSubmission[]) || [],
-        quizzes: (quizzesRes.data as Quiz[]) || [],
-        quizResults: (quizResultsRes.data as QuizResult[]) || [],
-        sessionalMarks: (sessionalMarksRes.data as SessionalMark[]) || [],
-        sessionalAssessments: (assessmentsRes.data as SessionalAssessment[]) || [],
+        courseAssignments: (assignmentsList as Assignment[]) || [],
+        assignmentSubmissions: (submissionsList as AssignmentSubmission[]) || [],
+        quizzes: (quizzesList as Quiz[]) || [],
+        quizResults: (quizResultsList as QuizResult[]) || [],
+        sessionalMarks: (sessionalMarksList as SessionalMark[]) || [],
+        sessionalAssessments: (sessionalAssessmentsList as SessionalAssessment[]) || [],
       };
     } catch (err) {
-      console.error('Error in fetchStudentAcademicRecords:', err);
+      console.error('Error fetching scoped student academic records:', err);
       return {
         courseAssignments: [],
         assignmentSubmissions: [],
@@ -627,7 +625,7 @@ export const supabaseService = {
     }
   },
 
-  // 1G. Role-Scoped Fast ERP Data Loader (P0/P1 Priority Pipeline)
+  // 1G. Role-Scoped Fast ERP Data Loader (P0/P1 Priority Pipeline with In-Flight Deduplication)
   async fetchScopedData(params: {
     role?: UserRole | null;
     studentId?: string;
@@ -636,87 +634,119 @@ export const supabaseService = {
     departmentId?: string;
     forceRefreshMaster?: boolean;
   }): Promise<FullERPData | null> {
-    try {
-      // 1. Master Structure (Cached in-memory / localStorage, sub-millisecond if fresh)
-      const masterData = await this.fetchMasterData(params.forceRefreshMaster || false);
-      if (!masterData) return null;
-
-      // 2. Role-Scoped Operational Slice
-      if (params.role === 'student' && params.studentId) {
-        const [studentAtt, studentAcad, { data: timetable }, correctionsRes] = await Promise.all([
-          this.fetchStudentAttendance(params.studentId, params.sectionId),
-          this.fetchStudentAcademicRecords(params.studentId, params.sectionId),
-          params.sectionId
-            ? supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('section_id', params.sectionId).eq('active', true).order('period_number', { ascending: true })
-            : supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
-          supabase.from('attendance_corrections').select('*').eq('student_id', params.studentId).order('created_at', { ascending: false }).limit(20),
-        ]);
-
-        return {
-          ...masterData,
-          timetable: (timetable as unknown as TimetableEntry[]) || [],
-          attendanceSessions: studentAtt.attendanceSessions,
-          attendanceRecords: studentAtt.attendanceRecords,
-          corrections: (correctionsRes.data as AttendanceCorrection[]) || [],
-          auditLogs: [],
-          timetableVersions: [],
-          courseAssignments: studentAcad.courseAssignments,
-          assignmentSubmissions: studentAcad.assignmentSubmissions,
-          quizzes: studentAcad.quizzes,
-          quizResults: studentAcad.quizResults,
-          sessionalMarks: studentAcad.sessionalMarks,
-          marksHistory: [],
-          sessionalAssessments: studentAcad.sessionalAssessments,
-        };
-      }
-
-      if (params.role === 'faculty' && params.facultyId) {
-        const [
-          { data: timetable },
-          sessionsRes,
-          correctionsRes,
-          { data: assignmentsList },
-          { data: quizzesList },
-          { data: assessmentsList },
-        ] = await Promise.all([
-          supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('faculty_id', params.facultyId).eq('active', true).order('period_number', { ascending: true }),
-          supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').eq('faculty_id', params.facultyId).order('session_date', { ascending: false }).limit(100),
-          this.fetchCorrections(50),
-          supabase.from('assignments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
-          supabase.from('quizzes').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
-          supabase.from('sessional_assessments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
-        ]);
-
-        return {
-          ...masterData,
-          timetable: (timetable as unknown as TimetableEntry[]) || [],
-          attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
-          attendanceRecords: [],
-          corrections: correctionsRes,
-          auditLogs: [],
-          timetableVersions: [],
-          courseAssignments: (assignmentsList as Assignment[]) || [],
-          assignmentSubmissions: [],
-          quizzes: (quizzesList as Quiz[]) || [],
-          quizResults: [],
-          sessionalMarks: [],
-          marksHistory: [],
-          sessionalAssessments: (assessmentsList as SessionalAssessment[]) || [],
-        };
-      }
-
-      // Default for Admin or initial load before auth resolves: delegate to fetchOperationalData
-      const operationalData = await this.fetchOperationalData();
-      if (!operationalData) return null;
-
-      return {
-        ...masterData,
-        ...operationalData,
-      };
-    } catch (err) {
-      console.error('Error in fetchScopedData:', err);
-      return this.fetchAllData(params.forceRefreshMaster);
+    const dedupKey = `${params.role || 'anon'}_${params.studentId || ''}_${params.facultyId || ''}_${params.sectionId || ''}_${params.forceRefreshMaster ? '1' : '0'}`;
+    const existing = _inFlightScopedData.get(dedupKey);
+    if (existing) {
+      return existing;
     }
+
+    const fetchPromise = (async (): Promise<FullERPData | null> => {
+      try {
+        // 1. Master Structure (Cached in-memory / localStorage, sub-millisecond if fresh)
+        const masterData = await this.fetchMasterData(params.forceRefreshMaster || false);
+        if (!masterData) return null;
+
+        // 2. Role-Scoped Operational Slice
+        if (params.role === 'student' && params.studentId) {
+          const [studentAtt, studentAcad, { data: timetable }, correctionsRes, { data: sectionStudents }] = await Promise.all([
+            this.fetchStudentAttendance(params.studentId, params.sectionId),
+            this.fetchStudentAcademicRecords(params.studentId, params.sectionId),
+            params.sectionId
+              ? supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('section_id', params.sectionId).eq('active', true).order('period_number', { ascending: true })
+              : supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
+            supabase.from('attendance_corrections').select('*').eq('student_id', params.studentId).order('created_at', { ascending: false }).limit(20),
+            params.sectionId
+              ? supabase.from('students').select('*').eq('section_id', params.sectionId).eq('active', true).or('status.eq.ACTIVE,status.is.null').order('roll_number', { ascending: true })
+              : supabase.from('students').select('*').eq('id', params.studentId),
+          ]);
+
+          return {
+            ...masterData,
+            students: (sectionStudents as Student[]) || [],
+            timetable: (timetable as unknown as TimetableEntry[]) || [],
+            attendanceSessions: studentAtt.attendanceSessions,
+            attendanceRecords: studentAtt.attendanceRecords,
+            corrections: (correctionsRes.data as AttendanceCorrection[]) || [],
+            auditLogs: [],
+            timetableVersions: [],
+            courseAssignments: studentAcad.courseAssignments,
+            assignmentSubmissions: studentAcad.assignmentSubmissions,
+            quizzes: studentAcad.quizzes,
+            quizResults: studentAcad.quizResults,
+            sessionalMarks: studentAcad.sessionalMarks,
+            marksHistory: [],
+            sessionalAssessments: studentAcad.sessionalAssessments,
+          };
+        }
+
+        if (params.role === 'faculty' && params.facultyId) {
+          const [
+            { data: timetable },
+            sessionsRes,
+            correctionsRes,
+            { data: assignmentsList },
+            { data: quizzesList },
+            { data: assessmentsList },
+          ] = await Promise.all([
+            supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('faculty_id', params.facultyId).eq('active', true).order('period_number', { ascending: true }),
+            supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').eq('faculty_id', params.facultyId).order('session_date', { ascending: false }).limit(100),
+            this.fetchCorrections(50),
+            supabase.from('assignments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+            supabase.from('quizzes').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+            supabase.from('sessional_assessments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+          ]);
+
+          // Fetch students strictly in sections assigned to this faculty
+          const sectionIds = Array.from(new Set([
+            ...(assignmentsList || []).map((a: any) => a.section_id),
+            ...(timetable || []).map((t: any) => t.section_id),
+          ])).filter(Boolean);
+
+          const { data: facultyStudents } = sectionIds.length > 0
+            ? await supabase.from('students').select('*').in('section_id', sectionIds).eq('active', true).or('status.eq.ACTIVE,status.is.null').order('roll_number', { ascending: true })
+            : { data: [] };
+
+          return {
+            ...masterData,
+            students: (facultyStudents as Student[]) || [],
+            timetable: (timetable as unknown as TimetableEntry[]) || [],
+            attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
+            attendanceRecords: [],
+            corrections: correctionsRes,
+            auditLogs: [],
+            timetableVersions: [],
+            courseAssignments: (assignmentsList as Assignment[]) || [],
+            assignmentSubmissions: [],
+            quizzes: (quizzesList as Quiz[]) || [],
+            quizResults: [],
+            sessionalMarks: [],
+            marksHistory: [],
+            sessionalAssessments: (assessmentsList as SessionalAssessment[]) || [],
+          };
+        }
+
+        // Default for Admin or initial load before auth resolves: delegate to fetchOperationalData
+        const [operationalData, allStudents] = await Promise.all([
+          this.fetchOperationalData(),
+          this.fetchStudents(true),
+        ]);
+        if (!operationalData) return null;
+
+        return {
+          ...masterData,
+          students: allStudents,
+          ...operationalData,
+        };
+      } catch (err) {
+        console.error('Error in fetchScopedData:', err);
+        return this.fetchAllData(params.forceRefreshMaster);
+      } finally {
+        _inFlightScopedData.delete(dedupKey);
+      }
+    })();
+
+    _inFlightScopedData.set(dedupKey, fetchPromise);
+    return fetchPromise;
   },
 
   // 1H. Fetch All Master & Operational Data (Composed in parallel with Promise deduplication)
@@ -727,10 +757,11 @@ export const supabaseService = {
 
     const fetchPromise = (async () => {
       try {
-        const [staticSetup, academicEntities, operationalData] = await Promise.all([
+        const [staticSetup, academicEntities, operationalData, allStudents] = await Promise.all([
           this.fetchStaticSetup(forceRefreshMaster),
           this.fetchAcademicEntities(),
           this.fetchOperationalData(),
+          this.fetchStudents(true),
         ]);
 
         if (!staticSetup || !academicEntities || !operationalData) {
@@ -740,6 +771,7 @@ export const supabaseService = {
         return {
           ...staticSetup,
           ...academicEntities,
+          students: allStudents,
           ...operationalData,
         };
       } catch (err) {
@@ -4078,9 +4110,24 @@ export const supabaseService = {
     quizId: string;
     facultyId: string;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
+    isPublished?: boolean;
   }) {
     const { data: quiz } = await supabase.from('quizzes').select('*').eq('id', params.quizId).single();
     if (!quiz) throw new Error('Quiz not found.');
+
+    const targetStatus = params.isPublished !== undefined
+      ? (params.isPublished ? 'published' : 'draft')
+      : (quiz.status || 'draft');
+
+    if (params.isPublished !== undefined) {
+      await supabase
+        .from('quizzes')
+        .update({
+          status: targetStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', params.quizId);
+    }
 
     const rows = params.studentMarks.map(sm => {
       if (sm.marksObtained < 0 || sm.marksObtained > quiz.max_marks) {
@@ -4113,38 +4160,41 @@ export const supabaseService = {
         subject_id: quiz.subject_id,
         new_marks: sm.marksObtained,
         updated_by: params.facultyId,
-        reason: 'Quiz Marks Recorded'
+        reason: targetStatus === 'published' ? 'Quiz Marks Published' : 'Quiz Marks Recorded (Draft)'
       });
     }
 
-    // Notify students of evaluated quiz marks
+    // Notify students of evaluated quiz marks ONLY if published
     try {
-      const studentIds = params.studentMarks.map(sm => sm.studentId);
-      const { data: stData } = await supabase.from('students').select('id, auth_user_id').in('id', studentIds);
-      const stMap = new Map((stData || []).map(s => [s.id, s.auth_user_id]));
+      const shouldNotify = targetStatus === 'published';
+      if (shouldNotify) {
+        const studentIds = params.studentMarks.map(sm => sm.studentId);
+        const { data: stData } = await supabase.from('students').select('id, auth_user_id').in('id', studentIds);
+        const stMap = new Map((stData || []).map(s => [s.id, s.auth_user_id]));
 
-      let subName = 'Quiz';
-      if (quiz.subject_id) {
-        const { data: s } = await supabase.from('subjects').select('subject_name').eq('id', quiz.subject_id).maybeSingle();
-        if (s?.subject_name) subName = s.subject_name;
-      }
+        let subName = 'Quiz';
+        if (quiz.subject_id) {
+          const { data: s } = await supabase.from('subjects').select('subject_name').eq('id', quiz.subject_id).maybeSingle();
+          if (s?.subject_name) subName = s.subject_name;
+        }
 
-      const notifs = params.studentMarks.map(sm => ({
-        recipient_user_id: stMap.get(sm.studentId) || null,
-        recipient_student_id: sm.studentId,
-        recipient_role: 'student',
-        type: 'QUIZ_GRADED' as NotificationType,
-        title: 'Quiz Evaluated',
-        message: `${subName} — ${quiz.title}: ${sm.marksObtained}/${quiz.max_marks}`,
-        reference_type: 'quiz',
-        reference_id: params.quizId,
-        is_read: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }));
+        const notifs = params.studentMarks.map(sm => ({
+          recipient_user_id: stMap.get(sm.studentId) || null,
+          recipient_student_id: sm.studentId,
+          recipient_role: 'student',
+          type: 'QUIZ_GRADED' as NotificationType,
+          title: 'Quiz Evaluated',
+          message: `${subName} — ${quiz.title}: ${sm.marksObtained}/${quiz.max_marks}`,
+          reference_type: 'quiz',
+          reference_id: params.quizId,
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
 
-      if (notifs.length > 0) {
-        await supabase.from('notifications').insert(notifs);
+        if (notifs.length > 0) {
+          await supabase.from('notifications').insert(notifs);
+        }
       }
     } catch (notifErr) {
       console.warn('Notice: Background notification dispatch for quiz marks:', notifErr);
@@ -4221,6 +4271,60 @@ export const supabaseService = {
     const { error } = await supabase.from('sessional_assessments').delete().eq('id', id);
     if (error) throw new Error(error.message);
     return true;
+  },
+
+  async ensureDefaultSessionalAssessments(params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+    semesterId?: string;
+  }): Promise<SessionalAssessment[]> {
+    const { data: existing, error } = await supabase
+      .from('sessional_assessments')
+      .select('*')
+      .eq('subject_id', params.subjectId)
+      .eq('section_id', params.sectionId);
+
+    if (error) {
+      console.warn('Error checking existing sessional assessments:', error.message);
+      return [];
+    }
+
+    const currentList = (existing as SessionalAssessment[]) || [];
+    const titles = new Set(currentList.map(a => a.title.trim().toLowerCase()));
+
+    const toCreate: Array<{ title: string; max_marks: number }> = [];
+    if (!titles.has('sessional 1')) {
+      toCreate.push({ title: 'Sessional 1', max_marks: 30 });
+    }
+    if (!titles.has('sessional 2')) {
+      toCreate.push({ title: 'Sessional 2', max_marks: 30 });
+    }
+
+    if (toCreate.length === 0) {
+      return currentList;
+    }
+
+    const newAssessments: SessionalAssessment[] = [];
+    for (const item of toCreate) {
+      try {
+        const created = await this.createSessionalAssessment({
+          title: item.title,
+          subject_id: params.subjectId,
+          section_id: params.sectionId,
+          faculty_id: params.facultyId,
+          semester_id: params.semesterId,
+          max_marks: item.max_marks,
+          exam_date: new Date().toISOString().split('T')[0],
+          status: 'draft',
+        });
+        newAssessments.push(created);
+      } catch (err) {
+        console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
+      }
+    }
+
+    return [...currentList, ...newAssessments];
   },
 
   async saveSessionalMarks(params: {
@@ -4379,6 +4483,35 @@ export const supabaseService = {
     }
 
     return upsertResult.data as SessionalMark[];
+  },
+
+  async fetchSectionStudents(sectionId: string, activeOnly = false): Promise<Student[]> {
+    return this.fetchStudentsBySection(sectionId, activeOnly);
+  },
+
+  async fetchMarksHistory(params?: {
+    entityId?: string;
+    entityType?: 'sessional' | 'quiz' | 'assignment';
+    studentId?: string;
+    subjectId?: string;
+  }): Promise<MarksHistory[]> {
+    let query = supabase
+      .from('marks_history')
+      .select('*, student:students(id, roll_number, full_name), subject:subjects(id, subject_name, subject_code)')
+      .order('updated_at', { ascending: false })
+      .limit(100);
+
+    if (params?.entityId) query = query.eq('entity_id', params.entityId);
+    if (params?.entityType) query = query.eq('entity_type', params.entityType);
+    if (params?.studentId) query = query.eq('student_id', params.studentId);
+    if (params?.subjectId) query = query.eq('subject_id', params.subjectId);
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn('Error fetching marks history:', error.message);
+      return [];
+    }
+    return (data as MarksHistory[]) || [];
   },
 
   // ==========================================
@@ -5148,38 +5281,44 @@ export const supabaseService = {
   // REAL-TIME COMMUNICATION CENTER (MESSAGES)
   // ==========================================
 
-  async fetchUserConversations(userId: string, role: string): Promise<Conversation[]> {
+  async fetchUserConversations(
+    userId: string, 
+    role: string,
+    profileContext?: { studentId?: string | null; facultyId?: string | null }
+  ): Promise<Conversation[]> {
     try {
-      let studentId: string | null = null;
-      let facultyId: string | null = null;
+      let studentId: string | null = profileContext?.studentId || null;
+      let facultyId: string | null = profileContext?.facultyId || null;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, role, student_id, faculty_id')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (profile) {
-        studentId = profile.student_id || null;
-        facultyId = profile.faculty_id || null;
-      }
-
-      if (!studentId && role === 'student') {
-        const { data: stu } = await supabase
-          .from('students')
-          .select('id')
-          .eq('auth_user_id', userId)
+      if (!studentId && !facultyId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, role, student_id, faculty_id')
+          .eq('id', userId)
           .maybeSingle();
-        if (stu) studentId = stu.id;
-      }
 
-      if (!facultyId && role === 'faculty') {
-        const { data: fac } = await supabase
-          .from('faculty')
-          .select('id')
-          .eq('auth_user_id', userId)
-          .maybeSingle();
-        if (fac) facultyId = fac.id;
+        if (profile) {
+          studentId = profile.student_id || null;
+          facultyId = profile.faculty_id || null;
+        }
+
+        if (!studentId && role === 'student') {
+          const { data: stu } = await supabase
+            .from('students')
+            .select('id')
+            .eq('auth_user_id', userId)
+            .maybeSingle();
+          if (stu) studentId = stu.id;
+        }
+
+        if (!facultyId && role === 'faculty') {
+          const { data: fac } = await supabase
+            .from('faculty')
+            .select('id')
+            .eq('auth_user_id', userId)
+            .maybeSingle();
+          if (fac) facultyId = fac.id;
+        }
       }
 
       let query = supabase
@@ -5824,41 +5963,54 @@ export const supabaseService = {
     }
   },
 
-  async fetchUserMessageGroups(userId: string, role: string): Promise<MessageGroup[]> {
+  async fetchUserMessageGroups(
+    userId: string, 
+    role: string,
+    profileContext?: {
+      facultyId?: string | null;
+      studentSectionId?: string | null;
+      studentYearId?: string | null;
+      departmentId?: string | null;
+    }
+  ): Promise<MessageGroup[]> {
     try {
-      let facultyId: string | null = null;
-      let studentSectionId: string | null = null;
-      let studentYearId: string | null = null;
+      let facultyId: string | null = profileContext?.facultyId || null;
+      let studentSectionId: string | null = profileContext?.studentSectionId || null;
+      let studentYearId: string | null = profileContext?.studentYearId || null;
+      let departmentId: string | null = profileContext?.departmentId || null;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, role, student_id, faculty_id, department_id')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (profile) {
-        facultyId = profile.faculty_id || null;
-      }
-
-      if (role === 'faculty' && !facultyId) {
-        const { data: fac } = await supabase
-          .from('faculty')
-          .select('id')
-          .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
+      if (!facultyId && !studentSectionId && !departmentId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, role, student_id, faculty_id, department_id')
+          .eq('id', userId)
           .maybeSingle();
-        if (fac) facultyId = fac.id;
-      }
 
-      if (role === 'student') {
-        const { data: stu } = await supabase
-          .from('students')
-          .select('id, section_id, academic_year_id')
-          .or(`auth_user_id.eq.${userId},id.eq.${profile?.student_id || '00000000-0000-0000-0000-000000000000'}`)
-          .limit(1)
-          .maybeSingle();
-        if (stu) {
-          studentSectionId = stu.section_id;
-          studentYearId = stu.academic_year_id;
+        if (profile) {
+          facultyId = profile.faculty_id || null;
+          departmentId = profile.department_id || null;
+        }
+
+        if (role === 'faculty' && !facultyId) {
+          const { data: fac } = await supabase
+            .from('faculty')
+            .select('id')
+            .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
+            .maybeSingle();
+          if (fac) facultyId = fac.id;
+        }
+
+        if (role === 'student') {
+          const { data: stu } = await supabase
+            .from('students')
+            .select('id, section_id, academic_year_id')
+            .or(`auth_user_id.eq.${userId},id.eq.${profile?.student_id || '00000000-0000-0000-0000-000000000000'}`)
+            .limit(1)
+            .maybeSingle();
+          if (stu) {
+            studentSectionId = stu.section_id;
+            studentYearId = stu.academic_year_id;
+          }
         }
       }
 
@@ -5877,8 +6029,8 @@ export const supabaseService = {
       if (role === 'student') {
         if (!studentSectionId || !studentYearId) return [];
         query = query.eq('section_id', studentSectionId).eq('academic_year_id', studentYearId);
-      } else if (role === 'hod' && profile?.department_id) {
-        query = query.eq('department_id', profile.department_id);
+      } else if (role === 'hod' && departmentId) {
+        query = query.eq('department_id', departmentId);
       }
 
       const { data: groups, error } = await query;

@@ -256,10 +256,17 @@ interface AcademicContextType {
     quizId: string;
     facultyId: string;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
+    isPublished?: boolean;
   }) => Promise<QuizResult[]>;
   createSessionalAssessment: (data: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) => Promise<SessionalAssessment>;
   updateSessionalAssessment: (id: string, updates: Partial<SessionalAssessment>) => Promise<SessionalAssessment>;
   deleteSessionalAssessment: (id: string) => Promise<boolean>;
+  ensureDefaultSessionalAssessments: (params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+    semesterId?: string;
+  }) => Promise<SessionalAssessment[]>;
   saveSessionalMarks: (params: {
     sessionalAssessmentId?: string;
     facultyId: string;
@@ -618,6 +625,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const yearsRef = useRef(years);
   yearsRef.current = years;
   const lastFullLoadRef = useRef<number>(0);
+  // Self-save timestamp tracking to suppress local echo refetches from Supabase realtime
+  const lastAttendanceSaveTimeRef = useRef<number>(0);
+  const lastMarksSaveTimeRef = useRef<number>(0);
 
   // Function to load and enrich latest records from Supabase (Role-Scoped Fast Pipeline)
   const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
@@ -1147,20 +1157,34 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const refreshConversations = useCallback(async () => {
     try {
-      const activeUser = erpStorage.getCurrentSessionUser();
+      const activeUser = erpStorage.getCurrentSessionUser() || user;
       if (!activeUser?.id) return;
-      const convs = await supabaseService.fetchUserConversations(activeUser.id, activeUser.role || '');
+      const studentId = activeUser.student_id || activeUser.student?.id;
+      const facultyId = activeUser.faculty_id || activeUser.faculty?.id;
+      const convs = await supabaseService.fetchUserConversations(
+        activeUser.id, 
+        activeUser.role || '',
+        { studentId, facultyId }
+      );
       setConversations(convs);
     } catch (err) {
       console.warn('Notice: Error refreshing conversations:', err);
     }
-  }, []);
+  }, [user]);
 
   const refreshMessageGroups = useCallback(async () => {
     try {
       const activeUser = erpStorage.getCurrentSessionUser() || user;
       if (!activeUser?.id) return;
-      const groups = await supabaseService.fetchUserMessageGroups(activeUser.id, activeUser.role || '');
+      const facultyId = activeUser.faculty_id || activeUser.faculty?.id;
+      const studentSectionId = activeUser.student?.section_id || (activeUser as any)?.section_id;
+      const studentYearId = activeUser.student?.academic_year_id || (activeUser as any)?.academic_year_id;
+      const departmentId = activeUser.department_id || activeUser.faculty?.department_id;
+      const groups = await supabaseService.fetchUserMessageGroups(
+        activeUser.id, 
+        activeUser.role || '',
+        { facultyId, studentSectionId, studentYearId, departmentId }
+      );
       setMessageGroups(groups);
     } catch (err) {
       console.warn('Notice: Error refreshing message groups:', err);
@@ -1488,13 +1512,17 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
-          debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
+          if (Date.now() - lastAttendanceSaveTimeRef.current >= 4000) {
+            debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
-          debounceTableSync('attendance', () => {
-            realtimeHandlersRef.current.refreshAttendance();
-            realtimeHandlersRef.current.refreshCorrections();
-          });
+          if (Date.now() - lastAttendanceSaveTimeRef.current >= 4000) {
+            debounceTableSync('attendance', () => {
+              realtimeHandlersRef.current.refreshAttendance();
+              realtimeHandlersRef.current.refreshCorrections();
+            });
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
           debounceTableSync('attendance_corrections', () => {
@@ -1503,10 +1531,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           });
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
-          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
-          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
@@ -1534,13 +1566,17 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           debounceTableSync('timetable_entries', () => realtimeHandlersRef.current.refreshTimetable(secId));
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions' }, () => {
-          debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
+          if (Date.now() - lastAttendanceSaveTimeRef.current >= 4000) {
+            debounceTableSync('attendance', () => realtimeHandlersRef.current.refreshAttendance());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, () => {
-          debounceTableSync('attendance', () => {
-            realtimeHandlersRef.current.refreshAttendance();
-            realtimeHandlersRef.current.refreshCorrections();
-          });
+          if (Date.now() - lastAttendanceSaveTimeRef.current >= 4000) {
+            debounceTableSync('attendance', () => {
+              realtimeHandlersRef.current.refreshAttendance();
+              realtimeHandlersRef.current.refreshCorrections();
+            });
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
           debounceTableSync('attendance_corrections', () => {
@@ -1576,10 +1612,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
-          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, () => {
-          debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
+            debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
           debounceTableSync('class_coordinator_assignments', () => realtimeHandlersRef.current.refreshCoordinatorAssignments());
@@ -1615,6 +1655,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }>;
   }) => {
     const result = await supabaseService.saveAttendance(params);
+    lastAttendanceSaveTimeRef.current = Date.now();
 
     // Immediately enrich and upsert saved session and records into local state
     if (result?.session && result?.records) {
@@ -3042,8 +3083,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     quizId: string;
     facultyId: string;
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string }>;
+    isPublished?: boolean;
   }) => {
     const res = await supabaseService.saveQuizMarks(params);
+    if (params.isPublished !== undefined) {
+      const nextStatus = params.isPublished ? 'published' : 'draft';
+      setQuizzes(prev => prev.map(q => q.id === params.quizId ? { ...q, status: nextStatus } : q));
+    }
     await refreshAssessments();
     return res;
   };
@@ -3076,6 +3122,24 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const ensureDefaultSessionalAssessments = async (params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+    semesterId?: string;
+  }) => {
+    const res = await supabaseService.ensureDefaultSessionalAssessments(params);
+    setSessionalAssessments(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const newlyAdded = res.filter(r => !existingIds.has(r.id));
+      if (newlyAdded.length > 0) {
+        return [...prev, ...newlyAdded];
+      }
+      return prev;
+    });
+    return res;
+  };
+
   const saveSessionalMarks = async (params: {
     sessionalAssessmentId?: string;
     facultyId: string;
@@ -3087,6 +3151,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     isPublished?: boolean;
   }) => {
     const res = await supabaseService.saveSessionalMarks(params);
+    lastMarksSaveTimeRef.current = Date.now();
+
     if (res && res.length > 0) {
       setSessionalMarks(prev => {
         const updatedStudentIds = new Set(params.studentMarks.map(sm => sm.studentId));
@@ -3113,7 +3179,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         )
       );
     }
-    await refreshAssessments();
     return res;
   };
 
@@ -3646,6 +3711,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     createSessionalAssessment,
     updateSessionalAssessment,
     deleteSessionalAssessment,
+    ensureDefaultSessionalAssessments,
     saveSessionalMarks,
     getStudentAcademicScorecard,
     addDepartment,
@@ -3788,6 +3854,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     createSessionalAssessment,
     updateSessionalAssessment,
     deleteSessionalAssessment,
+    ensureDefaultSessionalAssessments,
     saveSessionalMarks,
     getStudentAcademicScorecard,
     addDepartment,

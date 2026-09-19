@@ -37,6 +37,14 @@ body {
   background-attachment: fixed;
 }
 
+.font-serif-institutional {
+  font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+}
+
+.font-script-accent {
+  font-family: 'Dancing Script', cursive, sans-serif;
+}
+
 /* Glassmorphic Cyber Panels */
 .glass-panel {
   background: rgba(10, 19, 34, 0.7);

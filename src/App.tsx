@@ -33,6 +33,7 @@ const AttendanceHistoryPage = lazy(() => import('./pages/faculty/AttendanceHisto
 const CourseAssignmentsPage = lazy(() => import('./pages/faculty/FacultyAssignmentsPage').then(m => ({ default: m.FacultyAssignmentsPage })));
 const FacultyQuizzesPage = lazy(() => import('./pages/faculty/FacultyQuizzesPage').then(m => ({ default: m.FacultyQuizzesPage })));
 const FacultySessionalMarksPage = lazy(() => import('./pages/faculty/FacultySessionalMarksPage').then(m => ({ default: m.FacultySessionalMarksPage })));
+const FacultyMarksManagementPage = lazy(() => import('./pages/faculty/FacultyMarksManagementPage').then(m => ({ default: m.FacultyMarksManagementPage })));
 const FacultySectionWorkspacePage = lazy(() => import('./pages/faculty/FacultySectionWorkspacePage').then(m => ({ default: m.FacultySectionWorkspacePage })));
 
 // Lazy Loaded HOD Pages
@@ -194,8 +195,9 @@ export const AppContent: React.FC = () => {
               onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
             />
           );
+        case 'marks_and_assessments':
         case 'sessional_marks':
-          return <FacultySessionalMarksPage />;
+          return <FacultyMarksManagementPage />;
         case 'history':
           return (
             <AttendanceHistoryPage
@@ -301,8 +303,9 @@ export const AppContent: React.FC = () => {
               />
             );
             break;
+          case 'marks_and_assessments':
           case 'sessional_marks':
-            facultyModeComponent = <FacultySessionalMarksPage />;
+            facultyModeComponent = <FacultyMarksManagementPage />;
             break;
           case 'history':
             facultyModeComponent = (
@@ -421,8 +424,9 @@ export const AppContent: React.FC = () => {
               onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
             />
           );
+        case 'marks_and_assessments':
         case 'sessional_marks':
-          return <FacultySessionalMarksPage />;
+          return <FacultyMarksManagementPage />;
         case 'history':
           return (
             <AttendanceHistoryPage

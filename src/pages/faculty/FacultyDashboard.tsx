@@ -931,14 +931,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               </button>
 
               <button
-                onClick={() => onNavigate('sessional_marks')}
+                onClick={() => onNavigate('marks_and_assessments')}
                 className="col-span-2 p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/20 hover:border-emerald-500/50 text-left transition-all group flex items-center justify-between"
               >
                 <div>
-                  <div className="text-xs font-bold text-white group-hover:text-emerald-400">Sessional Marks Ledger</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Enter Sessional 1, 2, PUT & Internal Scores</div>
+                  <div className="text-xs font-bold text-white group-hover:text-emerald-400">Marks & Assessment Management</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Sessional 1, 2, Quizzes, CSV Import/Export & PDF Scorecards</div>
                 </div>
-                <span className="text-xs font-bold text-emerald-400">Enter Marks →</span>
+                <span className="text-xs font-bold text-emerald-400">Manage Marks →</span>
               </button>
             </div>
 

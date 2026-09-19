@@ -149,7 +149,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     } else if (t.includes('LEAVE') || rt.includes('LEAVE')) {
       onTabChange('leave');
     } else if (t.includes('MARKS') || rt.includes('MARKS') || rt.includes('SESSIONAL')) {
-      onTabChange(role === 'student' ? 'marks' : 'sessional_marks');
+      onTabChange(role === 'student' ? 'marks' : 'marks_and_assessments');
     } else if (t.includes('ASSIGNMENT') || rt.includes('ASSIGNMENT')) {
       onTabChange(role === 'student' ? 'student_assignments' : 'assignments');
     } else if (t.includes('QUIZ') || rt.includes('QUIZ')) {
@@ -261,7 +261,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           { id: 'timetable', label: 'Time Table', icon: Calendar },
           { id: 'quizzes', label: 'Quizzes', icon: Sparkles },
           { id: 'faculty_assignments', label: 'Assignments & Grading', icon: FileText },
-          { id: 'sessional_marks', label: 'Sessional Marks', icon: Award },
+          { id: 'marks_and_assessments', label: 'Marks & Assessments', icon: Award },
           { id: 'history', label: 'Attendance', icon: History },
           { id: 'students', label: 'Students', icon: GraduationCap },
           { 
@@ -291,7 +291,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             { id: 'timetable', label: 'Time Table', icon: Calendar },
             { id: 'quizzes', label: 'Quizzes', icon: Sparkles },
             { id: 'faculty_assignments', label: 'Assignments & Grading', icon: FileText },
-            { id: 'sessional_marks', label: 'Sessional Marks', icon: Award },
+            { id: 'marks_and_assessments', label: 'Marks & Assessments', icon: Award },
             { id: 'history', label: 'Attendance History', icon: History },
             { id: 'students', label: 'Students', icon: GraduationCap },
             { 

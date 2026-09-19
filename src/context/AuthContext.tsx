@@ -199,14 +199,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 1. Query profile by authenticated UUID or email
         let { data: profile } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, email, full_name, role, department_id, student_id, faculty_id, phone, avatar_url, status, created_at, updated_at')
           .eq('id', authUserId)
           .maybeSingle();
 
         if (!profile && authUserEmail) {
           const { data: profByEmail } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, email, full_name, role, department_id, student_id, faculty_id, phone, avatar_url, status, created_at, updated_at')
             .eq('email', authUserEmail.toLowerCase().trim())
             .maybeSingle();
           profile = profByEmail;
@@ -348,10 +348,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        const profileObj: any = profile;
+
         // Attach authoritative Supabase Auth verification state
-        profile.email_confirmed_at = authUser?.email_confirmed_at || null;
-        profile.new_email = authUser?.new_email || null;
-        profile.pending_email = authUser?.new_email || null;
+        profileObj.email_confirmed_at = authUser?.email_confirmed_at || null;
+        profileObj.new_email = authUser?.new_email || null;
+        profileObj.pending_email = authUser?.new_email || null;
 
         // 3. Deeply hydrate student profile with section authority
         if (profile.role === 'student' || profile.student_id) {
@@ -363,8 +365,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
 
           if (student) {
-            const hydrated = {
-              ...profile,
+            const hydrated: UserProfile = {
+              ...profileObj,
               student_id: student.id,
               student: {
                 ...student,
@@ -386,8 +388,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .maybeSingle();
 
           if (fac) {
-            const hydrated = {
-              ...profile,
+            const hydrated: UserProfile = {
+              ...profileObj,
               faculty_id: fac.id,
               faculty: fac,
             };
@@ -396,10 +398,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        if (profile) {
-          cachedProfileRef.current.set(authUserId, { profile, timestamp: Date.now() });
+        if (profileObj) {
+          cachedProfileRef.current.set(authUserId, { profile: profileObj as UserProfile, timestamp: Date.now() });
         }
-        return profile;
+        return profileObj as UserProfile;
       } catch (err) {
         console.error('Failed to load hydrated profile:', err);
         return null;
