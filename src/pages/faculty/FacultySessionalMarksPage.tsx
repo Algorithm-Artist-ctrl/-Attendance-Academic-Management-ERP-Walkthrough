@@ -385,12 +385,12 @@ export const FacultySessionalMarksPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033] shadow-xs">
                 <Award className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-serif-institutional font-black text-slate-900 tracking-tight">Sessional Assessments & Marks Ledger</h1>
-                <p className="text-slate-500 text-sm mt-0.5">
+                <h1 className="text-2xl sm:text-3xl font-serif-institutional font-bold text-[#172033] tracking-tight">Sessional Assessments & Marks Ledger</h1>
+                <p className="text-[#52627A] text-sm mt-0.5">
                   Create multiple dynamic sessionals (Sessional 1, 2, 3, 4, PUT), record scores, and modify marks live.
                 </p>
               </div>
@@ -401,13 +401,13 @@ export const FacultySessionalMarksPage: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setIsHistoryModalOpen(true)}
-              className="border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-xs"
+              className="border-slate-200 hover:bg-slate-50 text-[#52627A] hover:text-[#172033] flex items-center gap-1.5 shadow-xs"
             >
-              <History className="w-4 h-4 text-slate-500" /> Audit History
+              <History className="w-4 h-4 text-[#52627A]" /> Audit History
             </Button>
             <Button
               onClick={handleOpenAddModal}
-              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-2"
+              className="bg-[#0f172a] hover:bg-black text-white shadow-xs rounded-xl flex items-center gap-2 font-bold"
             >
               <Plus className="w-4 h-4" /> + Add Sessional
             </Button>
@@ -415,13 +415,13 @@ export const FacultySessionalMarksPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-200">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Subject</label>
+            <label className="block text-sm font-semibold text-[#52627A] mb-1.5">Subject</label>
             <select
               value={selectedSubjectId}
               onChange={(e) => handleSubjectChange(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-[#172033] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs font-semibold"
             >
               {myAssignedSubjects.map(s => (
                 <option key={s.subject.id} value={s.subject.id}>
@@ -432,11 +432,11 @@ export const FacultySessionalMarksPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Section</label>
+            <label className="block text-sm font-semibold text-[#52627A] mb-1.5">Section</label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-[#172033] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs font-semibold"
             >
               {myAssignedSubjects
                 .find(s => s.subject.id === selectedSubjectId)
@@ -804,9 +804,9 @@ export const FacultySessionalMarksPage: React.FC = () => {
 
           {/* Student Roster Table */}
           <div className="overflow-x-auto max-h-[380px] border border-slate-200 rounded-xl">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-600 bg-slate-50/90 sticky top-0 font-semibold uppercase text-[11px] tracking-wider">
+                <tr className="border-b border-slate-200 text-[#52627A] bg-slate-50 sticky top-0 font-bold uppercase text-xs tracking-wider">
                   <th className="py-2.5 px-3">Roll No.</th>
                   <th className="py-2.5 px-3">Student Name</th>
                   <th className="py-2.5 px-3 w-32">Marks (/{activeAssessmentForMarks?.max_marks})</th>
@@ -814,7 +814,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                   <th className="py-2.5 px-3">Last Updated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-200 bg-white">
                 {students
                   .filter(s => s.section_id === activeAssessmentForMarks?.section_id)
                   .filter(s => 
@@ -826,8 +826,8 @@ export const FacultySessionalMarksPage: React.FC = () => {
 
                     return (
                       <tr key={student.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-2.5 px-3 font-mono text-slate-600 font-semibold">{student.roll_number}</td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-900">{student.full_name}</td>
+                        <td className="py-2.5 px-3 font-mono text-xs text-[#52627A] font-bold">{student.roll_number}</td>
+                        <td className="py-2.5 px-3 font-bold text-[#172033] text-sm">{student.full_name}</td>
                         <td className="py-2.5 px-3">
                           <input
                             type="number"
@@ -842,7 +842,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
                                 [student.id]: { ...prev[student.id], marks: val }
                               }));
                             }}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-900 focus:outline-none focus:border-slate-400 font-mono font-bold shadow-xs"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-[#172033] focus:outline-none focus:border-slate-400 font-mono font-bold shadow-xs"
                           />
                         </td>
                         <td className="py-2.5 px-3">
@@ -857,10 +857,10 @@ export const FacultySessionalMarksPage: React.FC = () => {
                                 [student.id]: { ...prev[student.id], remarks: text }
                               }));
                             }}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:border-slate-400 shadow-xs"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-[#172033] focus:outline-none focus:border-slate-400 shadow-xs"
                           />
                         </td>
-                        <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">
+                        <td className="py-2.5 px-3 text-[#52627A] font-mono text-xs">
                           {current.updatedAt ? new Date(current.updatedAt).toLocaleDateString('en-IN') : '—'}
                         </td>
                       </tr>

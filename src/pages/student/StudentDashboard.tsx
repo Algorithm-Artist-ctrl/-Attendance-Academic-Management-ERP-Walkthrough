@@ -221,12 +221,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 z-10">
           <div className="flex items-center gap-2">
-            <h1 className="font-serif-institutional text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="font-serif-institutional text-2xl sm:text-3xl font-black text-[#172033] tracking-tight">
               Welcome back, {student?.full_name || user?.full_name || 'Student'} 👋
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium">
-            Roll No. <strong className="text-slate-900 font-bold">{student?.roll_number || '—'}</strong> • {prog?.name || 'B.Tech'} <strong className="text-slate-900 font-bold">{branchName}</strong> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
+          <p className="text-sm sm:text-[15px] text-[#52627A] font-medium">
+            Roll No. <strong className="text-[#172033] font-bold">{student?.roll_number || '—'}</strong> • {prog?.name || 'B.Tech'} <strong className="text-[#172033] font-bold">{branchName}</strong> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
           </p>
         </div>
 
@@ -250,10 +250,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-900">
+              <h4 className="text-sm font-bold text-[#172033]">
                 {unclaimedAbsents.length} Attendance Issue{unclaimedAbsents.length > 1 ? 's' : ''} Today May Need Your Attention
               </h4>
-              <p className="text-[11px] text-amber-800">
+              <p className="text-xs sm:text-sm text-amber-900 mt-0.5">
                 You were marked absent in {unclaimedAbsents[0].subjectName}. If this is incorrect, you can submit an attendance claim.
               </p>
             </div>
@@ -275,31 +275,31 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-900 animate-pulse" />
-              <h2 className="font-serif-institutional text-base sm:text-lg font-black text-slate-900 tracking-wide">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a] animate-pulse" />
+              <h2 className="font-serif-institutional text-lg sm:text-xl font-bold text-[#172033] tracking-tight">
                 Today's Classes & Live Attendance
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Official live status for <strong className="text-slate-900">{formattedTodayDate}</strong> • Section {section?.name} ({section?.room_number})
+            <p className="text-sm text-[#52627A] mt-1">
+              Official live status for <strong className="text-[#172033]">{formattedTodayDate}</strong> • Section {section?.name} ({section?.room_number})
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            <div className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
-              Scheduled: <strong className="text-slate-900">{todayLectures.length}</strong>
+          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-semibold">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-[#52627A]">
+              Scheduled: <strong className="text-[#172033]">{todayLectures.length}</strong>
             </div>
-            <div className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
-              Recorded: <strong className="text-slate-900">{todayRecorded}</strong>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-[#52627A]">
+              Recorded: <strong className="text-[#172033]">{todayRecorded}</strong>
             </div>
-            <div className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
-              Present: <strong className="text-slate-900">{todayPresent}</strong>
+            <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
+              Present: <strong className="text-emerald-900">{todayPresent}</strong>
             </div>
-            <div className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
-              Absent: <strong className="text-slate-700">{todayAbsent}</strong>
+            <div className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800">
+              Absent: <strong className="text-rose-900">{todayAbsent}</strong>
             </div>
-            <div className="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-700">
-              Not Recorded: <strong className="text-slate-500">{todayNotRecorded}</strong>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-[#52627A]">
+              Not Recorded: <strong className="text-[#172033]">{todayNotRecorded}</strong>
             </div>
           </div>
         </div>
@@ -310,10 +310,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         ) : todayLectures.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200/80">
             <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-50" />
-            <p className="font-bold text-slate-900 text-sm">
+            <p className="font-bold text-[#172033] text-sm sm:text-base">
               {todayDay === 'SUN' ? 'Sunday — No classes scheduled today' : 'No classes scheduled for today'}
             </p>
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-xs text-[#52627A] mt-1">
               {todayDay === 'SUN' 
                 ? 'Academic lectures are not held on Sundays. Classes resume on Monday.' 
                 : 'No timetable classes are scheduled for today in your section.'}
@@ -334,7 +334,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   className={clsx(
                     'p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4',
                     isAbsent 
-                      ? 'bg-slate-50/60 border-slate-200 hover:border-slate-300' 
+                      ? 'bg-rose-50/20 border-rose-200 hover:border-rose-300' 
                       : isPresent 
                       ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs' 
                       : 'bg-slate-50/40 border-slate-200 hover:border-slate-300'
@@ -342,22 +342,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                 >
                   <div className="flex items-center gap-3.5">
                     {/* Time Slot Badge */}
-                    <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-900 font-mono text-xs font-bold shrink-0 text-center min-w-[100px]">
+                    <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-[#172033] font-mono text-xs sm:text-sm font-bold shrink-0 text-center min-w-[100px]">
                       {lec.startTime} – {lec.endTime}
-                      <span className="block text-[9px] text-slate-500 font-sans font-normal">Period {lec.periodNumber}</span>
+                      <span className="block text-[11px] text-[#52627A] font-sans font-medium">Period {lec.periodNumber}</span>
                     </div>
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-slate-900">
+                        <h4 className="text-[15px] font-bold text-[#172033]">
                           {lec.subjectName}
                         </h4>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 text-[#172033] font-bold border border-slate-200">
                           {lec.subjectCode}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                        {lec.facultyName} • <span className="text-slate-700">{lec.roomNumber}</span> • {lec.lectureType}
+                      <p className="text-sm text-[#52627A] mt-0.5 font-medium">
+                        {lec.facultyName} • <span className="text-[#172033]">{lec.roomNumber}</span> • {lec.lectureType}
                       </p>
                     </div>
                   </div>
@@ -366,46 +366,46 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   <div className="shrink-0 flex items-center gap-2.5 justify-between sm:justify-end">
                     {/* Non-instructional / Lunch / Break */}
                     {lec.lectureType === 'Lunch' || lec.lectureType === 'Break' || !lec.subjectId ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-700/60 text-slate-400">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-[#52627A]">
                         Attendance Not Applicable
                       </span>
                     ) : (
                       <>
                         {/* Status Badge */}
                         {isPresent && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#0f172a] border border-slate-900 text-white shadow-xs">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            PRESENT
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-300 text-emerald-800 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                            ✓ PRESENT
                           </span>
                         )}
 
                         {hasApprovedClaim && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#0f172a] border border-slate-900 text-white shadow-xs">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Claim Approved (Present)
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-300 text-emerald-800 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                            ✓ Claim Approved
                           </span>
                         )}
 
                         {hasPendingClaim && (
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 border border-slate-300 text-slate-700">
-                              <Clock className="w-3.5 h-3.5 animate-spin" />
-                              Claim Submitted
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 animate-spin text-amber-700" />
+                              ⏳ Claim Submitted
                             </span>
                           </div>
                         )}
 
                         {!isPresent && !hasPendingClaim && !hasApprovedClaim && (
                           <div className="flex flex-wrap items-center gap-2">
-                            {/* Scenario 5: When attendance was recorded by faculty as ABSENT, show Absent without Claim button */}
+                            {/* Absent Badge */}
                             {isAbsent && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 border border-slate-200 text-slate-700">
-                                <XCircle className="w-3.5 h-3.5" />
-                                ABSENT
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 border border-rose-300 text-rose-800 shadow-2xs">
+                                <XCircle className="w-3.5 h-3.5 text-rose-700" />
+                                ✕ ABSENT
                               </span>
                             )}
 
-                            {/* Attendance Not Recorded: Only eligible for claim if class has ENDED */}
+                            {/* Attendance Not Recorded */}
                             {isNotRecorded && (() => {
                               const timingStatus = getClassTimingStatus({
                                 startTime: lec.startTime,
@@ -417,46 +417,46 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
 
                               return (
                                 <>
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-50 border border-slate-200 text-slate-500">
-                                    <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-                                    Attendance Not Recorded
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-300 text-[#52627A]">
+                                    <Clock className="w-3.5 h-3.5 text-[#52627A]" />
+                                    — Not Recorded
                                   </span>
 
-                                  {/* 1. Future Class: Show Scheduled indicator, NO Claim Attendance */}
+                                  {/* 1. Future Class */}
                                   {timingStatus === 'FUTURE' && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-600">
-                                      Upcoming (Starts at {lec.startTime})
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-[#52627A]">
+                                      Upcoming (Starts {lec.startTime})
                                     </span>
                                   )}
 
-                                  {/* 2. Ongoing Class: Show Class In Progress indicator, NO Claim Attendance */}
+                                  {/* 2. Ongoing Class */}
                                   {timingStatus === 'ONGOING' && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-slate-900 text-white shadow-xs">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#0f172a] text-white shadow-xs">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                                       In Progress Now
                                     </span>
                                   )}
 
-                                  {/* 3. Completed Class: Only after class has ended can student claim attendance */}
+                                  {/* 3. Completed Class */}
                                   {timingStatus === 'COMPLETED' && (
                                     claimWindowStatus === 'OPEN' ? (
                                       <Button
                                         variant="neon"
                                         size="sm"
                                         onClick={() => setSelectedLectureForClaim(lec)}
-                                        leftIcon={<RotateCcw className="w-3.5 h-3.5 text-slate-950" />}
+                                        leftIcon={<RotateCcw className="w-3.5 h-3.5 text-white" />}
                                         className="text-xs font-bold"
                                       >
                                         Claim Attendance
                                       </Button>
                                     ) : claimWindowStatus === 'BEFORE_WINDOW' ? (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-slate-900/90 border border-slate-700/60 text-slate-400">
-                                        <Clock className="w-3 h-3 text-slate-400" />
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-300 text-[#52627A]">
+                                        <Clock className="w-3 h-3 text-[#52627A]" />
                                         Claim opens 9:00 AM
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-900/90 border border-amber-500/20 text-slate-400">
-                                        <Clock className="w-3 h-3 text-amber-400" />
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 border border-amber-300 text-amber-900">
+                                        <Clock className="w-3 h-3 text-amber-700" />
                                         Claim Window Closed (3:40 PM)
                                       </span>
                                     )
@@ -475,7 +475,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           </div>
         )}
       </div>
-
       {/* 4. OVERALL STATS KPI CARDS GRID */}
       {isLoading && (!currentStudent || stats.totalLectures === 0) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -486,15 +485,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           {/* Overall Attendance */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overall Attendance</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
-                {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No attendance recorded yet'}
+              <p className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Overall Attendance</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-[#172033] mt-1">
+                {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No records'}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">
+              <span className="text-xs text-[#52627A] font-medium mt-0.5 block">
                 {stats.totalLectures === 0 || stats.percentage === null ? 'No attendance recorded yet' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
               </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <TrendingUp className="w-6 h-6" />
             </div>
           </div>
@@ -502,13 +501,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           {/* Recorded Lectures */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recorded Lectures</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Recorded Lectures</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-[#172033] mt-1">
                 {stats.totalLectures}
               </h3>
-              <span className="text-[10px] text-slate-400 font-medium">{sessionName}</span>
+              <span className="text-xs text-[#52627A] font-medium mt-0.5 block">{sessionName}</span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <BookOpen className="w-6 h-6" />
             </div>
           </div>
@@ -516,15 +515,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           {/* Attended (Present) */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attended (Present)</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Attended (Present)</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-emerald-700 mt-1">
                 {stats.presentLectures}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">
+              <span className="text-xs text-[#52627A] font-medium mt-0.5 block">
                 {stats.totalLectures > 0 ? 'Verified in Database' : 'No records yet'}
               </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
               <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
@@ -532,13 +531,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           {/* Absent */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Absent Lectures</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Absent Lectures</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-rose-700 mt-1">
                 {totalAbsent}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">Missed Lectures</span>
+              <span className="text-xs text-[#52627A] font-medium mt-0.5 block">Missed Lectures</span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-800">
               <XCircle className="w-6 h-6" />
             </div>
           </div>
@@ -554,17 +553,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Quizzes</span>
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Active Quizzes</span>
+              <Sparkles className="w-4 h-4 text-purple-600" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mt-2">
+            <h3 className="text-2xl font-black text-[#172033] mt-2">
               {mySectionQuizzes.length}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Google Form assessments for Section {section?.name}</p>
+            <p className="text-sm text-[#52627A] mt-1">Google Form assessments for Section {section?.name}</p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-900 group-hover:underline">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-sm font-semibold text-[#172033] group-hover:underline">
             <span>Open Quizzes</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </div>
         </div>
 
@@ -575,17 +574,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assignments</span>
-              <FileText className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Assignments</span>
+              <FileText className="w-4 h-4 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mt-2">
+            <h3 className="text-2xl font-black text-[#172033] mt-2">
               {mySectionAssignments.length}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Tasks, file uploads & form submissions</p>
+            <p className="text-sm text-[#52627A] mt-1">Tasks, file uploads & form submissions</p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-900 group-hover:underline">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-sm font-semibold text-[#172033] group-hover:underline">
             <span>Submit Assignments</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </div>
         </div>
 
@@ -596,21 +595,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Marks Scorecard</span>
-              <Award className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-bold text-[#52627A] uppercase tracking-wider">Marks Scorecard</span>
+              <Award className="w-4 h-4 text-emerald-700" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mt-2">
+            <h3 className="text-2xl font-black text-[#172033] mt-2">
               {publishedScorecard.length > 0 ? `${publishedScorecard.length} Published` : 'No Marks Yet'}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-sm text-[#52627A] mt-1">
               {publishedScorecard.length > 0 
                 ? `${publishedScorecard.length} subject${publishedScorecard.length > 1 ? 's' : ''} with published scores`
                 : 'Awaiting faculty evaluation'}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-900 group-hover:underline">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-sm font-semibold text-[#172033] group-hover:underline">
             <span>Open Detailed Scorecard</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </div>
         </div>
       </div>
@@ -621,10 +620,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         {/* Left: CyberGauge3D Overview */}
         <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-900 tracking-wide">
+            <h3 className="text-base font-bold text-[#172033] tracking-tight">
               {semTitle}
             </h3>
-            <span className="text-xs font-semibold text-slate-500">{sessionName}</span>
+            <span className="text-xs font-semibold text-[#52627A]">{sessionName}</span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-4">
@@ -636,28 +635,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             />
 
             <div className="space-y-3 w-full sm:w-auto">
-              <div className="flex items-center justify-between sm:justify-start gap-3 text-xs">
+              <div className="flex items-center justify-between sm:justify-start gap-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-900" />
-                  <span className="text-slate-600 font-medium">Present</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                  <span className="text-[#52627A] font-medium">Present</span>
                 </div>
-                <span className="font-bold text-slate-900 ml-auto sm:ml-4">{stats.presentLectures}</span>
+                <span className="font-bold text-[#172033] ml-auto sm:ml-4">{stats.presentLectures}</span>
               </div>
 
-              <div className="flex items-center justify-between sm:justify-start gap-3 text-xs">
+              <div className="flex items-center justify-between sm:justify-start gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  <span className="text-slate-600 font-medium">Absent</span>
+                  <span className="text-[#52627A] font-medium">Absent</span>
                 </div>
-                <span className="font-bold text-slate-900 ml-auto sm:ml-4">{totalAbsent}</span>
+                <span className="font-bold text-[#172033] ml-auto sm:ml-4">{totalAbsent}</span>
               </div>
 
-              <div className="flex items-center justify-between sm:justify-start gap-3 text-xs">
+              <div className="flex items-center justify-between sm:justify-start gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
-                  <span className="text-slate-600 font-medium">Total Recorded</span>
+                  <span className="text-[#52627A] font-medium">Total Recorded</span>
                 </div>
-                <span className="font-bold text-slate-900 ml-auto sm:ml-4">{stats.totalLectures}</span>
+                <span className="font-bold text-[#172033] ml-auto sm:ml-4">{stats.totalLectures}</span>
               </div>
             </div>
           </div>
@@ -667,7 +666,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               variant="outline"
               size="sm"
               onClick={() => onNavigate('attendance')}
-              className="w-full text-xs"
+              className="w-full text-sm font-semibold"
             >
               Open Complete Attendance Ledger & History →
             </Button>
@@ -678,24 +677,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 tracking-wide">
+              <h3 className="text-base font-bold text-[#172033] tracking-tight">
                 Subject Wise Performance
               </h3>
-              <p className="text-xs text-slate-400">Assigned Faculty & Eligibility{section?.name ? ` • Section ${section.name}` : ''}</p>
+              <p className="text-xs text-[#52627A]">Assigned Faculty & Eligibility{section?.name ? ` • Section ${section.name}` : ''}</p>
             </div>
             <button
               onClick={() => onNavigate('attendance')}
-              className="text-xs font-bold text-slate-900 hover:underline cursor-pointer"
+              className="text-xs font-bold text-[#172033] hover:underline cursor-pointer"
             >
               Detailed Table →
             </button>
           </div>
 
           {(!stats.subjectStats || stats.subjectStats.length === 0) ? (
-            <div className="py-8 text-center text-slate-400">
-              <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-300">No subjects assigned yet.</p>
-              <p className="text-[11px] text-slate-500">Subject performance cards will appear upon enrollment</p>
+            <div className="py-8 text-center text-[#52627A]">
+              <BookOpen className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-[#172033]">No subjects assigned yet.</p>
+              <p className="text-xs text-[#52627A]">Subject performance cards will appear upon enrollment</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -704,13 +703,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   key={sb.subjectId}
                   className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all text-center space-y-1.5"
                 >
-                  <div className="text-xs font-bold text-slate-900 truncate" title={sb.subjectName}>
+                  <div className="text-sm font-bold text-[#172033] truncate" title={sb.subjectName}>
                     {sb.subjectName}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium truncate" title={sb.facultyName}>
+                  <div className="text-xs text-[#52627A] font-medium truncate" title={sb.facultyName}>
                     {sb.facultyName}
                   </div>
-                  <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black bg-[#0f172a] text-white shadow-xs">
+                  <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#0f172a] text-white shadow-xs">
                     {sb.totalConducted > 0 && sb.percentage !== null ? `${sb.percentage}%` : 'No records yet'}
                   </div>
                 </div>
@@ -718,39 +717,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             </div>
           )}
 
-          <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
-            <span>Minimum AKTU Requirement: <strong>75%</strong></span>
-            <span className="text-slate-800 font-semibold">{sessionName}</span>
+          <div className="pt-3 border-t border-slate-100 text-xs text-[#52627A] flex items-center justify-between">
+            <span>Minimum AKTU Requirement: <strong className="text-[#172033]">75%</strong></span>
+            <span className="text-[#172033] font-semibold">{sessionName}</span>
           </div>
         </div>
 
       </div>
 
-      {/* 6.5. PUBLISHED MARKS & CONTINUOUS ASSESSMENTS (ONLY SUBJECTS WITH PUBLISHED MARKS) */}
+      {/* 6.5. PUBLISHED MARKS & CONTINUOUS ASSESSMENTS */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className={clsx(
               "p-2 rounded-xl border",
               publishedScorecard.length > 0
-                ? "bg-emerald-500/10 border-emerald-500/30 text-slate-900 font-bold"
-                : "bg-slate-800/60 border-slate-700/60 text-slate-400"
+                ? "bg-emerald-50 border-emerald-300 text-emerald-800 font-bold"
+                : "bg-slate-100 border-slate-200 text-[#52627A]"
             )}>
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+              <h3 className="text-lg sm:text-xl font-bold text-[#172033] tracking-tight flex items-center gap-2">
                 Published Continuous Assessments
                 <span className={clsx(
-                  "text-xs px-2.5 py-0.5 rounded-full border font-semibold",
+                  "text-xs px-2.5 py-0.5 rounded-full border font-bold",
                   publishedScorecard.length > 0
-                    ? "bg-emerald-500/15 border-emerald-500/30 text-slate-900 font-bold"
-                    : "bg-slate-800 border-slate-700 text-slate-400"
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                    : "bg-slate-100 border-slate-300 text-[#52627A]"
                 )}>
                   {publishedScorecard.length} Subject{publishedScorecard.length === 1 ? '' : 's'}
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm text-[#52627A]">
                 Official sessional and internal marks published by faculty
               </p>
             </div>
@@ -758,7 +757,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           {publishedScorecard.length > 0 && (
             <button
               onClick={() => onNavigate('marks')}
-              className="text-xs font-bold text-slate-900 hover:underline cursor-pointer"
+              className="text-xs font-bold text-[#172033] hover:underline cursor-pointer"
             >
               Full Scorecard →
             </button>
@@ -775,27 +774,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[#172033] font-bold border border-slate-200">
                       {item.subjectCode}
                     </span>
-                    <span className="font-mono font-bold text-slate-900 text-sm">
-                      {item.totalInternalScore} <span className="text-xs text-slate-500">/ {item.maxInternalScore}</span>
+                    <span className="font-mono font-bold text-[#172033] text-sm">
+                      {item.totalInternalScore} <span className="text-xs text-[#52627A]">/ {item.maxInternalScore}</span>
                     </span>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-black transition-colors line-clamp-1">
+                    <h4 className="text-[15px] font-bold text-[#172033] group-hover:text-black transition-colors line-clamp-1">
                       {item.subjectName}
                     </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Faculty: {item.facultyName}</p>
+                    <p className="text-xs text-[#52627A] mt-0.5">Faculty: {item.facultyName}</p>
                   </div>
 
                   {item.sessionalMarks.sessionals.length > 0 && (
-                    <div className="space-y-1 pt-2 border-t border-slate-800 text-xs">
+                    <div className="space-y-1 pt-2 border-t border-slate-100 text-xs">
                       {item.sessionalMarks.sessionals.slice(0, 2).map((s, idx) => (
-                        <div key={s.assessmentId || idx} className="flex justify-between items-center text-[11px]">
-                          <span className="text-slate-400 truncate max-w-[140px]">{s.title}:</span>
-                          <span className="font-mono font-bold text-slate-900">
+                        <div key={s.assessmentId || idx} className="flex justify-between items-center text-xs">
+                          <span className="text-[#52627A] truncate max-w-[140px]">{s.title}:</span>
+                          <span className="font-mono font-bold text-[#172033]">
                             {s.obtainedMarks} / {s.maxMarks}
                           </span>
                         </div>
@@ -804,7 +803,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-900 font-bold group-hover:underline">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-[#172033] font-bold group-hover:underline">
                   <span>View Details</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </div>
@@ -812,10 +811,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             ))}
           </div>
         ) : (
-          <div className="glass-panel rounded-2xl p-6 border border-slate-800/80 text-center space-y-2">
-            <Award className="w-8 h-8 text-slate-600 mx-auto" />
-            <p className="text-sm font-semibold text-white">No Published Continuous Assessments Yet</p>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 text-center space-y-2">
+            <Award className="w-8 h-8 text-slate-400 mx-auto" />
+            <p className="text-base font-bold text-[#172033]">No Published Continuous Assessments Yet</p>
+            <p className="text-sm text-[#52627A] max-w-md mx-auto">
               Faculty has not released any marks for this academic session yet. Saved drafts and internal evaluations will appear here once officially published.
             </p>
           </div>
@@ -826,17 +825,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+            <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+              <h3 className="text-lg sm:text-xl font-bold text-[#172033] tracking-tight flex items-center gap-2">
                 Section {section?.name || 'Assigned'} Assignments & Quizzes
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 font-semibold">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 font-semibold">
                   {mySectionAssignments.length} Assignments • {mySectionQuizzes.length} Quizzes
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm text-[#52627A]">
                 Tasks, file submissions and Google Form assessments published for your section
               </p>
             </div>
@@ -844,14 +843,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('student_assignments')}
-              className="text-xs font-bold text-blue-400 hover:underline cursor-pointer"
+              className="text-xs font-bold text-[#0f172a] hover:underline cursor-pointer"
             >
               All Assignments →
             </button>
-            <span className="text-slate-600">•</span>
+            <span className="text-slate-400">•</span>
             <button
               onClick={() => onNavigate('quizzes')}
-              className="text-xs font-bold text-purple-400 hover:underline cursor-pointer"
+              className="text-xs font-bold text-[#0f172a] hover:underline cursor-pointer"
             >
               All Quizzes →
             </button>
@@ -861,10 +860,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         {/* Assignments Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {mySectionAssignments.length === 0 ? (
-            <div className="col-span-full py-8 text-center glass-panel rounded-2xl border border-slate-800 text-slate-400">
-              <FileCheck className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-300">No active assignments for Section {section?.name || 'Assigned'}.</p>
-              <p className="text-[11px] text-slate-500">Newly assigned homework and practicals will appear here</p>
+            <div className="col-span-full py-8 text-center bg-white rounded-2xl border border-slate-200 text-[#52627A]">
+              <FileCheck className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-[#172033]">No active assignments for Section {section?.name || 'Assigned'}.</p>
+              <p className="text-xs text-[#52627A] mt-1">Newly assigned homework and practicals will appear here</p>
             </div>
           ) : (
             mySectionAssignments.map(asgn => {
@@ -880,34 +879,34 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[#172033] font-bold border border-slate-200">
                         {asgn.subject?.subject_code || 'Subject'}
                       </span>
                       <span className={clsx(
-                        'px-2 py-0.5 rounded-full text-[10px] font-black',
+                        'px-2.5 py-0.5 rounded-full text-xs font-bold border',
                         isSubmitted
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : isPastDue
-                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          ? 'bg-rose-50 text-rose-800 border-rose-200'
+                          : 'bg-amber-50 text-amber-900 border-amber-200'
                       )}>
-                        {isSubmitted ? (sub.status === 'graded' ? `Graded: ${sub.marks_obtained}/${asgn.max_marks}` : 'Submitted') : isPastDue ? 'Past Due' : 'Pending'}
+                        {isSubmitted ? (sub.status === 'graded' ? `✓ Graded: ${sub.marks_obtained}/${asgn.max_marks}` : '✓ Submitted') : isPastDue ? '✕ Past Due' : '⏳ Pending'}
                       </span>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{asgn.title}</h4>
-                      <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">{asgn.description || asgn.subject?.subject_name}</p>
+                      <h4 className="text-[15px] font-bold text-[#172033] line-clamp-1">{asgn.title}</h4>
+                      <p className="text-xs text-[#52627A] line-clamp-2 mt-0.5">{asgn.description || asgn.subject?.subject_name}</p>
                     </div>
 
-                    <div className="text-[11px] text-slate-500 space-y-1 pt-1 border-t border-slate-100">
+                    <div className="text-xs text-[#52627A] space-y-1 pt-1 border-t border-slate-100">
                       <div className="flex items-center justify-between">
-                        <span>Faculty: <strong className="text-slate-800">{asgn.faculty?.full_name || 'Faculty'}</strong></span>
-                        <span>Max: <strong className="text-slate-900 font-bold">{asgn.max_marks} M</strong></span>
+                        <span>Faculty: <strong className="text-[#172033] font-semibold">{asgn.faculty?.full_name || 'Faculty'}</strong></span>
+                        <span>Max: <strong className="text-[#172033] font-bold">{asgn.max_marks} M</strong></span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Clock className="w-3 h-3 text-blue-400" />
-                        <span>Due: <strong className="text-slate-800">{dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong></span>
+                      <div className="flex items-center gap-1.5 text-[#52627A]">
+                        <Clock className="w-3.5 h-3.5 text-[#52627A]" />
+                        <span>Due: <strong className="text-[#172033] font-semibold">{dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong></span>
                       </div>
                     </div>
                   </div>
@@ -915,14 +914,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
                     {isSubmitted ? (
                       <div className="w-full flex items-center justify-between text-xs">
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="text-emerald-800 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                           {sub.file_name ? sub.file_name.slice(0, 16) + '...' : 'Submitted'}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-[11px] py-1 px-2 h-auto"
+                          className="text-xs py-1 px-2.5 h-auto"
                           onClick={() => {
                             setQuickSubmitAssignment(asgn);
                             setSelectedFile(null);
@@ -957,8 +956,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         {/* Quizzes Quick Attempt Grid */}
         {mySectionQuizzes.length > 0 && (
           <div className="pt-2">
-            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
+            <h4 className="text-xs font-bold text-[#172033] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
               Active Section Quizzes (Google Forms)
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -969,22 +968,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                     className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-2.5"
                   >
                     <div>
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-slate-700 font-bold">{quiz.subject?.subject_code || 'Quiz'}</span>
-                        <span className="text-slate-900 font-bold font-bold">{quiz.max_marks} Marks</span>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-[#172033]">{quiz.subject?.subject_code || 'Quiz'}</span>
+                        <span className="text-[#172033] font-bold">{quiz.max_marks} Marks</span>
                       </div>
-                      <h5 className="text-xs font-bold text-slate-900 mt-1 line-clamp-1">{quiz.title}</h5>
-                      <p className="text-[11px] text-slate-400">By {quiz.faculty?.full_name || 'Faculty'}</p>
+                      <h5 className="text-[15px] font-bold text-[#172033] mt-1 line-clamp-1">{quiz.title}</h5>
+                      <p className="text-xs text-[#52627A]">By {quiz.faculty?.full_name || 'Faculty'}</p>
                     </div>
 
                     <a
                       href={quiz.google_form_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-1.5 px-3 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                      className="w-full py-2 px-3 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-xs"
                     >
                       <span>Attempt Quiz</span>
-                      <ExternalLink className="w-3 h-3" />
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 );

@@ -314,20 +314,20 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       {/* 1. WELCOME BANNER */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1 z-10">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#172033] font-serif-institutional tracking-tight">
             Welcome back, {currentFaculty?.full_name || user?.full_name || 'Faculty Member'} 👋
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            {currentFaculty?.designation || 'Faculty'} • {dept?.name || 'Academic Department'} • Code: <span className="text-slate-900 font-bold font-mono bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
+          <p className="text-sm text-[#52627A] font-medium">
+            {currentFaculty?.designation || 'Faculty'} • {dept?.name || 'Academic Department'} • Code: <span className="text-[#172033] font-bold font-mono bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">{currentFaculty?.faculty_code || currentFaculty?.employee_code || 'FACULTY'}</span>
           </p>
         </div>
 
         <div className="z-10 flex items-center gap-3">
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => onNavigate('take_attendance')}
-            leftIcon={<CheckSquare className="w-3.5 h-3.5 text-white" />}
+            leftIcon={<CheckSquare className="w-4 h-4 text-white" />}
           >
             Mark Live Attendance
           </Button>
@@ -344,13 +344,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           {/* Today's Classes */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Today's Classes</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Today's Classes</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                 {todayClassesCount}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">{todayDay} Timetable</span>
+              <span className="text-xs text-[#52627A] font-medium">{todayDay} Timetable</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
@@ -358,13 +358,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           {/* Weekly Teaching Load */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Weekly Teaching Load</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Weekly Teaching Load</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                 {weeklyLoadCount}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">Lectures / Week</span>
+              <span className="text-xs text-[#52627A] font-medium">Lectures / Week</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <Clock className="w-5 h-5" />
             </div>
           </div>
@@ -372,13 +372,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           {/* Assigned Subjects */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Assigned Subjects</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Assigned Subjects</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                 {assignedSubjectsCount}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">Theory & Labs</span>
+              <span className="text-xs text-[#52627A] font-medium">Theory & Labs</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <BookOpen className="w-5 h-5" />
             </div>
           </div>
@@ -386,13 +386,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           {/* Assigned Sections */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Assigned Sections</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Assigned Sections</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                 {assignedSectionsCount}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">Active Sections</span>
+              <span className="text-xs text-[#52627A] font-medium">Active Sections</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <Layers className="w-5 h-5" />
             </div>
           </div>
@@ -400,13 +400,13 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           {/* Pending Requests */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1 shadow-xs hover:border-slate-300 transition-all">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Pending Requests</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-amber-600 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Pending Requests</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-amber-800 mt-1 font-mono">
                 {pendingCorrectionsCount}
               </h3>
-              <span className="text-[10px] text-amber-700/80 font-medium">Requires Review</span>
+              <span className="text-xs text-amber-800 font-medium">Requires Review</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
               <RotateCcw className="w-5 h-5" />
             </div>
           </div>
@@ -415,17 +415,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
       {/* 2.5 MY ASSIGNED CLASSES (SECTION-WISE SEPARATION) */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 space-y-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
           <div>
-            <h3 className="text-base font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-slate-800" />
+            <h3 className="text-lg font-bold text-[#172033] font-serif-institutional tracking-tight flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#172033]" />
               MY ASSIGNED CLASSES
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-sm text-[#52627A] mt-0.5">
               Classes and subjects assigned to your teaching portfolio across sections
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-800 self-start sm:self-auto">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 border border-slate-200 text-[#172033] self-start sm:self-auto font-mono">
             {enrichedAssignedSections.length} Assigned Sections
           </span>
         </div>
@@ -433,14 +433,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         {/* Multi-Year Filter Tabs (when faculty teaches across multiple academic years) */}
         {distinctAssignedYears.length > 1 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
-            <span className="text-xs font-semibold text-slate-500 shrink-0">Filter by Year:</span>
+            <span className="text-sm font-semibold text-[#52627A] shrink-0">Filter by Year:</span>
             <button
               onClick={() => setSelectedYearFilter('ALL')}
               className={clsx(
                 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
                 selectedYearFilter === 'ALL'
                   ? 'bg-[#0f172a] text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  : 'bg-white border border-slate-200 text-[#52627A] hover:text-[#172033] hover:bg-slate-50'
               )}
             >
               All Years ({enrichedAssignedSections.length})
@@ -453,7 +453,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   'px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0',
                   selectedYearFilter === yr.id
                     ? 'bg-[#0f172a] text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    : 'bg-white border border-slate-200 text-[#52627A] hover:text-[#172033] hover:bg-slate-50'
                 )}
               >
                 {yr.name} ({yr.count})
@@ -464,9 +464,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
         {enrichedAssignedSections.length === 0 ? (
           <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-            <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
-            <h4 className="text-sm font-bold text-slate-900">No published timetable or teaching assignments available</h4>
-            <p className="text-xs text-slate-500">
+            <BookOpen className="w-8 h-8 text-[#52627A] mx-auto opacity-50" />
+            <h4 className="text-base font-bold text-[#172033]">No published timetable or teaching assignments available</h4>
+            <p className="text-sm text-[#52627A]">
               When teaching assignments or published timetable schedules are configured for your profile, your assigned classes, sections, and subjects will appear here automatically.
             </p>
           </div>
@@ -479,28 +479,28 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-4 shadow-xs relative overflow-hidden flex flex-col justify-between hover:border-slate-300 transition-all"
                 >
                   {/* Section Banner Header */}
-                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-10 h-10 rounded-xl bg-[#0f172a] text-white font-black flex items-center justify-center text-base shadow-xs">
                         {cleanSecName}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-base font-black text-slate-900 tracking-tight">
+                          <h4 className="text-base font-bold text-[#172033] tracking-tight">
                             SECTION {cleanSecName}
                           </h4>
                           {yearName && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-[#172033] border border-slate-200">
                               {yearName}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500 font-mono mt-0.5 font-medium">
+                        <p className="text-sm text-[#52627A] font-mono mt-0.5 font-medium">
                           {yearName} • {cleanRoom} • {studentCount} Students
                         </p>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white border border-slate-200 text-slate-800 shadow-xs">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white border border-slate-200 text-[#172033] shadow-xs">
                       {subjectsInSec.length} Subjects
                     </span>
                   </div>
@@ -508,7 +508,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   {/* Assigned Subjects in This Section */}
                   <div className="space-y-3 flex-1">
                     {subjectsInSec.length === 0 ? (
-                      <div className="p-3 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200">
+                      <div className="p-3 text-center text-sm text-[#52627A] bg-white rounded-xl border border-slate-200">
                         Section allocated • Subject curriculum pending assignment
                       </div>
                     ) : (
@@ -524,30 +524,30 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-100 text-[#172033] border border-slate-200">
                                   {sub.subject_code}
                                 </span>
-                                <h5 className="text-xs sm:text-sm font-bold text-slate-900 mt-1">
+                                <h5 className="text-base font-bold text-[#172033] mt-1">
                                   {sub.subject_name}
                                 </h5>
-                                <span className="text-[11px] text-slate-500 font-medium">
+                                <span className="text-xs text-[#52627A] font-medium">
                                   {sub.lecture_type || 'Theory'} • {sub.credits || 4} Credits
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                              <div className="flex items-center gap-2 text-[10px]">
-                                <span>Assgn: <strong className="text-slate-800 font-bold">{asgnCount}</strong></span>
-                                <span>Quizzes: <strong className="text-slate-800 font-bold">{quizCount}</strong></span>
-                                <span>Sess: <strong className="text-slate-800 font-bold">{sessCount}</strong></span>
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-[#52627A]">
+                              <div className="flex items-center gap-2.5 text-xs">
+                                <span>Assgn: <strong className="text-[#172033] font-bold">{asgnCount}</strong></span>
+                                <span>Quizzes: <strong className="text-[#172033] font-bold">{quizCount}</strong></span>
+                                <span>Sess: <strong className="text-[#172033] font-bold">{sessCount}</strong></span>
                               </div>
 
                               <Button
                                 variant="primary"
                                 size="sm"
                                 onClick={() => onNavigate('section_workspace', { subjectId: sub.id, sectionId: sec.id })}
-                                className="text-[10px] py-1 px-3 font-bold"
+                                className="text-xs py-1 px-3 font-bold"
                               >
                                 Workspace →
                               </Button>
@@ -645,22 +645,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
                       <GraduationCap className="w-6 h-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-[#172033] border border-slate-200">
                           OFFICIAL CLASS COORDINATOR
                         </span>
-                        <span className="text-xs text-slate-500 font-mono">
+                        <span className="text-xs text-[#52627A] font-mono">
                           {item.yrName} • {item.cleanCoordRoom}
                         </span>
                       </div>
-                      <h3 className="text-base font-black text-slate-900 font-serif-institutional mt-1">
+                      <h3 className="text-lg font-bold text-[#172033] font-serif-institutional mt-1">
                         Class Coordinator Portal — {item.yrName} Section {item.secName}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-sm text-[#52627A] mt-0.5">
                         Coordinating {item.secStudentsCount} enrolled students and complete weekly timetable oversight ({item.weeklyLecturesCount} weekly periods)
                       </p>
                     </div>
@@ -686,22 +686,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 text-[10px] block font-semibold">Enrolled Section Students</span>
-                    <span className="text-lg font-black text-slate-900 block mt-0.5">{item.secStudentsCount}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 text-sm">
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[#52627A] text-xs block font-semibold uppercase tracking-wider">Enrolled Section Students</span>
+                    <span className="text-xl font-bold text-[#172033] block mt-0.5 font-mono">{item.secStudentsCount}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 text-[10px] block font-semibold">Weekly Lecture Periods</span>
-                    <span className="text-lg font-black text-slate-900 block mt-0.5">{item.weeklyLecturesCount}</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[#52627A] text-xs block font-semibold uppercase tracking-wider">Weekly Lecture Periods</span>
+                    <span className="text-xl font-bold text-[#172033] block mt-0.5 font-mono">{item.weeklyLecturesCount}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 text-[10px] block font-semibold">Department & Year</span>
-                    <span className="text-sm font-bold text-slate-900 block mt-0.5 truncate">{dept?.name || 'CSE'} ({item.yrName})</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[#52627A] text-xs block font-semibold uppercase tracking-wider">Department & Year</span>
+                    <span className="text-sm font-bold text-[#172033] block mt-0.5 truncate">{dept?.name || 'CSE'} ({item.yrName})</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 text-[10px] block font-semibold">Coordinator Role</span>
-                    <span className="text-sm font-bold text-slate-900 block mt-0.5">{item.yrName} Sec {item.secName} Lead</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[#52627A] text-xs block font-semibold uppercase tracking-wider">Coordinator Role</span>
+                    <span className="text-sm font-bold text-[#172033] block mt-0.5">{item.yrName} Sec {item.secName} Lead</span>
                   </div>
                 </div>
               </div>
@@ -717,22 +717,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 space-y-4 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 tracking-wide flex items-center gap-2">
+              <h3 className="text-base font-bold text-[#172033] tracking-tight flex items-center gap-2">
                 <span>{selectedScheduleDay === todayDay 
                   ? `Today's Schedule (${todayDay})` 
                   : `${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} Schedule (${selectedScheduleDay})`}</span>
                 {isDateToday(selectedScheduleDate, todayISO) && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#0f172a] text-white">
                     TODAY
                   </span>
                 )}
                 {isDateInFuture(selectedScheduleDate, todayISO) && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
                     UPCOMING
                   </span>
                 )}
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-sm text-[#52627A] mt-0.5">
                 {formatDateFull(selectedScheduleDate)} • Odd Semester
               </p>
             </div>
@@ -747,12 +747,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                     key={d}
                     onClick={() => setSelectedScheduleDay(d)}
                     className={clsx(
-                      'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
+                      'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0',
                       selectedScheduleDay === d
                         ? 'bg-[#0f172a] text-white shadow-xs'
                         : isDayToday
-                          ? 'text-slate-900 bg-white/70 border border-slate-300 font-bold'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                          ? 'text-[#172033] bg-white border border-slate-300 font-bold'
+                          : 'text-[#52627A] hover:text-[#172033] hover:bg-white'
                     )}
                     title={formatDateFull(dayDate)}
                   >
@@ -762,7 +762,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               })}
               <button
                 onClick={() => onNavigate('timetable')}
-                className="text-xs font-bold text-slate-900 hover:underline cursor-pointer px-2 py-1 shrink-0 ml-1"
+                className="text-xs font-bold text-[#172033] hover:underline cursor-pointer px-2 py-1 shrink-0 ml-1"
               >
                 Full →
               </button>
@@ -773,16 +773,16 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             {isScopedLoading && displayedSchedule.length === 0 ? (
               <TimetableSkeleton slots={3} />
             ) : displayedSchedule.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
-                <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="font-bold text-slate-900 text-sm">
+              <div className="p-8 text-center text-sm text-[#52627A] bg-slate-50 rounded-2xl border border-slate-200">
+                <Calendar className="w-8 h-8 text-[#52627A] mx-auto mb-2 opacity-50" />
+                <p className="font-bold text-[#172033] text-base">
                   {myTt.length === 0
                     ? 'No published timetable is available for your teaching assignments'
                     : selectedScheduleDay === todayDay && todayDay === 'SUN' 
                       ? 'Today is Sunday (Weekend / Holiday)' 
                       : `No scheduled lectures for ${DAY_FULL_NAMES[selectedScheduleDay] || selectedScheduleDay} (${formatDateFull(selectedScheduleDate)})`}
                 </p>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-[#52627A] mt-1">
                   {myTt.length === 0
                     ? 'When the department HOD publishes your timetable schedule, your lectures will appear here automatically.'
                     : todayDay === 'SUN' && selectedScheduleDay === 'SUN' 
@@ -818,14 +818,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                     className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs"
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-mono text-xs font-bold shrink-0 shadow-xs">
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[#172033] font-mono text-xs font-bold shrink-0 shadow-xs">
                         {entry.start_time?.substring(0, 5) || '09:00'} – {entry.end_time?.substring(0, 5) || '09:50'}
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-slate-900 leading-tight">
+                        <h4 className="text-base font-bold text-[#172033] leading-tight">
                           {sub?.subject_name || 'Subject'}
                         </h4>
-                        <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                        <p className="text-sm text-[#52627A] mt-0.5 font-medium">
                           {yrName ? `${yrName} • ` : ''}Section {sec?.name} • {cleanRoom || 'Room TBD'} • {entry.lecture_type || 'Theory'}
                         </p>
                       </div>
@@ -833,12 +833,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
                     <div className="flex items-center gap-2.5 self-end sm:self-auto">
                       {isFuture ? (
-                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-500">
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-[#52627A]">
                           Upcoming • Attendance not available yet
                         </span>
                       ) : summary.status === 'FULLY_MARKED' ? (
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1.5">
+                          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>✓ Marked ({summary.total}/{summary.total})</span>
                           </span>
@@ -846,14 +846,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                             variant="outline"
                             size="sm"
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
-                            className="shrink-0 text-xs font-bold text-slate-800"
+                            className="shrink-0 text-xs font-bold text-[#172033]"
                           >
                             View / Update →
                           </Button>
                         </div>
                       ) : summary.status === 'PARTIALLY_MARKED' ? (
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-1.5">
+                          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-1.5">
                             <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                             <span>Marked ({summary.marked}/{summary.total})</span>
                           </span>
@@ -868,7 +868,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                         </div>
                       ) : isToday ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-amber-800">
+                          <span className="text-xs font-bold text-amber-800">
                             Not Recorded
                           </span>
                           <Button
@@ -883,14 +883,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-500">
+                          <span className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-[#52627A]">
                             Not Marked (Past)
                           </span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => onNavigate('take_attendance', { timetableEntryId: entry.id, sessionDate: selectedScheduleDate })}
-                            className="shrink-0 text-xs font-bold text-slate-700"
+                            className="shrink-0 text-xs font-bold text-[#172033]"
                           >
                             View Details →
                           </Button>
@@ -908,7 +908,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 flex flex-col justify-between space-y-4 shadow-xs">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900 tracking-wide">
+              <h3 className="text-base font-bold text-[#172033] tracking-tight">
                 Academic & Marks Shortcuts
               </h3>
             </div>
@@ -916,37 +916,37 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
             <div className="grid grid-cols-2 gap-2.5 mb-4">
               <button
                 onClick={() => onNavigate('faculty_assignments')}
-                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group shadow-xs"
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group shadow-xs cursor-pointer"
               >
-                <div className="text-xs font-bold text-slate-900 group-hover:text-black">Assignments</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Create & Grade</div>
+                <div className="text-sm font-bold text-[#172033] group-hover:text-black">Assignments</div>
+                <div className="text-xs text-[#52627A] mt-0.5">Create & Grade</div>
               </button>
 
               <button
                 onClick={() => onNavigate('quizzes')}
-                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group shadow-xs"
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group shadow-xs cursor-pointer"
               >
-                <div className="text-xs font-bold text-slate-900 group-hover:text-black">Quizzes</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Google Form Quizzes</div>
+                <div className="text-sm font-bold text-[#172033] group-hover:text-black">Quizzes</div>
+                <div className="text-xs text-[#52627A] mt-0.5">Google Form Quizzes</div>
               </button>
 
               <button
                 onClick={() => onNavigate('marks_and_assessments')}
-                className="col-span-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group flex items-center justify-between shadow-xs"
+                className="col-span-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:bg-slate-100/60 text-left transition-all group flex items-center justify-between shadow-xs cursor-pointer"
               >
                 <div>
-                  <div className="text-xs font-bold text-slate-900 group-hover:text-black">Marks & Assessment Management</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Sessional 1, 2, Quizzes, CSV Import/Export & PDF Scorecards</div>
+                  <div className="text-sm font-bold text-[#172033] group-hover:text-black">Marks & Assessment Management</div>
+                  <div className="text-xs text-[#52627A] mt-0.5">Sessional 1, 2, Quizzes, CSV Import/Export & PDF Scorecards</div>
                 </div>
-                <span className="text-xs font-bold text-slate-900">Manage Marks →</span>
+                <span className="text-xs font-bold text-[#172033] shrink-0 ml-2">Manage Marks →</span>
               </button>
             </div>
 
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-slate-500">Pending Correction Requests</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Pending Correction Requests</h4>
               <button
                 onClick={() => onNavigate('corrections')}
-                className="text-[11px] font-bold text-slate-900 hover:underline cursor-pointer"
+                className="text-xs font-bold text-[#172033] hover:underline cursor-pointer"
               >
                 View All →
               </button>
@@ -954,20 +954,20 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
             <div className="space-y-2">
               {myPendingCorrections.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="p-4 text-center text-sm text-[#52627A] bg-slate-50 rounded-xl border border-slate-200">
                   No pending correction requests from students.
                 </div>
               ) : (
                 myPendingCorrections.slice(0, 2).map((c) => (
                   <div
                     key={c.id}
-                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs"
+                    className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs"
                   >
                     <div>
-                      <h4 className="font-bold text-slate-900">
+                      <h4 className="font-bold text-[#172033] text-sm">
                         {c.student?.full_name || 'Student'}
                       </h4>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-xs text-[#52627A] mt-0.5">
                         Roll: {c.student?.roll_number} • {c.reason}
                       </p>
                     </div>
@@ -975,7 +975,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                       variant="outline"
                       size="sm"
                       onClick={() => onNavigate('corrections')}
-                      className="text-[10px] py-1 px-2 shrink-0 text-slate-800"
+                      className="text-xs py-1 px-2.5 shrink-0 text-[#172033]"
                     >
                       Review
                     </Button>

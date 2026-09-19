@@ -63,11 +63,11 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50 shrink-0">
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-bold text-[#172033] tracking-tight flex items-center gap-2">
               {title}
             </h3>
             {description && (
-              <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+              <p className="text-sm text-[#52627A] mt-1">{description}</p>
             )}
           </div>
           <button
@@ -80,7 +80,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:px-6 overflow-y-auto space-y-4 flex-1 pb-safe text-slate-700">{children}</div>
+        <div className="p-5 sm:px-6 overflow-y-auto space-y-4 flex-1 pb-safe text-[#172033] text-[15px]">{children}</div>
 
         {/* Optional Footer */}
         {footer && (

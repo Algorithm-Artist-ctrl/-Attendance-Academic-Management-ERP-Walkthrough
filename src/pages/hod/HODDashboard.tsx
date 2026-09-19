@@ -434,18 +434,18 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
       {/* Department Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 font-black flex items-center justify-center shadow-xs shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 text-[#172033] font-black flex items-center justify-center shadow-xs shrink-0">
             <Building2 className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-serif-institutional font-black text-slate-900 tracking-tight">{dept.name}</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 border border-slate-200 text-slate-700">
+              <h1 className="text-2xl sm:text-3xl font-serif-institutional font-bold text-[#172033] tracking-tight">{dept.name}</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 border border-slate-200 text-[#172033]">
                 HOD Portal
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">
-              Head of Department: <strong className="text-slate-900 font-bold">{hodFaculty?.full_name || user?.full_name || 'Department Head'}</strong> • {dept?.name || 'Academic Department'}
+            <p className="text-sm text-[#52627A] mt-1 font-medium">
+              Head of Department: <strong className="text-[#172033] font-bold">{hodFaculty?.full_name || user?.full_name || 'Department Head'}</strong> • {dept?.name || 'Academic Department'}
             </p>
           </div>
         </div>
@@ -453,18 +453,18 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         <div className="flex flex-wrap items-center gap-2">
           {/* Academic Year Filter */}
           <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs shadow-xs">
-            <span className="text-slate-500 font-bold uppercase text-[10px]">Year:</span>
+            <span className="text-[#52627A] font-bold uppercase text-[10px]">Year:</span>
             <select
               value={selectedYearFilter}
               onChange={(e) => {
                 setSelectedYearFilter(e.target.value);
                 setSelectedSectionFilter('ALL');
               }}
-              className="bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs font-bold text-[#172033] focus:outline-none cursor-pointer"
             >
-              <option value="ALL" className="bg-white text-slate-900">All Years</option>
+              <option value="ALL" className="bg-white text-[#172033]">All Years</option>
               {years.filter(y => y.active && y.year_number !== 1).map(y => (
-                <option key={y.id} value={y.id} className="bg-white text-slate-900">{y.name}</option>
+                <option key={y.id} value={y.id} className="bg-white text-[#172033]">{y.name}</option>
               ))}
             </select>
           </div>
@@ -486,18 +486,18 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
           <Button
             variant="outline"
             size="sm"
-            leftIcon={<Download className="w-4 h-4 text-slate-500" />}
+            leftIcon={<Download className="w-4 h-4 text-[#52627A]" />}
             onClick={handleExportDefaultersCSV}
-            className="border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs"
+            className="border-slate-200 hover:bg-slate-50 text-[#172033] shadow-xs font-medium"
           >
             Export CSV
           </Button>
           <Button
             variant="outline"
             size="sm"
-            leftIcon={<FileSpreadsheet className="w-4 h-4 text-slate-500" />}
+            leftIcon={<FileSpreadsheet className="w-4 h-4 text-[#52627A]" />}
             onClick={handleExportDefaultersPDF}
-            className="border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs"
+            className="border-slate-200 hover:bg-slate-50 text-[#172033] shadow-xs font-medium"
           >
             PDF Audit
           </Button>
@@ -512,13 +512,13 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-amber-900 flex items-center gap-2">
+              <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2">
                 Pending Leave Applications
-                <span className="px-2 py-0.5 rounded-full bg-amber-200/60 border border-amber-300 text-amber-900 text-[10px] font-mono font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-amber-200/60 border border-amber-300 text-amber-900 text-xs font-mono font-bold">
                   {pendingLeavesCount} Awaiting Review
                 </span>
               </h4>
-              <p className="text-[11px] text-amber-700">
+              <p className="text-xs text-amber-800 mt-0.5">
                 Student leave requests forwarded by Class Coordinators awaiting your final sanction.
               </p>
             </div>
@@ -541,62 +541,62 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Total {dept?.code || 'CSE'} Students</p>
-              <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Total {dept?.code || 'CSE'} Students</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                 {studentStats.length}
               </h3>
-              <span className="text-[10px] text-slate-500 font-semibold">
+              <span className="text-xs text-[#52627A] font-semibold">
                 {selectedYearFilter === 'ALL' ? 'Across All Years' : years.find(y => y.id === selectedYearFilter)?.name}
               </span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <GraduationCap className="w-5 h-5" />
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Department Faculty</p>
-              <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Department Faculty</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                 {deptFaculty.length}
               </h3>
-              <span className="text-[10px] text-slate-500 font-medium">{workloadPercentage}% Workload Assigned</span>
+              <span className="text-xs text-[#52627A] font-medium">{workloadPercentage}% Workload Assigned</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <Users className="w-5 h-5" />
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Defaulters (&lt;75%)</p>
-              <h3 className={`text-2xl sm:text-3xl font-bold mt-1 ${!hasAnyAttendance ? 'text-slate-400' : defaulters.length > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Defaulters (&lt;75%)</p>
+              <h3 className={`text-2xl sm:text-3xl font-bold mt-1 font-mono ${!hasAnyAttendance ? 'text-[#52627A]' : defaulters.length > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
                 {!hasAnyAttendance ? 'N/A' : defaulters.length}
               </h3>
-              <span className={`text-[10px] font-semibold ${!hasAnyAttendance ? 'text-slate-400 font-normal' : defaulters.length > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+              <span className={`text-xs font-semibold ${!hasAnyAttendance ? 'text-[#52627A] font-normal' : defaulters.length > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
                 {!hasAnyAttendance ? 'No attendance data yet' : defaulters.length > 0 ? 'Action Recommended' : 'All Students Eligible'}
               </span>
             </div>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!hasAnyAttendance ? 'bg-slate-100 border border-slate-200 text-slate-400' : defaulters.length > 0 ? 'bg-rose-50 border border-rose-200 text-rose-600' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!hasAnyAttendance ? 'bg-slate-100 border border-slate-200 text-[#52627A]' : defaulters.length > 0 ? 'bg-rose-50 border border-rose-200 text-rose-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Avg Attendance</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#52627A]">Avg Attendance</p>
               {avgAttendance === null ? (
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-400 mt-1">N/A</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-[#52627A] mt-1 font-mono">N/A</h3>
               ) : (
-                <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1 font-mono">
                   {avgAttendance}%
                 </h3>
               )}
-              <span className="text-[10px] text-slate-500 font-semibold">
+              <span className="text-xs text-[#52627A] font-semibold">
                 {avgAttendance === null ? 'No attendance recorded yet' : 'Across All Subjects'}
               </span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#172033]">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
@@ -605,10 +605,10 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
 
       {/* Department Attendance Roster Table */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
+        <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-slate-700" />
-            <h3 className="text-sm font-bold text-slate-900 tracking-wide">
+            <FileSpreadsheet className="w-5 h-5 text-[#172033]" />
+            <h3 className="text-base font-bold text-[#172033] tracking-tight">
               Department Attendance Ledger & Defaulter Tracking
             </h3>
           </div>
@@ -617,10 +617,10 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
             <Button
               variant="outline"
               size="sm"
-              leftIcon={<Download className="w-4 h-4 text-slate-500" />}
+              leftIcon={<Download className="w-4 h-4 text-[#52627A]" />}
               onClick={handleExportFilteredLedgerCSV}
               disabled={filteredStats.length === 0}
-              className="text-xs border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
+              className="text-xs border-slate-200 text-[#172033] hover:bg-slate-50 shadow-xs font-medium"
             >
               Export Filtered CSV
             </Button>
@@ -628,27 +628,27 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* PROMINENT SEARCH & FILTER BAR DIRECTLY ABOVE TABLE */}
-        <div className="p-4 sm:p-5 bg-white border-b border-slate-100 space-y-3">
+        <div className="p-4 sm:p-5 bg-white border-b border-slate-200 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
             {/* Search Student Input */}
             <div className="sm:col-span-6 relative">
-              <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+              <label className="block text-xs uppercase font-bold text-[#52627A] mb-1">
                 Search Student (Name or Roll Number)
               </label>
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[#52627A] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={studentSearchTerm}
                   onChange={(e) => setStudentSearchTerm(e.target.value)}
                   placeholder="Search by student name or roll number..."
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs min-h-[44px]"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm font-semibold text-[#172033] placeholder:text-[#7A8799] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs min-h-[44px]"
                 />
                 {studentSearchTerm && (
                   <button
                     type="button"
                     onClick={() => setStudentSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#52627A] hover:text-[#172033] p-1 cursor-pointer"
                     title="Clear search"
                   >
                     <XCircle className="w-4 h-4" />
@@ -659,7 +659,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
 
             {/* Academic Year Filter (Strictly 2nd, 3rd, 4th Year - NO 1st Year) */}
             <div className="sm:col-span-3">
-              <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+              <label className="block text-xs uppercase font-bold text-[#52627A] mb-1">
                 Academic Year (Strictly No 1st Year)
               </label>
               <select
@@ -668,7 +668,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                   setSelectedYearFilter(e.target.value);
                   setSelectedSectionFilter('ALL');
                 }}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer min-h-[44px]"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-[#172033] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer min-h-[44px]"
               >
                 <option value="ALL">All Years (2nd, 3rd, 4th)</option>
                 {supportedYears.map(y => (
@@ -679,13 +679,13 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
 
             {/* Section Filter (From actual academic structure) */}
             <div className="sm:col-span-3">
-              <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+              <label className="block text-xs uppercase font-bold text-[#52627A] mb-1">
                 Section ({dynamicSections.length})
               </label>
               <select
                 value={selectedSectionFilter}
                 onChange={(e) => setSelectedSectionFilter(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer min-h-[44px]"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-[#172033] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer min-h-[44px]"
               >
                 <option value="ALL">All Sections</option>
                 {dynamicSections.map(sec => {
@@ -704,34 +704,34 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
           {/* Active Filter Badges & Reset Button */}
           {(studentSearchTerm || selectedYearFilter !== 'ALL' || selectedSectionFilter !== 'ALL') && (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
-              <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                <span className="text-[11px] font-semibold text-slate-500">Filters:</span>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#52627A]">
+                <span className="text-xs font-semibold text-[#52627A]">Filters:</span>
                 {studentSearchTerm && (
-                  <span className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-[#172033] text-xs font-bold flex items-center gap-1">
                     "{studentSearchTerm}"
-                    <button onClick={() => setStudentSearchTerm('')} className="hover:text-black ml-0.5">×</button>
+                    <button onClick={() => setStudentSearchTerm('')} className="hover:text-black ml-0.5 cursor-pointer">×</button>
                   </span>
                 )}
                 {selectedYearFilter !== 'ALL' && (
-                  <span className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-[#172033] text-xs font-bold flex items-center gap-1">
                     {years.find(y => y.id === selectedYearFilter)?.name}
-                    <button onClick={() => setSelectedYearFilter('ALL')} className="hover:text-black ml-0.5">×</button>
+                    <button onClick={() => setSelectedYearFilter('ALL')} className="hover:text-black ml-0.5 cursor-pointer">×</button>
                   </span>
                 )}
                 {selectedSectionFilter !== 'ALL' && (
-                  <span className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-[#172033] text-xs font-bold flex items-center gap-1">
                     Section {dynamicSections.find(s => s.id === selectedSectionFilter)?.name || selectedSectionFilter}
-                    <button onClick={() => setSelectedSectionFilter('ALL')} className="hover:text-black ml-0.5">×</button>
+                    <button onClick={() => setSelectedSectionFilter('ALL')} className="hover:text-black ml-0.5 cursor-pointer">×</button>
                   </span>
                 )}
-                <span className="text-[11px] text-slate-500 ml-1">({filteredStats.length} matching)</span>
+                <span className="text-xs text-[#52627A] ml-1 font-medium">({filteredStats.length} matching)</span>
               </div>
               <button
                 type="button"
                 onClick={handleClearLedgerFilters}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer min-h-[36px] shadow-xs"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[#172033] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer min-h-[36px] shadow-xs"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <RotateCcw className="w-3.5 h-3.5 text-[#52627A]" />
                 Clear Filters
               </button>
             </div>
@@ -739,8 +739,8 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-[#172033] font-bold uppercase tracking-wider text-xs border-b border-slate-200">
               <tr>
                 <th className="px-5 py-3.5">Roll Number</th>
                 <th className="px-5 py-3.5">Student Name</th>
@@ -752,7 +752,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                 <th className="px-5 py-3.5 text-right">Audit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className="divide-y divide-slate-200 bg-white">
               {isLoading && filteredStats.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-6">
@@ -761,15 +761,15 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                 </tr>
               ) : filteredStats.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-slate-400">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                  <td colSpan={8} className="px-5 py-12 text-center text-[#52627A]">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-[#52627A] flex items-center justify-center mx-auto mb-2">
                       <Search className="w-5 h-5" />
                     </div>
-                    <p className="text-xs font-bold text-slate-700">No students found matching current filters</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Try refining or clearing your search term, year, or section.</p>
+                    <p className="text-sm font-bold text-[#172033]">No students found matching current filters</p>
+                    <p className="text-xs text-[#52627A] mt-0.5">Try refining or clearing your search term, year, or section.</p>
                     <button
                       onClick={handleClearLedgerFilters}
-                      className="mt-3 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold hover:bg-slate-200 transition-all cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                      className="mt-3 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-[#172033] text-xs font-bold hover:bg-slate-200 transition-all cursor-pointer inline-flex items-center gap-1 shadow-xs"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       Reset All Filters
@@ -782,31 +782,31 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                   const isDefaulter = hasData && s.percentage !== null && s.percentage < 75;
                   return (
                     <tr key={s.studentId} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-5 py-3.5 font-mono font-bold text-slate-700">
+                      <td className="px-5 py-3.5 font-mono font-bold text-[#172033]">
                         {s.rollNumber}
                       </td>
-                      <td className="px-5 py-3.5 font-bold text-slate-900">
+                      <td className="px-5 py-3.5 font-bold text-[#172033]">
                         {s.fullName}
                       </td>
-                      <td className="px-5 py-3.5 text-center font-semibold text-slate-600">
+                      <td className="px-5 py-3.5 text-center font-medium text-[#52627A]">
                         Section {s.sectionName}
                       </td>
-                      <td className="px-5 py-3.5 text-center text-slate-600">
+                      <td className="px-5 py-3.5 text-center text-[#172033] font-semibold">
                         {s.totalLectures}
                       </td>
-                      <td className="px-5 py-3.5 text-center font-bold text-slate-900">
+                      <td className="px-5 py-3.5 text-center font-bold text-emerald-800">
                         {s.presentLectures}
                       </td>
                       <td className="px-5 py-3.5 text-center">
-                        <span className="font-mono font-bold text-sm text-slate-900">
+                        <span className="font-mono font-bold text-sm text-[#172033]">
                           {hasData ? `${s.percentage}%` : 'No data'}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-center">
                         <span className={clsx(
-                          'px-2.5 py-1 rounded-full text-[10px] font-bold border',
+                          'px-2.5 py-1 rounded-full text-xs font-bold border',
                           !hasData
-                            ? 'bg-slate-100 border-slate-200 text-slate-600'
+                            ? 'bg-slate-100 border-slate-200 text-[#52627A]'
                             : isDefaulter
                               ? 'bg-rose-50 border-rose-200 text-rose-800'
                               : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -817,11 +817,10 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                       <td className="px-5 py-3.5 text-right">
                         <button
                           onClick={() => handleSelectStudentForHistory(s.studentId)}
-                          className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-[11px] font-bold transition-all inline-flex items-center gap-1 shadow-xs cursor-pointer"
-                          title="Open complete attendance history drill-down"
+                          className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[#172033] text-xs font-bold transition-all inline-flex items-center gap-1 shadow-xs cursor-pointer"
                         >
-                          <span>View History</span>
-                          <ChevronRight className="w-3 h-3" />
+                          <History className="w-3.5 h-3.5 text-[#52627A]" />
+                          Inspect History
                         </button>
                       </td>
                     </tr>

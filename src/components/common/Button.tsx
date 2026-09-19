@@ -25,12 +25,12 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-bold tracking-wide rounded-xl transition-all duration-200 select-none focus:outline-none focus:ring-2 focus:ring-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold tracking-normal rounded-xl transition-all duration-200 select-none focus:outline-none focus:ring-2 focus:ring-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]';
 
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2 text-xs sm:text-sm gap-2',
-    lg: 'px-6 py-3 text-sm sm:text-base gap-2.5 shadow-sm',
+    sm: 'px-3.5 py-2 text-sm gap-1.5',
+    md: 'px-4.5 py-2.5 text-[15px] gap-2',
+    lg: 'px-6 py-3 text-base gap-2.5 shadow-sm',
   };
 
   const variantStyles: Record<ButtonVariant, string> = {
@@ -38,9 +38,9 @@ export const Button: React.FC<ButtonProps> = ({
     neon: 'bg-[#0f172a] hover:bg-black text-white shadow-xs',
     navy: 'bg-[#0f172a] hover:bg-black text-white shadow-xs',
     success: 'bg-[#0f172a] hover:bg-black text-white shadow-xs',
-    outline: 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-xs',
-    ghost: 'text-slate-600 hover:text-slate-950 hover:bg-slate-100',
-    maroon: 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs',
+    outline: 'bg-white hover:bg-slate-50 text-[#172033] border border-slate-300 shadow-xs',
+    ghost: 'text-[#52627A] hover:text-[#172033] hover:bg-slate-100',
+    maroon: 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 shadow-xs',
     danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs',
   };
 

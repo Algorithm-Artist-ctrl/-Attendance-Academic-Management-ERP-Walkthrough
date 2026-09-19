@@ -378,11 +378,11 @@ export const StudentAccountsPage: React.FC = () => {
       {/* Header Panel */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-serif-institutional font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <GraduationCap className="w-6 h-6 text-slate-900" />
+          <h1 className="text-2xl sm:text-[28px] font-bold text-[#172033] tracking-tight flex items-center gap-2.5">
+            <GraduationCap className="w-7 h-7 text-[#172033]" />
             Student Account & Security Directory
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-sm text-[#52627A] mt-1">
             Student portal credentials, enrollment authentication, account locks, and security audit records
           </p>
         </div>
@@ -393,8 +393,8 @@ export const StudentAccountsPage: React.FC = () => {
             size="sm"
             onClick={handleReconcile}
             isLoading={isReconciling}
-            leftIcon={<ShieldCheck className={`w-3.5 h-3.5 text-slate-700 ${isReconciling ? 'animate-spin' : ''}`} />}
-            className="border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs"
+            leftIcon={<ShieldCheck className={`w-4 h-4 text-[#172033] ${isReconciling ? 'animate-spin' : ''}`} />}
+            className="border-slate-200 hover:bg-slate-50 text-[#172033] font-semibold shadow-xs"
           >
             Reconcile Auth Accounts
           </Button>
@@ -403,7 +403,8 @@ export const StudentAccountsPage: React.FC = () => {
             size="sm"
             onClick={handleRefresh}
             isLoading={isRefreshing}
-            leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />}
+            leftIcon={<RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+            className="border-slate-200 hover:bg-slate-50 text-[#172033] font-semibold"
           >
             Refresh Directory
           </Button>
@@ -411,7 +412,7 @@ export const StudentAccountsPage: React.FC = () => {
       </div>
 
       {reconcileResult && (
-        <div className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all ${
+        <div className={`p-3.5 rounded-xl border text-sm font-medium flex items-center justify-between transition-all ${
           reconcileResult.type === 'success'
             ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
             : 'bg-rose-50 border-rose-200 text-rose-800'
@@ -420,31 +421,31 @@ export const StudentAccountsPage: React.FC = () => {
             {reconcileResult.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
             <span>{reconcileResult.message}</span>
           </div>
-          <button onClick={() => setReconcileResult(null)} className="text-slate-400 hover:text-white text-xs ml-4">✕</button>
+          <button onClick={() => setReconcileResult(null)} className="text-[#52627A] hover:text-[#172033] text-sm ml-4 font-bold">✕</button>
         </div>
       )}
 
       {/* Filter and Search Bar */}
-      <div className="glass-card rounded-2xl p-4 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+      <div className="bg-white rounded-2xl p-4 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between border border-slate-200/80 shadow-xs">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#52627A] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search by student name, roll number, email, section..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs transition-colors"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-[#172033] placeholder-slate-400 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs transition-colors"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Year Filter */}
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 shadow-xs">
-            <Layers className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-[#172033] shadow-xs">
+            <Layers className="w-4 h-4 text-[#52627A]" />
             <select
               value={yearFilter}
               onChange={e => setYearFilter(e.target.value)}
-              className="bg-transparent border-none text-xs text-slate-900 font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent border-none text-sm text-[#172033] font-semibold focus:outline-none cursor-pointer"
             >
               <option value="ALL">All Years</option>
               {years.map(y => (
@@ -456,12 +457,12 @@ export const StudentAccountsPage: React.FC = () => {
           </div>
 
           {/* Section Filter */}
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 shadow-xs">
-            <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-[#172033] shadow-xs">
+            <BookOpen className="w-4 h-4 text-[#52627A]" />
             <select
               value={sectionFilter}
               onChange={e => setSectionFilter(e.target.value)}
-              className="bg-transparent border-none text-xs text-slate-900 font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent border-none text-sm text-[#172033] font-semibold focus:outline-none cursor-pointer"
             >
               <option value="ALL">All Sections</option>
               {sections.map(s => (
@@ -473,12 +474,12 @@ export const StudentAccountsPage: React.FC = () => {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 shadow-xs">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-[#172033] shadow-xs">
+            <Filter className="w-4 h-4 text-[#52627A]" />
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
-              className="bg-transparent border-none text-xs text-slate-900 font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent border-none text-sm text-[#172033] font-semibold focus:outline-none cursor-pointer"
             >
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE">Active Only</option>
@@ -494,7 +495,7 @@ export const StudentAccountsPage: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-[#172033] uppercase tracking-wider">
                 <th className="py-3.5 px-4">Student</th>
                 <th className="py-3.5 px-4">Roll Number</th>
                 <th className="py-3.5 px-4">Year & Section</th>
@@ -504,13 +505,13 @@ export const StudentAccountsPage: React.FC = () => {
                 <th className="py-3.5 px-4 text-right">Security Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs bg-white">
+            <tbody className="divide-y divide-slate-100 text-sm bg-white">
               {filteredAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <GraduationCap className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
-                    <p className="font-semibold text-slate-800">No student accounts found matching criteria</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Try adjusting your search terms or filters.</p>
+                  <td colSpan={7} className="py-12 text-center text-[#52627A]">
+                    <GraduationCap className="w-8 h-8 text-[#52627A] mx-auto mb-2 opacity-50" />
+                    <p className="font-semibold text-[#172033] text-base">No student accounts found matching criteria</p>
+                    <p className="text-xs text-[#52627A] mt-0.5">Try adjusting your search terms or filters.</p>
                   </td>
                 </tr>
               ) : (
@@ -524,36 +525,36 @@ export const StudentAccountsPage: React.FC = () => {
                       className={`hover:bg-slate-50/80 transition-colors ${isBlocked ? 'bg-amber-50/40' : isArchived ? 'opacity-60 bg-slate-50' : ''}`}
                     >
                       {/* Name & Admission Type */}
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <div 
-                          className="font-bold text-white flex items-center gap-2 cursor-pointer group"
+                          className="font-bold text-[#172033] flex items-center gap-2 cursor-pointer group"
                           onClick={() => {
                             setProfileStudentId(acc.id);
                             setIsProfileModalOpen(true);
                           }}
                         >
-                          <span className="group-hover:text-slate-700 transition-colors">{acc.full_name}</span>
+                          <span className="text-sm font-semibold text-[#172033] group-hover:text-blue-600 transition-colors">{acc.full_name}</span>
                           {acc.admission_type && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-600 font-semibold">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-xs text-[#52627A] font-semibold border border-slate-200">
                               {acc.admission_type}
                             </span>
                           )}
-                          <span className="text-[10px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
+                          <span className="text-xs text-[#52627A] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
                             Profile →
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400">{acc.department_name}</p>
+                        <p className="text-xs text-[#52627A] mt-0.5">{acc.department_name}</p>
                       </td>
 
                       {/* Roll Number */}
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <button
                           type="button"
                           onClick={() => {
                             setProfileStudentId(acc.id);
                             setIsProfileModalOpen(true);
                           }}
-                          className="font-mono text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-200 font-bold transition-colors cursor-pointer"
+                          className="font-mono text-xs text-[#172033] bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded border border-slate-200 font-bold transition-colors cursor-pointer"
                           title="View detailed student profile"
                         >
                           {acc.roll_number}
@@ -561,67 +562,67 @@ export const StudentAccountsPage: React.FC = () => {
                       </td>
 
                       {/* Year & Section */}
-                      <td className="py-3 px-4">
-                        <span className="text-slate-800 font-semibold">{acc.section_name}</span>
-                        <span className="text-[10px] text-slate-400 block font-medium">({acc.year_name})</span>
+                      <td className="py-3.5 px-4">
+                        <span className="text-sm text-[#172033] font-semibold block">{acc.section_name}</span>
+                        <span className="text-xs text-[#52627A] block font-medium">({acc.year_name})</span>
                       </td>
 
                       {/* Email */}
-                      <td className="py-3 px-4">
-                        <div className="text-slate-700 font-mono text-[11px] flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                      <td className="py-3.5 px-4">
+                        <div className="text-[#52627A] font-mono text-xs flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-[#52627A] shrink-0" />
                           <span>{acc.email}</span>
                         </div>
                         {acc.phone && (
-                          <div className="text-slate-500 text-[10px] flex items-center gap-1 mt-0.5">
-                            <Phone className="w-2.5 h-2.5" />
+                          <div className="text-[#52627A] text-xs flex items-center gap-1.5 mt-0.5">
+                            <Phone className="w-3 h-3 text-[#52627A] shrink-0" />
                             <span>{acc.phone}</span>
                           </div>
                         )}
                       </td>
 
                       {/* Status Badge */}
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         {acc.status === 'ACTIVE' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
                             Active
                           </span>
                         )}
                         {acc.status === 'BLOCKED' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            <Lock className="w-3 h-3" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            <Lock className="w-3.5 h-3.5" />
                             Blocked
                           </span>
                         )}
                         {acc.status === 'ARCHIVED' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                            <Archive className="w-3 h-3" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            <Archive className="w-3.5 h-3.5" />
                             Archived
                           </span>
                         )}
                       </td>
 
                       {/* Last Login */}
-                      <td className="py-3 px-4 text-[11px] text-slate-400 font-mono">
+                      <td className="py-3.5 px-4 text-xs text-[#52627A] font-mono">
                         {acc.last_sign_in_at ? (
-                          <span className="flex items-center gap-1 text-slate-600">
-                            <Clock className="w-3 h-3 text-slate-500" />
+                          <span className="flex items-center gap-1.5 text-[#52627A]">
+                            <Clock className="w-3.5 h-3.5 text-[#52627A]" />
                             {formatTimeAgo(acc.last_sign_in_at)}
                           </span>
                         ) : (
-                          <span className="text-slate-600 italic">Never logged in</span>
+                          <span className="text-[#52627A] italic">Never logged in</span>
                         )}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenManage(acc)}
-                          className="text-xs text-slate-600 hover:text-slate-900"
-                          leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-slate-600" />}
+                          className="text-xs font-semibold text-[#172033] hover:bg-slate-100"
+                          leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-[#172033]" />}
                         >
                           Manage
                         </Button>
@@ -645,7 +646,7 @@ export const StudentAccountsPage: React.FC = () => {
           <div className="space-y-5">
             {/* Status Alert Message */}
             {actionMessage && (
-              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+              <div className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
                 actionMessage.type === 'success' 
                   ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
                   : 'bg-rose-50 border border-rose-200 text-rose-800'
@@ -659,8 +660,8 @@ export const StudentAccountsPage: React.FC = () => {
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">{selectedAccount.full_name}</h4>
-                  <p className="text-xs text-slate-400">{selectedAccount.year_name} • {selectedAccount.section_name} • {selectedAccount.department_name}</p>
+                  <h4 className="text-base font-bold text-[#172033]">{selectedAccount.full_name}</h4>
+                  <p className="text-xs text-[#52627A]">{selectedAccount.year_name} • {selectedAccount.section_name} • {selectedAccount.department_name}</p>
                 </div>
                 <div>
                   {selectedAccount.status === 'ACTIVE' && (
@@ -674,7 +675,7 @@ export const StudentAccountsPage: React.FC = () => {
                     </span>
                   )}
                   {selectedAccount.status === 'ARCHIVED' && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                       Archived
                     </span>
                   )}
@@ -683,20 +684,20 @@ export const StudentAccountsPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-200">
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Roll Number</span>
-                  <span className="text-slate-900 font-mono font-bold">{selectedAccount.roll_number}</span>
+                  <span className="text-[#52627A] block text-[11px] uppercase font-bold">Roll Number</span>
+                  <span className="text-[#172033] font-mono font-bold text-sm">{selectedAccount.roll_number}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Official Email</span>
-                  <span className="text-slate-800 font-mono font-bold">{selectedAccount.email}</span>
+                  <span className="text-[#52627A] block text-[11px] uppercase font-bold">Official Email</span>
+                  <span className="text-[#172033] font-mono font-bold text-sm">{selectedAccount.email}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Admission Type</span>
-                  <span className="text-slate-200">{selectedAccount.admission_type || 'Regular'}</span>
+                  <span className="text-[#52627A] block text-[11px] uppercase font-bold">Admission Type</span>
+                  <span className="text-[#172033] font-medium text-xs">{selectedAccount.admission_type || 'Regular'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Last Login</span>
-                  <span className="text-slate-800 font-mono font-bold">
+                  <span className="text-[#52627A] block text-[11px] uppercase font-bold">Last Login</span>
+                  <span className="text-[#172033] font-mono font-bold text-xs">
                     {selectedAccount.last_sign_in_at ? formatTimeAgo(selectedAccount.last_sign_in_at) : 'Never logged in'}
                   </span>
                 </div>
@@ -705,16 +706,16 @@ export const StudentAccountsPage: React.FC = () => {
 
             {/* Super Admin Credential Management Panel */}
             <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-emerald-500/10">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-slate-900" />
+                  <KeyRound className="w-4 h-4 text-[#172033]" />
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 tracking-wide">Account Credential Management</h4>
-                    <p className="text-[10px] text-slate-400">Direct Super Admin Auth Controls • Active Immediately</p>
+                    <h4 className="text-sm font-bold text-[#172033] tracking-wide">Account Credential Management</h4>
+                    <p className="text-xs text-[#52627A]">Direct Super Admin Auth Controls • Active Immediately</p>
                   </div>
                 </div>
-                <span className="text-[10px] text-slate-700 font-mono bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" />
+                <span className="text-xs text-[#172033] font-mono font-semibold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   Confirmed Identity
                 </span>
               </div>
@@ -722,12 +723,12 @@ export const StudentAccountsPage: React.FC = () => {
               {/* 1. Login Email (Identity) Control */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <label className="text-xs font-semibold text-[#172033] flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-[#52627A]" />
                     Login Email (Supabase Auth Identity)
                   </label>
                   {selectedAccount.email && (
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-xs text-[#52627A] font-mono">
                       Current: {selectedAccount.email}
                     </span>
                   )}
@@ -738,7 +739,7 @@ export const StudentAccountsPage: React.FC = () => {
                     value={editEmail}
                     onChange={e => setEditEmail(e.target.value)}
                     placeholder="student.roll@student.vctm.in"
-                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-mono font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-[#172033] placeholder-slate-400 font-mono font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                   />
                   <Button
                     variant="outline"
@@ -746,21 +747,21 @@ export const StudentAccountsPage: React.FC = () => {
                     onClick={handleUpdateEmail}
                     isLoading={isUpdatingEmail}
                     disabled={!editEmail || editEmail.trim().toLowerCase() === selectedAccount.email.toLowerCase()}
-                    leftIcon={<Save className="w-3.5 h-3.5 text-emerald-400" />}
-                    className="text-xs shrink-0"
+                    leftIcon={<Save className="w-3.5 h-3.5 text-emerald-600" />}
+                    className="text-xs shrink-0 font-semibold text-[#172033]"
                   >
                     Save Email
                   </Button>
                 </div>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-xs text-[#52627A]">
                   Changing email updates Supabase Auth, profile, and student records atomically. Existing UUIDs and enrollment data remain untouched.
                 </p>
               </div>
 
               {/* 2. Password Management Controls */}
-              <div className="space-y-2 pt-2 border-t border-slate-200/80">
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-xs font-semibold text-[#172033] flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-[#52627A]" />
                   Set / Reset Password
                 </label>
                 
@@ -772,12 +773,12 @@ export const StudentAccountsPage: React.FC = () => {
                       value={editPassword}
                       onChange={e => setEditPassword(e.target.value)}
                       placeholder="Enter new custom password (min 6 characters)..."
-                      className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 font-mono font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                      className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs text-[#172033] placeholder-slate-400 font-mono font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#52627A] hover:text-[#172033]"
                       title={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -790,7 +791,7 @@ export const StudentAccountsPage: React.FC = () => {
                     isLoading={isUpdatingPassword}
                     disabled={!editPassword || editPassword.trim().length < 6}
                     leftIcon={<Check className="w-3.5 h-3.5" />}
-                    className="text-xs shrink-0"
+                    className="text-xs shrink-0 font-semibold"
                   >
                     Set Password
                   </Button>
@@ -798,20 +799,20 @@ export const StudentAccountsPage: React.FC = () => {
 
                 {/* Default Password Reset with Confirmation */}
                 {showDefaultPassConfirm ? (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
-                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
                       <span>Confirm Password Reset</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 leading-relaxed">
-                      Are you sure you want to reset the password for <strong className="text-white">{selectedAccount.full_name}</strong> to institutional default (<code className="text-cyan-300 font-mono">VctmStudent@2026</code>)?
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Are you sure you want to reset the password for <strong className="text-[#172033] font-bold">{selectedAccount.full_name}</strong> to institutional default (<code className="text-amber-900 font-mono font-bold">VctmStudent@2026</code>)?
                     </p>
                     <div className="flex items-center justify-end gap-2 pt-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowDefaultPassConfirm(false)}
-                        className="text-xs text-slate-400 hover:text-white"
+                        className="text-xs text-[#52627A] hover:text-[#172033]"
                       >
                         Cancel
                       </Button>
@@ -823,7 +824,7 @@ export const StudentAccountsPage: React.FC = () => {
                           setShowDefaultPassConfirm(false);
                         }}
                         isLoading={isSettingDefaultPass}
-                        className="text-xs border-amber-500/40 text-amber-300 hover:bg-amber-950/40"
+                        className="text-xs border-amber-300 text-amber-900 hover:bg-amber-100 font-semibold"
                       >
                         Confirm Reset to Default
                       </Button>
@@ -835,8 +836,8 @@ export const StudentAccountsPage: React.FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => setShowDefaultPassConfirm(true)}
-                      className="text-xs border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/40"
-                      leftIcon={<Sparkles className="w-3 h-3 text-cyan-400" />}
+                      className="text-xs border-slate-200 text-[#172033] hover:bg-slate-50 font-semibold"
+                      leftIcon={<Sparkles className="w-3.5 h-3.5 text-blue-600" />}
                     >
                       Reset to Default ("VctmStudent@2026")
                     </Button>
@@ -844,9 +845,9 @@ export const StudentAccountsPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[10px] text-slate-500 space-y-1">
-                <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                  <CheckCircle2 className="w-3 h-3" />
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-[#52627A] space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   Immediate Login Enabled
                 </div>
                 <p>
@@ -857,8 +858,8 @@ export const StudentAccountsPage: React.FC = () => {
 
             {/* Account Status Controls */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
+              <h4 className="text-sm font-bold text-[#172033] flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-600" />
                 Access & Status Enforcement
               </h4>
 
@@ -867,21 +868,22 @@ export const StudentAccountsPage: React.FC = () => {
                   {!showBlockConfirm ? (
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-semibold text-white">Block Student Access</p>
-                        <p className="text-[11px] text-slate-400">Terminates active sessions and prevents ERP portal login.</p>
+                        <p className="text-xs font-semibold text-[#172033]">Block Student Access</p>
+                        <p className="text-xs text-[#52627A]">Terminates active sessions and prevents ERP portal login.</p>
                       </div>
                       <Button
                         variant="danger"
                         size="sm"
                         onClick={() => setShowBlockConfirm(true)}
                         leftIcon={<Lock className="w-3.5 h-3.5" />}
+                        className="font-semibold text-xs"
                       >
                         Block Account
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-3 p-3 rounded-xl bg-red-950/30 border border-red-500/30">
-                      <p className="text-xs text-red-200 font-semibold">
+                    <div className="space-y-3 p-3.5 rounded-xl bg-rose-50 border border-rose-200">
+                      <p className="text-xs text-rose-900 font-bold">
                         Confirm: Are you sure you want to block student {selectedAccount.full_name} ({selectedAccount.roll_number})?
                       </p>
                       <input
@@ -889,14 +891,14 @@ export const StudentAccountsPage: React.FC = () => {
                         placeholder="Reason for blocking (e.g. Fees pending, disciplinary action, leave of absence)..."
                         value={blockReason}
                         onChange={e => setBlockReason(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-red-500/40 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-rose-300 rounded-lg text-xs text-[#172033] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-400"
                       />
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowBlockConfirm(false)}
-                          className="text-xs text-slate-400"
+                          className="text-xs text-[#52627A] hover:text-[#172033]"
                         >
                           Cancel
                         </Button>
@@ -905,7 +907,7 @@ export const StudentAccountsPage: React.FC = () => {
                           size="sm"
                           onClick={handleToggleBlock}
                           isLoading={actionLoading}
-                          className="text-xs"
+                          className="text-xs font-semibold"
                         >
                           Confirm Block
                         </Button>
@@ -916,8 +918,8 @@ export const StudentAccountsPage: React.FC = () => {
               ) : selectedAccount.status === 'BLOCKED' ? (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-amber-300">Account Currently Blocked</p>
-                    <p className="text-[11px] text-slate-400">Restore portal access and enable authentication for this student.</p>
+                    <p className="text-xs font-bold text-amber-900">Account Currently Blocked</p>
+                    <p className="text-xs text-[#52627A]">Restore portal access and enable authentication for this student.</p>
                   </div>
                   <Button
                     variant="primary"
@@ -925,13 +927,13 @@ export const StudentAccountsPage: React.FC = () => {
                     onClick={handleToggleBlock}
                     isLoading={actionLoading}
                     leftIcon={<Unlock className="w-3.5 h-3.5 text-white" />}
-                    className="rounded-xl shadow-xs"
+                    className="rounded-xl shadow-xs font-semibold"
                   >
                     Unblock Account
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">
+                <p className="text-xs text-[#52627A] italic">
                   This student account is archived. Archival retains past attendance records, assignment marks, and test results.
                 </p>
               )}
@@ -941,8 +943,8 @@ export const StudentAccountsPage: React.FC = () => {
                 <div className="pt-3 border-t border-slate-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-slate-300">Archive / Record Departure</p>
-                      <p className="text-[11px] text-slate-500">Graduation, withdrawal, or transfer. Permanently preserves attendance and grades.</p>
+                      <p className="text-xs font-semibold text-[#172033]">Archive / Record Departure</p>
+                      <p className="text-xs text-[#52627A]">Graduation, withdrawal, or transfer. Permanently preserves attendance and grades.</p>
                     </div>
                     <Button
                       variant="outline"
@@ -957,8 +959,8 @@ export const StudentAccountsPage: React.FC = () => {
                           email: selectedAccount.email,
                         });
                       }}
-                      className="text-xs text-amber-400 hover:text-amber-300 border-amber-500/30 hover:border-amber-500/60"
-                      leftIcon={<Archive className="w-3.5 h-3.5" />}
+                      className="text-xs text-amber-800 hover:text-amber-900 border-amber-300 hover:bg-amber-50 font-semibold"
+                      leftIcon={<Archive className="w-3.5 h-3.5 text-amber-700" />}
                     >
                       Archive / Exit
                     </Button>
@@ -972,7 +974,7 @@ export const StudentAccountsPage: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedAccount(null)}
-                className="text-xs text-slate-400"
+                className="text-xs font-semibold text-[#52627A] hover:text-[#172033]"
               >
                 Close
               </Button>
