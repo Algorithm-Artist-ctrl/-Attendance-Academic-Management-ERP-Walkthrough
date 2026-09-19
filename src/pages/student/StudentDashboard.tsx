@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic, TodayAttendanceLecture } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { CardSkeleton, TimetableSkeleton } from '../../components/common/SkeletonLoader';
 import { CyberGauge3D } from '../../components/3d/CyberGauge3D';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
 import { Assignment, AssignmentSubmission, Quiz } from '../../types/database.types';
@@ -75,7 +76,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     quizzes,
     quizResults,
     submitAssignment,
-    getStudentAcademicScorecard
+    getStudentAcademicScorecard,
+    isLoading,
+    timetable,
   } = useAcademic();
 
   const currentStudent = students.find(s => s.id === user?.student?.id || s.roll_number === user?.student?.roll_number) || user?.student;
@@ -302,7 +305,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
         </div>
 
         {/* Lectures List for Today */}
-        {todayLectures.length === 0 ? (
+        {isLoading && todayLectures.length === 0 ? (
+          <TimetableSkeleton slots={3} />
+        ) : todayLectures.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
             <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
             <p className="font-bold text-white text-sm">
@@ -473,67 +478,73 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
       </div>
 
       {/* 4. OVERALL STATS KPI CARDS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Overall Attendance */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Overall Attendance</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No attendance recorded yet'}
-            </h3>
-            <span className="text-[10px] text-emerald-400 font-medium">
-              {stats.totalLectures === 0 || stats.percentage === null ? 'No attendance recorded yet' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <TrendingUp className="w-6 h-6" />
-          </div>
+      {isLoading && (!currentStudent || stats.totalLectures === 0) ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <CardSkeleton count={4} />
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Overall Attendance */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Overall Attendance</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+                {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No attendance recorded yet'}
+              </h3>
+              <span className="text-[10px] text-emerald-400 font-medium">
+                {stats.totalLectures === 0 || stats.percentage === null ? 'No attendance recorded yet' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+          </div>
 
-        {/* Recorded Lectures */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Recorded Lectures</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {stats.totalLectures}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium">{sessionName}</span>
+          {/* Recorded Lectures */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Recorded Lectures</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {stats.totalLectures}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">{sessionName}</span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <BookOpen className="w-6 h-6" />
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
-            <BookOpen className="w-6 h-6" />
-          </div>
-        </div>
 
-        {/* Attended (Present) */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Attended (Present)</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">
-              {stats.presentLectures}
-            </h3>
-            <span className="text-[10px] text-emerald-400 font-medium">
-              {stats.totalLectures > 0 ? 'Verified in Database' : 'No records yet'}
-            </span>
+          {/* Attended (Present) */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Attended (Present)</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">
+                {stats.presentLectures}
+              </h3>
+              <span className="text-[10px] text-emerald-400 font-medium">
+                {stats.totalLectures > 0 ? 'Verified in Database' : 'No records yet'}
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-        </div>
 
-        {/* Absent */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Absent Lectures</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-rose-400 mt-1">
-              {totalAbsent}
-            </h3>
-            <span className="text-[10px] text-rose-400 font-medium">Missed Lectures</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
-            <XCircle className="w-6 h-6" />
+          {/* Absent */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Absent Lectures</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-rose-400 mt-1">
+                {totalAbsent}
+              </h3>
+              <span className="text-[10px] text-rose-400 font-medium">Missed Lectures</span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+              <XCircle className="w-6 h-6" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 5. CONTINUOUS ASSESSMENT & ACADEMIC WORK */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

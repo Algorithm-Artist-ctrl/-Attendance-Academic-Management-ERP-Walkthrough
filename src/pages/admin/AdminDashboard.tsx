@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { CardSkeleton } from '../../components/common/SkeletonLoader';
 import { CyberShield3D } from '../../components/3d/CyberShield3D';
 import { formatTimeAgo } from '../../lib/utils/dateUtils';
 
@@ -35,7 +36,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     programs, 
     adminAccounts,
     refreshAdminAccounts,
-    auditLogs 
+    auditLogs,
+    isLoading
   } = useAcademic();
 
   useEffect(() => {
@@ -115,88 +117,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       {/* ======================================================== */}
       {/* 2. STATS KPI CARDS GRID */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        {/* Total Students */}
-        <div 
-          onClick={() => onNavigate('student_accounts')}
-          className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-[#00ff88]/50 transition-all"
-        >
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Total Students</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {totalStudents}
-            </h3>
-            <span className="text-[10px] text-emerald-400 font-semibold">Active Enrolled</span>
+      {isLoading && students.length === 0 ? (
+        <CardSkeleton count={5} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          {/* Total Students */}
+          <div 
+            onClick={() => onNavigate('student_accounts')}
+            className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-[#00ff88]/50 transition-all"
+          >
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Total Students</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {totalStudents}
+              </h3>
+              <span className="text-[10px] text-emerald-400 font-semibold">Active Enrolled</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+              <GraduationCap className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <GraduationCap className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Total Faculty */}
-        <div 
-          onClick={() => onNavigate('faculty_accounts')}
-          className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-[#00ff88]/50 transition-all"
-        >
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Total Faculty</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {totalFaculty}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium">Faculty Members</span>
+          {/* Total Faculty */}
+          <div 
+            onClick={() => onNavigate('faculty_accounts')}
+            className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-[#00ff88]/50 transition-all"
+          >
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Total Faculty</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {totalFaculty}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">Faculty Members</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+              <Users className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <Users className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Active Accounts */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Active Accounts</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {activeAccountsCount}
-            </h3>
-            <span className="text-[10px] text-emerald-400 font-semibold">Verified & Enabled</span>
+          {/* Active Accounts */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Active Accounts</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+                {activeAccountsCount}
+              </h3>
+              <span className="text-[10px] text-emerald-400 font-semibold">Verified & Enabled</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+              <UserCheck className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <UserCheck className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Blocked Accounts */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Blocked Accounts</p>
-            <h3 className={`text-2xl sm:text-3xl font-black mt-1 ${blockedAccountsCount > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
-              {blockedAccountsCount}
-            </h3>
-            <span className="text-[10px] text-amber-400 font-semibold">
-              {blockedAccountsCount > 0 ? 'Access Restricted' : 'Zero Blocked'}
-            </span>
+          {/* Blocked Accounts */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Blocked Accounts</p>
+              <h3 className={`text-2xl sm:text-3xl font-black mt-1 ${blockedAccountsCount > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+                {blockedAccountsCount}
+              </h3>
+              <span className="text-[10px] text-amber-400 font-semibold">
+                {blockedAccountsCount > 0 ? 'Access Restricted' : 'Zero Blocked'}
+              </span>
+            </div>
+            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${blockedAccountsCount > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800/80 border-slate-700 text-slate-400'}`}>
+              <UserX className="w-5 h-5" />
+            </div>
           </div>
-          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${blockedAccountsCount > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800/80 border-slate-700 text-slate-400'}`}>
-            <UserX className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Departments */}
-        <div 
-          onClick={() => onNavigate('academic_setup')}
-          className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-[#00ff88]/50 transition-all col-span-2 sm:col-span-1"
-        >
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Academic Structure</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {totalDepts}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium">{totalPrograms} Programs</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <Building2 className="w-5 h-5" />
+          {/* Departments */}
+          <div 
+            onClick={() => onNavigate('academic_setup')}
+            className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-[#00ff88]/50 transition-all col-span-2 sm:col-span-1"
+          >
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Academic Structure</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {totalDepts}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">{totalPrograms} Programs</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+              <Building2 className="w-5 h-5" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ======================================================== */}
       {/* 3. ACCOUNT GOVERNANCE & LIVE AUDIT RECENT ACTIVITY */}

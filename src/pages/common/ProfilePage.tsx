@@ -305,7 +305,7 @@ export const ProfilePage: React.FC = () => {
       setIsEmailModalOpen(false);
       setSuccessBannerText(
         res.pendingVerification
-          ? `Confirmation email dispatched to ${newEmailInput.trim()}! Please click the verification link in your inbox.`
+          ? `Confirmation link sent to your new email address (${newEmailInput.trim()}). Please verify to complete the change.`
           : 'Authentication Email Synchronized with Supabase Cloud!'
       );
       setSaveSuccess(true);

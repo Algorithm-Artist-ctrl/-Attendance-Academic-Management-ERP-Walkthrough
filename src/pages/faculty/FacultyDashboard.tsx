@@ -20,6 +20,7 @@ import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { CardSkeleton, TimetableSkeleton } from '../../components/common/SkeletonLoader';
 import { AttendanceStatusBadge } from '../../components/common/AttendanceStatusBadge';
 import { 
   getISTDayOfWeek, 
@@ -331,77 +332,83 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       </div>
 
       {/* 2. STATS KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        {/* Today's Classes */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Today's Classes</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-              {todayClassesCount}
-            </h3>
-            <span className="text-[10px] text-emerald-400 font-medium">{todayDay} Timetable</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <Calendar className="w-5 h-5" />
-          </div>
+      {isScopedLoading && !scopedDashboardData && myTt.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <CardSkeleton count={5} />
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          {/* Today's Classes */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Today's Classes</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+                {todayClassesCount}
+              </h3>
+              <span className="text-[10px] text-emerald-400 font-medium">{todayDay} Timetable</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+              <Calendar className="w-5 h-5" />
+            </div>
+          </div>
 
-        {/* Weekly Teaching Load */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Weekly Teaching Load</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {weeklyLoadCount}
-            </h3>
-            <span className="text-[10px] text-[#00ff88] font-medium">Lectures / Week</span>
+          {/* Weekly Teaching Load */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Weekly Teaching Load</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {weeklyLoadCount}
+              </h3>
+              <span className="text-[10px] text-[#00ff88] font-medium">Lectures / Week</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-[#00ff88]">
+              <Clock className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-[#00ff88]">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Assigned Subjects */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Assigned Subjects</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {assignedSubjectsCount}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium">Theory & Labs</span>
+          {/* Assigned Subjects */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Assigned Subjects</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {assignedSubjectsCount}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">Theory & Labs</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+              <BookOpen className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <BookOpen className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Assigned Sections */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Assigned Sections</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {assignedSectionsCount}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium">Active Sections</span>
+          {/* Assigned Sections */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Assigned Sections</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {assignedSectionsCount}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">Active Sections</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+              <Layers className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <Layers className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Pending Requests */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Pending Requests</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
-              {pendingCorrectionsCount}
-            </h3>
-            <span className="text-[10px] text-amber-400/80 font-medium">Requires Review</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <RotateCcw className="w-5 h-5" />
+          {/* Pending Requests */}
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Pending Requests</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-amber-400 mt-1">
+                {pendingCorrectionsCount}
+              </h3>
+              <span className="text-[10px] text-amber-400/80 font-medium">Requires Review</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <RotateCcw className="w-5 h-5" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 2.5 MY ASSIGNED CLASSES (SECTION-WISE SEPARATION) */}
       <div className="glass-panel rounded-3xl p-6 border border-emerald-500/25 space-y-6">
@@ -760,7 +767,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           </div>
 
           <div className="space-y-3">
-            {displayedSchedule.length === 0 ? (
+            {isScopedLoading && displayedSchedule.length === 0 ? (
+              <TimetableSkeleton slots={3} />
+            ) : displayedSchedule.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 bg-slate-950/40 rounded-2xl border border-emerald-500/10">
                 <Calendar className="w-8 h-8 text-emerald-500/50 mx-auto mb-2" />
                 <p className="font-bold text-white text-sm">

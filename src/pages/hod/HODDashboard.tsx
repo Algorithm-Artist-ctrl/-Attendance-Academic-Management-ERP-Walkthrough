@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { Button } from '../../components/common/Button';
+import { CardSkeleton, TableSkeleton } from '../../components/common/SkeletonLoader';
 import { exportToCSV, exportAttendanceReportPDF } from '../../lib/utils/exportUtils';
 import { getCollegeToday, getCollegeYesterday, getISTTodayDate, formatDateDisplay } from '../../lib/utils/dateUtils';
 import { StudentOverallAttendance } from '../../types/academic.types';
@@ -51,7 +52,8 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
     corrections,
     attendanceRecords,
     getStudentAttendance,
-    refreshData 
+    refreshData,
+    isLoading
   } = useAcademic();
 
   const dept = departments.find(
@@ -532,69 +534,73 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Total {dept?.code || 'CSE'} Students</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {studentStats.length}
-            </h3>
-            <span className="text-[10px] text-emerald-400 font-semibold">
-              {selectedYearFilter === 'ALL' ? 'Across All Years' : years.find(y => y.id === selectedYearFilter)?.name}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <GraduationCap className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Department Faculty</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {deptFaculty.length}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium">{workloadPercentage}% Workload Assigned</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
-            <Users className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Defaulters (&lt;75%)</p>
-            <h3 className={`text-2xl sm:text-3xl font-black mt-1 ${!hasAnyAttendance ? 'text-slate-300' : defaulters.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-              {!hasAnyAttendance ? 'N/A' : defaulters.length}
-            </h3>
-            <span className={`text-[10px] font-bold ${!hasAnyAttendance ? 'text-slate-400 font-normal' : defaulters.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-              {!hasAnyAttendance ? 'No attendance data yet' : defaulters.length > 0 ? 'Action Recommended' : 'All Students Eligible'}
-            </span>
-          </div>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!hasAnyAttendance ? 'bg-slate-800/80 border border-slate-700 text-slate-400' : defaulters.length > 0 ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'}`}>
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-400">Avg Attendance</p>
-            {avgAttendance === null ? (
-              <h3 className="text-xl sm:text-2xl font-black text-slate-300 mt-1">N/A</h3>
-            ) : (
-              <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
-                {avgAttendance}%
+      {isLoading && studentStats.length === 0 ? (
+        <CardSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Total {dept?.code || 'CSE'} Students</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {studentStats.length}
               </h3>
-            )}
-            <span className="text-[10px] text-emerald-400 font-semibold">
-              {avgAttendance === null ? 'No attendance recorded yet' : 'Across All Subjects'}
-            </span>
+              <span className="text-[10px] text-emerald-400 font-semibold">
+                {selectedYearFilter === 'ALL' ? 'Across All Years' : years.find(y => y.id === selectedYearFilter)?.name}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+              <GraduationCap className="w-5 h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
-            <CheckCircle2 className="w-5 h-5" />
+
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Department Faculty</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {deptFaculty.length}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">{workloadPercentage}% Workload Assigned</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Defaulters (&lt;75%)</p>
+              <h3 className={`text-2xl sm:text-3xl font-black mt-1 ${!hasAnyAttendance ? 'text-slate-300' : defaulters.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {!hasAnyAttendance ? 'N/A' : defaulters.length}
+              </h3>
+              <span className={`text-[10px] font-bold ${!hasAnyAttendance ? 'text-slate-400 font-normal' : defaulters.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {!hasAnyAttendance ? 'No attendance data yet' : defaulters.length > 0 ? 'Action Recommended' : 'All Students Eligible'}
+              </span>
+            </div>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!hasAnyAttendance ? 'bg-slate-800/80 border border-slate-700 text-slate-400' : defaulters.length > 0 ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'}`}>
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="glass-card rounded-2xl p-4 sm:p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Avg Attendance</p>
+              {avgAttendance === null ? (
+                <h3 className="text-xl sm:text-2xl font-black text-slate-300 mt-1">N/A</h3>
+              ) : (
+                <h3 className="text-2xl sm:text-3xl font-black text-[#00ff88] mt-1">
+                  {avgAttendance}%
+                </h3>
+              )}
+              <span className="text-[10px] text-emerald-400 font-semibold">
+                {avgAttendance === null ? 'No attendance recorded yet' : 'Across All Subjects'}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Department Attendance Roster Table */}
       <div className="glass-panel rounded-3xl border border-emerald-500/20 overflow-hidden">
@@ -746,7 +752,13 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-500/10">
-              {filteredStats.length === 0 ? (
+              {isLoading && filteredStats.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-6">
+                    <TableSkeleton rows={5} columns={8} />
+                  </td>
+                </tr>
+              ) : filteredStats.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-12 text-center text-slate-400">
                     <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-slate-500 flex items-center justify-center mx-auto mb-2">

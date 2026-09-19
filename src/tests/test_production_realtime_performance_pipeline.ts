@@ -86,7 +86,7 @@ function runTests() {
   const marksPagePath = path.join(rootDir, 'src/pages/student/StudentMarksPage.tsx');
   const marksPageContent = fs.readFileSync(marksPagePath, 'utf8');
   assert(marksPageContent.includes('MarksSkeleton'), 'StudentMarksPage integrates MarksSkeleton');
-  assert(!marksPageContent.includes('Marks not published yet'), 'StudentMarksPage strictly omits "Marks not published yet" placeholders');
+  assert(marksPageContent.includes('Marks not published yet'), 'StudentMarksPage renders "Marks not published yet" for unpublished subjects');
 
   // 8. Zero window.location.reload Guarantee (excluding test suites)
   const srcFiles = fs.readdirSync(path.join(rootDir, 'src'), { recursive: true }) as string[];

@@ -574,7 +574,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         {!isOnline && (
           <aside role="status" className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-center gap-2 shadow-md z-30 sticky top-0">
             <WifiOff className="w-4 h-4 text-slate-950 shrink-0" />
-            <span>Connection interrupted. Working offline — updates will synchronize with Supabase automatically once restored.</span>
+            <span>Connection interrupted. Reconnecting...</span>
           </aside>
         )}
 
