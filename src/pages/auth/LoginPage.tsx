@@ -62,182 +62,197 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden w-full flex flex-col bg-slate-100 overflow-x-hidden select-none">
+    <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden w-full flex flex-col justify-between bg-white select-none relative overflow-x-hidden">
       
-      {/* 1. INSTITUTIONAL HEADER BAR (Compact: h-14 / 56px) */}
-      <header className="h-14 shrink-0 bg-white border-b border-slate-200/90 px-4 sm:px-8 lg:px-10 flex items-center justify-between z-20 shadow-xs">
-        {/* Left: Emblem & Institutional Titles */}
+      {/* ======================================================== */}
+      {/* 1. CAMPUS BACKGROUND PHOTO & REFINED GRADIENT OVERLAYS   */}
+      {/* ======================================================== */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <img
+          src={vctmCampusImage}
+          alt="Vivekananda College of Technology & Management Campus"
+          className="w-full h-full object-cover object-[center_32%] opacity-90"
+          loading="eager"
+        />
+        {/* Soft Left White Gradient: Hero text sits cleanly on bright white canvas */}
+        <div className="absolute inset-y-0 left-0 w-full md:w-3/5 lg:w-[55%] bg-gradient-to-r from-white via-white/95 to-transparent" />
+        {/* Soft Top White Gradient: Header & Navigation sit on pure white */}
+        <div className="absolute inset-x-0 top-0 h-32 lg:h-40 bg-gradient-to-b from-white via-white/90 to-transparent" />
+        {/* Mobile wash for optimal readability on small viewports */}
+        <div className="absolute inset-0 bg-white/80 lg:hidden" />
+      </div>
+
+      {/* ======================================================== */}
+      {/* 2. TOP RIGHT ANGLED GEOMETRIC SLICE WITH MOTTO QUOTE     */}
+      {/* ======================================================== */}
+      <div className="absolute top-0 right-0 z-10 hidden lg:block pointer-events-none">
+        {/* Secondary light gray underlay facet */}
+        <div 
+          className="absolute top-0 right-0 w-72 xl:w-96 h-28 xl:h-36 bg-slate-300/40"
+          style={{ clipPath: 'polygon(12% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+        />
+        {/* Main dark facet */}
+        <div 
+          className="relative w-64 xl:w-88 h-24 xl:h-32 bg-[#111827] flex items-center justify-end pr-6 xl:pr-8 pl-10 xl:pl-12 text-right shadow-2xl"
+          style={{ clipPath: 'polygon(18% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+        >
+          <p className="font-serif-institutional italic text-xs xl:text-sm text-slate-100 tracking-wide font-normal leading-relaxed">
+            &ldquo;Education Today, A Better Tomorrow&rdquo;
+          </p>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 3. BOTTOM RIGHT ANGLED GEOMETRIC SLICE                   */}
+      {/* ======================================================== */}
+      <div 
+        className="absolute bottom-10 right-0 z-10 hidden xl:flex flex-col items-end pr-8 pl-14 py-2.5 bg-[#111827] text-white shadow-2xl pointer-events-none"
+        style={{ clipPath: 'polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%)' }}
+      >
+        <span className="font-script-accent text-base text-slate-100 tracking-wider">
+          Together
+        </span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="h-px w-6 bg-slate-400"></span>
+          <span className="font-serif-institutional italic text-[11px] text-slate-300">
+            for a Better Future
+          </span>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 4. TOP HEADER BAR                                        */}
+      {/* ======================================================== */}
+      <header className="relative z-20 w-full px-5 sm:px-8 lg:px-12 pt-3 sm:pt-4 pb-2 shrink-0 flex items-center justify-between">
+        {/* Left: Official College Logo & Institutional Branding */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
             <img 
               src={vctmOfficialLogo} 
               alt="VCTM Official Emblem" 
-              className="w-full h-full object-contain drop-shadow-xs" 
+              className="w-full h-full object-contain drop-shadow-sm" 
             />
           </div>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="font-serif-institutional font-bold text-lg sm:text-xl text-slate-900 tracking-tight leading-none">
-                VCTM ERP
-              </span>
-              <span className="hidden sm:inline-block h-3 w-px bg-slate-300" />
-              <span className="hidden sm:inline-block text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase">
-                ALIGARH
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-500 font-medium hidden md:inline leading-tight">
+            <h1 className="font-serif-institutional font-bold text-2xl sm:text-3xl text-slate-900 tracking-wider leading-none">
+              VCTM ERP
+            </h1>
+            <span className="text-[11px] sm:text-xs text-slate-700 font-medium tracking-normal mt-0.5">
               Vivekananda College of Technology & Management
             </span>
+            <div className="flex items-center gap-2 mt-0.5 text-[9px] font-bold text-slate-600 tracking-[0.25em]">
+              <span className="h-px w-5 bg-slate-400"></span>
+              <span>ALIGARH</span>
+              <span className="h-px w-5 bg-slate-400"></span>
+            </div>
           </div>
         </div>
 
-        {/* Right: Minimal Values Navigation */}
-        <nav className="hidden md:flex items-center gap-3 text-xs font-semibold text-slate-600 tracking-[0.2em] uppercase">
+        {/* Center-Right: Core Institutional Values Navigation */}
+        <nav className="hidden lg:flex items-center gap-4 text-xs font-semibold text-slate-800 tracking-[0.25em] uppercase pr-4 xl:pr-80">
           <span>LEARN</span>
-          <span className="text-slate-300 font-normal">|</span>
+          <span className="text-slate-400 font-normal">|</span>
           <span>INNOVATE</span>
-          <span className="text-slate-300 font-normal">|</span>
+          <span className="text-slate-400 font-normal">|</span>
           <span>GROW</span>
-          <span className="text-slate-300 font-normal">|</span>
+          <span className="text-slate-400 font-normal">|</span>
           <span>ACHIEVE</span>
         </nav>
       </header>
 
-      {/* 2. MAIN SPLIT VIEWPORT (flex-1 min-h-0: Left ~60%, Right ~40%) */}
-      <main className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 relative overflow-hidden">
+      {/* ======================================================== */}
+      {/* 5. MAIN HERO & FLOATING LOGIN CARD GRID                  */}
+      {/* ======================================================== */}
+      <main className="relative z-20 flex-1 min-h-0 max-w-7xl mx-auto w-full px-5 sm:px-8 lg:px-12 py-2 sm:py-3 lg:py-4 grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-10 items-center">
         
-        {/* ======================================================== */}
-        {/* LEFT COLUMN: ~60% (lg:col-span-7) Campus Visual & Values */}
-        {/* ======================================================== */}
-        <div className="relative lg:col-span-7 flex flex-col justify-between p-6 sm:p-8 lg:p-10 xl:p-12 overflow-hidden bg-slate-950 text-white min-h-[360px] lg:min-h-0">
-          {/* Subtle real campus photo backdrop */}
-          <div className="absolute inset-0 z-0 pointer-events-none">
-            <img
-              src={vctmCampusImage}
-              alt="VCTM College Campus"
-              className="w-full h-full object-cover object-[center_35%] opacity-40 mix-blend-luminosity"
-              loading="eager"
-            />
-            {/* Deep institutional navy gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/90 to-slate-900/75" />
-          </div>
-
-          {/* Foreground Hero Content */}
-          <div className="relative z-10 flex flex-col justify-between h-full max-w-xl">
-            {/* Top Motto Badge */}
-            <div className="space-y-3 pt-1 sm:pt-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-serif-institutional italic">&ldquo;Education Today, A Better Tomorrow&rdquo;</span>
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-300 font-sans text-[11px]">Together &mdash; for a Better Future</span>
-              </div>
-
-              {/* Main Headline */}
-              <h2 className="font-serif-institutional text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-bold text-white tracking-tight leading-[1.15]">
-                Empowering <br />
-                Education <span className="font-normal font-serif-institutional text-slate-200">with Technology</span>
-              </h2>
-
-              {/* Subtitle */}
-              <p className="text-sm sm:text-base text-slate-300 font-normal tracking-wide">
+        {/* Left Column: Hero Text & Bottom Feature Bar */}
+        <div className="lg:col-span-7 flex flex-col justify-between h-full py-1 lg:py-2">
+          {/* Hero Headlines */}
+          <div className="space-y-2 lg:space-y-3 max-w-xl">
+            <h2 className="text-3xl sm:text-4xl lg:text-[46px] xl:text-[50px] font-serif-institutional font-bold text-slate-950 tracking-tight leading-[1.12]">
+              Empowering <br />
+              Education <span className="font-normal font-serif-institutional text-slate-900">with Technology</span>
+            </h2>
+            <div className="flex items-center gap-3 pt-0.5">
+              <p className="text-sm sm:text-base lg:text-lg text-slate-700 font-normal tracking-normal">
                 A Smarter Campus for a Brighter Tomorrow
               </p>
+              <span className="hidden sm:inline-block h-px w-12 bg-slate-400"></span>
             </div>
+          </div>
 
-            {/* Compact Lower-Left Feature Panel (Does not overflow) */}
-            <div className="mt-6 sm:mt-8 bg-slate-900/85 backdrop-blur-xs rounded-xl p-3.5 sm:p-4 border border-slate-800/90 shadow-lg">
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                
-                {/* Feature 1 */}
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-slate-800 text-slate-200 shrink-0 mt-0.5">
-                    <GraduationCap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-white leading-snug">Academic Management</h4>
-                    <p className="text-[11px] text-slate-400 leading-tight mt-0.5">Classes, Subjects & Timetable</p>
-                  </div>
-                </div>
-
-                {/* Feature 2 */}
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-slate-800 text-slate-200 shrink-0 mt-0.5">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-white leading-snug">Student Information</h4>
-                    <p className="text-[11px] text-slate-400 leading-tight mt-0.5">Profiles, Records & Performance</p>
-                  </div>
-                </div>
-
-                {/* Feature 3 */}
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-slate-800 text-slate-200 shrink-0 mt-0.5">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-white leading-snug">Assignments & Grading</h4>
-                    <p className="text-[11px] text-slate-400 leading-tight mt-0.5">Sessional, Quizzes & Evaluations</p>
-                  </div>
-                </div>
-
-                {/* Feature 4 */}
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-slate-800 text-slate-200 shrink-0 mt-0.5">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-white leading-snug">Attendance & Reports</h4>
-                    <p className="text-[11px] text-slate-400 leading-tight mt-0.5">Real-time Tracking & Insights</p>
-                  </div>
-                </div>
-
+          {/* Bottom Floating Dark Feature Bar */}
+          <div className="mt-6 lg:mt-8 xl:mt-12 bg-[#111827] text-white rounded-2xl lg:rounded-3xl p-3.5 sm:p-4 lg:p-4 xl:p-5 shadow-2xl border border-slate-800/80 max-w-2xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/60">
+              
+              {/* Feature 1 */}
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <GraduationCap className="w-4 h-4 lg:w-5 lg:h-5 text-white mb-1.5" />
+                <span className="text-[11px] lg:text-xs font-bold text-white leading-tight">Academic Management</span>
+                <span className="text-[9.5px] lg:text-[10px] text-slate-400 mt-0.5 leading-snug">Classes, Subjects & Timetable</span>
               </div>
+
+              {/* Feature 2 */}
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <Users className="w-4 h-4 lg:w-5 lg:h-5 text-white mb-1.5" />
+                <span className="text-[11px] lg:text-xs font-bold text-white leading-tight">Student Information</span>
+                <span className="text-[9.5px] lg:text-[10px] text-slate-400 mt-0.5 leading-snug">Profiles, Records & Performance</span>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <FileText className="w-4 h-4 lg:w-5 lg:h-5 text-white mb-1.5" />
+                <span className="text-[11px] lg:text-xs font-bold text-white leading-tight">Assignments & Grading</span>
+                <span className="text-[9.5px] lg:text-[10px] text-slate-400 mt-0.5 leading-snug">Sessional, Quizzes & Evaluations</span>
+              </div>
+
+              {/* Feature 4 */}
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5 text-white mb-1.5" />
+                <span className="text-[11px] lg:text-xs font-bold text-white leading-tight">Attendance & Reports</span>
+                <span className="text-[9.5px] lg:text-[10px] text-slate-400 mt-0.5 leading-snug">Real-time Tracking & Insights</span>
+              </div>
+
             </div>
           </div>
         </div>
 
-        {/* ======================================================== */}
-        {/* RIGHT COLUMN: ~40% (lg:col-span-5) Polished Login Area   */}
-        {/* ======================================================== */}
-        <div className="lg:col-span-5 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 bg-white lg:border-l lg:border-slate-200/90 overflow-y-auto lg:overflow-visible">
-          
-          {/* Institutional Login Card */}
-          <div className="w-full max-w-sm sm:max-w-md bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-slate-200/90 relative">
+        {/* Right Column: Floating White Login Card matching Reference Image */}
+        <div className="lg:col-span-5 w-full max-w-sm sm:max-w-md mx-auto flex items-center justify-center">
+          <div className="w-full bg-white rounded-[26px] sm:rounded-[30px] p-5 sm:p-6 lg:p-6 xl:p-7 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.18)] border border-slate-100 relative overflow-hidden transition-all duration-300">
             
-            {/* College Logo & Institution Header */}
-            <div className="text-center mb-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-2 flex items-center justify-center">
+            {/* Card Emblem & Title */}
+            <div className="text-center mb-3.5 sm:mb-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-1 flex items-center justify-center">
                 <img 
                   src={vctmOfficialLogo} 
                   alt="VCTM Emblem" 
-                  className="w-full h-full object-contain drop-shadow-xs" 
+                  className="w-full h-full object-contain drop-shadow-sm" 
                 />
               </div>
-              <h3 className="font-serif-institutional font-bold text-xl sm:text-2xl text-slate-900 tracking-tight leading-tight">
+              <h3 className="font-serif-institutional font-bold text-xl sm:text-2xl text-slate-900 tracking-wider">
                 VCTM ERP
               </h3>
-              <p className="text-xs text-slate-600 font-medium mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-700 font-medium mt-0.5">
                 Vivekananda College of Technology & Management
               </p>
-              <div className="flex items-center justify-center gap-2 mt-1 text-[9px] font-bold text-slate-400 tracking-[0.25em]">
-                <span className="h-px w-5 bg-slate-200" />
+              <div className="flex items-center justify-center gap-2 mt-0.5 text-[9px] font-bold text-slate-600 tracking-[0.25em]">
+                <span className="h-px w-5 bg-slate-300"></span>
                 <span>ALIGARH</span>
-                <span className="h-px w-5 bg-slate-200" />
+                <span className="h-px w-5 bg-slate-300"></span>
               </div>
             </div>
 
             {/* Role Selection Tabs (Student / Faculty / Admin) */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl mb-4 border border-slate-200/80 text-xs">
+            <div className="grid grid-cols-3 gap-1.5 bg-slate-50/90 p-1 rounded-xl mb-3.5 sm:mb-4 border border-slate-200/80 text-xs">
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('student')}
                 className={clsx(
-                  'py-2 px-1 rounded-lg transition-all font-semibold flex items-center justify-center gap-1.5 cursor-pointer',
+                  'py-2 px-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
                   activeRoleTab === 'student'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    ? 'bg-[#111827] text-white shadow-sm font-bold'
+                    : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
                 )}
               >
                 <GraduationCap className="w-3.5 h-3.5 shrink-0" />
@@ -248,10 +263,10 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('faculty')}
                 className={clsx(
-                  'py-2 px-1 rounded-lg transition-all font-semibold flex items-center justify-center gap-1.5 cursor-pointer',
+                  'py-2 px-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
                   activeRoleTab === 'faculty'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    ? 'bg-[#111827] text-white shadow-sm font-bold'
+                    : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
                 )}
               >
                 <Users className="w-3.5 h-3.5 shrink-0" />
@@ -262,10 +277,10 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('admin')}
                 className={clsx(
-                  'py-2 px-1 rounded-lg transition-all font-semibold flex items-center justify-center gap-1.5 cursor-pointer',
+                  'py-2 px-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
                   activeRoleTab === 'admin'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    ? 'bg-[#111827] text-white shadow-sm font-bold'
+                    : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
                 )}
               >
                 <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
@@ -275,17 +290,17 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Message Banner */}
             {(localError || error) && (
-              <div className="mb-3.5 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
+              <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                 <span className="font-medium">{localError || error}</span>
               </div>
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* Identifier Input */}
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
+              {/* College ID / Faculty ID Input */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-800 mb-1">
                   {activeRoleTab === 'student' 
                     ? 'College Roll Number' 
                     : activeRoleTab === 'faculty' 
@@ -305,10 +320,10 @@ export const LoginPage: React.FC = () => {
                       activeRoleTab === 'student' 
                         ? 'Enter roll number (e.g. 210123)' 
                         : activeRoleTab === 'faculty' 
-                        ? 'Enter faculty ID or college email' 
-                        : 'Enter admin identifier or email'
+                        ? 'Enter your college ID / faculty ID' 
+                        : 'Enter admin ID/email'
                     }
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -316,13 +331,13 @@ export const LoginPage: React.FC = () => {
               {/* Password Input */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">
+                  <label className="block text-xs font-semibold text-slate-800">
                     Password
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(true)}
-                    className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                    className="text-xs font-semibold text-slate-700 hover:text-slate-950 transition-colors cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -336,8 +351,8 @@ export const LoginPage: React.FC = () => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your account password"
-                    className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    placeholder="Enter your password"
+                    className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                   <button
                     type="button"
@@ -355,7 +370,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full py-3 px-5 rounded-xl bg-[#111827] hover:bg-black text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -372,30 +387,46 @@ export const LoginPage: React.FC = () => {
               </div>
             </form>
 
-            {/* Role Context Helper Line */}
-            <div className="mt-4 pt-3 border-t border-slate-100 text-center">
-              <p className="text-[11px] text-slate-500 leading-tight">
-                {activeRoleTab === 'student' 
-                  ? 'Authorized portal for enrolled students to view attendance, marks & timetable.' 
-                  : activeRoleTab === 'faculty' 
-                  ? 'Faculty gateway for attendance logging, syllabus progress & student evaluation.' 
-                  : 'Institutional control panel for academic administration, departments & records.'}
-              </p>
+            {/* Bottom Helper Note inside Card */}
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <span className="h-px w-5 bg-slate-300"></span>
+                <p className="text-[11px] text-slate-600 font-normal leading-relaxed max-w-xs">
+                  {activeRoleTab === 'student' 
+                    ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
+                    : activeRoleTab === 'faculty' 
+                    ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
+                    : 'Access institutional administration, department oversight, and academic records.'}
+                </p>
+                <span className="h-px w-5 bg-slate-300"></span>
+              </div>
+            </div>
+
+            {/* Subtle silver wavy layer accent at base of card */}
+            <div className="absolute -bottom-1 left-0 right-0 h-8 sm:h-9 overflow-hidden pointer-events-none rounded-b-[30px]">
+              <svg viewBox="0 0 500 120" preserveAspectRatio="none" className="w-full h-full opacity-60">
+                <path d="M0,40 C150,90 350,10 500,60 L500,120 L0,120 Z" fill="#e2e8f0" />
+                <path d="M0,70 C200,110 300,40 500,80 L500,120 L0,120 Z" fill="#cbd5e1" opacity="0.7" />
+              </svg>
             </div>
           </div>
         </div>
 
       </main>
 
-      {/* 3. INSTITUTIONAL FOOTER & DEVELOPER CREDIT (Fixed height: h-10 / 40px) */}
-      <footer className="h-10 shrink-0 bg-white border-t border-slate-200/90 px-4 sm:px-8 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-1 text-xs text-slate-500 z-20">
-        <p className="text-center sm:text-left text-[11px] sm:text-xs">
-          © 2026 Vivekananda College of Technology & Management, Aligarh.
+      {/* ======================================================== */}
+      {/* 6. PAGE FOOTER                                           */}
+      {/* ======================================================== */}
+      <footer className="relative z-20 w-full px-5 sm:px-8 lg:px-12 py-2 shrink-0 border-t border-slate-200/80 bg-white/95 backdrop-blur-xs flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-600">
+        <p className="text-center sm:text-left">
+          © 2026 Vivekananda College of Technology & Management, Aligarh. All Rights Reserved.
         </p>
 
-        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500">
-          <span>Designed & Developed by</span>
-          <strong className="text-slate-800 font-semibold">Tarun Kushwah</strong>
+        <div className="flex items-center gap-2 text-slate-500">
+          <span className="hidden sm:inline-block h-px w-10 bg-slate-300"></span>
+          <span>
+            Designed & Developed by <strong className="text-slate-900 font-semibold">Tarun Kushwah</strong>
+          </span>
         </div>
       </footer>
 
