@@ -5882,7 +5882,18 @@ export const supabaseService = {
         .from('messages')
         .select(`
           *,
-          reply_to:messages!reply_to_message_id(id, message, sender_user_id, sender_role, is_unsent)
+          student:student_id(id, full_name, roll_number),
+          faculty:faculty_id(id, full_name, faculty_code),
+          reply_to:messages!reply_to_message_id(
+            id,
+            message,
+            sender_user_id,
+            sender_role,
+            is_unsent,
+            edited_at,
+            student:student_id(id, full_name, roll_number),
+            faculty:faculty_id(id, full_name, faculty_code)
+          )
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
@@ -5893,7 +5904,66 @@ export const supabaseService = {
         return [];
       }
 
-      let messages = (data || []) as Message[];
+      let messages = ((data || []) as any[]).map(m => {
+        let senderName = m.sender_name || '';
+        if (!senderName) {
+          if (m.sender_role === 'student' && m.student?.full_name) {
+            senderName = m.student.full_name;
+          } else if ((m.sender_role === 'faculty' || m.sender_role === 'hod') && m.faculty?.full_name) {
+            senderName = m.faculty.full_name;
+          } else if (m.sender_role === 'super_admin') {
+            senderName = 'Administrator';
+          }
+        }
+
+        let replyTo = m.reply_to;
+        if (replyTo) {
+          let replySenderName = replyTo.sender_name || '';
+          if (!replySenderName) {
+            if (replyTo.sender_role === 'student' && replyTo.student?.full_name) {
+              replySenderName = replyTo.student.full_name;
+            } else if ((replyTo.sender_role === 'faculty' || replyTo.sender_role === 'hod') && replyTo.faculty?.full_name) {
+              replySenderName = replyTo.faculty.full_name;
+            } else if (replyTo.sender_role === 'super_admin') {
+              replySenderName = 'Administrator';
+            }
+          }
+          replyTo = {
+            ...replyTo,
+            sender_name: replySenderName || undefined,
+          };
+        }
+
+        return {
+          ...m,
+          sender_name: senderName || undefined,
+          reply_to: replyTo,
+        } as Message;
+      });
+
+      // Secondary pass: if any message has reply_to_message_id but reply_to is still null,
+      // resolve it directly from the conversation messages map
+      const msgMap = new Map<string, any>(messages.map(m => [m.id, m]));
+      messages = messages.map(m => {
+        if (!m.reply_to && m.reply_to_message_id && msgMap.has(m.reply_to_message_id)) {
+          const parent = msgMap.get(m.reply_to_message_id);
+          return {
+            ...m,
+            reply_to: {
+              id: parent.id,
+              message: parent.message,
+              sender_user_id: parent.sender_user_id,
+              sender_role: parent.sender_role,
+              sender_name: parent.sender_name,
+              is_unsent: parent.is_unsent,
+              edited_at: parent.edited_at,
+              student: parent.student,
+              faculty: parent.faculty,
+            }
+          };
+        }
+        return m;
+      });
 
       // Filter out messages deleted for this user
       if (currentUserId) {

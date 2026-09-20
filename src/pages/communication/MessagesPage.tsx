@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   MessageSquare, 
   Search, 
@@ -103,7 +103,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     unsendDirectMessage,
     deleteMessageForMe,
     clearConversationForMe,
-    markConversationUnread
+    markConversationUnread,
+    students,
+    faculty,
   } = useAcademic();
 
   const role = user?.role;
@@ -175,6 +177,89 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+
+  // Selected Direct Conversation Object
+  const selectedConversation = useMemo(() => {
+    return conversations.find(c => c.id === selectedConvId) || null;
+  }, [conversations, selectedConvId]);
+
+  // Institutional sender name resolution: resolves real names, avoiding generic placeholders
+  const resolveSenderName = useCallback((
+    msg?: {
+      sender_user_id?: string;
+      sender_role?: string;
+      sender_name?: string;
+      student_id?: string;
+      faculty_id?: string;
+      student?: { id?: string; full_name?: string; roll_number?: string } | null;
+      faculty?: { id?: string; full_name?: string; faculty_code?: string } | null;
+    } | null,
+    isReplyingTarget = false
+  ): string => {
+    if (!msg) return isReplyingTarget ? 'yourself' : 'You';
+
+    // 1. Current user
+    if (msg.sender_user_id && user?.id && msg.sender_user_id === user.id) {
+      return isReplyingTarget ? 'yourself' : 'You';
+    }
+
+    // 2. Explicit sender_name if not generic placeholder
+    if (msg.sender_name && !/^(participant|user|member|unknown participant)$/i.test(msg.sender_name.trim())) {
+      return msg.sender_name.trim();
+    }
+
+    // 3. Directly joined student or faculty relation
+    if (msg.sender_role === 'student' && msg.student?.full_name) {
+      return msg.student.full_name;
+    }
+    if ((msg.sender_role === 'faculty' || msg.sender_role === 'hod') && msg.faculty?.full_name) {
+      return msg.faculty.full_name;
+    }
+
+    // 4. Selected active conversation details
+    if (selectedConversation) {
+      if (msg.sender_role === 'student' && selectedConversation.student?.full_name) {
+        return selectedConversation.student.full_name;
+      }
+      if ((msg.sender_role === 'faculty' || msg.sender_role === 'hod') && selectedConversation.faculty?.full_name) {
+        return selectedConversation.faculty.full_name;
+      }
+      if (msg.student_id && selectedConversation.student_id === msg.student_id && selectedConversation.student?.full_name) {
+        return selectedConversation.student.full_name;
+      }
+      if (msg.faculty_id && selectedConversation.faculty_id === msg.faculty_id && selectedConversation.faculty?.full_name) {
+        return selectedConversation.faculty.full_name;
+      }
+    }
+
+    // 5. Lookup in academic directories
+    if (msg.student_id && students && students.length > 0) {
+      const st = students.find(s => s.id === msg.student_id);
+      if (st?.full_name) return st.full_name;
+    }
+    if (msg.faculty_id && faculty && faculty.length > 0) {
+      const fc = faculty.find(f => f.id === msg.faculty_id);
+      if (fc?.full_name) return fc.full_name;
+    }
+
+    // 6. Institutional role fallback (NEVER 'Participant')
+    if (msg.sender_role === 'super_admin') return 'Administrator';
+    if (msg.sender_role === 'hod') return 'Head of Department';
+    if (msg.sender_role === 'faculty') return 'Faculty Member';
+    if (msg.sender_role === 'student') return 'Student';
+
+    // 7. Conversation partner name fallback
+    if (selectedConversation) {
+      if (user?.role === 'student' && selectedConversation.faculty?.full_name) {
+        return selectedConversation.faculty.full_name;
+      }
+      if (user?.role !== 'student' && selectedConversation.student?.full_name) {
+        return selectedConversation.student.full_name;
+      }
+    }
+
+    return '';
+  }, [user?.id, user?.role, selectedConversation, students, faculty]);
 
   // In-conversation message search
   const [isSearchingConv, setIsSearchingConv] = useState(false);
@@ -355,15 +440,37 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             }
             setDirectMessages(prev => {
               if (prev.some(m => m.id === newMsg.id)) return prev;
+              let replyObj = newMsg.reply_to;
+              if (!replyObj && newMsg.reply_to_message_id) {
+                const parentMsg = prev.find(p => p.id === newMsg.reply_to_message_id);
+                if (parentMsg) {
+                  replyObj = {
+                    id: parentMsg.id,
+                    message: parentMsg.is_unsent ? 'Message unsent' : parentMsg.message,
+                    sender_user_id: parentMsg.sender_user_id,
+                    sender_role: parentMsg.sender_role,
+                    sender_name: resolveSenderName(parentMsg),
+                    is_unsent: parentMsg.is_unsent,
+                    edited_at: parentMsg.edited_at,
+                    student: parentMsg.student,
+                    faculty: parentMsg.faculty,
+                  };
+                }
+              }
+              const enrichedMsg: Message = {
+                ...newMsg,
+                reply_to: replyObj || newMsg.reply_to,
+                status: 'sent'
+              };
               const optIndex = prev.findIndex(
                 m => m.status === 'sending' && m.message === newMsg.message && m.sender_user_id === newMsg.sender_user_id
               );
               if (optIndex !== -1) {
                 const updated = [...prev];
-                updated[optIndex] = { ...newMsg, status: 'sent' };
+                updated[optIndex] = enrichedMsg;
                 return updated;
               }
-              return [...prev, { ...newMsg, status: 'sent' }];
+              return [...prev, enrichedMsg];
             });
             markConversationRead(selectedConvId);
           } else {
@@ -387,7 +494,23 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               setDirectMessages(prev => prev.filter(m => m.id !== updatedMsg.id));
               return;
             }
-            setDirectMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg } : m));
+            setDirectMessages(prev => prev.map(m => {
+              if (m.id === updatedMsg.id) {
+                return { ...m, ...updatedMsg };
+              }
+              if (m.reply_to_message_id === updatedMsg.id && m.reply_to) {
+                return {
+                  ...m,
+                  reply_to: {
+                    ...m.reply_to,
+                    message: updatedMsg.is_unsent ? 'Message unsent' : updatedMsg.message,
+                    is_unsent: updatedMsg.is_unsent,
+                    edited_at: updatedMsg.edited_at,
+                  }
+                };
+              }
+              return m;
+            }));
           }
         }
       )
@@ -397,7 +520,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedConvId, markConversationRead, user?.id]);
+  }, [selectedConvId, markConversationRead, user?.id, resolveSenderName]);
 
   // Auto-scroll on direct messages
   useEffect(() => {
@@ -410,11 +533,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const selectedGroup = useMemo(() => {
     return messageGroups.find(g => g.id === selectedGroupId) || null;
   }, [messageGroups, selectedGroupId]);
-
-  // Selected Direct Conversation Object
-  const selectedConversation = useMemo(() => {
-    return conversations.find(c => c.id === selectedConvId) || null;
-  }, [conversations, selectedConvId]);
 
   // Matching message IDs for In-Conversation Search
   const matchingDirectMsgIds = useMemo(() => {
@@ -564,13 +682,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     const messageText = directInputMessage.trim();
     const tempId = `temp-${Date.now()}`;
     const replyId = replyingToMessage?.id || null;
+    const replySenderName = replyingToMessage ? resolveSenderName(replyingToMessage) : undefined;
     const replyingSnapshot = replyingToMessage ? {
       id: replyingToMessage.id,
       message: replyingToMessage.message,
       sender_user_id: replyingToMessage.sender_user_id,
       sender_role: replyingToMessage.sender_role,
-      sender_name: replyingToMessage.sender_name,
+      sender_name: replySenderName,
       is_unsent: replyingToMessage.is_unsent,
+      edited_at: replyingToMessage.edited_at,
     } : null;
 
     const tempMsg: Message = {
@@ -616,12 +736,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setTimeout(() => setDirectSendSuccess(false), 1200);
         setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...res.data!, reply_to: replyingSnapshot, status: 'sent' } : m));
       } else {
-        setMessageSendError(res.error?.message || 'Failed to send direct message. Please check connection and retry.');
-        setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+        setMessageSendError(res.error?.message || 'Failed to send direct message. Your text has been preserved.');
+        setDirectInputMessage(messageText);
+        setDirectMessages(prev => prev.filter(m => m.id !== tempId));
       }
     } catch (err: any) {
       setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
-      setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+      setDirectInputMessage(messageText);
+      setDirectMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setDirectSending(false);
     }
@@ -633,7 +755,22 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     setIsSavingEdit(true);
     const trimmed = editingText.trim();
     try {
-      setDirectMessages(prev => prev.map(m => m.id === msgId ? { ...m, message: trimmed, edited_at: new Date().toISOString() } : m));
+      setDirectMessages(prev => prev.map(m => {
+        if (m.id === msgId) {
+          return { ...m, message: trimmed, edited_at: new Date().toISOString() };
+        }
+        if (m.reply_to_message_id === msgId && m.reply_to) {
+          return {
+            ...m,
+            reply_to: {
+              ...m.reply_to,
+              message: trimmed,
+              edited_at: new Date().toISOString(),
+            }
+          };
+        }
+        return m;
+      }));
       setEditingMsgId(null);
       showToast('Message updated');
 
@@ -658,16 +795,31 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     setIsUnsending(true);
     const msgId = unsendModalMsg.id;
     try {
-      setDirectMessages(prev => prev.map(m => m.id === msgId ? {
-        ...m,
-        message: 'Message unsent',
-        is_unsent: true,
-        unsent_at: new Date().toISOString(),
-        attachment_url: null,
-        attachment_name: null,
-        attachment_type: null,
-        attachment_size: null,
-      } : m));
+      setDirectMessages(prev => prev.map(m => {
+        if (m.id === msgId) {
+          return {
+            ...m,
+            message: 'Message unsent',
+            is_unsent: true,
+            unsent_at: new Date().toISOString(),
+            attachment_url: null,
+            attachment_name: null,
+            attachment_type: null,
+            attachment_size: null,
+          };
+        }
+        if (m.reply_to_message_id === msgId && m.reply_to) {
+          return {
+            ...m,
+            reply_to: {
+              ...m.reply_to,
+              message: 'Message unsent',
+              is_unsent: true,
+            }
+          };
+        }
+        return m;
+      }));
       setUnsendModalMsg(null);
       showToast('Message unsent');
 
@@ -1741,25 +1893,62 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                                 : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
                             }`}>
                               {/* Replied Message Quote Box */}
-                              {replyQuote && !m.is_unsent && (
-                                <div
-                                  onClick={() => replyQuote.id && handleScrollToMessage(replyQuote.id)}
-                                  className={`mb-2 p-2 rounded-xl text-[11px] cursor-pointer border-l-4 transition-opacity hover:opacity-85 ${
-                                    isMe
-                                      ? 'bg-white/10 border-slate-400 text-slate-200'
-                                      : 'bg-slate-100 border-slate-700 text-slate-700'
-                                  }`}
-                                  title="Click to jump to message"
-                                >
-                                  <div className="font-bold text-[10px] mb-0.5 flex items-center gap-1">
-                                    <CornerUpLeft className="w-3 h-3 opacity-70" />
-                                    <span>{replyQuote.sender_name || (replyQuote.sender_user_id === user?.id ? 'You' : 'Participant')}</span>
+                              {m.reply_to_message_id && !m.is_unsent && (() => {
+                                const directParent = directMessages.find(x => x.id === m.reply_to_message_id);
+                                const rawQuote = directParent || m.reply_to;
+                                const isUnavailable = !rawQuote;
+                                const isUnsent = Boolean(rawQuote?.is_unsent);
+                                const isEdited = Boolean(rawQuote?.edited_at);
+                                const quoteSender = resolveSenderName(rawQuote);
+                                const quoteText = isUnsent
+                                  ? 'Message unsent'
+                                  : isUnavailable
+                                  ? 'Original message unavailable'
+                                  : (rawQuote?.message || 'Message');
+
+                                return (
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (m.reply_to_message_id) {
+                                        handleScrollToMessage(m.reply_to_message_id);
+                                      }
+                                    }}
+                                    className={`mb-2 p-2 rounded-xl text-[11px] cursor-pointer border-l-[3px] transition-all hover:opacity-90 ${
+                                      isMe
+                                        ? 'bg-white/10 border-sky-400 text-slate-100 hover:bg-white/15'
+                                        : 'bg-slate-50 border-[#0f172a] text-slate-800 hover:bg-slate-100'
+                                    }`}
+                                    title="Click to jump to original message"
+                                  >
+                                    <div className={`font-semibold text-[10.5px] mb-0.5 flex items-center gap-1.5 ${
+                                      isMe ? 'text-sky-300' : 'text-slate-800'
+                                    }`}>
+                                      <CornerUpLeft className="w-3 h-3 opacity-80 shrink-0" />
+                                      <span className="truncate">{quoteSender || 'Message'}</span>
+                                    </div>
+                                    <p className={`line-clamp-2 text-[11px] leading-snug break-words ${
+                                      isMe ? 'text-slate-200' : 'text-slate-600'
+                                    }`}>
+                                      {isUnsent ? (
+                                        <span className="italic opacity-85 flex items-center gap-1">
+                                          <RotateCcw className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                          Message unsent
+                                        </span>
+                                      ) : isUnavailable ? (
+                                        <span className="italic opacity-85">Original message unavailable</span>
+                                      ) : (
+                                        <>
+                                          <span>{quoteText}</span>
+                                          {isEdited && (
+                                            <span className="text-[9px] opacity-75 font-normal ml-1">(edited)</span>
+                                          )}
+                                        </>
+                                      )}
+                                    </p>
                                   </div>
-                                  <p className="truncate line-clamp-1 italic text-[11px]">
-                                    {replyQuote.is_unsent ? 'Original message was unsent' : replyQuote.message}
-                                  </p>
-                                </div>
-                              )}
+                                );
+                              })()}
 
                               {/* Unsent Message Placeholder */}
                               {m.is_unsent ? (
@@ -1889,27 +2078,33 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 {/* Direct Message Composer */}
                 <form onSubmit={handleSendDirectMessage} className="p-3 border-t border-slate-200 bg-white space-y-2 shrink-0">
                   {/* Replying-to Preview Banner */}
-                  {replyingToMessage && (
-                    <div className="flex items-center justify-between bg-slate-100/90 border-l-4 border-[#0f172a] px-3 py-1.5 rounded-r-xl text-xs animate-in fade-in">
-                      <div className="flex items-center gap-2 truncate">
-                        <CornerUpLeft className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="font-bold text-slate-800 shrink-0">
-                          Replying to {replyingToMessage.sender_name || (replyingToMessage.sender_user_id === user?.id ? 'yourself' : 'Participant')}:
-                        </span>
-                        <span className="text-slate-600 truncate max-w-[260px] sm:max-w-md font-medium">
-                          {replyingToMessage.message}
-                        </span>
+                  {replyingToMessage && (() => {
+                    const replyingTargetName = resolveSenderName(replyingToMessage, true);
+                    const snippet = replyingToMessage.is_unsent
+                      ? 'Message unsent'
+                      : replyingToMessage.message;
+                    return (
+                      <div className="flex items-center justify-between bg-slate-100/90 border-l-[3px] border-[#0f172a] px-3 py-1.5 rounded-r-xl text-xs animate-in fade-in">
+                        <div className="flex items-center gap-2 truncate">
+                          <CornerUpLeft className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                          <span className="font-semibold text-slate-800 shrink-0">
+                            {replyingTargetName ? `Replying to ${replyingTargetName}:` : 'Replying to message:'}
+                          </span>
+                          <span className="text-slate-600 truncate max-w-[260px] sm:max-w-md font-medium italic">
+                            "{snippet}"
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReplyingToMessage(null)}
+                          className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/80 transition-colors shrink-0"
+                          title="Cancel reply"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setReplyingToMessage(null)}
-                        className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/80 transition-colors shrink-0"
-                        title="Cancel reply"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Error Alert if send fails */}
                   {messageSendError && (
@@ -2103,7 +2298,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           >
             <h3 className="text-sm font-bold text-slate-900">Delete message for you?</h3>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              This message will be removed from your view only. The other participant will still be able to see it.
+              This message will be removed from your view only. The other person will still be able to see it.
             </p>
             <div className="flex items-center justify-end gap-2 mt-5">
               <button
@@ -2137,7 +2332,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           >
             <h3 className="text-sm font-bold text-slate-900">Clear entire conversation?</h3>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              This will hide all previous messages in this conversation from your view. The other participant will still have their full conversation history.
+              This will hide all previous messages in this conversation from your view. The other person will still have their full conversation history.
             </p>
             <div className="flex items-center justify-end gap-2 mt-5">
               <button

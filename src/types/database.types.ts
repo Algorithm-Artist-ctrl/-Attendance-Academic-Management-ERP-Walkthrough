@@ -800,7 +800,12 @@ export interface Message {
     sender_role?: string;
     sender_name?: string;
     is_unsent?: boolean;
+    edited_at?: string | null;
+    student?: { id: string; full_name: string; roll_number?: string } | null;
+    faculty?: { id: string; full_name: string; faculty_code?: string } | null;
   } | null;
+  student?: { id: string; full_name: string; roll_number?: string } | null;
+  faculty?: { id: string; full_name: string; faculty_code?: string } | null;
   status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
 }
 
