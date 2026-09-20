@@ -441,11 +441,11 @@ export const AppShell: React.FC<AppShellProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-serif-institutional font-black text-base tracking-wide text-slate-900">
-                VCTM <span className="text-slate-950 font-sans font-extrabold text-sm">ERP</span>
+              <span className="font-serif-institutional font-bold text-xl text-[#0f172a] tracking-tight">
+                VCTM <span className="text-[#0f172a] font-sans font-extrabold text-lg">ERP</span>
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 font-medium tracking-tight">
+            <p className="text-[14px] text-[#475569] font-medium tracking-tight">
               Vivekananda College (340)
             </p>
           </div>
@@ -491,10 +491,10 @@ export const AppShell: React.FC<AppShellProps> = ({
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 className={clsx(
-                  'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[15px] font-semibold transition-all duration-200 cursor-pointer select-none group',
+                  'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[15px] transition-all duration-200 cursor-pointer select-none group',
                   isActive
                     ? 'bg-[#0f172a] text-white shadow-xs font-bold'
-                    : 'text-[#334155] hover:text-[#0f172a] hover:bg-slate-100 border border-transparent'
+                    : 'text-[#334155] font-semibold hover:text-[#0f172a] hover:bg-[#f1f5f9] border border-transparent'
                 )}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -592,15 +592,15 @@ export const AppShell: React.FC<AppShellProps> = ({
               <Menu className="w-5 h-5" />
             </button>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 p-0.5 overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
                 <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
               </div>
-              <div>
-                <span className="font-serif-institutional font-bold text-base sm:text-lg text-[#0f172a] tracking-wide">
-                  VCTM <span className="font-sans font-extrabold text-sm sm:text-base text-[#0f172a]">ERP</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif-institutional font-bold text-xl sm:text-2xl text-[#0f172a] tracking-tight">
+                  VCTM <span className="font-sans font-extrabold text-lg sm:text-xl text-[#0f172a]">ERP</span>
                 </span>
-                <span className="hidden sm:inline-block ml-2 text-xs text-[#334155] font-semibold">
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-[14px] text-[#475569] font-medium">
                   Institution Code: 340
                 </span>
               </div>
@@ -749,16 +749,16 @@ export const AppShell: React.FC<AppShellProps> = ({
             <button 
               onClick={() => onTabChange('profile')}
               title="View Profile"
-              className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0f172a] transition-colors shadow-xs cursor-pointer text-left touch-target"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0f172a] transition-colors shadow-xs cursor-pointer text-left touch-target"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#0f172a] text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#0f172a] text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
-              <div className="text-left hidden sm:block max-w-[140px] lg:max-w-[200px] truncate">
-                <div className="text-[15px] font-bold text-[#0f172a] leading-tight truncate">
+              <div className="text-left hidden sm:block max-w-[150px] lg:max-w-[220px] truncate">
+                <div className="text-[16px] font-bold text-[#0f172a] leading-tight truncate">
                   {user?.full_name}
                 </div>
-                <div className="text-xs text-[#334155] font-semibold truncate">
+                <div className="text-[13px] text-[#475569] font-semibold truncate mt-0.5">
                   {user?.student?.roll_number 
                     ? `Roll: ${user.student.roll_number}` 
                     : (role === 'hod' && isTeachingMode)
@@ -788,8 +788,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                     <img src={vctmOfficialLogo} alt="VCTM" className="w-full h-full object-contain" />
                   </div>
                   <div>
-                    <h3 className="font-serif-institutional font-black text-sm text-slate-900">VCTM ERP</h3>
-                    <p className="text-[10px] text-slate-500">Institutional Portal</p>
+                    <h3 className="font-serif-institutional font-bold text-lg text-[#0f172a]">VCTM ERP</h3>
+                    <p className="text-[13px] text-[#475569] font-medium">Vivekananda College (340)</p>
                   </div>
                 </div>
 
@@ -807,8 +807,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                   {user?.full_name?.charAt(0) || 'U'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold text-[#0f172a] truncate">{user?.full_name}</p>
-                  <p className="text-xs text-[#475569] font-bold truncate">
+                  <p className="text-[16px] font-bold text-[#0f172a] truncate">{user?.full_name}</p>
+                  <p className="text-[13px] text-[#475569] font-semibold truncate">
                     {user?.student?.roll_number 
                       ? `Roll: ${user.student.roll_number}` 
                       : (role === 'hod' && isTeachingMode)
@@ -857,8 +857,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                       className={clsx(
                         'w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-[15px] font-semibold transition-all touch-target',
                         isActive
-                          ? 'bg-[#0f172a] text-white shadow-xs'
-                          : 'text-[#475569] hover:text-[#0f172a] hover:bg-slate-100'
+                          ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                          : 'text-[#334155] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
                       )}
                     >
                       <div className="flex items-center gap-3">

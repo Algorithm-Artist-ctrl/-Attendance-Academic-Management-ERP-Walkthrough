@@ -147,11 +147,11 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
       {/* Top Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-serif-institutional font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <RotateCcw className="w-6 h-6 text-slate-800" />
+          <h1 className="text-2xl sm:text-3xl font-serif-institutional font-bold text-[#0f172a] tracking-tight flex items-center gap-2.5">
+            <RotateCcw className="w-6 h-6 text-[#0f172a]" />
             Student Attendance Claims & Rectifications
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-[15px] text-[#475569] mt-0.5 font-medium leading-relaxed">
             Review and adjudicate attendance claims submitted for your assigned lectures
           </p>
         </div>

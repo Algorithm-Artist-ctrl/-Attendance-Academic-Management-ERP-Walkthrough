@@ -4453,7 +4453,17 @@ export const supabaseService = {
           toCreate.push({ title: 'Sessional 1', max_marks: 20 });
         }
         if (!existingByTitle.has('sessional 2')) {
-          toCreate.push({ title: 'Sessional 2', max_marks: 20 });
+          toCreate.push({ title: 'Sessional 2', max_marks: 30 });
+        } else {
+          const s2 = existingByTitle.get('sessional 2');
+          if (s2 && s2.max_marks === 20) {
+            try {
+              await this.updateSessionalAssessment(s2.id, { max_marks: 30 });
+              s2.max_marks = 30;
+            } catch (err) {
+              console.warn('Failed to auto-upgrade Sessional 2 max marks to 30:', err);
+            }
+          }
         }
         if (!existingByTitle.has('sessional 3')) {
           toCreate.push({ title: 'Sessional 3', max_marks: 20 });

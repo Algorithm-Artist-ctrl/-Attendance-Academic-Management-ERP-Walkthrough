@@ -25,10 +25,26 @@
 :root {
   color-scheme: light;
   --color-text-primary: #0f172a;
+  --color-text-section: #172033;
+  --color-text-body: #1e293b;
   --color-text-secondary: #334155;
-  --color-text-muted: #475569;
+  --color-text-supporting: #475569;
+  --color-text-muted: #64748b;
   --color-text-placeholder: #64748b;
   --color-text-disabled: #94a3b8;
+
+  --vctm-text-primary: #0f172a;
+  --vctm-text-section: #172033;
+  --vctm-text-body: #1e293b;
+  --vctm-text-secondary: #334155;
+  --vctm-text-supporting: #475569;
+  --vctm-text-muted: #64748b;
+  
+  --vctm-success: #047857;
+  --vctm-warning: #b45309;
+  --vctm-error: #b91c1c;
+  --vctm-border: #e2e8f0;
+  --vctm-border-strong: #cbd5e1;
 }
 
 body {
@@ -48,7 +64,7 @@ body {
   background-attachment: fixed;
 }
 
-/* Centralized ERP Design System Classes */
+/* Centralized Institutional ERP Design System Classes */
 .erp-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -56,7 +72,103 @@ body {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
 
+/* Page Main Heading (H1): 32px to 40px, font-weight 700-750, #0F172A */
+.vctm-h1,
 .erp-page-title {
+  font-size: 2rem;
+  line-height: 2.5rem;
+  font-weight: 750;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+}
+
+@media (min-width: 640px) {
+  .vctm-h1,
+  .erp-page-title {
+    font-size: 2.25rem;
+    line-height: 2.75rem;
+  }
+}
+
+/* Section Heading (H2): 26px to 32px, font-weight 700, #0F172A */
+.vctm-h2 {
+  font-size: 1.625rem;
+  line-height: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .vctm-h2 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+}
+
+/* Subsection / Card Title (H3): 20px to 24px, font-weight 650-700, #0F172A / #172033 */
+.vctm-h3,
+.vctm-section-title,
+.erp-section-title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+@media (min-width: 640px) {
+  .vctm-h3,
+  .vctm-section-title,
+  .erp-section-title {
+    font-size: 1.375rem;
+    line-height: 1.875rem;
+  }
+}
+
+/* Card / Section Supporting Description: 15px to 16px, font-weight 500, color #475569 */
+.vctm-subtitle,
+.vctm-description {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #475569;
+}
+
+/* Primary Body Text: 15px to 16px, font-weight 450-500, color #1E293B */
+.vctm-body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  font-weight: 450;
+  color: #1e293b;
+}
+
+/* Important Body Text: 15px to 16px, font-weight 500, color #334155 */
+.vctm-body-important {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  font-weight: 500;
+  color: #334155;
+}
+
+/* Secondary / Label Text: 14px to 15px, font-weight 600, color #334155 */
+.vctm-label {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+/* Metadata / Timestamps / Small Badges: 13px to 14px, font-weight 500-600, color #475569 */
+.vctm-metadata {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+/* KPI Metrics */
+.vctm-kpi-value {
   font-size: 1.75rem;
   line-height: 2.25rem;
   font-weight: 800;
@@ -65,24 +177,23 @@ body {
 }
 
 @media (min-width: 640px) {
-  .erp-page-title {
+  .vctm-kpi-value {
     font-size: 2rem;
     line-height: 2.5rem;
   }
 }
 
-.erp-section-title {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.01em;
+.vctm-kpi-label {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  color: #475569;
 }
 
 .erp-table-th {
   padding: 0.875rem 1rem;
   font-size: 0.875rem;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
   background-color: #f1f5f9;
   border-bottom: 1px solid #cbd5e1;
@@ -93,12 +204,14 @@ body {
 .erp-table-td {
   padding: 0.875rem 1rem;
   font-size: 0.9375rem;
+  font-weight: 500;
   color: #0f172a;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .erp-input {
   font-size: 0.9375rem;
+  font-weight: 500;
   color: #0f172a;
   background-color: #ffffff;
   border: 1px solid #cbd5e1;
@@ -115,6 +228,20 @@ body {
   outline: none;
   border-color: #0f172a;
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.1);
+}
+
+/* Contrast Safety Guard: prevent washed out text */
+.text-slate-400 {
+  color: #64748b !important;
+}
+.text-slate-300 {
+  color: #64748b !important;
+}
+.text-gray-400 {
+  color: #64748b !important;
+}
+.text-gray-300 {
+  color: #64748b !important;
 }
 
 /* Universal Form Elements & High-Contrast Dropdowns */

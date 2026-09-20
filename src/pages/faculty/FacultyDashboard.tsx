@@ -472,11 +472,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 space-y-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
           <div>
-            <h3 className="text-xl font-bold text-[#0f172a] font-serif-institutional tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-[#0f172a]" />
+            <h3 className="text-xl sm:text-2xl font-bold text-[#0f172a] font-serif-institutional tracking-tight flex items-center gap-2.5">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-[#0f172a]" />
               MY ASSIGNED CLASSES
             </h3>
-            <p className="text-[15px] text-[#475569] mt-0.5 font-medium leading-relaxed">
+            <p className="text-[15px] sm:text-base text-[#475569] mt-1 font-medium leading-relaxed">
               Classes and subjects assigned to your teaching portfolio across sections
             </p>
           </div>
@@ -774,10 +774,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
               <RotateCcw className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-[#0f172a] font-serif-institutional tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-bold text-[#0f172a] font-serif-institutional tracking-tight">
                 ATTENDANCE CORRECTION REQUESTS
               </h3>
-              <p className="text-[15px] text-[#475569] mt-0.5 font-medium leading-relaxed">
+              <p className="text-[15px] sm:text-base text-[#475569] mt-0.5 font-medium leading-relaxed">
                 Student attendance claims and discrepancy review for your assigned classes
               </p>
             </div>

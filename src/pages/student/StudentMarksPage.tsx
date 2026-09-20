@@ -67,8 +67,8 @@ export const StudentMarksPage: React.FC = () => {
                 <Award className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[#0f172a] font-serif-institutional tracking-tight">Academic Performance & Marks Scorecard</h1>
-                <p className="text-[#475569] text-sm font-medium mt-0.5">
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] font-serif-institutional tracking-tight">Academic Performance & Marks Scorecard</h1>
+                <p className="text-[#475569] text-[15px] font-medium mt-0.5 leading-relaxed">
                   Official continuous assessment ledger: Sessional examinations, quizzes, assignments, and internal scores.
                 </p>
               </div>

@@ -276,11 +276,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a] animate-pulse" />
-              <h2 className="font-serif-institutional text-lg sm:text-xl font-bold text-[#0f172a] tracking-tight">
+              <h2 className="font-serif-institutional text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
                 Today's Classes & Live Attendance
               </h2>
             </div>
-            <p className="text-[15px] text-[#475569] mt-1 font-medium">
+            <p className="text-[15px] sm:text-base text-[#475569] mt-1 font-medium leading-relaxed">
               Official live status for <strong className="text-[#0f172a]">{formattedTodayDate}</strong> • Section {section?.name} ({section?.room_number})
             </p>
           </div>

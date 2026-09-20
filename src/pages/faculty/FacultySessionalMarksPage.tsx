@@ -176,9 +176,9 @@ export const FacultySessionalMarksPage: React.FC = () => {
   };
 
   const handleOpenAddModal = () => {
-    setModalError('');
-    setNewTitle(`Sessional ${filteredAssessments.length + 1}`);
-    setNewMaxMarks(30);
+    const nextNum = filteredAssessments.length + 1;
+    setNewTitle(`Sessional ${nextNum}`);
+    setNewMaxMarks(nextNum === 2 ? 30 : 20);
     setNewExamDate(getISTTodayDate());
     setNewDescription('');
     setNewStatus('draft');

@@ -606,9 +606,9 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
       {/* Department Attendance Roster Table */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <FileSpreadsheet className="w-5 h-5 text-[#0f172a]" />
-            <h3 className="text-base font-bold text-[#0f172a] tracking-tight">
+            <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] tracking-tight">
               Department Attendance Ledger & Defaulter Tracking
             </h3>
           </div>
@@ -844,14 +844,14 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] tracking-tight">
                   Student Attendance History & Audit Drill-Down
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 border border-slate-300 text-[#0f172a]">
                   Authoritative DB Records
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-[14px] text-[#475569] font-medium mt-0.5">
                 Lecture-by-lecture audit with real status tracking, discrepancy claims, and formula percentage.
               </p>
             </div>

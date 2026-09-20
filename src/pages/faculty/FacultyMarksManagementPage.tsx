@@ -275,11 +275,13 @@ export const FacultyMarksManagementPage: React.FC = () => {
       const normTitle = (sa.title || '').trim().toLowerCase();
       if (seenSessionalTitles.has(normTitle)) continue;
       seenSessionalTitles.add(normTitle);
+      const isSess2 = normTitle === 'sessional 2' || normTitle.startsWith('sessional 2');
+      const maxMarks = isSess2 ? (sa.max_marks === 20 ? 30 : sa.max_marks || 30) : (sa.max_marks || 20);
       list.push({
         id: sa.id,
         kind: 'sessional',
         title: sa.title,
-        maxMarks: sa.max_marks || 20,
+        maxMarks,
         status: (sa.status === 'published' || sa.status === 'completed') ? 'published' : 'draft',
         date: sa.exam_date
       });
@@ -1078,22 +1080,22 @@ export const FacultyMarksManagementPage: React.FC = () => {
             <Award className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif-institutional tracking-tight flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] font-serif-institutional tracking-tight flex items-center gap-3">
               Marks & Assessment Management
               {activeAssessment && (
                 <span 
                   className={clsx(
-                    'px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border',
+                    'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border',
                     activeAssessment.status === 'published'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                      : 'bg-amber-50 text-amber-900 border-amber-300'
                   )}
                 >
                   {activeAssessment.status === 'published' ? '● Published' : '○ Draft'}
                 </span>
               )}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+            <p className="text-[15px] text-[#475569] mt-0.5 font-medium leading-relaxed">
               Record, validate, publish, and audit continuous internal assessments, sessionals, and quizzes
             </p>
           </div>
@@ -1282,98 +1284,98 @@ export const FacultyMarksManagementPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total Students */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-            <Users className="w-3 h-3 text-slate-500" />
+          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-[#475569]" />
             Total Roster
           </span>
-          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] mt-1 font-sans tracking-tight">
             {stats.totalStudents}
           </div>
-          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Enrolled in Section</span>
+          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Enrolled in Section</span>
         </div>
 
         {/* Marks Entered */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          <span className="text-xs sm:text-[13px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
             Entered
           </span>
-          <div className="text-2xl font-bold text-emerald-700 mt-1 font-sans tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1 font-sans tracking-tight">
             {stats.enteredCount}
           </div>
-          <span className="text-[11px] font-medium text-emerald-700 mt-0.5">
+          <span className="text-xs sm:text-[13px] font-medium text-emerald-800 mt-0.5">
             {stats.totalStudents > 0 ? `${((stats.enteredCount / stats.totalStudents) * 100).toFixed(0)}% Completed` : '0%'}
           </span>
         </div>
 
         {/* Marks Missing */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 text-amber-600" />
+          <span className="text-xs sm:text-[13px] font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+            <AlertCircle className="w-4 h-4 text-amber-700" />
             Missing
           </span>
-          <div className="text-2xl font-bold text-amber-700 mt-1 font-sans tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-amber-900 mt-1 font-sans tracking-tight">
             {stats.missingCount}
           </div>
-          <span className="text-[11px] font-medium text-amber-700 mt-0.5">Pending input</span>
+          <span className="text-xs sm:text-[13px] font-medium text-amber-800 mt-0.5">Pending input</span>
         </div>
 
         {/* Publication Status */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-            <Eye className="w-3 h-3 text-slate-500" />
+          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
+            <Eye className="w-4 h-4 text-[#475569]" />
             Status
           </span>
           <div className="mt-1">
             {activeAssessment?.status === 'published' ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-950 border border-emerald-300">
                 Published
               </span>
             ) : (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-950 border border-amber-300">
                 Draft Only
               </span>
             )}
           </div>
-          <span className="text-[11px] font-medium text-slate-600 mt-0.5">
+          <span className="text-xs sm:text-[13px] font-medium text-[#475569] mt-0.5">
             {activeAssessment?.status === 'published' ? 'Live to Students' : 'Hidden from Students'}
           </span>
         </div>
 
         {/* Class Average */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-slate-500" />
+          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-[#475569]" />
             Class Average
           </span>
-          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans tracking-tight">
-            {stats.avgMarks} <span className="text-xs font-medium text-slate-500">/ {activeAssessment?.maxMarks || 20}</span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] mt-1 font-sans tracking-tight">
+            {stats.avgMarks} <span className="text-xs font-semibold text-[#475569]">/ {activeAssessment?.maxMarks || 20}</span>
           </div>
-          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Mean Performance</span>
+          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Mean Performance</span>
         </div>
 
         {/* Highest Mark */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-            <Award className="w-3 h-3 text-slate-500" />
+          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
+            <Award className="w-4 h-4 text-[#475569]" />
             Highest Mark
           </span>
-          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans tracking-tight">
-            {stats.highest} <span className="text-xs font-medium text-slate-500">/ {activeAssessment?.maxMarks || 20}</span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] mt-1 font-sans tracking-tight">
+            {stats.highest} <span className="text-xs font-semibold text-[#475569]">/ {activeAssessment?.maxMarks || 20}</span>
           </div>
-          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Top Score</span>
+          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Top Score</span>
         </div>
 
         {/* Lowest & Pass Rate */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-            <Percent className="w-3 h-3 text-slate-500" />
+          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
+            <Percent className="w-4 h-4 text-[#475569]" />
             Pass Rate
           </span>
-          <div className="text-2xl font-bold text-emerald-700 mt-1 font-sans tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1 font-sans tracking-tight">
             {stats.passPercentage}%
           </div>
-          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Min: {stats.lowest}</span>
+          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Min: {stats.lowest}</span>
         </div>
       </div>
 
