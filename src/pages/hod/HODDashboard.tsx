@@ -632,23 +632,23 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
             {/* Search Student Input */}
             <div className="sm:col-span-6 relative">
-              <label className="block text-xs uppercase font-bold text-[#52627A] mb-1">
+              <label className="block text-xs uppercase font-bold text-[#334155] mb-1">
                 Search Student (Name or Roll Number)
               </label>
               <div className="relative">
-                <Search className="w-4 h-4 text-[#52627A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[#475569] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={studentSearchTerm}
                   onChange={(e) => setStudentSearchTerm(e.target.value)}
                   placeholder="Search by student name or roll number..."
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm font-semibold text-[#172033] placeholder:text-[#7A8799] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs min-h-[44px]"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm font-semibold text-[#0f172a] placeholder:text-[#64748b] focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs min-h-[44px]"
                 />
                 {studentSearchTerm && (
                   <button
                     type="button"
                     onClick={() => setStudentSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#52627A] hover:text-[#172033] p-1 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] hover:text-[#0f172a] p-1 cursor-pointer"
                     title="Clear search"
                   >
                     <XCircle className="w-4 h-4" />

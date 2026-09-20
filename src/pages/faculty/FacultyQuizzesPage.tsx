@@ -58,8 +58,20 @@ export const FacultyQuizzesPage: React.FC = () => {
 
   // Filter quizzes created by this faculty (or all for HOD/Admin)
   const myQuizzes = useMemo(() => {
-    if (isSuperAdmin) return quizzes;
-    return quizzes.filter(q => q.faculty_id === currentFacultyId);
+    const rawList = isSuperAdmin ? quizzes : quizzes.filter(q => q.faculty_id === currentFacultyId);
+    const map = new Map<string, Quiz>();
+    for (const q of rawList) {
+      const key = `${q.subject_id}_${q.section_id}_${(q.title || '').trim().toLowerCase()}`;
+      if (!map.has(key)) {
+        map.set(key, q);
+      } else {
+        const existing = map.get(key)!;
+        if (existing.status !== 'published' && q.status === 'published') {
+          map.set(key, q);
+        }
+      }
+    }
+    return Array.from(map.values());
   }, [quizzes, isSuperAdmin, currentFacultyId]);
 
   // Allowed subjects & sections dynamically resolved from database relationships
@@ -192,6 +204,16 @@ export const FacultyQuizzesPage: React.FC = () => {
     }
     if (!selectedSubjectId || !selectedSectionId) {
       setErrorMsg('Please select a valid subject and section.');
+      return;
+    }
+
+    const exists = quizzes.some(
+      q => q.subject_id === selectedSubjectId &&
+           q.section_id === selectedSectionId &&
+           (q.title || '').trim().toLowerCase() === title.trim().toLowerCase()
+    );
+    if (exists) {
+      setErrorMsg(`A quiz titled "${title.trim()}" already exists for this subject & section. Please choose a different title.`);
       return;
     }
     if (!googleFormUrl.startsWith('http')) {

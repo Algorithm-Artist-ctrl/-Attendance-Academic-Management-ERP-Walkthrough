@@ -113,6 +113,8 @@ let _masterCache: { timestamp: number; data: any } | null = null;
 const STATIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute memory cache for static institutional structure only
 let _inFlightFetchAll: Promise<FullERPData | null> | null = null;
 const _inFlightScopedData = new Map<string, Promise<FullERPData | null>>();
+const _inFlightEnsureQuizzes = new Map<string, Promise<Quiz[]>>();
+const _inFlightEnsureSessionals = new Map<string, Promise<SessionalAssessment[]>>();
 
 export const supabaseService = {
   // Clear in-memory static cache when structural entities change
@@ -121,6 +123,8 @@ export const supabaseService = {
     _masterCache = null;
     _inFlightFetchAll = null;
     _inFlightScopedData.clear();
+    _inFlightEnsureQuizzes.clear();
+    _inFlightEnsureSessionals.clear();
   },
 
   // 1A. Fetch Static Academic Master Entities (Institutions, Depts, Programs, Sessions, Years, Semesters)
@@ -4033,6 +4037,26 @@ export const supabaseService = {
   // QUIZZES MODULE
   // ==========================================
   async createQuiz(quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) {
+    const cleanTitle = (quiz.title || '').trim();
+    if (!cleanTitle) {
+      throw new Error('Quiz title is required.');
+    }
+
+    // Check if an identical quiz already exists for this subject & section
+    if (quiz.subject_id && quiz.section_id) {
+      const { data: existing } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('subject_id', quiz.subject_id)
+        .eq('section_id', quiz.section_id)
+        .ilike('title', cleanTitle)
+        .maybeSingle();
+
+      if (existing) {
+        return existing as Quiz;
+      }
+    }
+
     let formUrl = (quiz.google_form_url || '').trim();
     if (!formUrl) {
       formUrl = 'https://vctm.in/quizzes';
@@ -4042,13 +4066,27 @@ export const supabaseService = {
 
     const payload = {
       ...quiz,
+      title: cleanTitle,
       google_form_url: formUrl,
       start_time: quiz.start_time || new Date().toISOString(),
       end_time: quiz.end_time || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
     const { data, error } = await supabase.from('quizzes').insert(payload).select().single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      // If error is unique constraint violation, fetch and return existing
+      if (error.code === '23505' || error.message?.includes('unique')) {
+        const { data: existingAfterConflict } = await supabase
+          .from('quizzes')
+          .select('*')
+          .eq('subject_id', quiz.subject_id)
+          .eq('section_id', quiz.section_id)
+          .ilike('title', cleanTitle)
+          .maybeSingle();
+        if (existingAfterConflict) return existingAfterConflict as Quiz;
+      }
+      throw new Error(error.message);
+    }
 
     // Audit Log
     await supabase.from('audit_logs').insert({
@@ -4229,8 +4267,24 @@ export const supabaseService = {
     if (assessment.max_marks <= 0) {
       throw new Error('Maximum marks must be greater than 0.');
     }
-    if (!assessment.title?.trim()) {
+    const cleanTitle = (assessment.title || '').trim();
+    if (!cleanTitle) {
       throw new Error('Sessional title is required.');
+    }
+
+    // Check if an identical sessional assessment already exists for this subject & section
+    if (assessment.subject_id && assessment.section_id) {
+      const { data: existing } = await supabase
+        .from('sessional_assessments')
+        .select('*')
+        .eq('subject_id', assessment.subject_id)
+        .eq('section_id', assessment.section_id)
+        .ilike('title', cleanTitle)
+        .maybeSingle();
+
+      if (existing) {
+        return existing as SessionalAssessment;
+      }
     }
 
     // Resolve auth_user_id for sessional_assessments.faculty_id (references auth.users.id)
@@ -4250,6 +4304,7 @@ export const supabaseService = {
       .from('sessional_assessments')
       .insert({
         ...assessment,
+        title: cleanTitle,
         faculty_id: authFacultyId,
         status: assessment.status || 'draft',
         created_at: new Date().toISOString(),
@@ -4258,7 +4313,19 @@ export const supabaseService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (error.code === '23505' || error.message?.includes('unique')) {
+        const { data: existingAfterConflict } = await supabase
+          .from('sessional_assessments')
+          .select('*')
+          .eq('subject_id', assessment.subject_id)
+          .eq('section_id', assessment.section_id)
+          .ilike('title', cleanTitle)
+          .maybeSingle();
+        if (existingAfterConflict) return existingAfterConflict as SessionalAssessment;
+      }
+      throw new Error(error.message);
+    }
 
     await supabase.from('audit_logs').insert({
       action: 'SESSIONAL_ASSESSMENT_CREATED',
@@ -4312,55 +4379,70 @@ export const supabaseService = {
     facultyId: string;
     semesterId?: string;
   }): Promise<SessionalAssessment[]> {
-    const { data: existing, error } = await supabase
-      .from('sessional_assessments')
-      .select('*')
-      .eq('subject_id', params.subjectId)
-      .eq('section_id', params.sectionId);
-
-    if (error) {
-      console.warn('Error checking existing sessional assessments:', error.message);
-      return [];
+    const key = `${params.subjectId}::${params.sectionId}`;
+    if (_inFlightEnsureSessionals.has(key)) {
+      return _inFlightEnsureSessionals.get(key)!;
     }
 
-    const currentList = (existing as SessionalAssessment[]) || [];
-    const titles = new Set(currentList.map(a => a.title.trim().toLowerCase()));
-
-    const toCreate: Array<{ title: string; max_marks: number }> = [];
-    if (!titles.has('sessional 1')) {
-      toCreate.push({ title: 'Sessional 1', max_marks: 20 });
-    }
-    if (!titles.has('sessional 2')) {
-      toCreate.push({ title: 'Sessional 2', max_marks: 20 });
-    }
-    if (!titles.has('sessional 3')) {
-      toCreate.push({ title: 'Sessional 3', max_marks: 20 });
-    }
-
-    if (toCreate.length === 0) {
-      return currentList;
-    }
-
-    const newAssessments: SessionalAssessment[] = [];
-    for (const item of toCreate) {
+    const promise = (async () => {
       try {
-        const created = await this.createSessionalAssessment({
-          title: item.title,
-          subject_id: params.subjectId,
-          section_id: params.sectionId,
-          faculty_id: params.facultyId,
-          semester_id: params.semesterId,
-          max_marks: item.max_marks,
-          exam_date: new Date().toISOString().split('T')[0],
-          status: 'draft',
-        });
-        newAssessments.push(created);
-      } catch (err) {
-        console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
-      }
-    }
+        const { data: existing, error } = await supabase
+          .from('sessional_assessments')
+          .select('*')
+          .eq('subject_id', params.subjectId)
+          .eq('section_id', params.sectionId);
 
-    return [...currentList, ...newAssessments];
+        if (error) {
+          console.warn('Error checking existing sessional assessments:', error.message);
+          return [];
+        }
+
+        const currentList = (existing as SessionalAssessment[]) || [];
+        const existingByTitle = new Map<string, SessionalAssessment>();
+        for (const a of currentList) {
+          const tKey = (a.title || '').trim().toLowerCase();
+          if (!existingByTitle.has(tKey)) {
+            existingByTitle.set(tKey, a);
+          }
+        }
+
+        const toCreate: Array<{ title: string; max_marks: number }> = [];
+        if (!existingByTitle.has('sessional 1')) {
+          toCreate.push({ title: 'Sessional 1', max_marks: 20 });
+        }
+        if (!existingByTitle.has('sessional 2')) {
+          toCreate.push({ title: 'Sessional 2', max_marks: 20 });
+        }
+        if (!existingByTitle.has('sessional 3')) {
+          toCreate.push({ title: 'Sessional 3', max_marks: 20 });
+        }
+
+        for (const item of toCreate) {
+          try {
+            const created = await this.createSessionalAssessment({
+              title: item.title,
+              subject_id: params.subjectId,
+              section_id: params.sectionId,
+              faculty_id: params.facultyId,
+              semester_id: params.semesterId,
+              max_marks: item.max_marks,
+              exam_date: new Date().toISOString().split('T')[0],
+              status: 'draft',
+            });
+            existingByTitle.set(item.title.toLowerCase(), created);
+          } catch (err) {
+            console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
+          }
+        }
+
+        return Array.from(existingByTitle.values());
+      } finally {
+        _inFlightEnsureSessionals.delete(key);
+      }
+    })();
+
+    _inFlightEnsureSessionals.set(key, promise);
+    return promise;
   },
 
   async ensureDefaultQuizzes(params: {
@@ -4368,56 +4450,71 @@ export const supabaseService = {
     sectionId: string;
     facultyId: string;
   }): Promise<Quiz[]> {
-    const { data: existing, error } = await supabase
-      .from('quizzes')
-      .select('*')
-      .eq('subject_id', params.subjectId)
-      .eq('section_id', params.sectionId);
-
-    if (error) {
-      console.warn('Error checking existing quizzes:', error.message);
-      return [];
+    const key = `${params.subjectId}::${params.sectionId}`;
+    if (_inFlightEnsureQuizzes.has(key)) {
+      return _inFlightEnsureQuizzes.get(key)!;
     }
 
-    const currentList = (existing as Quiz[]) || [];
-    const titles = new Set(currentList.map(q => q.title?.trim().toLowerCase()));
-
-    const toCreate: Array<{ title: string; max_marks: number }> = [];
-    for (let i = 1; i <= 5; i++) {
-      const qTitle = `Quiz ${i}`;
-      if (!titles.has(qTitle.toLowerCase())) {
-        toCreate.push({ title: qTitle, max_marks: 20 });
-      }
-    }
-
-    if (toCreate.length === 0) {
-      return currentList;
-    }
-
-    const createdList: Quiz[] = [];
-    for (const item of toCreate) {
+    const promise = (async () => {
       try {
-        const now = new Date();
-        const created = await this.createQuiz({
-          faculty_id: params.facultyId,
-          subject_id: params.subjectId,
-          section_id: params.sectionId,
-          title: item.title,
-          max_marks: item.max_marks,
-          quiz_date: now.toISOString().split('T')[0],
-          start_time: now.toISOString(),
-          end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          google_form_url: 'https://vctm.in/quizzes',
-          status: 'draft',
-          active: true
-        });
-        createdList.push(created);
-      } catch (err) {
-        console.warn(`Failed to auto-create quiz ${item.title}:`, err);
-      }
-    }
+        const { data: existing, error } = await supabase
+          .from('quizzes')
+          .select('*')
+          .eq('subject_id', params.subjectId)
+          .eq('section_id', params.sectionId);
 
-    return [...currentList, ...createdList];
+        if (error) {
+          console.warn('Error checking existing quizzes:', error.message);
+          return [];
+        }
+
+        const currentList = (existing as Quiz[]) || [];
+        const existingByTitle = new Map<string, Quiz>();
+        for (const q of currentList) {
+          const tKey = (q.title || '').trim().toLowerCase();
+          if (!existingByTitle.has(tKey)) {
+            existingByTitle.set(tKey, q);
+          }
+        }
+
+        const toCreate: Array<{ title: string; max_marks: number }> = [];
+        for (let i = 1; i <= 5; i++) {
+          const qTitle = `Quiz ${i}`;
+          if (!existingByTitle.has(qTitle.toLowerCase())) {
+            toCreate.push({ title: qTitle, max_marks: 20 });
+          }
+        }
+
+        for (const item of toCreate) {
+          try {
+            const now = new Date();
+            const created = await this.createQuiz({
+              faculty_id: params.facultyId,
+              subject_id: params.subjectId,
+              section_id: params.sectionId,
+              title: item.title,
+              max_marks: item.max_marks,
+              quiz_date: now.toISOString().split('T')[0],
+              start_time: now.toISOString(),
+              end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              google_form_url: 'https://vctm.in/quizzes',
+              status: 'draft',
+              active: true
+            });
+            existingByTitle.set(item.title.toLowerCase(), created);
+          } catch (err) {
+            console.warn(`Failed to auto-create quiz ${item.title}:`, err);
+          }
+        }
+
+        return Array.from(existingByTitle.values());
+      } finally {
+        _inFlightEnsureQuizzes.delete(key);
+      }
+    })();
+
+    _inFlightEnsureQuizzes.set(key, promise);
+    return promise;
   },
 
   async ensureDefaultAssessments(params: {

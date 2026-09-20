@@ -95,7 +95,7 @@ export const LoginPage: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <div className="flex items-baseline gap-2">
-              <h1 className="font-serif-institutional font-bold text-xl sm:text-2xl text-slate-900 tracking-wider leading-none">
+              <h1 className="font-serif-hero font-bold text-xl sm:text-2xl text-slate-900 tracking-wider leading-none">
                 VCTM ERP
               </h1>
               <span className="hidden sm:inline-block text-[9px] font-bold text-slate-500 tracking-[0.25em]">
@@ -129,9 +129,9 @@ export const LoginPage: React.FC = () => {
         <div className="lg:col-span-7 flex flex-col justify-between h-full py-1 lg:py-2">
           {/* Hero Headlines */}
           <div className="space-y-1.5 lg:space-y-2 max-w-xl">
-            <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-serif-institutional font-bold text-slate-950 tracking-tight leading-[1.12] drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+            <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.12] drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
               Empowering <br />
-              Education <span className="font-normal font-serif-institutional text-slate-900">with Technology</span>
+              Education <span className="font-normal font-serif-hero text-slate-900">with Technology</span>
             </h2>
             <p className="text-sm sm:text-base lg:text-lg text-slate-800 font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
               A Smarter Campus for a Brighter Tomorrow
@@ -187,7 +187,7 @@ export const LoginPage: React.FC = () => {
                   className="w-full h-full object-contain drop-shadow-sm" 
                 />
               </div>
-              <h3 className="font-serif-institutional font-bold text-xl sm:text-2xl text-slate-900 tracking-wider">
+              <h3 className="font-serif-hero font-bold text-xl sm:text-2xl text-slate-900 tracking-wider">
                 VCTM ERP
               </h3>
               <p className="text-[11px] sm:text-xs text-slate-700 font-medium mt-0.5">

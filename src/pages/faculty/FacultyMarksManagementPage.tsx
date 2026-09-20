@@ -270,7 +270,11 @@ export const FacultyMarksManagementPage: React.FC = () => {
       return a.title.localeCompare(b.title);
     });
 
+    const seenSessionalTitles = new Set<string>();
     for (const sa of matchedSessionals) {
+      const normTitle = (sa.title || '').trim().toLowerCase();
+      if (seenSessionalTitles.has(normTitle)) continue;
+      seenSessionalTitles.add(normTitle);
       list.push({
         id: sa.id,
         kind: 'sessional',
@@ -295,7 +299,11 @@ export const FacultyMarksManagementPage: React.FC = () => {
       return (a.title || '').localeCompare(b.title || '');
     });
 
+    const seenQuizTitles = new Set<string>();
     for (const q of matchedQuizzes) {
+      const normTitle = (q.title || '').trim().toLowerCase();
+      if (seenQuizTitles.has(normTitle)) continue;
+      seenQuizTitles.add(normTitle);
       list.push({
         id: q.id,
         kind: 'quiz',
@@ -655,7 +663,40 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
   const handleCreateAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAssessmentTitle.trim() || !selectedSubjectId || !selectedSectionId || !currentFacultyId) return;
+    const trimmedTitle = newAssessmentTitle.trim();
+    if (!trimmedTitle || !selectedSubjectId || !selectedSectionId || !currentFacultyId) return;
+
+    if (newAssessmentKind === 'sessional') {
+      const existing = sessionalAssessments.find(
+        sa => sa.subject_id === selectedSubjectId &&
+              sa.section_id === selectedSectionId &&
+              (sa.title || '').trim().toLowerCase() === trimmedTitle.toLowerCase()
+      );
+      if (existing) {
+        setSelectedAssessmentId(existing.id);
+        setIsAddAssessmentModalOpen(false);
+        setNotificationToast({
+          type: 'error',
+          message: `Sessional assessment "${existing.title}" already exists for this subject & section. Switched to existing record.`
+        });
+        return;
+      }
+    } else {
+      const existing = quizzes.find(
+        q => q.subject_id === selectedSubjectId &&
+             q.section_id === selectedSectionId &&
+             (q.title || '').trim().toLowerCase() === trimmedTitle.toLowerCase()
+      );
+      if (existing) {
+        setSelectedAssessmentId(existing.id);
+        setIsAddAssessmentModalOpen(false);
+        setNotificationToast({
+          type: 'error',
+          message: `Quiz "${existing.title}" already exists for this subject & section. Switched to existing record.`
+        });
+        return;
+      }
+    }
 
     try {
       setIsCreatingAssessment(true);
@@ -663,7 +704,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
       if (newAssessmentKind === 'sessional') {
         const created = await createSessionalAssessment({
-          title: newAssessmentTitle.trim(),
+          title: trimmedTitle,
           subject_id: selectedSubjectId,
           section_id: selectedSectionId,
           faculty_id: currentFacultyId,

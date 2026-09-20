@@ -532,6 +532,38 @@ interface AcademicContextType {
 
 const AcademicContext = createContext<AcademicContextType | undefined>(undefined);
 
+function deduplicateQuizzes(list: Quiz[]): Quiz[] {
+  const map = new Map<string, Quiz>();
+  for (const q of list) {
+    const key = `${q.subject_id}_${q.section_id}_${(q.title || '').trim().toLowerCase()}`;
+    if (!map.has(key)) {
+      map.set(key, q);
+    } else {
+      const existing = map.get(key)!;
+      if (existing.status !== 'published' && q.status === 'published') {
+        map.set(key, q);
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
+function deduplicateSessionals(list: SessionalAssessment[]): SessionalAssessment[] {
+  const map = new Map<string, SessionalAssessment>();
+  for (const sa of list) {
+    const key = `${sa.subject_id}_${sa.section_id}_${(sa.title || '').trim().toLowerCase()}`;
+    if (!map.has(key)) {
+      map.set(key, sa);
+    } else {
+      const existing = map.get(key)!;
+      if (existing.status !== 'published' && (sa.status === 'published' || sa.status === 'completed')) {
+        map.set(key, sa);
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
 export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, role, isLoading: authLoading, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -845,9 +877,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAuditLogs(data.auditLogs);
         setCourseAssignments(enrichedCourseAssignments);
         setAssignmentSubmissions(enrichedSubmissions);
-        setQuizzes(enrichedQuizzes);
+        setQuizzes(deduplicateQuizzes(enrichedQuizzes));
         setQuizResults(enrichedQuizResults);
-        setSessionalAssessments(enrichedAssessments);
+        setSessionalAssessments(deduplicateSessionals(enrichedAssessments));
         setSessionalMarks(enrichedSessionalMarks);
         setMarksHistory(enrichedMarksHistory);
 
@@ -1121,9 +1153,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setCourseAssignments(enrichedCourseAssignments);
       setAssignmentSubmissions(enrichedSubmissions);
-      setQuizzes(enrichedQuizzes);
+      setQuizzes(deduplicateQuizzes(enrichedQuizzes));
       setQuizResults(enrichedQuizResults);
-      setSessionalAssessments(enrichedAssessments);
+      setSessionalAssessments(deduplicateSessionals(enrichedAssessments));
       setSessionalMarks(enrichedSessionalMarks);
       setMarksHistory(enrichedMarksHistory);
     } catch (err) {
@@ -3075,8 +3107,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const createQuiz = async (quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createQuiz(quiz);
     setQuizzes(prev => {
-      const exists = prev.some(q => q.id === res.id);
-      return exists ? prev : [res, ...prev];
+      const exists = prev.some(q => 
+        q.id === res.id || (
+          q.subject_id === res.subject_id &&
+          q.section_id === res.section_id &&
+          (q.title || '').trim().toLowerCase() === (res.title || '').trim().toLowerCase()
+        )
+      );
+      return exists ? prev.map(q => q.id === res.id ? res : q) : deduplicateQuizzes([res, ...prev]);
     });
     await refreshAssessments();
     return res;
@@ -3121,8 +3159,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const createSessionalAssessment = async (data: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createSessionalAssessment(data);
     setSessionalAssessments(prev => {
-      const exists = prev.some(sa => sa.id === res.id);
-      return exists ? prev : [res, ...prev];
+      const exists = prev.some(sa => 
+        sa.id === res.id || (
+          sa.subject_id === res.subject_id &&
+          sa.section_id === res.section_id &&
+          (sa.title || '').trim().toLowerCase() === (data.title || '').trim().toLowerCase()
+        )
+      );
+      return exists ? prev.map(sa => sa.id === res.id ? res : sa) : deduplicateSessionals([res, ...prev]);
     });
     await refreshAssessments();
     return res;
@@ -3150,58 +3194,38 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
-  const ensureDefaultQuizzes = async (params: {
+  const ensureDefaultQuizzes = useCallback(async (params: {
     subjectId: string;
     sectionId: string;
     facultyId: string;
   }) => {
     const res = await supabaseService.ensureDefaultQuizzes(params);
-    setQuizzes(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const newlyAdded = res.filter(r => !existingIds.has(r.id));
-      return newlyAdded.length > 0 ? [...prev, ...newlyAdded] : prev;
-    });
+    setQuizzes(prev => deduplicateQuizzes([...prev, ...res]));
     return res;
-  };
+  }, []);
 
-  const ensureDefaultAssessments = async (params: {
+  const ensureDefaultAssessments = useCallback(async (params: {
     subjectId: string;
     sectionId: string;
     facultyId: string;
     semesterId?: string;
   }) => {
     const { sessionals, quizzes: ensuredQuizzes } = await supabaseService.ensureDefaultAssessments(params);
-    setSessionalAssessments(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const newlyAdded = sessionals.filter(r => !existingIds.has(r.id));
-      return newlyAdded.length > 0 ? [...prev, ...newlyAdded] : prev;
-    });
-    setQuizzes(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const newlyAdded = ensuredQuizzes.filter(r => !existingIds.has(r.id));
-      return newlyAdded.length > 0 ? [...prev, ...newlyAdded] : prev;
-    });
+    setSessionalAssessments(prev => deduplicateSessionals([...prev, ...sessionals]));
+    setQuizzes(prev => deduplicateQuizzes([...prev, ...ensuredQuizzes]));
     return { sessionals, quizzes: ensuredQuizzes };
-  };
+  }, []);
 
-  const ensureDefaultSessionalAssessments = async (params: {
+  const ensureDefaultSessionalAssessments = useCallback(async (params: {
     subjectId: string;
     sectionId: string;
     facultyId: string;
     semesterId?: string;
   }) => {
-    ensureDefaultQuizzes(params).catch(() => {});
     const res = await supabaseService.ensureDefaultSessionalAssessments(params);
-    setSessionalAssessments(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const newlyAdded = res.filter(r => !existingIds.has(r.id));
-      if (newlyAdded.length > 0) {
-        return [...prev, ...newlyAdded];
-      }
-      return prev;
-    });
+    setSessionalAssessments(prev => deduplicateSessionals([...prev, ...res]));
     return res;
-  };
+  }, []);
 
   const saveSessionalMarks = async (params: {
     sessionalAssessmentId?: string;

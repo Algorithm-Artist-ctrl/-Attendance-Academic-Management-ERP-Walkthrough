@@ -110,13 +110,13 @@ export function DataTable<T>({
       <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-xs">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider">
+            <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-900 font-bold text-sm tracking-normal">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   className={clsx(
-                    'px-4 py-3 select-none',
-                    col.sortable && 'cursor-pointer hover:bg-slate-100/80',
+                    'px-4 py-3.5 select-none',
+                    col.sortable && 'cursor-pointer hover:bg-slate-200/80',
                     col.headerClassName
                   )}
                   onClick={() => col.sortable && handleSort(col.key)}
@@ -124,7 +124,7 @@ export function DataTable<T>({
                   <div className="flex items-center gap-1.5">
                     <span>{col.header}</span>
                     {col.sortable && (
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
                     )}
                   </div>
                 </th>
@@ -138,12 +138,12 @@ export function DataTable<T>({
                 return (
                   <tr
                     key={keyExtractor(item)}
-                    className="hover:bg-slate-50/60 transition-colors"
+                    className="hover:bg-slate-50/80 transition-colors"
                   >
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={clsx('px-4 py-3 text-slate-700', col.className)}
+                        className={clsx('px-4 py-3.5 text-[15px] font-medium text-slate-900', col.className)}
                       >
                         {col.render
                           ? col.render(item, globalIndex)
