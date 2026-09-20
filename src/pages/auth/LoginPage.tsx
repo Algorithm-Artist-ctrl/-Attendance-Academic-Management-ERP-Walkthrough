@@ -65,25 +65,25 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden w-full flex flex-col justify-between bg-white select-none relative overflow-x-hidden">
       
       {/* ======================================================== */}
-      {/* 1. CAMPUS BACKGROUND PHOTO & SUBTLE LOCALIZED GRADIENT   */}
+      {/* 1. CAMPUS BACKGROUND PHOTO & FOCUSED SKY GRADIENT        */}
       {/* ======================================================== */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
           src={vctmCampusImage}
           alt="Vivekananda College of Technology & Management Campus"
-          className="w-full h-full object-cover object-[center_42%]"
+          className="w-full h-full object-cover object-[center_35%]"
           loading="eager"
         />
-        {/* Subtle localized left gradient: Ensures hero text readability while keeping the college building photorealistic */}
-        <div className="absolute inset-y-0 left-0 w-full sm:w-[50%] lg:w-[42%] bg-gradient-to-r from-white/80 via-white/35 to-transparent" />
+        {/* Localized sky/heading gradient only at top-left: protects text contrast over the sky while keeping building facade and lawn 100% photorealistic and vibrant */}
+        <div className="absolute top-0 left-0 w-full sm:w-[55%] lg:w-[46%] h-[52%] bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-white/90 via-white/40 to-transparent pointer-events-none" />
         {/* Mobile wash for readability on small screen sizes */}
-        <div className="absolute inset-0 bg-white/70 lg:hidden" />
+        <div className="absolute inset-0 bg-white/75 lg:hidden pointer-events-none" />
       </div>
 
       {/* ======================================================== */}
       {/* 2. TOP HEADER BAR                                        */}
       {/* ======================================================== */}
-      <header className="relative z-20 w-full px-6 sm:px-10 lg:px-12 py-2.5 shrink-0 bg-white/80 backdrop-blur-sm border-b border-slate-200/50 flex items-center justify-between">
+      <header className="relative z-20 w-full px-6 sm:px-10 lg:px-12 py-2 sm:py-2.5 shrink-0 bg-white/85 backdrop-blur-sm border-b border-slate-200/60 flex items-center justify-between">
         {/* Left: Official College Logo & Institutional Branding */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center">
@@ -123,51 +123,62 @@ export const LoginPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. MAIN HERO & FLOATING LOGIN CARD GRID                  */}
       {/* ======================================================== */}
-      <main className="relative z-20 flex-1 min-h-0 max-w-7xl mx-auto w-full px-6 sm:px-10 lg:px-12 py-2.5 lg:py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+      <main className="relative z-20 flex-1 min-h-0 max-w-7xl mx-auto w-full px-6 sm:px-10 lg:px-12 pt-2 sm:pt-3 pb-6 lg:pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         
-        {/* Left Column: Hero Text & Bottom Feature Bar */}
-        <div className="lg:col-span-7 flex flex-col justify-between h-full py-1 lg:py-2">
-          {/* Hero Headlines */}
-          <div className="space-y-1.5 lg:space-y-2 max-w-xl">
-            <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.12] drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">
+        {/* Left Column: Hero Text (Top-Left) & Feature Bar (Bottom-Left over Lawn) */}
+        <div className="lg:col-span-7 flex flex-col justify-between h-full min-h-0">
+          {/* Hero Headlines - Positioned in the clean upper sky area */}
+          <div className="max-w-xl">
+            <h2 
+              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.0] drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+              style={{ fontSize: 'clamp(40px, 3.8vw, 62px)' }}
+            >
               Empowering <br />
               Education <span className="font-normal font-serif-hero text-slate-900">with Technology</span>
             </h2>
-            <p className="text-sm sm:text-base lg:text-lg text-slate-800 font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+            <p className="text-sm sm:text-base lg:text-[17px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-2 sm:mt-2.5 max-w-lg">
               A Smarter Campus for a Brighter Tomorrow
             </p>
           </div>
 
-          {/* Bottom Floating Dark Feature Bar */}
-          <div className="mt-4 lg:mt-6 bg-[#0f172a]/95 backdrop-blur-xs text-white rounded-2xl p-3 sm:p-3.5 shadow-xl border border-slate-800/80 max-w-xl">
+          {/* Bottom Floating Dark Feature Bar - Anchored to bottom over lawn, leaving college building facade fully visible */}
+          <div className="w-full max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-3 sm:p-3.5 shadow-2xl border border-slate-700/60 mt-4 lg:mt-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/60">
               
               {/* Feature 1 */}
-              <div className="flex flex-col sm:px-2.5 pt-1 sm:pt-0">
-                <GraduationCap className="w-4 h-4 text-white mb-1" />
-                <span className="text-[11px] font-bold text-white leading-tight">Academic Management</span>
-                <span className="text-[9.5px] text-slate-300 mt-0.5 leading-snug">Classes, Subjects & Timetable</span>
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-bold text-white leading-tight">Academic Management</span>
+                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Classes, Subjects & Timetable</span>
               </div>
 
               {/* Feature 2 */}
-              <div className="flex flex-col sm:px-2.5 pt-1 sm:pt-0">
-                <Users className="w-4 h-4 text-white mb-1" />
-                <span className="text-[11px] font-bold text-white leading-tight">Student Information</span>
-                <span className="text-[9.5px] text-slate-300 mt-0.5 leading-snug">Profiles, Records & Performance</span>
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
+                  <Users className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-bold text-white leading-tight">Student Information</span>
+                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Profiles, Records & Performance</span>
               </div>
 
               {/* Feature 3 */}
-              <div className="flex flex-col sm:px-2.5 pt-1 sm:pt-0">
-                <FileText className="w-4 h-4 text-white mb-1" />
-                <span className="text-[11px] font-bold text-white leading-tight">Assignments & Grading</span>
-                <span className="text-[9.5px] text-slate-300 mt-0.5 leading-snug">Sessional, Quizzes & Evaluations</span>
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
+                  <FileText className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-bold text-white leading-tight">Assignments & Grading</span>
+                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Sessional, Quizzes & Evaluations</span>
               </div>
 
               {/* Feature 4 */}
-              <div className="flex flex-col sm:px-2.5 pt-1 sm:pt-0">
-                <TrendingUp className="w-4 h-4 text-white mb-1" />
-                <span className="text-[11px] font-bold text-white leading-tight">Attendance & Reports</span>
-                <span className="text-[9.5px] text-slate-300 mt-0.5 leading-snug">Real-time Tracking & Insights</span>
+              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-bold text-white leading-tight">Attendance & Reports</span>
+                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Real-time Tracking & Insights</span>
               </div>
 
             </div>
@@ -175,7 +186,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Right Column: Floating White Login Card */}
-        <div className="lg:col-span-5 w-full max-w-[360px] sm:max-w-[375px] ml-auto flex items-center justify-end">
+        <div className="lg:col-span-5 w-full max-w-[360px] sm:max-w-[375px] ml-auto flex items-center justify-end my-auto">
           <div className="w-full bg-white/98 backdrop-blur-md rounded-2xl sm:rounded-[24px] p-5 sm:p-5.5 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.2)] border border-slate-200/90 relative overflow-hidden transition-all duration-300">
             
             {/* Card Emblem & Title */}
