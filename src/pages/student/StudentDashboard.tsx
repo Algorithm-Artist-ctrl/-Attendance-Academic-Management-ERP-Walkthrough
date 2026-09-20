@@ -242,38 +242,51 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
   return (
     <div className="space-y-6">
       {/* 1. WELCOME BANNER */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1.5 z-10">
-          <div className="flex items-center gap-2">
-            <h1 className="font-serif-institutional text-2xl sm:text-3xl font-black text-[#0f172a] tracking-tight">
-              Welcome back, {student?.full_name || user?.full_name || 'Student'} 👋
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-2 z-10">
+          <div>
+            <h1 className="font-serif-institutional text-2xl sm:text-3xl font-bold text-[#0f172a] tracking-tight">
+              Welcome back, {student?.full_name || user?.full_name || 'Student'}
             </h1>
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Roll No:</span>
+              <span className="font-mono text-xs sm:text-sm font-bold text-[#0f172a] bg-slate-100/90 px-2.5 py-0.5 rounded-lg border border-slate-200/90">
+                {student?.roll_number || '—'}
+              </span>
+            </div>
           </div>
-          <p className="text-sm sm:text-[15px] text-[#475569] font-medium">
-            Roll No. <strong className="text-[#0f172a] font-bold">{student?.roll_number || '—'}</strong> • {prog?.name || 'B.Tech'} <strong className="text-[#0f172a] font-bold">{branchName}</strong> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
+
+          <p className="text-xs sm:text-sm text-[#475569] font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-[#0f172a]">{prog?.name || 'B.Tech'} {branchName}</span>
+            <span className="text-slate-300">•</span>
+            <span>{year?.name || 'Academic Year'}</span>
+            <span className="text-slate-300">•</span>
+            <span>{section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(Room ${section.room_number})` : ''}</span>
           </p>
-          <div className="pt-0.5 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-[#334155] shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
-              Class Coordinator:{' '}
+
+          <div className="pt-1 flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#334155] shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <span className="text-slate-500 font-medium">Class Coordinator:</span>
               {classCoordinator ? (
-                <>
-                  <strong className="text-[#0f172a] font-bold">{classCoordinator.name}</strong>{' '}
-                  <span className="text-[#475569]">({classCoordinator.yearName} • {classCoordinator.sectionName})</span>
-                </>
+                <div className="flex items-center gap-1.5 font-semibold text-[#0f172a]">
+                  <span>{classCoordinator.name}</span>
+                  <span className="text-slate-400 font-normal">({classCoordinator.yearName} • {classCoordinator.sectionName})</span>
+                </div>
               ) : (
-                <span className="text-slate-500 font-medium italic">No coordinator assigned</span>
+                <span className="text-slate-400 italic">Unassigned</span>
               )}
-            </span>
+            </div>
           </div>
         </div>
 
-        <div className="z-10 flex items-center gap-3">
+        <div className="z-10 flex items-center gap-3 shrink-0">
           <Button
             variant="neon"
             size="sm"
             onClick={() => onNavigate('corrections')}
             leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+            className="shadow-xs font-semibold"
           >
             My Claims {stats.pendingClaimsCount > 0 && `(${stats.pendingClaimsCount} Pending)`}
           </Button>
@@ -519,64 +532,64 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <CardSkeleton count={4} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {/* Overall Attendance */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
-            <div>
-              <p className="text-xs font-bold text-[#475569] uppercase tracking-wider">Overall Attendance</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#0f172a] mt-1">
-                {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : 'No records'}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 flex items-start justify-between shadow-2xs hover:shadow-xs transition-all">
+            <div className="min-w-0 pr-2">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Overall Attendance</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#0f172a] mt-1.5 tracking-tight font-mono">
+                {stats.totalLectures > 0 && stats.percentage !== null ? `${stats.percentage}%` : '—'}
               </h3>
-              <span className="text-xs text-[#475569] font-medium mt-0.5 block">
+              <p className="text-xs text-[#475569] font-medium mt-1 truncate">
                 {stats.totalLectures === 0 || stats.percentage === null ? 'No attendance recorded yet' : stats.isDefaulter ? '⚠️ Below 75% Requirement' : '✅ AKTU Criteria Satisfied'}
-              </span>
+              </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#0f172a]">
-              <TrendingUp className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#0f172a] shrink-0">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </div>
 
           {/* Recorded Lectures */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
-            <div>
-              <p className="text-xs font-bold text-[#475569] uppercase tracking-wider">Recorded Lectures</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#0f172a] mt-1">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 flex items-start justify-between shadow-2xs hover:shadow-xs transition-all">
+            <div className="min-w-0 pr-2">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Recorded Lectures</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#0f172a] mt-1.5 tracking-tight font-mono">
                 {stats.totalLectures}
               </h3>
-              <span className="text-xs text-[#475569] font-medium mt-0.5 block">{sessionName}</span>
+              <p className="text-xs text-[#475569] font-medium mt-1 truncate">{sessionName}</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#0f172a]">
-              <BookOpen className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#0f172a] shrink-0">
+              <BookOpen className="w-5 h-5" />
             </div>
           </div>
 
           {/* Attended (Present) */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
-            <div>
-              <p className="text-xs font-bold text-[#475569] uppercase tracking-wider">Attended (Present)</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-emerald-800 mt-1">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 flex items-start justify-between shadow-2xs hover:shadow-xs transition-all">
+            <div className="min-w-0 pr-2">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Attended (Present)</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-emerald-700 mt-1.5 tracking-tight font-mono">
                 {stats.presentLectures}
               </h3>
-              <span className="text-xs text-[#475569] font-medium mt-0.5 block">
+              <p className="text-xs text-[#475569] font-medium mt-1 truncate">
                 {stats.totalLectures > 0 ? 'Verified in Database' : 'No records yet'}
-              </span>
+              </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
-              <CheckCircle2 className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
 
           {/* Absent */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xs hover:shadow-sm transition-all">
-            <div>
-              <p className="text-xs font-bold text-[#475569] uppercase tracking-wider">Absent Lectures</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-rose-800 mt-1">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 flex items-start justify-between shadow-2xs hover:shadow-xs transition-all">
+            <div className="min-w-0 pr-2">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Absent Lectures</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-rose-700 mt-1.5 tracking-tight font-mono">
                 {totalAbsent}
               </h3>
-              <span className="text-xs text-[#475569] font-medium mt-0.5 block">Missed Lectures</span>
+              <p className="text-xs text-[#475569] font-medium mt-1 truncate">Missed Lectures</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-800">
-              <XCircle className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-800 shrink-0">
+              <XCircle className="w-5 h-5" />
             </div>
           </div>
         </div>

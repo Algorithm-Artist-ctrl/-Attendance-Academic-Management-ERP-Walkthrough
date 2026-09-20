@@ -204,6 +204,10 @@ interface AcademicContextType {
   ) => Promise<{ data: Conversation | null; error: any }>;
   fetchEligibleFacultyForStudent: (studentId: string) => Promise<EligibleFacultyForStudent[]>;
   fetchEligibleStudentsForFaculty: (facultyId: string) => Promise<EligibleStudentForFaculty[]>;
+  getCachedConversationMessages: (conversationId: string) => Message[] | undefined;
+  setCachedConversationMessages: (conversationId: string, messages: Message[]) => void;
+  getCachedGroupMessages: (groupId: string) => GroupMessage[] | undefined;
+  setCachedGroupMessages: (groupId: string, messages: GroupMessage[]) => void;
   activeToast: {
     id: string;
     title: string;
@@ -628,6 +632,31 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     activeGroupIdRef.current = activeGroupId;
   }, [activeGroupId]);
+
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  // Client-Side In-Memory Message Caches (Instant switching without network delay or blur)
+  const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
+  const groupMessagesCacheRef = useRef<Map<string, GroupMessage[]>>(new Map());
+
+  const getCachedConversationMessages = useCallback((conversationId: string): Message[] | undefined => {
+    return messagesCacheRef.current.get(conversationId);
+  }, []);
+
+  const setCachedConversationMessages = useCallback((conversationId: string, messages: Message[]) => {
+    messagesCacheRef.current.set(conversationId, messages);
+  }, []);
+
+  const getCachedGroupMessages = useCallback((groupId: string): GroupMessage[] | undefined => {
+    return groupMessagesCacheRef.current.get(groupId);
+  }, []);
+
+  const setCachedGroupMessages = useCallback((groupId: string, messages: GroupMessage[]) => {
+    groupMessagesCacheRef.current.set(groupId, messages);
+  }, []);
 
   const unreadMessagesCount = 
     conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0) +
@@ -1511,17 +1540,63 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
         debounceTableSync('conversations', () => realtimeHandlersRef.current.refreshConversations());
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        debounceTableSync('messages', () => {
-          realtimeHandlersRef.current.refreshConversations();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
+        const newMsg = payload?.new as Message;
+        if (newMsg && newMsg.conversation_id) {
+          setConversations(prev => {
+            const idx = prev.findIndex(c => c.id === newMsg.conversation_id);
+            if (idx === -1) {
+              debounceTableSync('messages', () => realtimeHandlersRef.current.refreshConversations());
+              return prev;
+            }
+            const target = prev[idx];
+            const isForActiveThread = activeConversationIdRef.current === newMsg.conversation_id;
+            const isIncoming = newMsg.sender_user_id !== (userRef.current?.id || '');
+            const updated: Conversation = {
+              ...target,
+              last_message_preview: newMsg.is_unsent ? 'Message unsent' : newMsg.message,
+              last_message_at: newMsg.created_at || target.last_message_at,
+              unread_count: (isIncoming && !isForActiveThread) ? (target.unread_count || 0) + 1 : (target.unread_count || 0),
+            };
+            const rest = prev.filter(c => c.id !== newMsg.conversation_id);
+            return [updated, ...rest];
+          });
           realtimeHandlersRef.current.refreshNotifications();
-        });
+        } else {
+          debounceTableSync('messages', () => {
+            realtimeHandlersRef.current.refreshConversations();
+            realtimeHandlersRef.current.refreshNotifications();
+          });
+        }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_messages' }, () => {
-        debounceTableSync('group_messages', () => {
-          realtimeHandlersRef.current.refreshMessageGroups();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_messages' }, (payload: any) => {
+        const newGroupMsg = payload?.new as GroupMessage;
+        if (newGroupMsg && newGroupMsg.group_id) {
+          setMessageGroups(prev => {
+            const idx = prev.findIndex(g => g.id === newGroupMsg.group_id);
+            if (idx === -1) {
+              debounceTableSync('group_messages', () => realtimeHandlersRef.current.refreshMessageGroups());
+              return prev;
+            }
+            const target = prev[idx];
+            const isForActiveGroup = activeGroupIdRef.current === newGroupMsg.group_id;
+            const isIncoming = newGroupMsg.sender_user_id !== (userRef.current?.id || '');
+            const updated: MessageGroup = {
+              ...target,
+              last_message_preview: newGroupMsg.message,
+              last_message_at: newGroupMsg.created_at || target.last_message_at,
+              unread_count: (isIncoming && !isForActiveGroup) ? (target.unread_count || 0) + 1 : (target.unread_count || 0),
+            };
+            const rest = prev.filter(g => g.id !== newGroupMsg.group_id);
+            return [updated, ...rest];
+          });
           realtimeHandlersRef.current.refreshNotifications();
-        });
+        } else {
+          debounceTableSync('group_messages', () => {
+            realtimeHandlersRef.current.refreshMessageGroups();
+            realtimeHandlersRef.current.refreshNotifications();
+          });
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_groups' }, () => {
         debounceTableSync('message_groups', () => realtimeHandlersRef.current.refreshMessageGroups());
@@ -3656,27 +3731,47 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     replyToMessageId?: string | null;
   }) => {
     const res = await supabaseService.sendMessage(params);
-    if (!res.error) {
-      await refreshConversations();
+    if (!res.error && res.data) {
+      setConversations(prev => {
+        const found = prev.find(c => c.id === params.conversationId);
+        if (!found) return prev;
+        const updated: Conversation = {
+          ...found,
+          last_message_preview: params.message,
+          last_message_at: res.data?.created_at || new Date().toISOString(),
+          unread_count: 0,
+          marked_unread: false,
+        };
+        const rest = prev.filter(c => c.id !== params.conversationId);
+        return [updated, ...rest];
+      });
     }
     return res;
-  }, [refreshConversations]);
+  }, []);
 
   const editDirectMessage = useCallback(async (messageId: string, newContent: string) => {
     const res = await supabaseService.editMessage(messageId, newContent);
-    if (!res.error) {
-      await refreshConversations();
+    if (!res.error && res.data) {
+      setConversations(prev => {
+        const convId = res.data?.conversation_id;
+        if (!convId) return prev;
+        return prev.map(c => c.id === convId ? { ...c, last_message_preview: newContent } : c);
+      });
     }
     return res;
-  }, [refreshConversations]);
+  }, []);
 
   const unsendDirectMessage = useCallback(async (messageId: string) => {
     const res = await supabaseService.unsendMessage(messageId);
-    if (!res.error) {
-      await refreshConversations();
+    if (!res.error && res.data) {
+      setConversations(prev => {
+        const convId = res.data?.conversation_id;
+        if (!convId) return prev;
+        return prev.map(c => c.id === convId ? { ...c, last_message_preview: 'Message unsent' } : c);
+      });
     }
     return res;
-  }, [refreshConversations]);
+  }, []);
 
   const deleteMessageForMe = useCallback(async (messageId: string) => {
     const res = await supabaseService.deleteMessageForMe(messageId);
@@ -3758,11 +3853,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     allowStudentReplies?: boolean;
   }) => {
     const res = await supabaseService.sendGroupMessage(params);
-    if (res.success) {
-      await refreshMessageGroups();
+    if (res.success && res.data) {
+      setMessageGroups(prev => {
+        const found = prev.find(g => g.id === res.data?.group_id);
+        if (!found) return prev;
+        const updated: MessageGroup = {
+          ...found,
+          last_message_preview: params.message,
+          last_message_at: res.data?.created_at || new Date().toISOString(),
+          unread_count: 0,
+        };
+        const rest = prev.filter(g => g.id !== res.data?.group_id);
+        return [updated, ...rest];
+      });
     }
     return res;
-  }, [refreshMessageGroups]);
+  }, []);
 
   const markGroupRead = useCallback(async (groupId: string) => {
     await supabaseService.markGroupAsRead(groupId);
@@ -3900,6 +4006,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateConversationStatus,
     fetchEligibleFacultyForStudent,
     fetchEligibleStudentsForFaculty,
+    getCachedConversationMessages,
+    setCachedConversationMessages,
+    getCachedGroupMessages,
+    setCachedGroupMessages,
     activeToast,
     dismissToast,
     isOnline,
@@ -4170,6 +4280,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateConversationStatus,
     fetchEligibleFacultyForStudent,
     fetchEligibleStudentsForFaculty,
+    getCachedConversationMessages,
+    setCachedConversationMessages,
+    getCachedGroupMessages,
+    setCachedGroupMessages,
     dismissToast,
     refreshConversations,
     refreshMessageGroups,

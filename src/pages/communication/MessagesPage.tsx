@@ -106,6 +106,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     markConversationUnread,
     students,
     faculty,
+    getCachedConversationMessages,
+    setCachedConversationMessages,
+    getCachedGroupMessages,
+    setCachedGroupMessages,
   } = useAcademic();
 
   const role = user?.role;
@@ -126,7 +130,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   // Group selection & state
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(initialGroupId || activeGroupId || null);
   const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
-  const [loadingGroupMessages, setLoadingGroupMessages] = useState(false);
+  const [initialLoadingGroup, setInitialLoadingGroup] = useState(false);
+  const [isBackgroundSyncingGroup, setIsBackgroundSyncingGroup] = useState(false);
+  const [hasMoreGroup, setHasMoreGroup] = useState(false);
+  const [loadingOlderGroup, setLoadingOlderGroup] = useState(false);
   const [groupInputMessage, setGroupInputMessage] = useState('');
   const [groupInputTitle, setGroupInputTitle] = useState('');
   const [showTitleInput, setShowTitleInput] = useState(false);
@@ -139,14 +146,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
   // Filters for Groups
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [debouncedGroupSearch, setDebouncedGroupSearch] = useState('');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
   const [unreadOnlyGroups, setUnreadOnlyGroups] = useState(false);
 
   // Direct conversation state
   const [selectedConvId, setSelectedConvId] = useState<string | null>(initialConversationId || null);
   const [directMessages, setDirectMessages] = useState<Message[]>([]);
-  const [loadingDirectMessages, setLoadingDirectMessages] = useState(false);
+  const [initialLoadingDirect, setInitialLoadingDirect] = useState(false);
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
+  const [hasMoreDirect, setHasMoreDirect] = useState(false);
+  const [loadingOlderDirect, setLoadingOlderDirect] = useState(false);
   const [directSearchQuery, setDirectSearchQuery] = useState('');
+  const [debouncedDirectSearch, setDebouncedDirectSearch] = useState('');
   const [directStatusFilter, setDirectStatusFilter] = useState<StatusFilter>('ALL');
   const [directCategoryFilter, setDirectCategoryFilter] = useState<string>('ALL');
   const [directInputMessage, setDirectInputMessage] = useState('');
@@ -159,6 +171,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [messageSendError, setMessageSendError] = useState<string | null>(null);
+
+  // Submission locks to prevent accidental duplicate submissions
+  const isSendingDirectRef = useRef(false);
+  const isSendingGroupRef = useRef(false);
 
   // Mobile layout state
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
@@ -261,6 +277,37 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return '';
   }, [user?.id, user?.role, selectedConversation, students, faculty]);
 
+  // Stable refs to prevent effect re-runs when non-essential state changes
+  const resolveSenderNameRef = useRef(resolveSenderName);
+  useEffect(() => {
+    resolveSenderNameRef.current = resolveSenderName;
+  }, [resolveSenderName]);
+
+  const markConversationReadRef = useRef(markConversationRead);
+  useEffect(() => {
+    markConversationReadRef.current = markConversationRead;
+  }, [markConversationRead]);
+
+  const markGroupReadRef = useRef(markGroupRead);
+  useEffect(() => {
+    markGroupReadRef.current = markGroupRead;
+  }, [markGroupRead]);
+
+  // Debounce search query inputs to avoid re-computations on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDirectSearch(directSearchQuery);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [directSearchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedGroupSearch(groupSearchQuery);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [groupSearchQuery]);
+
   // In-conversation message search
   const [isSearchingConv, setIsSearchingConv] = useState(false);
   const [convSearchQuery, setConvSearchQuery] = useState('');
@@ -281,7 +328,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const directFileInputRef = useRef<HTMLInputElement>(null);
-  const directInputRef = useRef<HTMLInputElement>(null);
+  const directInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Deep linking effects for external navigation or notification clicks
   useEffect(() => {
@@ -331,27 +378,42 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   }, [activeTab, selectedGroupId, messageGroups]);
 
-  // Load group messages when selectedGroupId changes (with Scoped Realtime)
+  // Load group messages when selectedGroupId changes (Instant cached render + silent background sync)
   useEffect(() => {
     if (!selectedGroupId) {
       setGroupMessages([]);
+      setInitialLoadingGroup(false);
+      setIsBackgroundSyncingGroup(false);
       return;
     }
 
     let isMounted = true;
+    const cached = getCachedGroupMessages(selectedGroupId);
+    if (cached && cached.length > 0) {
+      setGroupMessages(cached);
+      setInitialLoadingGroup(false);
+      setIsBackgroundSyncingGroup(true);
+    } else {
+      setGroupMessages([]);
+      setInitialLoadingGroup(true);
+      setIsBackgroundSyncingGroup(false);
+    }
+
     const loadGroupMessages = async () => {
-      setLoadingGroupMessages(true);
       try {
-        const msgs = await supabaseService.fetchGroupMessages(selectedGroupId);
+        const msgs = await supabaseService.fetchGroupMessages(selectedGroupId, 50);
         if (isMounted) {
           setGroupMessages(msgs);
-          markGroupRead(selectedGroupId);
+          setCachedGroupMessages(selectedGroupId, msgs);
+          setHasMoreGroup(msgs.length >= 50);
+          markGroupReadRef.current(selectedGroupId);
         }
       } catch (err) {
         console.error('Error loading group messages:', err);
       } finally {
         if (isMounted) {
-          setLoadingGroupMessages(false);
+          setInitialLoadingGroup(false);
+          setIsBackgroundSyncingGroup(false);
         }
       }
     };
@@ -364,21 +426,17 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${selectedGroupId}` },
-        async (payload) => {
+        (payload) => {
           if (!isMounted) return;
           const newMsg = payload.new as GroupMessage;
           if (newMsg && newMsg.id) {
             setGroupMessages(prev => {
               if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
+              const merged = [...prev, newMsg];
+              setCachedGroupMessages(selectedGroupId, merged);
+              return merged;
             });
-            markGroupRead(selectedGroupId);
-          } else {
-            const freshMsgs = await supabaseService.fetchGroupMessages(selectedGroupId);
-            if (isMounted) {
-              setGroupMessages(freshMsgs);
-              markGroupRead(selectedGroupId);
-            }
+            markGroupReadRef.current(selectedGroupId);
           }
         }
       )
@@ -388,36 +446,91 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedGroupId, markGroupRead]);
+  }, [selectedGroupId, getCachedGroupMessages, setCachedGroupMessages]);
+
+  // Load older group messages on upward pagination
+  const handleLoadOlderGroup = async () => {
+    if (!selectedGroupId || loadingOlderGroup || !hasMoreGroup || groupMessages.length === 0) return;
+    const oldest = groupMessages[0];
+    if (!oldest) return;
+
+    setLoadingOlderGroup(true);
+    try {
+      const olderMsgs = await supabaseService.fetchGroupMessages(
+        selectedGroupId, 
+        50, 
+        oldest.created_at
+      );
+      if (olderMsgs.length < 50) {
+        setHasMoreGroup(false);
+      }
+      if (olderMsgs.length > 0) {
+        setGroupMessages(prev => {
+          const merged = [...olderMsgs, ...prev];
+          setCachedGroupMessages(selectedGroupId, merged);
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.error('Error loading older group messages:', err);
+    } finally {
+      setLoadingOlderGroup(false);
+    }
+  };
 
   // Auto-scroll on new group messages
   useEffect(() => {
     if (activeTab === 'GROUPS') {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [groupMessages, activeTab]);
+  }, [groupMessages.length, activeTab]);
 
-  // Load direct messages when selectedConvId changes (with Scoped Realtime)
+  // Load direct messages when selectedConvId changes (Instant cached render + silent background sync)
   useEffect(() => {
     if (!selectedConvId) {
       setDirectMessages([]);
+      setInitialLoadingDirect(false);
+      setIsBackgroundSyncing(false);
       return;
     }
 
     let isMounted = true;
+    const cached = getCachedConversationMessages(selectedConvId);
+    if (cached && cached.length > 0) {
+      setDirectMessages(cached);
+      setInitialLoadingDirect(false);
+      setIsBackgroundSyncing(true);
+    } else {
+      setDirectMessages([]);
+      setInitialLoadingDirect(true);
+      setIsBackgroundSyncing(false);
+    }
+
     const loadDirect = async () => {
-      setLoadingDirectMessages(true);
       try {
-        const msgs = await supabaseService.fetchConversationMessages(selectedConvId);
+        const msgs = await supabaseService.fetchConversationMessages(selectedConvId, user?.id, 50);
         if (isMounted) {
-          setDirectMessages(msgs);
-          markConversationRead(selectedConvId);
+          // Reconcile with any optimistic sending messages in local state
+          setDirectMessages(prev => {
+            const sendingMsgs = prev.filter(m => m.status === 'sending');
+            const merged = [...msgs];
+            for (const s of sendingMsgs) {
+              if (!merged.some(m => m.id === s.id || (m.message === s.message && m.sender_user_id === s.sender_user_id))) {
+                merged.push(s);
+              }
+            }
+            setCachedConversationMessages(selectedConvId, merged);
+            return merged;
+          });
+          setHasMoreDirect(msgs.length >= 50);
+          markConversationReadRef.current(selectedConvId);
         }
       } catch (err) {
         console.error('Error loading direct messages:', err);
       } finally {
         if (isMounted) {
-          setLoadingDirectMessages(false);
+          setInitialLoadingDirect(false);
+          setIsBackgroundSyncing(false);
         }
       }
     };
@@ -430,7 +543,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConvId}` },
-        async (payload) => {
+        (payload) => {
           if (!isMounted) return;
           const newMsg = payload.new as Message;
           if (newMsg && newMsg.id) {
@@ -449,7 +562,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     message: parentMsg.is_unsent ? 'Message unsent' : parentMsg.message,
                     sender_user_id: parentMsg.sender_user_id,
                     sender_role: parentMsg.sender_role,
-                    sender_name: resolveSenderName(parentMsg),
+                    sender_name: resolveSenderNameRef.current(parentMsg),
                     is_unsent: parentMsg.is_unsent,
                     edited_at: parentMsg.edited_at,
                     student: parentMsg.student,
@@ -465,52 +578,57 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               const optIndex = prev.findIndex(
                 m => m.status === 'sending' && m.message === newMsg.message && m.sender_user_id === newMsg.sender_user_id
               );
+              let updated: Message[];
               if (optIndex !== -1) {
-                const updated = [...prev];
+                updated = [...prev];
                 updated[optIndex] = enrichedMsg;
-                return updated;
+              } else {
+                updated = [...prev, enrichedMsg];
               }
-              return [...prev, enrichedMsg];
+              setCachedConversationMessages(selectedConvId, updated);
+              return updated;
             });
-            markConversationRead(selectedConvId);
-          } else {
-            const freshMsgs = await supabaseService.fetchConversationMessages(selectedConvId);
-            if (isMounted) {
-              setDirectMessages(freshMsgs);
-              markConversationRead(selectedConvId);
-            }
+            markConversationReadRef.current(selectedConvId);
           }
         }
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConvId}` },
-        async (payload) => {
+        (payload) => {
           if (!isMounted) return;
           const updatedMsg = payload.new as Message;
           if (updatedMsg && updatedMsg.id) {
             // If message was deleted for this user
             if (updatedMsg.deleted_by_users && user?.id && updatedMsg.deleted_by_users.includes(user.id)) {
-              setDirectMessages(prev => prev.filter(m => m.id !== updatedMsg.id));
+              setDirectMessages(prev => {
+                const updated = prev.filter(m => m.id !== updatedMsg.id);
+                setCachedConversationMessages(selectedConvId, updated);
+                return updated;
+              });
               return;
             }
-            setDirectMessages(prev => prev.map(m => {
-              if (m.id === updatedMsg.id) {
-                return { ...m, ...updatedMsg };
-              }
-              if (m.reply_to_message_id === updatedMsg.id && m.reply_to) {
-                return {
-                  ...m,
-                  reply_to: {
-                    ...m.reply_to,
-                    message: updatedMsg.is_unsent ? 'Message unsent' : updatedMsg.message,
-                    is_unsent: updatedMsg.is_unsent,
-                    edited_at: updatedMsg.edited_at,
-                  }
-                };
-              }
-              return m;
-            }));
+            setDirectMessages(prev => {
+              const updated = prev.map(m => {
+                if (m.id === updatedMsg.id) {
+                  return { ...m, ...updatedMsg };
+                }
+                if (m.reply_to_message_id === updatedMsg.id && m.reply_to) {
+                  return {
+                    ...m,
+                    reply_to: {
+                      ...m.reply_to,
+                      message: updatedMsg.is_unsent ? 'Message unsent' : updatedMsg.message,
+                      is_unsent: updatedMsg.is_unsent,
+                      edited_at: updatedMsg.edited_at,
+                    }
+                  };
+                }
+                return m;
+              });
+              setCachedConversationMessages(selectedConvId, updated);
+              return updated;
+            });
           }
         }
       )
@@ -520,7 +638,38 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedConvId, markConversationRead, user?.id, resolveSenderName]);
+  }, [selectedConvId, user?.id, getCachedConversationMessages, setCachedConversationMessages]);
+
+  // Load older direct messages on upward pagination
+  const handleLoadOlderDirect = async () => {
+    if (!selectedConvId || loadingOlderDirect || !hasMoreDirect || directMessages.length === 0) return;
+    const oldest = directMessages[0];
+    if (!oldest) return;
+
+    setLoadingOlderDirect(true);
+    try {
+      const olderMsgs = await supabaseService.fetchConversationMessages(
+        selectedConvId, 
+        user?.id, 
+        50, 
+        oldest.created_at
+      );
+      if (olderMsgs.length < 50) {
+        setHasMoreDirect(false);
+      }
+      if (olderMsgs.length > 0) {
+        setDirectMessages(prev => {
+          const merged = [...olderMsgs, ...prev];
+          setCachedConversationMessages(selectedConvId, merged);
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.error('Error loading older messages:', err);
+    } finally {
+      setLoadingOlderDirect(false);
+    }
+  };
 
   // Auto-scroll on direct messages
   useEffect(() => {
@@ -581,7 +730,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   // Filtered Groups
   const filteredGroups = useMemo(() => {
     return messageGroups.filter(g => {
-      const q = groupSearchQuery.toLowerCase();
+      const q = debouncedGroupSearch.toLowerCase();
       const matchSearch = 
         !q ||
         g.subject?.subject_name.toLowerCase().includes(q) ||
@@ -600,12 +749,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
       return matchSearch && matchYear && matchUnread;
     });
-  }, [messageGroups, groupSearchQuery, selectedYearFilter, unreadOnlyGroups]);
+  }, [messageGroups, debouncedGroupSearch, selectedYearFilter, unreadOnlyGroups]);
 
   // Filtered Direct Conversations
   const filteredConversations = useMemo(() => {
     return conversations.filter(c => {
-      const q = directSearchQuery.toLowerCase();
+      const q = debouncedDirectSearch.toLowerCase();
       const otherPersonName = isStudent ? c.faculty?.full_name : c.student?.full_name;
       const matchSearch = 
         !q || 
@@ -622,7 +771,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
       return matchSearch && matchStatus && matchCategory;
     });
-  }, [conversations, directSearchQuery, directStatusFilter, directCategoryFilter, isStudent]);
+  }, [conversations, debouncedDirectSearch, directStatusFilter, directCategoryFilter, isStudent]);
 
   // Total Unread Counters
   const totalGroupUnread = useMemo(() => {
@@ -633,10 +782,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return conversations.reduce((acc, c) => acc + (c.unread_count || (c.marked_unread ? 1 : 0)), 0);
   }, [conversations]);
 
-  // Handle Send Group Message
-  const handleSendGroupMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Handle Send Group Message with Duplicate Submission Lock
+  const handleSendGroupMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedGroup || !groupInputMessage.trim() || groupSending) return;
+    if (isSendingGroupRef.current) return;
+    isSendingGroupRef.current = true;
 
     setGroupSending(true);
     setMessageSendError(null);
@@ -661,26 +812,30 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         setMessageSendError(null);
         setGroupSendSuccess(true);
         setTimeout(() => setGroupSendSuccess(false), 1200);
-        // Refresh local group messages
+        // Silent background update for current thread
         const updatedMsgs = await supabaseService.fetchGroupMessages(selectedGroup.id);
         setGroupMessages(updatedMsgs);
+        setCachedGroupMessages(selectedGroup.id, updatedMsgs);
       } else {
         setMessageSendError(res.error?.message || 'Failed to send group message. Please check connection and retry.');
       }
     } catch (err: any) {
       setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
     } finally {
+      isSendingGroupRef.current = false;
       setGroupSending(false);
     }
   };
 
-  // Handle Send Direct Message with Optimistic UI & Reply
-  const handleSendDirectMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedConvId || !selectedConversation || !directInputMessage.trim() || directSending) return;
+  // Handle Send Direct Message with Optimistic UI, Submission Lock & Retry
+  const handleSendDirectMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!selectedConvId || !selectedConversation || !directInputMessage.trim()) return;
+    if (isSendingDirectRef.current) return;
+    isSendingDirectRef.current = true;
 
     const messageText = directInputMessage.trim();
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const replyId = replyingToMessage?.id || null;
     const replySenderName = replyingToMessage ? resolveSenderName(replyingToMessage) : undefined;
     const replyingSnapshot = replyingToMessage ? {
@@ -693,6 +848,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       edited_at: replyingToMessage.edited_at,
     } : null;
 
+    const attached = directAttachment;
     const tempMsg: Message = {
       id: tempId,
       conversation_id: selectedConvId,
@@ -702,18 +858,22 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       faculty_id: selectedConversation.faculty_id,
       sender_role: (role as any) || 'faculty',
       message: messageText,
-      attachment_url: directAttachment?.dataUrl,
-      attachment_name: directAttachment?.file.name,
-      attachment_type: directAttachment?.file.type,
-      attachment_size: directAttachment?.file.size,
+      attachment_url: attached?.dataUrl,
+      attachment_name: attached?.file.name,
+      attachment_type: attached?.file.type,
+      attachment_size: attached?.file.size,
       reply_to_message_id: replyId,
       reply_to: replyingSnapshot,
       created_at: new Date().toISOString(),
       status: 'sending'
     };
 
-    // Optimistically add message to thread immediately
-    setDirectMessages(prev => [...prev, tempMsg]);
+    // Optimistically add message to thread immediately (0ms UI latency)
+    setDirectMessages(prev => {
+      const updated = [...prev, tempMsg];
+      setCachedConversationMessages(selectedConvId, updated);
+      return updated;
+    });
     setDirectInputMessage('');
     setReplyingToMessage(null);
     setDirectAttachment(null);
@@ -734,18 +894,78 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       if (!res.error && res.data) {
         setDirectSendSuccess(true);
         setTimeout(() => setDirectSendSuccess(false), 1200);
-        setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...res.data!, reply_to: replyingSnapshot, status: 'sent' } : m));
+        setDirectMessages(prev => {
+          const updated = prev.map(m => m.id === tempId ? { ...res.data!, reply_to: replyingSnapshot, status: 'sent' as const } : m);
+          setCachedConversationMessages(selectedConvId, updated);
+          return updated;
+        });
       } else {
-        setMessageSendError(res.error?.message || 'Failed to send direct message. Your text has been preserved.');
-        setDirectInputMessage(messageText);
-        setDirectMessages(prev => prev.filter(m => m.id !== tempId));
+        setMessageSendError(res.error?.message || 'Failed to deliver message. Tap retry below.');
+        setDirectMessages(prev => {
+          const updated = prev.map(m => m.id === tempId ? { ...m, status: 'failed' as const } : m);
+          setCachedConversationMessages(selectedConvId, updated);
+          return updated;
+        });
       }
     } catch (err: any) {
-      setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
-      setDirectInputMessage(messageText);
-      setDirectMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessageSendError(err.message || 'Error delivering message. Tap retry below.');
+      setDirectMessages(prev => {
+        const updated = prev.map(m => m.id === tempId ? { ...m, status: 'failed' as const } : m);
+        setCachedConversationMessages(selectedConvId, updated);
+        return updated;
+      });
     } finally {
+      isSendingDirectRef.current = false;
       setDirectSending(false);
+    }
+  };
+
+  // Inline Retry for Failed Direct Message
+  const handleRetryDirectMessage = async (failedMsg: Message) => {
+    if (!selectedConvId || !selectedConversation || isSendingDirectRef.current) return;
+    isSendingDirectRef.current = true;
+    setMessageSendError(null);
+
+    setDirectMessages(prev => {
+      const updated = prev.map(m => m.id === failedMsg.id ? { ...m, status: 'sending' as const } : m);
+      setCachedConversationMessages(selectedConvId, updated);
+      return updated;
+    });
+
+    try {
+      const res = await sendMessage({
+        conversationId: selectedConvId,
+        message: failedMsg.message,
+        attachmentUrl: failedMsg.attachment_url || undefined,
+        attachmentName: failedMsg.attachment_name || undefined,
+        attachmentType: failedMsg.attachment_type || undefined,
+        attachmentSize: failedMsg.attachment_size || undefined,
+        replyToMessageId: failedMsg.reply_to_message_id,
+      });
+
+      if (!res.error && res.data) {
+        setDirectMessages(prev => {
+          const updated = prev.map(m => m.id === failedMsg.id ? { ...res.data!, reply_to: failedMsg.reply_to, status: 'sent' as const } : m);
+          setCachedConversationMessages(selectedConvId, updated);
+          return updated;
+        });
+      } else {
+        setMessageSendError(res.error?.message || 'Retry failed. Please check network connection.');
+        setDirectMessages(prev => {
+          const updated = prev.map(m => m.id === failedMsg.id ? { ...m, status: 'failed' as const } : m);
+          setCachedConversationMessages(selectedConvId, updated);
+          return updated;
+        });
+      }
+    } catch (err: any) {
+      setMessageSendError(err.message || 'Retry failed. Please check network connection.');
+      setDirectMessages(prev => {
+        const updated = prev.map(m => m.id === failedMsg.id ? { ...m, status: 'failed' as const } : m);
+        setCachedConversationMessages(selectedConvId, updated);
+        return updated;
+      });
+    } finally {
+      isSendingDirectRef.current = false;
     }
   };
 
@@ -1307,9 +1527,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                   {/* Header Actions */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {loadingGroupMessages && (
-                      <div className="flex items-center gap-1 text-[11px] text-[#475569] animate-pulse mr-1 font-medium">
-                        <Loader2 className="w-3 h-3 animate-spin" />
+                    {isBackgroundSyncingGroup ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-medium text-sky-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                        <span className="hidden sm:inline">Syncing...</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-medium text-emerald-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="hidden sm:inline">Live</span>
                       </div>
                     )}
                     <span className="hidden sm:inline px-2.5 py-1 text-xs font-bold bg-slate-100 border border-slate-300 text-[#0f172a] rounded-lg">
@@ -1328,10 +1554,46 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Group Messages Thread */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-[#f8fafc]">
-                  {loadingGroupMessages && groupMessages.length === 0 ? (
-                    <div className="py-20 flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 text-[#475569] animate-spin" />
-                      <span className="text-xs text-[#475569] font-medium">Loading group communication thread...</span>
+                  {/* Upward pagination for older announcements */}
+                  {hasMoreGroup && (
+                    <div className="flex justify-center pb-2">
+                      <button
+                        type="button"
+                        onClick={handleLoadOlderGroup}
+                        disabled={loadingOlderGroup}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-full shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {loadingOlderGroup ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                            <span>Loading earlier announcements...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Load earlier messages</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {initialLoadingGroup && groupMessages.length === 0 ? (
+                    <div className="p-4 space-y-4 animate-pulse">
+                      <div className="flex items-start gap-3 max-w-[75%]">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-3 bg-slate-200 rounded w-1/4" />
+                          <div className="h-12 bg-slate-200 rounded-2xl w-full" />
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 max-w-[75%]">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-3 bg-slate-200 rounded w-1/3" />
+                          <div className="h-10 bg-slate-200 rounded-2xl w-3/4" />
+                        </div>
+                      </div>
                     </div>
                   ) : groupMessages.length === 0 ? (
                     <div className="py-20 text-center text-xs text-[#475569] space-y-2">
@@ -1516,8 +1778,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         </button>
                       )}
 
-                      <input
-                        type="text"
+                      <textarea
+                        rows={1}
                         placeholder={
                           isFacultyOrAdmin
                             ? `Message all ${selectedGroup.members_count || 0} students in Section ${selectedGroup.section?.name}...`
@@ -1525,7 +1787,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         }
                         value={groupInputMessage}
                         onChange={(e) => setGroupInputMessage(e.target.value)}
-                        className="flex-1 text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all shadow-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendGroupMessage(e);
+                          }
+                        }}
+                        className="flex-1 text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all shadow-xs resize-none max-h-28 overflow-y-auto font-medium"
                       />
 
                       <button
@@ -1594,10 +1862,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                   {/* Header Controls */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {loadingDirectMessages && (
-                      <div className="flex items-center gap-1 text-[11px] text-slate-500 animate-pulse mr-1 font-medium">
-                        <Loader2 className="w-3 h-3 animate-spin" />
+                    {isBackgroundSyncing ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-medium text-sky-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
                         <span className="hidden sm:inline">Syncing...</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-medium text-emerald-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="hidden sm:inline">Live</span>
                       </div>
                     )}
 
@@ -1741,10 +2014,49 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Direct Messages Thread */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[#f8fafc]">
-                  {loadingDirectMessages && directMessages.length === 0 ? (
-                    <div className="py-20 flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
-                      <span className="text-xs text-slate-500 font-medium">Loading conversation...</span>
+                  {/* Upward pagination for older direct messages */}
+                  {hasMoreDirect && (
+                    <div className="flex justify-center pb-2">
+                      <button
+                        type="button"
+                        onClick={handleLoadOlderDirect}
+                        disabled={loadingOlderDirect}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-full shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {loadingOlderDirect ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                            <span>Loading earlier messages...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Load earlier messages</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {initialLoadingDirect && directMessages.length === 0 ? (
+                    <div className="p-4 space-y-4 animate-pulse">
+                      <div className="flex items-start gap-3 max-w-[75%]">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-10 bg-slate-200 rounded-2xl w-3/4" />
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-end gap-2">
+                        <div className="space-y-2 flex-1 flex flex-col items-end">
+                          <div className="h-12 bg-slate-300 rounded-2xl w-1/2" />
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 max-w-[75%]">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-8 bg-slate-200 rounded-2xl w-2/3" />
+                        </div>
+                      </div>
                     </div>
                   ) : directMessages.length === 0 ? (
                     <div className="py-20 text-center text-sm font-medium text-[#475569]">
@@ -2053,9 +2365,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                                     <Clock className="w-3 h-3 text-slate-400 animate-pulse" />
                                   </span>
                                 ) : m.status === 'failed' ? (
-                                  <span title="Failed to send">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRetryDirectMessage(m)}
+                                    className="inline-flex items-center gap-1 text-rose-500 hover:text-rose-600 font-semibold cursor-pointer underline text-[10px]"
+                                    title="Message failed to deliver. Tap to retry."
+                                  >
                                     <AlertCircle className="w-3 h-3 text-rose-500" />
-                                  </span>
+                                    <span>Failed · Retry</span>
+                                  </button>
                                 ) : m.read_at ? (
                                   <span title={`Read at ${new Date(m.read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}>
                                     <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -2146,13 +2464,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       <Paperclip className="w-4 h-4" />
                     </button>
 
-                    <input
-                      type="text"
+                    <textarea
                       ref={directInputRef}
+                      rows={1}
                       placeholder={replyingToMessage ? "Type your reply..." : "Type a direct message..."}
                       value={directInputMessage}
                       onChange={(e) => setDirectInputMessage(e.target.value)}
-                      className="flex-1 text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendDirectMessage(e);
+                        }
+                      }}
+                      className="flex-1 text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs resize-none max-h-28 overflow-y-auto font-medium"
                     />
 
                     <button

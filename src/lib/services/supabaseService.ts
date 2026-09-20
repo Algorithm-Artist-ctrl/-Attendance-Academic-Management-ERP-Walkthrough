@@ -5894,7 +5894,12 @@ export const supabaseService = {
     }
   },
 
-  async fetchConversationMessages(conversationId: string, currentUserId?: string, limit: number = 200): Promise<Message[]> {
+  async fetchConversationMessages(
+    conversationId: string, 
+    currentUserId?: string, 
+    limit: number = 50,
+    beforeCreatedAt?: string
+  ): Promise<Message[]> {
     try {
       // Check if user cleared this conversation
       let clearedAt: string | null = null;
@@ -5910,7 +5915,7 @@ export const supabaseService = {
         }
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('messages')
         .select(`
           *,
@@ -5927,16 +5932,31 @@ export const supabaseService = {
             faculty:faculty_id(id, full_name, faculty_code)
           )
         `)
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
+        .eq('conversation_id', conversationId);
+
+      if (clearedAt) {
+        query = query.gt('created_at', clearedAt);
+      }
+
+      if (beforeCreatedAt) {
+        query = query.lt('created_at', beforeCreatedAt);
+      }
+
+      query = query
+        .order('created_at', { ascending: false })
         .limit(limit);
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching messages:', error);
         return [];
       }
 
-      let messages = ((data || []) as any[]).map(m => {
+      // Reverse so chronological order (oldest -> newest) is maintained in thread
+      const rawRows = (data || []).slice().reverse();
+
+      let messages = rawRows.map(m => {
         let senderName = m.sender_name || '';
         if (!senderName) {
           if (m.sender_role === 'student' && m.student?.full_name) {
@@ -6894,21 +6914,29 @@ export const supabaseService = {
     }
   },
 
-  async fetchGroupMessages(groupId: string, limit: number = 100): Promise<GroupMessage[]> {
+  async fetchGroupMessages(groupId: string, limit: number = 50, beforeCreatedAt?: string): Promise<GroupMessage[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('group_messages')
         .select('*')
-        .eq('group_id', groupId)
-        .order('created_at', { ascending: true })
+        .eq('group_id', groupId);
+
+      if (beforeCreatedAt) {
+        query = query.lt('created_at', beforeCreatedAt);
+      }
+
+      query = query
+        .order('created_at', { ascending: false })
         .limit(limit);
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching group messages:', error);
         return [];
       }
 
-      return (data || []) as GroupMessage[];
+      return ((data || []) as GroupMessage[]).slice().reverse();
     } catch (err) {
       console.error('Exception in fetchGroupMessages:', err);
       return [];
