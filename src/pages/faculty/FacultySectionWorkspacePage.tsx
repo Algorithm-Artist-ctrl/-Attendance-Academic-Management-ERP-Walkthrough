@@ -206,6 +206,8 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     return courseAssignments.filter(a => 
       a.subject_id === selectedSubjectId && 
       a.section_id === selectedSectionId &&
+      a.active !== false &&
+      !a.deleted_at &&
       (isSuperAdmin || a.faculty_id === currentFacultyId)
     );
   }, [courseAssignments, selectedSubjectId, selectedSectionId, isSuperAdmin, currentFacultyId]);
@@ -216,6 +218,8 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     return quizzes.filter(q => 
       q.subject_id === selectedSubjectId && 
       q.section_id === selectedSectionId &&
+      q.active !== false &&
+      !q.deleted_at &&
       (isSuperAdmin || q.faculty_id === currentFacultyId)
     );
   }, [quizzes, selectedSubjectId, selectedSectionId, isSuperAdmin, currentFacultyId]);
@@ -225,7 +229,9 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     if (!selectedSubjectId || !selectedSectionId) return [];
     return sessionalAssessments.filter(sa => 
       sa.subject_id === selectedSubjectId && 
-      sa.section_id === selectedSectionId
+      sa.section_id === selectedSectionId &&
+      sa.status !== 'archived' &&
+      !sa.deleted_at
     );
   }, [sessionalAssessments, selectedSubjectId, selectedSectionId]);
 

@@ -172,7 +172,13 @@ interface AcademicContextType {
     attachmentType?: string;
     attachmentSize?: number;
     allowStudentReplies?: boolean;
+    replyToMessageId?: string | null;
+    clientMessageId?: string | null;
   }) => Promise<{ success: boolean; data?: any; error?: any }>;
+  editGroupMessage: (messageId: string, newContent: string, newTitle?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  deleteGroupMessage: (messageId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  clearGroupChatForMe: (groupId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  deleteGroupMessageForMe: (messageId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   markGroupRead: (groupId: string) => Promise<void>;
   fetchGroupMembers: (groupId: string) => Promise<GroupMember[]>;
   fetchStudentProfile: (studentId: string) => Promise<{ data: DetailedStudentProfile | null; error: any }>;
@@ -298,6 +304,11 @@ interface AcademicContextType {
     studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
     isPublished?: boolean;
   }) => Promise<SessionalMark[]>;
+  publishAssessment: (assessmentId: string, facultyId?: string) => Promise<any>;
+  fetchAssessmentMarks: (assessmentId: string, kind?: 'sessional' | 'quiz' | 'assignment') => Promise<any[]>;
+  publishNotice: (notice: any) => Promise<any>;
+  deleteNotice: (id: string) => Promise<boolean>;
+  archiveNotice: (id: string) => Promise<boolean>;
   getStudentAcademicScorecard: (studentId: string) => StudentSubjectAcademicReport[];
   addDepartment: (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => Promise<Department>;
   updateDepartment: (id: string, updates: Partial<Department>) => Promise<Department>;
@@ -1224,12 +1235,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         subject: curSubjects.find(s => s.id === mh.subject_id),
       }));
 
-      setCourseAssignments(enrichedCourseAssignments);
+      setCourseAssignments(enrichedCourseAssignments.filter(a => a.active !== false && !a.deleted_at));
       setAssignmentSubmissions(enrichedSubmissions);
-      setQuizzes(deduplicateQuizzes(enrichedQuizzes));
+      setQuizzes(deduplicateQuizzes(enrichedQuizzes).filter(q => q.active !== false && !q.deleted_at));
       setQuizResults(enrichedQuizResults);
-      setSessionalAssessments(deduplicateSessionals(enrichedAssessments));
-      setSessionalMarks(enrichedSessionalMarks);
+      setSessionalAssessments(deduplicateSessionals(enrichedAssessments).filter(sa => sa.status !== 'archived' && !sa.deleted_at));
+      setSessionalMarks(prev => {
+        if (!enrichedSessionalMarks || enrichedSessionalMarks.length === 0) return prev;
+        const incomingMap = new Map(enrichedSessionalMarks.map(m => [m.id || `${m.sessional_assessment_id}_${m.student_id}`, m]));
+        const merged = prev.map(m => incomingMap.get(m.id || `${m.sessional_assessment_id}_${m.student_id}`) || m);
+        for (const [key, val] of incomingMap.entries()) {
+          if (!merged.some(m => (m.id && m.id === val.id) || (`${m.sessional_assessment_id}_${m.student_id}` === key))) {
+            merged.push(val);
+          }
+        }
+        return merged;
+      });
       setMarksHistory(enrichedMarksHistory);
     } catch (err) {
       console.error('Failed to refresh assessments:', err);
@@ -1395,6 +1416,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     deferTimer = setTimeout(() => {
       refreshNotifications();
       refreshConversations();
+      refreshMessageGroups();
       refreshLeaveApplications();
     }, 200);
 
@@ -1407,6 +1429,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deferTimer = setTimeout(() => {
           refreshNotifications();
           refreshConversations();
+          refreshMessageGroups();
           refreshLeaveApplications();
         }, 200);
       } else if (event === 'SIGNED_OUT') {
@@ -1416,6 +1439,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAdminAccounts([]);
         setNotifications([]);
         setConversations([]);
+        setMessageGroups([]);
         setLeaveApplications([]);
         setIsLoading(false);
       }
@@ -1425,7 +1449,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (deferTimer) clearTimeout(deferTimer);
       subscription.unsubscribe();
     };
-  }, [authLoading, isAuthenticated, loadDataFromSupabase, refreshNotifications, refreshConversations, refreshLeaveApplications]);
+  }, [authLoading, isAuthenticated, loadDataFromSupabase, refreshNotifications, refreshConversations, refreshMessageGroups, refreshLeaveApplications]);
 
   // Stable ref for realtime event handlers to eliminate channel resubscription churn
   const realtimeHandlersRef = useRef({
@@ -1649,7 +1673,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             });
           }
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.status === 'archived') {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setSessionalAssessments(prev => prev.filter(sa => sa.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_marks' }, (payload: any) => {
@@ -1658,7 +1686,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.active === false) {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setCourseAssignments(prev => prev.filter(a => a.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, (payload: any) => {
@@ -1667,7 +1699,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.active === false) {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setQuizzes(prev => prev.filter(q => q.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, (payload: any) => {
@@ -1675,6 +1711,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!activeStudentId || studId === activeStudentId) {
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, () => {
+          debounceTableSync('notifications', () => realtimeHandlersRef.current.refreshNotifications());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
           debounceTableSync('attendance_corrections', () => {
@@ -1710,7 +1749,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             realtimeHandlersRef.current.refreshAttendance();
           });
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.status === 'archived') {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setSessionalAssessments(prev => prev.filter(sa => sa.id !== delId));
+          }
           if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
@@ -1720,17 +1763,28 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.active === false) {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setCourseAssignments(prev => prev.filter(a => a.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.active === false) {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setQuizzes(prev => prev.filter(q => q.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, () => {
+          debounceTableSync('notifications', () => realtimeHandlersRef.current.refreshNotifications());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
           debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
@@ -1779,19 +1833,31 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
           debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.active === false) {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setCourseAssignments(prev => prev.filter(a => a.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_submissions' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.active === false) {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setQuizzes(prev => prev.filter(q => q.id !== delId));
+          }
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_results' }, () => {
           debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessional_assessments' }, (payload: any) => {
+          if (payload.eventType === 'DELETE' || payload?.new?.deleted_at || payload?.new?.status === 'archived') {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) setSessionalAssessments(prev => prev.filter(sa => sa.id !== delId));
+          }
           if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
@@ -1800,6 +1866,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (Date.now() - lastMarksSaveTimeRef.current >= 4000) {
             debounceTableSync('assessments', () => realtimeHandlersRef.current.refreshAssessments());
           }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, () => {
+          debounceTableSync('notifications', () => realtimeHandlersRef.current.refreshNotifications());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments' }, () => {
           debounceTableSync('class_coordinator_assignments', () => realtimeHandlersRef.current.refreshCoordinatorAssignments());
@@ -3467,7 +3536,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const subAssessments = sessionalAssessments.filter(
         sa => sa.subject_id === stat.subjectId && 
               (!sa.section_id || sa.section_id === student.section_id || sessionalMarks.some(m => m.sessional_assessment_id === sa.id && m.student_id === studentId)) &&
-              (sa.status === 'published' || sa.status === 'completed')
+              (sa.status === 'published' || sa.status === 'completed') &&
+              !sa.deleted_at
       );
 
       // Deduplicate assessments by title to prevent duplicate rows
@@ -3553,6 +3623,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         q => q.subject_id === stat.subjectId && 
              q.section_id === student.section_id && 
              q.active &&
+             !q.deleted_at &&
              (q.status === 'published' || q.status === 'completed')
       );
       const quizMarksList: Array<{ quizId: string; title: string; maxMarks: number; obtainedMarks?: number; quizDate: string }> = [];
@@ -3573,7 +3644,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const subAssignments = courseAssignments.filter(
         a => a.subject_id === stat.subjectId && 
              a.section_id === student.section_id && 
-             a.active
+             a.active &&
+             !a.deleted_at
       );
       const assignmentMarksList: Array<{ assignmentId: string; title: string; maxMarks: number; obtainedMarks?: number; status: string; dueDate: string }> = [];
       for (const a of subAssignments) {
@@ -3869,6 +3941,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     attachmentType?: string;
     attachmentSize?: number;
     allowStudentReplies?: boolean;
+    replyToMessageId?: string | null;
+    clientMessageId?: string | null;
   }) => {
     const res = await supabaseService.sendGroupMessage(params);
     if (res.success && res.data) {
@@ -3886,6 +3960,52 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
     }
     return res;
+  }, []);
+
+  const editGroupMessage = useCallback(async (messageId: string, newContent: string, newTitle?: string) => {
+    const res = await supabaseService.editGroupMessage(messageId, newContent, newTitle);
+    if (res.success && res.data) {
+      const updated = res.data;
+      if (updated.group_id) {
+        const cached = groupMessagesCacheRef.current.get(updated.group_id);
+        if (cached) {
+          groupMessagesCacheRef.current.set(
+            updated.group_id,
+            cached.map(m => m.id === messageId ? { ...m, ...updated } : m)
+          );
+        }
+      }
+    }
+    return res;
+  }, []);
+
+  const deleteGroupMessage = useCallback(async (messageId: string) => {
+    const res = await supabaseService.deleteGroupMessage(messageId);
+    if (res.success && res.data) {
+      const updated = res.data;
+      if (updated.group_id) {
+        const cached = groupMessagesCacheRef.current.get(updated.group_id);
+        if (cached) {
+          groupMessagesCacheRef.current.set(
+            updated.group_id,
+            cached.map(m => m.id === messageId ? { ...m, ...updated, is_deleted: true, message: 'Message deleted' } : m)
+          );
+        }
+      }
+    }
+    return res;
+  }, []);
+
+  const clearGroupChatForMe = useCallback(async (groupId: string) => {
+    const res = await supabaseService.clearGroupChatForMe(groupId);
+    if (res.success) {
+      groupMessagesCacheRef.current.set(groupId, []);
+    }
+    return res;
+  }, []);
+
+  const deleteGroupMessageForMe = useCallback(async (messageId: string) => {
+    return await supabaseService.deleteGroupMessageForMe(messageId);
   }, []);
 
   const markGroupRead = useCallback(async (groupId: string) => {
@@ -3969,6 +4089,50 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshData();
   }, [refreshData]);
 
+  const publishAssessment = useCallback(async (assessmentId: string, facultyId?: string) => {
+    const res = await supabaseService.publishAssessment(assessmentId, facultyId);
+    setSessionalAssessments(prev => prev.map(sa => sa.id === assessmentId ? { ...sa, status: 'published' } : sa));
+    setSessionalMarks(prev => prev.map(m => m.sessional_assessment_id === assessmentId ? { ...m, status: 'published' } : m));
+    await refreshAssessments();
+    return res;
+  }, [refreshAssessments]);
+
+  const fetchAssessmentMarks = useCallback(async (assessmentId: string, kind: 'sessional' | 'quiz' | 'assignment' = 'sessional') => {
+    const res = await supabaseService.fetchAssessmentMarks(assessmentId, kind);
+    if (kind === 'sessional' && res && res.length > 0) {
+      setSessionalMarks(prev => {
+        const incomingIds = new Set(res.map((r: any) => r.id));
+        const filtered = prev.filter(m => !incomingIds.has(m.id));
+        return [...(res as SessionalMark[]), ...filtered];
+      });
+    } else if (kind === 'quiz' && res && res.length > 0) {
+      setQuizResults(prev => {
+        const incomingIds = new Set(res.map((r: any) => r.id));
+        const filtered = prev.filter(r => !incomingIds.has(r.id));
+        return [...(res as QuizResult[]), ...filtered];
+      });
+    }
+    return res;
+  }, []);
+
+  const publishNotice = useCallback(async (notice: any) => {
+    const res = await supabaseService.publishNotice(notice);
+    await refreshNotifications();
+    return res;
+  }, [refreshNotifications]);
+
+  const deleteNotice = useCallback(async (id: string) => {
+    const res = await supabaseService.deleteNotice(id);
+    await refreshNotifications();
+    return res;
+  }, [refreshNotifications]);
+
+  const archiveNotice = useCallback(async (id: string) => {
+    const res = await supabaseService.archiveNotice(id);
+    await refreshNotifications();
+    return res;
+  }, [refreshNotifications]);
+
   const contextValue = useMemo(() => ({
     institution,
     departments,
@@ -4010,6 +4174,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     leaveApplications,
     refreshLeaveApplications,
     sendGroupMessage,
+    editGroupMessage,
+    deleteGroupMessage,
+    clearGroupChatForMe,
+    deleteGroupMessageForMe,
     markGroupRead,
     fetchGroupMembers,
     fetchStudentProfile,
@@ -4069,6 +4237,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ensureDefaultQuizzes,
     ensureDefaultAssessments,
     saveSessionalMarks,
+    publishAssessment,
+    fetchAssessmentMarks,
+    publishNotice,
+    deleteNotice,
+    archiveNotice,
     getStudentAcademicScorecard,
     addDepartment,
     updateDepartment,
@@ -4216,6 +4389,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ensureDefaultQuizzes,
     ensureDefaultAssessments,
     saveSessionalMarks,
+    publishAssessment,
+    fetchAssessmentMarks,
+    publishNotice,
+    deleteNotice,
+    archiveNotice,
     getStudentAcademicScorecard,
     addDepartment,
     updateDepartment,
@@ -4284,6 +4462,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getTodaySchedule,
     resetToInitialSeed,
     sendGroupMessage,
+    editGroupMessage,
+    deleteGroupMessage,
+    clearGroupChatForMe,
+    deleteGroupMessageForMe,
     markGroupRead,
     fetchGroupMembers,
     fetchStudentProfile,

@@ -61,8 +61,8 @@ export const FacultyAssignmentsPage: React.FC = () => {
 
   // Filter assignments created by this faculty (or all for HOD/Admin)
   const myAssignments = useMemo(() => {
-    if (isSuperAdmin) return courseAssignments;
-    return courseAssignments.filter(a => a.faculty_id === currentFacultyId);
+    const rawList = isSuperAdmin ? courseAssignments : courseAssignments.filter(a => a.faculty_id === currentFacultyId);
+    return rawList.filter(a => a.active !== false && !a.deleted_at);
   }, [courseAssignments, isSuperAdmin, currentFacultyId]);
 
   // Allowed subjects & sections dynamically resolved from database relationships

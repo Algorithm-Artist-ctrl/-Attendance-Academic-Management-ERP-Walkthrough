@@ -65,6 +65,7 @@ import {
   FacultyFullHistoricalRecord,
   AccountLifecycleEntry,
 } from '../../types/database.types';
+import { NoticeItem } from '../../types/academic.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
 import { erpStorage } from '../storage/erpStorage';
 
@@ -577,35 +578,41 @@ export const supabaseService = {
   // 1F. Scoped Student Academic Records (Assignments, Submissions, Quizzes, Sessional Marks)
   async fetchStudentAcademicRecords(studentId: string, sectionId?: string) {
     try {
+      let resolvedSectionId = sectionId;
+      if (!resolvedSectionId && studentId) {
+        const { data: st } = await supabase.from('students').select('section_id').eq('id', studentId).maybeSingle();
+        if (st?.section_id) resolvedSectionId = st.section_id;
+      }
+
       const [
-        { data: assignmentsList },
-        { data: submissionsList },
-        { data: quizzesList },
-        { data: quizResultsList },
-        { data: sessionalMarksList },
-        { data: sessionalAssessmentsList },
+        assignmentsRes,
+        submissionsRes,
+        quizzesRes,
+        quizResultsRes,
+        sessionalMarksRes,
+        sessionalAssessmentsRes,
       ] = await Promise.all([
-        sectionId
-          ? supabase.from('assignments').select('*').eq('section_id', sectionId).eq('active', true).order('created_at', { ascending: false }).limit(50)
-          : supabase.from('assignments').select('*').eq('active', true).order('created_at', { ascending: false }).limit(50),
+        resolvedSectionId
+          ? supabase.from('assignments').select('*').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+          : Promise.resolve({ data: [] }),
         supabase.from('assignment_submissions').select('*').eq('student_id', studentId).order('submitted_at', { ascending: false }).limit(100),
-        sectionId
-          ? supabase.from('quizzes').select('*').eq('section_id', sectionId).eq('active', true).order('created_at', { ascending: false }).limit(50)
-          : supabase.from('quizzes').select('*').eq('active', true).order('created_at', { ascending: false }).limit(50),
+        resolvedSectionId
+          ? supabase.from('quizzes').select('*').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+          : Promise.resolve({ data: [] }),
         supabase.from('quiz_results').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('sessional_marks').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
-        sectionId
-          ? supabase.from('sessional_assessments').select('*').eq('section_id', sectionId).order('created_at', { ascending: false }).limit(50)
-          : supabase.from('sessional_assessments').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('sessional_marks').select('*').eq('student_id', studentId).order('created_at', { ascending: false }).limit(200),
+        resolvedSectionId
+          ? supabase.from('sessional_assessments').select('*').eq('section_id', resolvedSectionId).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+          : Promise.resolve({ data: [] }),
       ]);
 
       return {
-        courseAssignments: (assignmentsList as Assignment[]) || [],
-        assignmentSubmissions: (submissionsList as AssignmentSubmission[]) || [],
-        quizzes: (quizzesList as Quiz[]) || [],
-        quizResults: (quizResultsList as QuizResult[]) || [],
-        sessionalMarks: (sessionalMarksList as SessionalMark[]) || [],
-        sessionalAssessments: (sessionalAssessmentsList as SessionalAssessment[]) || [],
+        courseAssignments: (assignmentsRes.data as Assignment[]) || [],
+        assignmentSubmissions: (submissionsRes.data as AssignmentSubmission[]) || [],
+        quizzes: (quizzesRes.data as Quiz[]) || [],
+        quizResults: (quizResultsRes.data as QuizResult[]) || [],
+        sessionalMarks: (sessionalMarksRes.data as SessionalMark[]) || [],
+        sessionalAssessments: (sessionalAssessmentsRes.data as SessionalAssessment[]) || [],
       };
     } catch (err) {
       console.error('Error fetching scoped student academic records:', err);
@@ -623,16 +630,26 @@ export const supabaseService = {
   // 1F-2. Scoped Faculty Academic Records (Only faculty's assignments, submissions, quizzes, marks)
   async fetchFacultyAcademicRecords(facultyId: string) {
     try {
+      let resolvedFacId = facultyId;
+      if (resolvedFacId) {
+        const { data: fac } = await supabase
+          .from('faculty')
+          .select('id')
+          .or(`id.eq.${resolvedFacId},auth_user_id.eq.${resolvedFacId}`)
+          .maybeSingle();
+        if (fac?.id) resolvedFacId = fac.id;
+      }
+
       const [
         assignmentsRes,
         quizzesRes,
         assessmentsRes,
         sessionalMarksRes,
       ] = await Promise.all([
-        supabase.from('assignments').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('quizzes').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('sessional_assessments').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('sessional_marks').select('*').eq('faculty_id', facultyId).order('created_at', { ascending: false }).limit(500),
+        supabase.from('assignments').select('*').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+        supabase.from('quizzes').select('*').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+        supabase.from('sessional_assessments').select('*').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+        supabase.from('sessional_marks').select('*').eq('faculty_id', resolvedFacId).order('created_at', { ascending: false }).limit(2000),
       ]);
 
       const assignmentIds = (assignmentsRes.data || []).map(a => a.id);
@@ -640,10 +657,10 @@ export const supabaseService = {
 
       const [submissionsRes, quizResultsRes] = await Promise.all([
         assignmentIds.length > 0
-          ? supabase.from('assignment_submissions').select('*').in('assignment_id', assignmentIds).limit(300)
+          ? supabase.from('assignment_submissions').select('*').in('assignment_id', assignmentIds).limit(500)
           : Promise.resolve({ data: [] }),
         quizIds.length > 0
-          ? supabase.from('quiz_results').select('*').in('quiz_id', quizIds).limit(300)
+          ? supabase.from('quiz_results').select('*').in('quiz_id', quizIds).limit(500)
           : Promise.resolve({ data: [] }),
       ]);
 
@@ -2493,38 +2510,43 @@ export const supabaseService = {
     return res.deleted || res.archived;
   },
 
-  // 6. Live Notices backed by Supabase
-  async fetchNotices() {
+  // 6. Production Notices backed by Supabase public.notices table & RPCs
+  async fetchNotices(): Promise<NoticeItem[]> {
     try {
       const { data, error } = await supabase
-        .from('audit_logs')
+        .from('notices')
         .select('*')
-        .eq('action', 'NOTICE_PUBLISHED')
-        .eq('entity_type', 'notice')
+        .is('deleted_at', null)
+        .neq('status', 'DELETED')
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (error) return [];
-      return (data || []).map(row => {
-        const details = row.new_values || {};
-        return {
-          id: row.id,
-          title: details.title || 'Official Circular',
-          category: details.category || 'Academic',
-          date: details.date || row.created_at?.split('T')[0],
-          author: details.author || row.actor_name || 'Administration',
-          isPinned: !!details.isPinned,
-          content: details.content || '',
-          attachment: details.attachment,
-          targetAudience: details.targetAudience || 'ALL',
-          targetSectionId: details.targetSectionId || null,
-          targetDepartmentId: details.targetDepartmentId || null,
-          targetProgramId: details.targetProgramId || null,
-          targetYearId: details.targetYearId || null,
-          targetSemesterId: details.targetSemesterId || null,
-          targetRole: details.targetRole || null,
-          createdAt: row.created_at
-        };
-      });
+      if (error) {
+        console.warn('Error fetching notices:', error.message);
+        return [];
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        title: row.title || 'Official Circular',
+        category: row.category || 'Academic',
+        priority: row.priority || 'NORMAL',
+        date: row.created_at ? row.created_at.split('T')[0] : getISTTodayDate(),
+        author: row.author || 'Academic Administration',
+        isPinned: !!row.is_pinned,
+        content: row.content || '',
+        attachment: row.attachment_url,
+        attachment_url: row.attachment_url,
+        targetAudience: row.target_audience || 'ALL',
+        targetSectionId: row.target_section_id || null,
+        targetDepartmentId: row.target_department_id || null,
+        targetProgramId: null,
+        targetYearId: null,
+        targetSemesterId: null,
+        targetRole: row.target_role || null,
+        status: row.status || 'PUBLISHED',
+        createdAt: row.created_at
+      }));
     } catch (err) {
       console.error('Error fetching live notices:', err);
       return [];
@@ -2547,40 +2569,100 @@ export const supabaseService = {
     targetRole?: string | null;
     actorId?: string;
     actorName?: string;
+    priority?: 'NORMAL' | 'URGENT' | 'HIGH';
   }) {
-    const { data, error } = await supabase.from('audit_logs').insert({
-      actor_id: notice.actorId || null,
-      actor_name: notice.actorName || notice.author,
-      actor_role: 'admin',
-      action: 'NOTICE_PUBLISHED',
-      entity_type: 'notice',
-      entity_id: null,
-      new_values: {
-        title: notice.title,
-        category: notice.category,
-        author: notice.author,
-        content: notice.content,
-        isPinned: notice.isPinned || false,
-        attachment: notice.attachment,
-        targetAudience: notice.targetAudience || 'ALL',
-        targetSectionId: notice.targetSectionId || null,
-        targetDepartmentId: notice.targetDepartmentId || null,
-        targetProgramId: notice.targetProgramId || null,
-        targetYearId: notice.targetYearId || null,
-        targetSemesterId: notice.targetSemesterId || null,
-        targetRole: notice.targetRole || null,
-        date: getISTTodayDate()
-      }
-    }).select().single();
+    try {
+      // 1. Invoke atomic publish_notice stored procedure
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('publish_notice', {
+        p_title: notice.title.trim(),
+        p_content: notice.content.trim(),
+        p_category: notice.category || 'Academic',
+        p_priority: notice.priority || 'NORMAL',
+        p_author: notice.author?.trim() || notice.actorName || 'Academic Administration',
+        p_created_by: notice.actorId || null,
+        p_created_by_role: 'admin',
+        p_target_audience: notice.targetAudience || 'ALL',
+        p_target_section_id: notice.targetSectionId || null,
+        p_target_department_id: notice.targetDepartmentId || null,
+        p_target_role: notice.targetRole || null,
+        p_is_pinned: !!notice.isPinned,
+        p_attachment_url: notice.attachment || null,
+      });
 
-    if (error) throw new Error(error.message);
-    return data;
+      if (!rpcErr && rpcData) {
+        return rpcData;
+      }
+
+      // 2. Direct fallback insertion if RPC had any constraint edge-case
+      const { data: directData, error: directErr } = await supabase
+        .from('notices')
+        .insert({
+          title: notice.title.trim(),
+          content: notice.content.trim(),
+          category: notice.category || 'Academic',
+          priority: notice.priority || 'NORMAL',
+          author: notice.author?.trim() || notice.actorName || 'Academic Administration',
+          created_by: notice.actorId || null,
+          created_by_role: 'admin',
+          target_audience: notice.targetAudience || 'ALL',
+          target_section_id: notice.targetSectionId || null,
+          target_department_id: notice.targetDepartmentId || null,
+          target_role: notice.targetRole || null,
+          is_pinned: !!notice.isPinned,
+          attachment_url: notice.attachment || null,
+          status: 'PUBLISHED',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (directErr) throw new Error(directErr.message);
+      return directData;
+    } catch (err: any) {
+      console.error('Error in publishNotice:', err);
+      throw err;
+    }
   },
 
-  async deleteNotice(noticeId: string) {
-    const { error } = await supabase.from('audit_logs').delete().eq('id', noticeId);
-    if (error) throw new Error(error.message);
-    return true;
+  async deleteNotice(noticeId: string): Promise<boolean> {
+    try {
+      const { error: rpcErr } = await supabase.rpc('delete_notice', { p_notice_id: noticeId });
+      if (rpcErr) {
+        const { error: directErr } = await supabase
+          .from('notices')
+          .update({
+            status: 'DELETED',
+            deleted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', noticeId);
+
+        if (directErr) throw directErr;
+      }
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting notice:', err);
+      throw err;
+    }
+  },
+
+  async archiveNotice(noticeId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('notices')
+        .update({
+          status: 'ARCHIVED',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', noticeId);
+
+      if (error) throw error;
+      return true;
+    } catch (err: any) {
+      console.error('Error archiving notice:', err);
+      throw err;
+    }
   },
 
   async addSubject(sub: Omit<Subject, 'id' | 'created_at' | 'updated_at'>) {
@@ -4040,8 +4122,21 @@ export const supabaseService = {
   },
 
   async deleteCourseAssignment(id: string) {
-    const { error } = await supabase.from('assignments').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    const { error } = await supabase
+      .from('assignments')
+      .update({ active: false, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      const { error: hardErr } = await supabase.from('assignments').delete().eq('id', id);
+      if (hardErr) throw new Error(hardErr.message);
+    }
+
+    try {
+      await supabase.from('notifications').delete().eq('reference_id', id).eq('reference_type', 'assignment');
+    } catch (notifErr) {
+      console.warn('Notice: Background assignment notification cleanup:', notifErr);
+    }
     return true;
   },
 
@@ -4273,8 +4368,21 @@ export const supabaseService = {
   },
 
   async deleteQuiz(id: string) {
-    const { error } = await supabase.from('quizzes').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    const { error } = await supabase
+      .from('quizzes')
+      .update({ active: false, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      const { error: hardErr } = await supabase.from('quizzes').delete().eq('id', id);
+      if (hardErr) throw new Error(hardErr.message);
+    }
+
+    try {
+      await supabase.from('notifications').delete().eq('reference_id', id).eq('reference_type', 'quiz');
+    } catch (notifErr) {
+      console.warn('Notice: Background quiz notification cleanup:', notifErr);
+    }
     return true;
   },
 
@@ -4500,8 +4608,21 @@ export const supabaseService = {
   },
 
   async deleteSessionalAssessment(id: string) {
-    const { error } = await supabase.from('sessional_assessments').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    const { error } = await supabase
+      .from('sessional_assessments')
+      .update({ status: 'archived', deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      const { error: hardErr } = await supabase.from('sessional_assessments').delete().eq('id', id);
+      if (hardErr) throw new Error(hardErr.message);
+    }
+
+    try {
+      await supabase.from('notifications').delete().eq('reference_id', id).eq('reference_type', 'sessional_mark');
+    } catch (notifErr) {
+      console.warn('Notice: Background assessment notification cleanup:', notifErr);
+    }
     return true;
   },
 
@@ -4530,56 +4651,37 @@ export const supabaseService = {
         }
 
         const currentList = (existing as SessionalAssessment[]) || [];
-        const existingByTitle = new Map<string, SessionalAssessment>();
-        for (const a of currentList) {
-          const tKey = (a.title || '').trim().toLowerCase();
-          if (!existingByTitle.has(tKey)) {
-            existingByTitle.set(tKey, a);
+        // If assessments were already initialized for this subject and section, DO NOT auto-recreate deleted items!
+        if (currentList.length > 0) {
+          return currentList.filter(a => !a.deleted_at && a.status !== 'archived');
+        }
+
+        const toCreate: Array<{ title: string; max_marks: number }> = [
+          { title: 'Sessional 1', max_marks: 20 },
+          { title: 'Sessional 2', max_marks: 30 },
+          { title: 'Sessional 3', max_marks: 20 },
+        ];
+
+        const createdList: SessionalAssessment[] = [];
+        await Promise.all(toCreate.map(async (item) => {
+          try {
+            const created = await this.createSessionalAssessment({
+              title: item.title,
+              subject_id: params.subjectId,
+              section_id: params.sectionId,
+              faculty_id: params.facultyId,
+              semester_id: params.semesterId,
+              max_marks: item.max_marks,
+              exam_date: new Date().toISOString().split('T')[0],
+              status: 'draft',
+            });
+            createdList.push(created);
+          } catch (err) {
+            console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
           }
-        }
+        }));
 
-        const toCreate: Array<{ title: string; max_marks: number }> = [];
-        if (!existingByTitle.has('sessional 1')) {
-          toCreate.push({ title: 'Sessional 1', max_marks: 20 });
-        }
-        if (!existingByTitle.has('sessional 2')) {
-          toCreate.push({ title: 'Sessional 2', max_marks: 30 });
-        } else {
-          const s2 = existingByTitle.get('sessional 2');
-          if (s2 && s2.max_marks === 20) {
-            try {
-              await this.updateSessionalAssessment(s2.id, { max_marks: 30 });
-              s2.max_marks = 30;
-            } catch (err) {
-              console.warn('Failed to auto-upgrade Sessional 2 max marks to 30:', err);
-            }
-          }
-        }
-        if (!existingByTitle.has('sessional 3')) {
-          toCreate.push({ title: 'Sessional 3', max_marks: 20 });
-        }
-
-        if (toCreate.length > 0) {
-          await Promise.all(toCreate.map(async (item) => {
-            try {
-              const created = await this.createSessionalAssessment({
-                title: item.title,
-                subject_id: params.subjectId,
-                section_id: params.sectionId,
-                faculty_id: params.facultyId,
-                semester_id: params.semesterId,
-                max_marks: item.max_marks,
-                exam_date: new Date().toISOString().split('T')[0],
-                status: 'draft',
-              });
-              existingByTitle.set(item.title.toLowerCase(), created);
-            } catch (err) {
-              console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
-            }
-          }));
-        }
-
-        return Array.from(existingByTitle.values());
+        return createdList;
       } finally {
         _inFlightEnsureSessionals.delete(key);
       }
@@ -4613,47 +4715,40 @@ export const supabaseService = {
         }
 
         const currentList = (existing as Quiz[]) || [];
-        const existingByTitle = new Map<string, Quiz>();
-        for (const q of currentList) {
-          const tKey = (q.title || '').trim().toLowerCase();
-          if (!existingByTitle.has(tKey)) {
-            existingByTitle.set(tKey, q);
-          }
+        // If quizzes were already initialized for this subject and section, DO NOT auto-recreate deleted items!
+        if (currentList.length > 0) {
+          return currentList.filter(q => !q.deleted_at && q.active !== false);
         }
 
         const toCreate: Array<{ title: string; max_marks: number }> = [];
         for (let i = 1; i <= 5; i++) {
-          const qTitle = `Quiz ${i}`;
-          if (!existingByTitle.has(qTitle.toLowerCase())) {
-            toCreate.push({ title: qTitle, max_marks: 20 });
+          toCreate.push({ title: `Quiz ${i}`, max_marks: 20 });
+        }
+
+        const createdList: Quiz[] = [];
+        const now = new Date();
+        await Promise.all(toCreate.map(async (item) => {
+          try {
+            const created = await this.createQuiz({
+              faculty_id: params.facultyId,
+              subject_id: params.subjectId,
+              section_id: params.sectionId,
+              title: item.title,
+              max_marks: item.max_marks,
+              quiz_date: now.toISOString().split('T')[0],
+              start_time: now.toISOString(),
+              end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              google_form_url: 'https://vctm.in/quizzes',
+              status: 'draft',
+              active: true
+            });
+            createdList.push(created);
+          } catch (err) {
+            console.warn(`Failed to auto-create quiz ${item.title}:`, err);
           }
-        }
+        }));
 
-        if (toCreate.length > 0) {
-          const now = new Date();
-          await Promise.all(toCreate.map(async (item) => {
-            try {
-              const created = await this.createQuiz({
-                faculty_id: params.facultyId,
-                subject_id: params.subjectId,
-                section_id: params.sectionId,
-                title: item.title,
-                max_marks: item.max_marks,
-                quiz_date: now.toISOString().split('T')[0],
-                start_time: now.toISOString(),
-                end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                google_form_url: 'https://vctm.in/quizzes',
-                status: 'draft',
-                active: true
-              });
-              existingByTitle.set(item.title.toLowerCase(), created);
-            } catch (err) {
-              console.warn(`Failed to auto-create quiz ${item.title}:`, err);
-            }
-          }));
-        }
-
-        return Array.from(existingByTitle.values());
+        return createdList;
       } finally {
         _inFlightEnsureQuizzes.delete(key);
       }
@@ -4678,6 +4773,68 @@ export const supabaseService = {
       })
     ]);
     return { sessionals, quizzes };
+  },
+
+  // 7. Atomic Assessment Publication & Direct Marks Fetching
+  async publishAssessment(assessmentId: string, facultyId?: string) {
+    try {
+      const { data, error } = await supabase.rpc('publish_assessment_marks', {
+        p_assessment_id: assessmentId,
+        p_faculty_id: facultyId || null,
+      });
+
+      if (error) {
+        console.warn('publish_assessment_marks RPC notice, falling back:', error.message);
+        await supabase
+          .from('sessional_assessments')
+          .update({ status: 'published', updated_at: new Date().toISOString() })
+          .eq('id', assessmentId);
+
+        await supabase
+          .from('sessional_marks')
+          .update({ status: 'published', updated_at: new Date().toISOString() })
+          .eq('sessional_assessment_id', assessmentId);
+      }
+
+      return data || { success: true };
+    } catch (err) {
+      console.error('Error in publishAssessment:', err);
+      throw err;
+    }
+  },
+
+  async fetchAssessmentMarks(assessmentId: string, kind: 'sessional' | 'quiz' | 'assignment' = 'sessional'): Promise<any[]> {
+    try {
+      if (!assessmentId) return [];
+      if (kind === 'sessional') {
+        const { data, error } = await supabase
+          .from('sessional_marks')
+          .select('*')
+          .eq('sessional_assessment_id', assessmentId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        return (data || []) as SessionalMark[];
+      } else if (kind === 'quiz') {
+        const { data, error } = await supabase
+          .from('quiz_results')
+          .select('*')
+          .eq('quiz_id', assessmentId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        return (data || []) as QuizResult[];
+      } else {
+        const { data, error } = await supabase
+          .from('assignment_submissions')
+          .select('*')
+          .eq('assignment_id', assessmentId)
+          .order('submitted_at', { ascending: true });
+        if (error) throw error;
+        return (data || []) as AssignmentSubmission[];
+      }
+    } catch (err) {
+      console.error(`Error fetching marks for assessment ${assessmentId}:`, err);
+      return [];
+    }
   },
 
   async saveSessionalMarks(params: {
@@ -6945,12 +7102,36 @@ export const supabaseService = {
     }
   },
 
-  async fetchGroupMessages(groupId: string, limit: number = 50, beforeCreatedAt?: string): Promise<GroupMessage[]> {
+  async fetchGroupMessages(
+    groupId: string, 
+    limit: number = 50, 
+    beforeCreatedAt?: string,
+    currentUserId?: string
+  ): Promise<GroupMessage[]> {
     try {
+      let clearedAt: string | null = null;
+      if (currentUserId) {
+        try {
+          const { data: readState } = await supabase
+            .from('group_member_read_state')
+            .select('cleared_at')
+            .eq('group_id', groupId)
+            .eq('user_id', currentUserId)
+            .maybeSingle();
+          if (readState?.cleared_at) {
+            clearedAt = readState.cleared_at;
+          }
+        } catch {}
+      }
+
       let query = supabase
         .from('group_messages')
         .select('*')
         .eq('group_id', groupId);
+
+      if (clearedAt) {
+        query = query.gt('created_at', clearedAt);
+      }
 
       if (beforeCreatedAt) {
         query = query.lt('created_at', beforeCreatedAt);
@@ -6967,7 +7148,55 @@ export const supabaseService = {
         return [];
       }
 
-      return ((data || []) as GroupMessage[]).slice().reverse();
+      let msgs = ((data || []) as GroupMessage[]);
+
+      // Filter out messages deleted by this specific user
+      if (currentUserId) {
+        msgs = msgs.filter(m => !(m.deleted_by_users && m.deleted_by_users.includes(currentUserId)));
+      }
+
+      // Populate reply_to references if any messages reply to another message
+      const replyIds = msgs.map(m => m.reply_to_message_id).filter(Boolean) as string[];
+      if (replyIds.length > 0) {
+        const localMap = new Map<string, GroupMessage>();
+        msgs.forEach(m => localMap.set(m.id, m));
+        
+        const missingIds = replyIds.filter(id => !localMap.has(id));
+        if (missingIds.length > 0) {
+          try {
+            const { data: parentRows } = await supabase
+              .from('group_messages')
+              .select('id, message, sender_name, sender_role, title, is_deleted')
+              .in('id', missingIds);
+            (parentRows || []).forEach(p => localMap.set(p.id, p as any));
+          } catch {}
+        }
+
+        msgs = msgs.map(m => {
+          if (m.reply_to_message_id && localMap.has(m.reply_to_message_id)) {
+            const parent = localMap.get(m.reply_to_message_id)!;
+            return {
+              ...m,
+              reply_to: {
+                id: parent.id,
+                message: parent.is_deleted ? 'Message deleted' : parent.message,
+                sender_name: parent.sender_name,
+                sender_role: parent.sender_role,
+                title: parent.title,
+                is_deleted: parent.is_deleted,
+              }
+            };
+          }
+          return m;
+        });
+      }
+
+      // Deterministic chronological sort: created_at ASC, id ASC
+      return msgs.sort((a, b) => {
+        const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return a.id.localeCompare(b.id);
+      });
     } catch (err) {
       console.error('Exception in fetchGroupMessages:', err);
       return [];
@@ -6985,6 +7214,8 @@ export const supabaseService = {
     attachmentType?: string;
     attachmentSize?: number;
     allowStudentReplies?: boolean;
+    replyToMessageId?: string | null;
+    clientMessageId?: string | null;
   }): Promise<{ success: boolean; data?: any; error?: any }> {
     try {
       const { data, error } = await supabase.rpc('send_group_message', {
@@ -6998,6 +7229,8 @@ export const supabaseService = {
         p_attachment_type: params.attachmentType || null,
         p_attachment_size: params.attachmentSize || null,
         p_allow_student_replies: params.allowStudentReplies !== undefined ? params.allowStudentReplies : null,
+        p_reply_to_message_id: params.replyToMessageId || null,
+        p_client_message_id: params.clientMessageId || null,
       });
 
       if (error) {
@@ -7008,6 +7241,74 @@ export const supabaseService = {
     } catch (err) {
       console.error('Exception in sendGroupMessage:', err);
       return { success: false, error: err };
+    }
+  },
+
+  async editGroupMessage(
+    messageId: string, 
+    newContent: string, 
+    newTitle?: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('edit_group_message', {
+        p_message_id: messageId,
+        p_new_content: newContent,
+        p_new_title: newTitle || null,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to edit group message' };
+    }
+  },
+
+  async deleteGroupMessage(
+    messageId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('delete_group_message', {
+        p_message_id: messageId,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to delete group message' };
+    }
+  },
+
+  async clearGroupChatForMe(
+    groupId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('clear_group_chat_for_me', {
+        p_group_id: groupId,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to clear group chat' };
+    }
+  },
+
+  async deleteGroupMessageForMe(
+    messageId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('delete_group_message_for_me', {
+        p_message_id: messageId,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to delete message for me' };
     }
   },
 

@@ -84,7 +84,11 @@ export const FacultyMarksManagementPage: React.FC = () => {
     ensureDefaultAssessments,
     createQuiz,
     saveSessionalMarks,
-    saveQuizMarks
+    saveQuizMarks,
+    publishAssessment,
+    fetchAssessmentMarks,
+    deleteSessionalAssessment,
+    deleteQuiz
   } = useAcademic();
 
   // 1. Identify logged-in faculty
@@ -258,7 +262,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     // Sessionals
     const matchedSessionals = sessionalAssessments.filter(
-      sa => sa.subject_id === selectedSubjectId && sa.section_id === selectedSectionId
+      sa => sa.subject_id === selectedSubjectId && sa.section_id === selectedSectionId && sa.status !== 'archived' && !sa.deleted_at
     );
     // Sort sessionals: Sessional 1, 2, 3, etc.
     matchedSessionals.sort((a, b) => {
@@ -289,7 +293,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     // Quizzes
     const matchedQuizzes = quizzes.filter(
-      q => q.subject_id === selectedSubjectId && q.section_id === selectedSectionId
+      q => q.subject_id === selectedSubjectId && q.section_id === selectedSectionId && q.active !== false && !q.deleted_at
     );
     // Sort quizzes: Quiz 1, 2, 3, 4, 5, etc.
     matchedQuizzes.sort((a, b) => {
@@ -318,7 +322,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     // Assignments
     const matchedAssignments = courseAssignments.filter(
-      ca => ca.subject_id === selectedSubjectId && ca.section_id === selectedSectionId
+      ca => ca.subject_id === selectedSubjectId && ca.section_id === selectedSectionId && ca.active !== false && !ca.deleted_at
     );
     for (const ca of matchedAssignments) {
       list.push({
@@ -467,6 +471,51 @@ export const FacultyMarksManagementPage: React.FC = () => {
     prevAssessmentIdRef.current = activeAssessment.id;
     prevSectionIdRef.current = selectedSectionId;
   }, [activeAssessment, selectedSectionId, sectionStudents, sessionalMarks, quizResults, assignmentSubmissions]);
+
+  // Proactively fetch marks from PostgreSQL whenever activeAssessment changes
+  useEffect(() => {
+    if (!activeAssessment || !activeAssessment.id) return;
+    let isCancelled = false;
+
+    fetchAssessmentMarks(activeAssessment.id, activeAssessment.kind)
+      .then(records => {
+        if (isCancelled || !records) return;
+        if (!isDirtyRef.current && !isSavingRef.current && sectionStudents.length > 0) {
+          setMarksRoster(prev => {
+            const next = { ...prev };
+            if (activeAssessment.kind === 'sessional') {
+              for (const st of sectionStudents) {
+                const sm = (records as SessionalMark[]).find(m => m.student_id === st.id);
+                if (sm && sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
+                  next[st.id] = {
+                    marks: sm.marks_obtained,
+                    remarks: sm.remarks || ''
+                  };
+                }
+              }
+            } else if (activeAssessment.kind === 'quiz') {
+              for (const st of sectionStudents) {
+                const qr = (records as QuizResult[]).find(r => r.student_id === st.id);
+                if (qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null) {
+                  next[st.id] = {
+                    marks: qr.marks_obtained,
+                    remarks: qr.remarks || ''
+                  };
+                }
+              }
+            }
+            return next;
+          });
+        }
+      })
+      .catch(err => {
+        console.warn('Error fetching assessment marks:', err);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeAssessment?.id, activeAssessment?.kind, sectionStudents, fetchAssessmentMarks]);
 
   // Auto-dismiss notification toast
   useEffect(() => {
@@ -650,6 +699,21 @@ export const FacultyMarksManagementPage: React.FC = () => {
           studentMarks: studentMarksPayload,
           isPublished: publishMode === 'published'
         });
+      }
+
+      if (publishMode === 'published') {
+        try {
+          await publishAssessment(activeAssessment.id, currentFacultyId);
+        } catch (pubErr) {
+          console.warn('publishAssessment RPC notice:', pubErr);
+        }
+      }
+
+      // Re-fetch assessment marks to guarantee synchronization with PostgreSQL single source of truth
+      try {
+        await fetchAssessmentMarks(activeAssessment.id, activeAssessment.kind);
+      } catch (refetchErr) {
+        console.warn('fetchAssessmentMarks sync warning:', refetchErr);
       }
 
       setIsDirty(false);

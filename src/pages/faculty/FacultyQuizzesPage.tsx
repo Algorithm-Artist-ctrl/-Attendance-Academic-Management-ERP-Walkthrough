@@ -58,7 +58,8 @@ export const FacultyQuizzesPage: React.FC = () => {
 
   // Filter quizzes created by this faculty (or all for HOD/Admin)
   const myQuizzes = useMemo(() => {
-    const rawList = isSuperAdmin ? quizzes : quizzes.filter(q => q.faculty_id === currentFacultyId);
+    const rawList = (isSuperAdmin ? quizzes : quizzes.filter(q => q.faculty_id === currentFacultyId))
+      .filter(q => q.active !== false && !q.deleted_at);
     const map = new Map<string, Quiz>();
     for (const q of rawList) {
       const key = `${q.subject_id}_${q.section_id}_${(q.title || '').trim().toLowerCase()}`;

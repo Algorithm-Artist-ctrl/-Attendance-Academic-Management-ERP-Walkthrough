@@ -532,6 +532,7 @@ export interface SessionalAssessment {
   status: 'draft' | 'published' | 'completed' | 'archived';
   created_at: string;
   updated_at: string;
+  deleted_at?: string;
   subject?: Subject;
   faculty?: Faculty;
   section?: Section;
@@ -556,6 +557,7 @@ export interface Assignment {
   active: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at?: string;
   subject?: Subject;
   faculty?: Faculty;
   section?: Section;
@@ -565,7 +567,8 @@ export interface AssignmentSubmission {
   id: string;
   assignment_id: string;
   student_id: string;
-  submission_type: string;
+  submission_type: SubmissionType;
+  content?: string;
   file_path?: string;
   file_name?: string;
   file_size?: number;
@@ -602,9 +605,32 @@ export interface Quiz {
   active: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at?: string;
   subject?: Subject;
   faculty?: Faculty;
   section?: Section;
+}
+
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  priority: 'NORMAL' | 'URGENT' | 'HIGH';
+  author: string;
+  created_by?: string;
+  created_by_role?: string;
+  target_audience: string;
+  target_section_id?: string | null;
+  target_department_id?: string | null;
+  target_role?: string | null;
+  is_pinned: boolean;
+  attachment_url?: string;
+  status: 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
+  expires_at?: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string;
 }
 
 export interface QuizResult {
@@ -960,6 +986,22 @@ export interface GroupMessage {
   attachment_type?: string | null;
   attachment_size?: number | null;
   created_at: string;
+  edited_at?: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by_users?: string[];
+  reply_to_message_id?: string | null;
+  reply_to?: {
+    id: string;
+    message: string;
+    sender_name: string;
+    sender_role: string;
+    title?: string | null;
+    is_deleted?: boolean;
+  } | null;
+  delivery_status?: 'sending' | 'sent' | 'failed';
+  error?: string | null;
+  client_message_id?: string | null;
 }
 
 export interface GroupMember {

@@ -195,12 +195,14 @@ export interface TimetableSlotDiff {
 export interface NoticeItem {
   id: string;
   title: string;
-  category: 'Academic' | 'Examination' | 'Events' | 'Urgent' | 'Holidays';
+  category: 'Academic' | 'Examination' | 'Events' | 'Urgent' | 'Holidays' | string;
+  priority?: 'NORMAL' | 'URGENT' | 'HIGH';
   date: string;
   author: string;
   isPinned: boolean;
   content: string;
   attachment?: string;
+  attachment_url?: string;
   targetAudience?: string;
   targetSectionId?: string | null;
   targetDepartmentId?: string | null;
@@ -208,6 +210,7 @@ export interface NoticeItem {
   targetYearId?: string | null;
   targetSemesterId?: string | null;
   targetRole?: string | null;
+  status?: 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
   createdAt?: string;
 }
 

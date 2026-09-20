@@ -92,6 +92,13 @@ export const NoticesPage: React.FC = () => {
       .channel('vctm-notices-realtime-channel')
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'notices' },
+        () => {
+          loadNotices();
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'audit_logs' },
         (payload: any) => {
           if ((payload.new as any)?.action === 'NOTICE_PUBLISHED' || payload.eventType === 'DELETE') {
@@ -150,23 +157,25 @@ export const NoticesPage: React.FC = () => {
       });
 
       if (inserted) {
-        const details = (inserted as any).new_values || {};
+        const row = inserted as any;
+        const details = row.new_values || row;
         const newNoticeItem: NoticeItem = {
-          id: (inserted as any).id,
-          title: details.title || newTitle.trim(),
-          category: details.category || newCategory,
-          date: details.date || ((inserted as any).created_at ? (inserted as any).created_at.split('T')[0] : getISTTodayDate()),
-          author: details.author || newAuthor.trim() || user?.full_name || 'Academic Administration',
-          isPinned: !!details.isPinned,
-          content: details.content || newContent.trim(),
-          attachment: details.attachment,
-          targetAudience: details.targetAudience || targetAudience,
-          targetSectionId: details.targetSectionId || targetSectionId,
-          targetDepartmentId: details.targetDepartmentId || targetDepartmentId,
-          targetRole: details.targetRole || targetRole,
-          createdAt: (inserted as any).created_at || new Date().toISOString()
+          id: row.id,
+          title: row.title || details.title || newTitle.trim(),
+          category: row.category || details.category || newCategory,
+          date: row.created_at ? row.created_at.split('T')[0] : (details.date || getISTTodayDate()),
+          author: row.author || details.author || newAuthor.trim() || user?.full_name || 'Academic Administration',
+          isPinned: !!(row.is_pinned ?? details.isPinned),
+          content: row.content || details.content || newContent.trim(),
+          attachment: row.attachment_url || details.attachment,
+          targetAudience: row.target_audience || details.targetAudience || targetAudience,
+          targetSectionId: row.target_section_id || details.targetSectionId || targetSectionId,
+          targetDepartmentId: row.target_department_id || details.targetDepartmentId || targetDepartmentId,
+          targetRole: row.target_role || details.targetRole || targetRole,
+          status: row.status || 'PUBLISHED',
+          createdAt: row.created_at || new Date().toISOString()
         };
-        setNotices(prev => [newNoticeItem, ...prev]);
+        setNotices(prev => [newNoticeItem, ...prev.filter(n => n.id !== newNoticeItem.id)]);
       }
 
       setPublishSuccess(true);
@@ -201,6 +210,11 @@ export const NoticesPage: React.FC = () => {
 
   // Strict Section-Wise & Role-Aware Notice Filtering
   const visibleNotices = notices.filter(n => {
+    // Exclude deleted notices
+    if (n.status === 'DELETED') return false;
+    // Exclude archived notices unless showArchived is on
+    if (!showArchived && n.status === 'ARCHIVED') return false;
+
     // 1. Super Admin sees all notices
     if (user?.role === 'super_admin') return true;
 

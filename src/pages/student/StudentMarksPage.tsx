@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { 
   Award, 
   BookOpen, 
@@ -18,7 +18,11 @@ import { clsx } from 'clsx';
 
 export const StudentMarksPage: React.FC = () => {
   const { user } = useAuth();
-  const { students, getStudentAcademicScorecard, getStudentAttendance, isLoading } = useAcademic();
+  const { students, getStudentAcademicScorecard, getStudentAttendance, isLoading, refreshAssessments } = useAcademic();
+
+  useEffect(() => {
+    refreshAssessments();
+  }, [refreshAssessments]);
 
   const currentStudent = useMemo(() => {
     return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;

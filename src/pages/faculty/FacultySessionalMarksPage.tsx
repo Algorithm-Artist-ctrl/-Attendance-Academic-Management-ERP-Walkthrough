@@ -136,7 +136,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
       const matchSubject = !selectedSubjectId || sa.subject_id === selectedSubjectId;
       const matchSection = !selectedSectionId || sa.section_id === selectedSectionId;
       const matchSearch = !searchTerm || sa.title.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchFaculty && matchSubject && matchSection && matchSearch;
+      return matchFaculty && matchSubject && matchSection && matchSearch && sa.status !== 'archived' && !sa.deleted_at;
     });
   }, [sessionalAssessments, isSuperAdmin, currentFacultyId, selectedSubjectId, selectedSectionId, searchTerm]);
 

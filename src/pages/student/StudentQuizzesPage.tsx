@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Sparkles, 
   ExternalLink, 
@@ -19,7 +19,11 @@ import { clsx } from 'clsx';
 
 export const StudentQuizzesPage: React.FC = () => {
   const { user } = useAuth();
-  const { quizzes, quizResults, subjects, students, assignments, timetable } = useAcademic();
+  const { quizzes, quizResults, subjects, students, assignments, timetable, refreshAssessments } = useAcademic();
+
+  useEffect(() => {
+    refreshAssessments();
+  }, [refreshAssessments]);
 
   const currentStudent = useMemo(() => {
     return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
@@ -33,7 +37,7 @@ export const StudentQuizzesPage: React.FC = () => {
   // Filter quizzes strictly applicable to student's section
   const myQuizzes = useMemo(() => {
     if (!mySectionId) return [];
-    return quizzes.filter(q => q.section_id === mySectionId && q.active);
+    return quizzes.filter(q => q.section_id === mySectionId && q.active && !q.deleted_at);
   }, [quizzes, mySectionId]);
 
   const filteredQuizzes = useMemo(() => {

@@ -98,6 +98,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     activeGroupId,
     setActiveGroupId,
     sendGroupMessage,
+    editGroupMessage,
+    deleteGroupMessage,
+    clearGroupChatForMe,
+    deleteGroupMessageForMe,
     markGroupRead,
     editDirectMessage,
     unsendDirectMessage,
@@ -128,10 +132,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Group selection & state
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(initialGroupId || activeGroupId || null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() => {
+    return initialGroupId || activeGroupId || (typeof localStorage !== 'undefined' ? localStorage.getItem('vctm_last_group_id') : null) || null;
+  });
   const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
   const [initialLoadingGroup, setInitialLoadingGroup] = useState(false);
   const [isBackgroundSyncingGroup, setIsBackgroundSyncingGroup] = useState(false);
+  const [groupRealtimeStatus, setGroupRealtimeStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error'>('idle');
   const [hasMoreGroup, setHasMoreGroup] = useState(false);
   const [loadingOlderGroup, setLoadingOlderGroup] = useState(false);
   const [groupInputMessage, setGroupInputMessage] = useState('');
@@ -143,6 +150,31 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     file: File;
     dataUrl: string;
   } | null>(null);
+
+  // Group Action & Menu States
+  const [activeGroupMenuMsgId, setActiveGroupMenuMsgId] = useState<string | null>(null);
+  const [editingGroupMsgId, setEditingGroupMsgId] = useState<string | null>(null);
+  const [editGroupInputText, setEditGroupInputText] = useState('');
+  const [editGroupInputTitle, setEditGroupInputTitle] = useState('');
+  const [isSavingGroupEdit, setIsSavingGroupEdit] = useState(false);
+  const [replyingToGroupMsg, setReplyingToGroupMsg] = useState<GroupMessage | null>(null);
+  const [isClearGroupModalOpen, setIsClearGroupModalOpen] = useState(false);
+  const [isClearingGroupChat, setIsClearingGroupChat] = useState(false);
+  const [isGroupHeaderMenuOpen, setIsGroupHeaderMenuOpen] = useState(false);
+  const [copiedGroupMsgId, setCopiedGroupMsgId] = useState<string | null>(null);
+  const [isSearchingGroupThread, setIsSearchingGroupThread] = useState(false);
+  const [groupThreadSearchQuery, setGroupThreadSearchQuery] = useState('');
+  const [hasUnreadBelow, setHasUnreadBelow] = useState(false);
+  const [highlightedGroupMsgId, setHighlightedGroupMsgId] = useState<string | null>(null);
+  const [currentGroupMatchIndex, setCurrentGroupMatchIndex] = useState(0);
+  const [deleteGroupModalMsg, setDeleteGroupModalMsg] = useState<GroupMessage | null>(null);
+  const [isDeletingGroupMsg, setIsDeletingGroupMsg] = useState(false);
+  const [deleteForMeGroupModalMsg, setDeleteForMeGroupModalMsg] = useState<GroupMessage | null>(null);
+  const [isDeletingForMeGroupMsg, setIsDeletingForMeGroupMsg] = useState(false);
+
+  const groupScrollContainerRef = useRef<HTMLDivElement>(null);
+  const groupInputRef = useRef<HTMLTextAreaElement>(null);
+  const isAtBottomRef = useRef(true);
 
   // Filters for Groups
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
@@ -371,19 +403,36 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     };
   }, [selectedConvId, setActiveConversationId]);
 
-  // Auto-select first group if none selected
+  // Persist selectedGroupId to localStorage for instant restoration across refreshes
   useEffect(() => {
-    if (activeTab === 'GROUPS' && !selectedGroupId && messageGroups.length > 0) {
-      setSelectedGroupId(messageGroups[0].id);
+    if (selectedGroupId) {
+      try {
+        localStorage.setItem('vctm_last_group_id', selectedGroupId);
+      } catch {}
+    }
+  }, [selectedGroupId]);
+
+  // Fetch message groups on mount if not yet populated
+  useEffect(() => {
+    refreshMessageGroups();
+  }, [refreshMessageGroups]);
+
+  // Auto-select group if none selected or if previous selection is invalid
+  useEffect(() => {
+    if (activeTab === 'GROUPS' && messageGroups.length > 0) {
+      if (!selectedGroupId || !messageGroups.some(g => g.id === selectedGroupId)) {
+        setSelectedGroupId(messageGroups[0].id);
+      }
     }
   }, [activeTab, selectedGroupId, messageGroups]);
 
-  // Load group messages when selectedGroupId changes (Instant cached render + silent background sync)
+  // Load group messages when selectedGroupId changes (Instant cached render + silent background sync + full Realtime lifecycle)
   useEffect(() => {
     if (!selectedGroupId) {
       setGroupMessages([]);
       setInitialLoadingGroup(false);
       setIsBackgroundSyncingGroup(false);
+      setGroupRealtimeStatus('idle');
       return;
     }
 
@@ -401,12 +450,21 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
     const loadGroupMessages = async () => {
       try {
-        const msgs = await supabaseService.fetchGroupMessages(selectedGroupId, 50);
+        const msgs = await supabaseService.fetchGroupMessages(selectedGroupId, 50, undefined, user?.id);
         if (isMounted) {
           setGroupMessages(msgs);
           setCachedGroupMessages(selectedGroupId, msgs);
           setHasMoreGroup(msgs.length >= 50);
           markGroupReadRef.current(selectedGroupId);
+
+          // Scroll to bottom on initial message load
+          setTimeout(() => {
+            if (isMounted && groupScrollContainerRef.current) {
+              groupScrollContainerRef.current.scrollTop = groupScrollContainerRef.current.scrollHeight;
+              isAtBottomRef.current = true;
+              setHasUnreadBelow(false);
+            }
+          }, 60);
         }
       } catch (err) {
         console.error('Error loading group messages:', err);
@@ -420,46 +478,136 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
     loadGroupMessages();
 
-    // Scoped Realtime channel for currently active group thread
+    // Scoped Realtime channel for currently active group thread with status callback
+    setGroupRealtimeStatus('connecting');
     const channel = supabase
-      .channel(`active_group_${selectedGroupId}`)
+      .channel(`group_chat_${selectedGroupId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${selectedGroupId}` },
         (payload) => {
           if (!isMounted) return;
           const newMsg = payload.new as GroupMessage;
-          if (newMsg && newMsg.id) {
-            setGroupMessages(prev => {
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              const merged = [...prev, newMsg];
-              setCachedGroupMessages(selectedGroupId, merged);
-              return merged;
+          if (!newMsg?.id) return;
+
+          setGroupMessages(prev => {
+            const existingIdx = prev.findIndex(m => 
+              m.id === newMsg.id || 
+              (newMsg.client_message_id && m.client_message_id === newMsg.client_message_id) ||
+              (m.id.startsWith('temp-') && m.message === newMsg.message && m.sender_user_id === newMsg.sender_user_id)
+            );
+            let updated: GroupMessage[];
+            if (existingIdx !== -1) {
+              updated = [...prev];
+              updated[existingIdx] = { ...updated[existingIdx], ...newMsg, delivery_status: 'sent' };
+            } else {
+              updated = [...prev, { ...newMsg, delivery_status: 'sent' }];
+            }
+            updated.sort((a, b) => {
+              const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+              if (diff !== 0) return diff;
+              return a.id.localeCompare(b.id);
             });
-            markGroupReadRef.current(selectedGroupId);
+            setCachedGroupMessages(selectedGroupId, updated);
+            return updated;
+          });
+
+          markGroupReadRef.current(selectedGroupId);
+
+          if (newMsg.sender_user_id === user?.id || isAtBottomRef.current) {
+            setTimeout(() => {
+              if (groupScrollContainerRef.current) {
+                groupScrollContainerRef.current.scrollTop = groupScrollContainerRef.current.scrollHeight;
+                isAtBottomRef.current = true;
+                setHasUnreadBelow(false);
+              }
+            }, 30);
+          } else {
+            setHasUnreadBelow(true);
           }
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'group_messages', filter: `group_id=eq.${selectedGroupId}` },
+        (payload) => {
+          if (!isMounted) return;
+          const updatedMsg = payload.new as GroupMessage;
+          if (!updatedMsg?.id) return;
+
+          setGroupMessages(prev => {
+            if (updatedMsg.deleted_by_users && user?.id && updatedMsg.deleted_by_users.includes(user.id)) {
+              const filtered = prev.filter(m => m.id !== updatedMsg.id);
+              setCachedGroupMessages(selectedGroupId, filtered);
+              return filtered;
+            }
+            const mapped = prev.map(m => {
+              if (m.id === updatedMsg.id) {
+                return { ...m, ...updatedMsg };
+              }
+              if (m.reply_to_message_id === updatedMsg.id && m.reply_to) {
+                return {
+                  ...m,
+                  reply_to: {
+                    ...m.reply_to,
+                    message: updatedMsg.is_deleted ? 'Message deleted' : updatedMsg.message,
+                    title: updatedMsg.title,
+                    is_deleted: updatedMsg.is_deleted,
+                  }
+                };
+              }
+              return m;
+            });
+            setCachedGroupMessages(selectedGroupId, mapped);
+            return mapped;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'group_messages', filter: `group_id=eq.${selectedGroupId}` },
+        (payload) => {
+          if (!isMounted) return;
+          const deletedId = (payload.old as any)?.id;
+          if (!deletedId) return;
+          setGroupMessages(prev => {
+            const filtered = prev.filter(m => m.id !== deletedId);
+            setCachedGroupMessages(selectedGroupId, filtered);
+            return filtered;
+          });
+        }
+      )
+      .subscribe((status) => {
+        if (!isMounted) return;
+        if (status === 'SUBSCRIBED') {
+          setGroupRealtimeStatus('connected');
+        } else if (status === 'TIMED_OUT' || status === 'CLOSED') {
+          setGroupRealtimeStatus('reconnecting');
+        } else if (status === 'CHANNEL_ERROR') {
+          setGroupRealtimeStatus('error');
+        }
+      });
 
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedGroupId, getCachedGroupMessages, setCachedGroupMessages]);
+  }, [selectedGroupId, user?.id, getCachedGroupMessages, setCachedGroupMessages]);
 
-  // Load older group messages on upward pagination
+  // Load older group messages on upward pagination with scroll position retention
   const handleLoadOlderGroup = async () => {
     if (!selectedGroupId || loadingOlderGroup || !hasMoreGroup || groupMessages.length === 0) return;
     const oldest = groupMessages[0];
     if (!oldest) return;
 
     setLoadingOlderGroup(true);
+    const prevScrollHeight = groupScrollContainerRef.current?.scrollHeight || 0;
     try {
       const olderMsgs = await supabaseService.fetchGroupMessages(
         selectedGroupId, 
         50, 
-        oldest.created_at
+        oldest.created_at,
+        user?.id
       );
       if (olderMsgs.length < 50) {
         setHasMoreGroup(false);
@@ -467,8 +615,21 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       if (olderMsgs.length > 0) {
         setGroupMessages(prev => {
           const merged = [...olderMsgs, ...prev];
+          merged.sort((a, b) => {
+            const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            if (diff !== 0) return diff;
+            return a.id.localeCompare(b.id);
+          });
           setCachedGroupMessages(selectedGroupId, merged);
           return merged;
+        });
+
+        // Retain scroll position without jumping
+        requestAnimationFrame(() => {
+          if (groupScrollContainerRef.current) {
+            const newScrollHeight = groupScrollContainerRef.current.scrollHeight;
+            groupScrollContainerRef.current.scrollTop = newScrollHeight - prevScrollHeight;
+          }
         });
       }
     } catch (err) {
@@ -477,13 +638,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       setLoadingOlderGroup(false);
     }
   };
-
-  // Auto-scroll on new group messages
-  useEffect(() => {
-    if (activeTab === 'GROUPS') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [groupMessages.length, activeTab]);
 
   // Load direct messages when selectedConvId changes (Instant cached render + silent background sync)
   useEffect(() => {
@@ -683,7 +837,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return messageGroups.find(g => g.id === selectedGroupId) || null;
   }, [messageGroups, selectedGroupId]);
 
-  // Matching message IDs for In-Conversation Search
+  // Matching message IDs for In-Conversation Direct Search
   const matchingDirectMsgIds = useMemo(() => {
     if (!convSearchQuery.trim()) return [];
     const q = convSearchQuery.toLowerCase();
@@ -723,6 +877,50 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       setHighlightedMsgId(messageId);
       setTimeout(() => {
         setHighlightedMsgId(null);
+      }, 2000);
+    }
+  };
+
+  // Matching message IDs for In-Thread Group Search
+  const matchingGroupMsgIds = useMemo(() => {
+    if (!groupThreadSearchQuery.trim()) return [];
+    const q = groupThreadSearchQuery.toLowerCase();
+    return groupMessages
+      .filter(m => !m.is_deleted && ((m.message && m.message.toLowerCase().includes(q)) || (m.title && m.title.toLowerCase().includes(q))))
+      .map(m => m.id);
+  }, [groupMessages, groupThreadSearchQuery]);
+
+  useEffect(() => {
+    setCurrentGroupMatchIndex(0);
+  }, [groupThreadSearchQuery]);
+
+  const handlePrevGroupMatch = () => {
+    if (matchingGroupMsgIds.length === 0) return;
+    setCurrentGroupMatchIndex(prev => (prev > 0 ? prev - 1 : matchingGroupMsgIds.length - 1));
+  };
+
+  const handleNextGroupMatch = () => {
+    if (matchingGroupMsgIds.length === 0) return;
+    setCurrentGroupMatchIndex(prev => (prev < matchingGroupMsgIds.length - 1 ? prev + 1 : 0));
+  };
+
+  useEffect(() => {
+    if (matchingGroupMsgIds.length > 0 && matchingGroupMsgIds[currentGroupMatchIndex]) {
+      const targetId = matchingGroupMsgIds[currentGroupMatchIndex];
+      const el = document.getElementById(`group-msg-${targetId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentGroupMatchIndex, matchingGroupMsgIds]);
+
+  const handleScrollToGroupMessage = (messageId: string) => {
+    const el = document.getElementById(`group-msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedGroupMsgId(messageId);
+      setTimeout(() => {
+        setHighlightedGroupMsgId(null);
       }, 2000);
     }
   };
@@ -782,48 +980,370 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return conversations.reduce((acc, c) => acc + (c.unread_count || (c.marked_unread ? 1 : 0)), 0);
   }, [conversations]);
 
-  // Handle Send Group Message with Duplicate Submission Lock
+  // Handle Send Group Message with Optimistic UI, Submission Lock & Retry
   const handleSendGroupMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedGroup || !groupInputMessage.trim() || groupSending) return;
     if (isSendingGroupRef.current) return;
     isSendingGroupRef.current = true;
 
+    const messageText = groupInputMessage.trim();
+    const titleText = groupInputTitle.trim() || undefined;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const attached = groupAttachment;
+    const replyTarget = replyingToGroupMsg;
+    const replyId = replyTarget?.id || null;
+    const replyingSnapshot = replyTarget ? {
+      id: replyTarget.id,
+      message: replyTarget.is_deleted ? 'Message deleted' : replyTarget.message,
+      title: replyTarget.title,
+      sender_name: replyTarget.sender_name,
+      sender_role: replyTarget.sender_role,
+      is_deleted: replyTarget.is_deleted,
+    } : null;
+
+    const currentSenderName = user?.full_name || (isFacultyOrAdmin ? 'Faculty' : 'Student');
+
+    const optimisticMsg: GroupMessage = {
+      id: tempId,
+      group_id: selectedGroup.id,
+      sender_user_id: user?.id || '',
+      sender_role: (role as any) || 'faculty',
+      sender_name: currentSenderName,
+      title: titleText,
+      message: messageText,
+      attachment_url: attached?.dataUrl,
+      attachment_name: attached?.file.name,
+      attachment_type: attached?.file.type,
+      attachment_size: attached?.file.size,
+      reply_to_message_id: replyId,
+      reply_to: replyingSnapshot,
+      delivery_status: 'sending',
+      client_message_id: tempId,
+      created_at: new Date().toISOString(),
+    };
+
     setGroupSending(true);
     setMessageSendError(null);
+
+    // Optimistically add to UI immediately (0ms latency)
+    setGroupMessages(prev => {
+      const updated = [...prev, optimisticMsg];
+      setCachedGroupMessages(selectedGroup.id, updated);
+      return updated;
+    });
+
+    // Clear composer immediately
+    setGroupInputMessage('');
+    setGroupInputTitle('');
+    setShowTitleInput(false);
+    setGroupAttachment(null);
+    setReplyingToGroupMsg(null);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      if (groupScrollContainerRef.current) {
+        groupScrollContainerRef.current.scrollTop = groupScrollContainerRef.current.scrollHeight;
+        isAtBottomRef.current = true;
+        setHasUnreadBelow(false);
+      }
+    }, 20);
+
     try {
       const res = await sendGroupMessage({
         academicYearId: selectedGroup.academic_year_id,
         sectionId: selectedGroup.section_id,
         subjectId: selectedGroup.subject_id || undefined,
-        message: groupInputMessage.trim(),
-        title: groupInputTitle.trim() || undefined,
-        attachmentUrl: groupAttachment?.dataUrl,
-        attachmentName: groupAttachment?.file.name,
-        attachmentType: groupAttachment?.file.type,
-        attachmentSize: groupAttachment?.file.size,
+        message: messageText,
+        title: titleText,
+        attachmentUrl: attached?.dataUrl,
+        attachmentName: attached?.file.name,
+        attachmentType: attached?.file.type,
+        attachmentSize: attached?.file.size,
+        replyToMessageId: replyId,
+        clientMessageId: tempId,
       });
 
-      if (res.success) {
-        setGroupInputMessage('');
-        setGroupInputTitle('');
-        setShowTitleInput(false);
-        setGroupAttachment(null);
-        setMessageSendError(null);
+      if (res.success && res.data) {
         setGroupSendSuccess(true);
         setTimeout(() => setGroupSendSuccess(false), 1200);
-        // Silent background update for current thread
-        const updatedMsgs = await supabaseService.fetchGroupMessages(selectedGroup.id);
-        setGroupMessages(updatedMsgs);
-        setCachedGroupMessages(selectedGroup.id, updatedMsgs);
+
+        setGroupMessages(prev => {
+          // If realtime already replaced tempId or inserted server row
+          const exists = prev.some(m => m.id === res.data!.id);
+          let updated: GroupMessage[];
+          if (exists) {
+            updated = prev.filter(m => m.id !== tempId);
+          } else {
+            updated = prev.map(m => m.id === tempId ? { ...res.data!, reply_to: replyingSnapshot, delivery_status: 'sent' as const } : m);
+          }
+          updated.sort((a, b) => {
+            const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            if (diff !== 0) return diff;
+            return a.id.localeCompare(b.id);
+          });
+          setCachedGroupMessages(selectedGroup.id, updated);
+          return updated;
+        });
       } else {
-        setMessageSendError(res.error?.message || 'Failed to send group message. Please check connection and retry.');
+        const errorMsg = res.error?.message || 'Failed to send group message.';
+        setMessageSendError(errorMsg);
+        setGroupMessages(prev => {
+          const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
+          setCachedGroupMessages(selectedGroup.id, updated);
+          return updated;
+        });
       }
     } catch (err: any) {
-      setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
+      const errorMsg = err.message || 'Error sending message.';
+      setMessageSendError(errorMsg);
+      setGroupMessages(prev => {
+        const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
+        setCachedGroupMessages(selectedGroup.id, updated);
+        return updated;
+      });
     } finally {
       isSendingGroupRef.current = false;
       setGroupSending(false);
+    }
+  };
+
+  // Inline Retry for Failed Group Message
+  const handleRetryGroupMessage = async (failedMsg: GroupMessage) => {
+    if (!selectedGroup || isSendingGroupRef.current) return;
+    isSendingGroupRef.current = true;
+    setMessageSendError(null);
+
+    setGroupMessages(prev => {
+      const updated = prev.map(m => m.id === failedMsg.id ? { ...m, delivery_status: 'sending' as const, error: undefined } : m);
+      setCachedGroupMessages(selectedGroup.id, updated);
+      return updated;
+    });
+
+    try {
+      const res = await sendGroupMessage({
+        academicYearId: selectedGroup.academic_year_id,
+        sectionId: selectedGroup.section_id,
+        subjectId: selectedGroup.subject_id || undefined,
+        message: failedMsg.message,
+        title: failedMsg.title || undefined,
+        attachmentUrl: failedMsg.attachment_url || undefined,
+        attachmentName: failedMsg.attachment_name || undefined,
+        attachmentType: failedMsg.attachment_type || undefined,
+        attachmentSize: failedMsg.attachment_size || undefined,
+        replyToMessageId: failedMsg.reply_to_message_id,
+        clientMessageId: failedMsg.client_message_id || failedMsg.id,
+      });
+
+      if (res.success && res.data) {
+        setGroupMessages(prev => {
+          const exists = prev.some(m => m.id === res.data!.id);
+          let updated: GroupMessage[];
+          if (exists) {
+            updated = prev.filter(m => m.id !== failedMsg.id);
+          } else {
+            updated = prev.map(m => m.id === failedMsg.id ? { ...res.data!, reply_to: failedMsg.reply_to, delivery_status: 'sent' as const } : m);
+          }
+          setCachedGroupMessages(selectedGroup.id, updated);
+          return updated;
+        });
+        showToast('Message sent');
+      } else {
+        const errorMsg = res.error?.message || 'Retry failed. Please check network.';
+        setMessageSendError(errorMsg);
+        setGroupMessages(prev => {
+          const updated = prev.map(m => m.id === failedMsg.id ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
+          setCachedGroupMessages(selectedGroup.id, updated);
+          return updated;
+        });
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || 'Retry failed.';
+      setMessageSendError(errorMsg);
+      setGroupMessages(prev => {
+        const updated = prev.map(m => m.id === failedMsg.id ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
+        setCachedGroupMessages(selectedGroup.id, updated);
+        return updated;
+      });
+    } finally {
+      isSendingGroupRef.current = false;
+    }
+  };
+
+  // Delete Failed Group Message (remove from thread)
+  const handleDeleteFailedGroupMessage = (msgId: string) => {
+    if (!selectedGroup) return;
+    setGroupMessages(prev => {
+      const updated = prev.filter(m => m.id !== msgId);
+      setCachedGroupMessages(selectedGroup.id, updated);
+      return updated;
+    });
+  };
+
+  // Handle Start Edit Group Message
+  const handleStartEditGroupMessage = (msg: GroupMessage) => {
+    setEditingGroupMsgId(msg.id);
+    setEditGroupInputText(msg.message);
+    setEditGroupInputTitle(msg.title || '');
+    setActiveGroupMenuMsgId(null);
+  };
+
+  // Handle Save Edit for Group Message
+  const handleSaveGroupEdit = async (msgId: string) => {
+    if (!editGroupInputText.trim() || isSavingGroupEdit || !selectedGroup) return;
+    setIsSavingGroupEdit(true);
+    const trimmedMessage = editGroupInputText.trim();
+    const trimmedTitle = editGroupInputTitle.trim() || undefined;
+
+    try {
+      setGroupMessages(prev => {
+        const updated = prev.map(m => {
+          if (m.id === msgId) {
+            return {
+              ...m,
+              message: trimmedMessage,
+              title: trimmedTitle,
+              edited_at: new Date().toISOString(),
+            };
+          }
+          if (m.reply_to_message_id === msgId && m.reply_to) {
+            return {
+              ...m,
+              reply_to: {
+                ...m.reply_to,
+                message: trimmedMessage,
+                title: trimmedTitle,
+                edited_at: new Date().toISOString(),
+              }
+            };
+          }
+          return m;
+        });
+        setCachedGroupMessages(selectedGroup.id, updated);
+        return updated;
+      });
+      setEditingGroupMsgId(null);
+      showToast('Announcement updated');
+
+      const res = await editGroupMessage(msgId, trimmedMessage, trimmedTitle);
+      if (res.error) {
+        showToast('Failed to save edit');
+        const fresh = await supabaseService.fetchGroupMessages(selectedGroup.id, 50, undefined, user?.id);
+        setGroupMessages(fresh);
+        setCachedGroupMessages(selectedGroup.id, fresh);
+      }
+    } catch (err) {
+      showToast('Failed to update announcement');
+    } finally {
+      setIsSavingGroupEdit(false);
+    }
+  };
+
+  // Handle Confirm Delete Group Message (Soft delete for all)
+  const handleConfirmDeleteGroupMessage = async () => {
+    if (!deleteGroupModalMsg || isDeletingGroupMsg || !selectedGroup) return;
+    setIsDeletingGroupMsg(true);
+    const msgId = deleteGroupModalMsg.id;
+
+    try {
+      setGroupMessages(prev => {
+        const updated = prev.map(m => {
+          if (m.id === msgId) {
+            return {
+              ...m,
+              is_deleted: true,
+              message: 'This message was deleted',
+              title: undefined,
+              deleted_at: new Date().toISOString(),
+              attachment_url: null,
+              attachment_name: null,
+              attachment_type: null,
+              attachment_size: null,
+            };
+          }
+          if (m.reply_to_message_id === msgId && m.reply_to) {
+            return {
+              ...m,
+              reply_to: {
+                ...m.reply_to,
+                message: 'Message deleted',
+                is_deleted: true,
+              }
+            };
+          }
+          return m;
+        });
+        setCachedGroupMessages(selectedGroup.id, updated);
+        return updated;
+      });
+      setDeleteGroupModalMsg(null);
+      showToast('Message deleted');
+
+      const res = await deleteGroupMessage(msgId);
+      if (res.error) {
+        showToast('Failed to delete message');
+        const fresh = await supabaseService.fetchGroupMessages(selectedGroup.id, 50, undefined, user?.id);
+        setGroupMessages(fresh);
+        setCachedGroupMessages(selectedGroup.id, fresh);
+      }
+    } catch (err) {
+      showToast('Failed to delete message');
+    } finally {
+      setIsDeletingGroupMsg(false);
+    }
+  };
+
+  // Handle Confirm Delete Group Message For Me (Remove from current user view only)
+  const handleConfirmDeleteGroupMessageForMe = async () => {
+    if (!deleteForMeGroupModalMsg || isDeletingForMeGroupMsg || !selectedGroup) return;
+    setIsDeletingForMeGroupMsg(true);
+    const msgId = deleteForMeGroupModalMsg.id;
+
+    try {
+      setGroupMessages(prev => {
+        const updated = prev.filter(m => m.id !== msgId);
+        setCachedGroupMessages(selectedGroup.id, updated);
+        return updated;
+      });
+      setDeleteForMeGroupModalMsg(null);
+      showToast('Message deleted for you');
+
+      const res = await deleteGroupMessageForMe(msgId);
+      if (!res.success) {
+        showToast('Failed to delete message');
+        const fresh = await supabaseService.fetchGroupMessages(selectedGroup.id, 50, undefined, user?.id);
+        setGroupMessages(fresh);
+        setCachedGroupMessages(selectedGroup.id, fresh);
+      }
+    } catch (err) {
+      showToast('Failed to delete message');
+    } finally {
+      setIsDeletingForMeGroupMsg(false);
+    }
+  };
+
+  // Handle Confirm Clear Group Chat For Me
+  const handleConfirmClearGroupChat = async () => {
+    if (!selectedGroupId || isClearingGroupChat) return;
+    setIsClearingGroupChat(true);
+    try {
+      setGroupMessages([]);
+      setCachedGroupMessages(selectedGroupId, []);
+      setIsClearGroupModalOpen(false);
+      setIsGroupHeaderMenuOpen(false);
+      showToast('Group chat cleared for you');
+
+      const res = await clearGroupChatForMe(selectedGroupId);
+      if (!res.success) {
+        showToast('Failed to clear group chat');
+        const fresh = await supabaseService.fetchGroupMessages(selectedGroupId, 50, undefined, user?.id);
+        setGroupMessages(fresh);
+        setCachedGroupMessages(selectedGroupId, fresh);
+      }
+    } catch (err) {
+      showToast('Failed to clear group chat');
+    } finally {
+      setIsClearingGroupChat(false);
     }
   };
 
@@ -1179,11 +1699,38 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     );
   };
 
+  // Helper to highlight matching text in group message body/title
+  const renderHighlightedGroupMessage = (text: string, msgId: string) => {
+    if (!groupThreadSearchQuery.trim() || !text.toLowerCase().includes(groupThreadSearchQuery.toLowerCase())) {
+      return text;
+    }
+    const isCurrentActive = matchingGroupMsgIds[currentGroupMatchIndex] === msgId;
+    const escaped = groupThreadSearchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, idx) =>
+      part.toLowerCase() === groupThreadSearchQuery.toLowerCase() ? (
+        <mark
+          key={idx}
+          className={`${
+            isCurrentActive ? 'bg-amber-300 text-slate-900 font-bold ring-1 ring-amber-500' : 'bg-yellow-200 text-slate-900'
+          } rounded-xs px-0.5`}
+        >
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
     <div 
       onClick={() => {
         setActiveMenuMsgId(null);
+        setActiveGroupMenuMsgId(null);
         setHeaderMenuOpen(false);
+        setIsGroupHeaderMenuOpen(false);
       }}
       className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto p-2 sm:p-4 gap-3"
     >
@@ -1531,22 +2078,176 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                   {/* Header Actions */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {isBackgroundSyncingGroup ? (
+                    {groupRealtimeStatus === 'connected' ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-medium text-emerald-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="hidden sm:inline">Live</span>
+                      </div>
+                    ) : groupRealtimeStatus === 'reconnecting' ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-medium text-amber-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="hidden sm:inline">Reconnecting...</span>
+                      </div>
+                    ) : isBackgroundSyncingGroup || groupRealtimeStatus === 'connecting' ? (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-medium text-sky-700">
                         <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
                         <span className="hidden sm:inline">Syncing...</span>
                       </div>
                     ) : (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-medium text-emerald-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="hidden sm:inline">Live</span>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                        <span className="hidden sm:inline">Ready</span>
                       </div>
                     )}
-                    <span className="hidden sm:inline px-2.5 py-1 text-xs font-bold bg-slate-100 border border-slate-300 text-[#0f172a] rounded-lg">
-                      {selectedGroup.members_count || 0} Members
-                    </span>
+
+                    {/* In-Thread Search Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSearchingGroupThread(!isSearchingGroupThread);
+                        if (isSearchingGroupThread) setGroupThreadSearchQuery('');
+                      }}
+                      className={`p-2 rounded-xl transition-colors ${
+                        isSearchingGroupThread ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                      title="Search in class announcements"
+                    >
+                      <Search className="w-4 h-4" />
+                    </button>
+
+                    {/* Members roster button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsMembersModalOpen(true)}
+                      className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold bg-slate-100 border border-slate-300 text-[#0f172a] rounded-lg hover:bg-slate-200 transition-colors"
+                      title="View class members"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>{selectedGroup.members_count || 0} Members</span>
+                    </button>
+
+                    {/* Group Header three-dot menu */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsGroupHeaderMenuOpen(!isGroupHeaderMenuOpen);
+                        }}
+                        className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+                        title="Group settings"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {isGroupHeaderMenuOpen && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30 animate-in fade-in zoom-in-95 text-xs"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsGroupHeaderMenuOpen(false);
+                              setIsSearchingGroupThread(true);
+                            }}
+                            className="w-full px-3.5 py-2 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                          >
+                            <Search className="w-3.5 h-3.5 text-slate-500" />
+                            Search messages
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsGroupHeaderMenuOpen(false);
+                              setIsMembersModalOpen(true);
+                            }}
+                            className="w-full px-3.5 py-2 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                          >
+                            <Users className="w-3.5 h-3.5 text-slate-500" />
+                            Class roster ({selectedGroup.members_count || 0})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsGroupHeaderMenuOpen(false);
+                              setIsClearGroupModalOpen(true);
+                            }}
+                            className="w-full px-3.5 py-2 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors border-t border-slate-100"
+                          >
+                            <Eraser className="w-3.5 h-3.5 text-rose-500" />
+                            Clear chat for me
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* In-group Message Search Bar (Collapsible) */}
+                {isSearchingGroupThread && (
+                  <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 shrink-0">
+                    <div className="flex-1 flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
+                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Search in class announcements..."
+                        value={groupThreadSearchQuery}
+                        onChange={(e) => setGroupThreadSearchQuery(e.target.value)}
+                        autoFocus
+                        className="w-full text-xs text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none font-medium"
+                      />
+                      {groupThreadSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setGroupThreadSearchQuery('')}
+                          className="text-slate-400 hover:text-slate-600 p-0.5"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[11px] font-mono text-slate-500 font-medium whitespace-nowrap px-1">
+                        {groupThreadSearchQuery.trim()
+                          ? matchingGroupMsgIds.length > 0
+                            ? `${currentGroupMatchIndex + 1} of ${matchingGroupMsgIds.length}`
+                            : '0 matches'
+                          : ''}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={matchingGroupMsgIds.length === 0}
+                        onClick={handlePrevGroupMatch}
+                        className="p-1 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Previous match"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={matchingGroupMsgIds.length === 0}
+                        onClick={handleNextGroupMatch}
+                        className="p-1 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Next match"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSearchingGroupThread(false);
+                          setGroupThreadSearchQuery('');
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors ml-1"
+                        title="Close search"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Announcement-only Policy Banner if student */}
                 {isStudent && !selectedGroup.allow_student_replies && (
@@ -1557,7 +2258,18 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                 )}
 
                 {/* Group Messages Thread */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-[#f8fafc]">
+                <div 
+                  ref={groupScrollContainerRef}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+                    isAtBottomRef.current = atBottom;
+                    if (atBottom) {
+                      setHasUnreadBelow(false);
+                    }
+                  }}
+                  className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 bg-[#f8fafc] relative"
+                >
                   {/* Upward pagination for older announcements */}
                   {hasMoreGroup && (
                     <div className="flex justify-center pb-2">
@@ -1612,12 +2324,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   ) : (
                     groupMessages.map((msg) => {
                       const isMe = msg.sender_user_id === user?.id;
-                      const isFacultySender = msg.sender_role === 'faculty' || msg.sender_role === 'hod';
+                      const isFacultySender = msg.sender_role === 'faculty' || msg.sender_role === 'hod' || msg.sender_role === 'super_admin';
+                      const canEditOrDelete = isMe || isFacultyOrAdmin;
+                      const isHighlighted = highlightedGroupMsgId === msg.id;
+                      const isSearchMatchActive = matchingGroupMsgIds[currentGroupMatchIndex] === msg.id;
+                      const replyQuote = msg.reply_to || (msg.reply_to_message_id ? groupMessages.find(x => x.id === msg.reply_to_message_id) : null);
 
                       return (
                         <div
                           key={msg.id}
-                          className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                          id={`group-msg-${msg.id}`}
+                          className={`group relative flex flex-col ${isMe ? 'items-end' : 'items-start'} ${
+                            isHighlighted ? 'ring-2 ring-blue-500 ring-offset-2 rounded-2xl transition-all duration-300' : ''
+                          } ${isSearchMatchActive ? 'ring-2 ring-amber-400 ring-offset-2 rounded-2xl transition-all duration-300' : ''}`}
                         >
                           <div className="flex items-center gap-2 mb-1 px-1 text-[11px]">
                             <span className="font-bold text-[#0f172a]">{msg.sender_name}</span>
@@ -1633,75 +2352,369 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             </span>
                           </div>
 
-                          <div className={`max-w-[85%] sm:max-w-xl p-3.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
-                            isMe
-                              ? 'bg-[#0f172a] text-white font-normal rounded-tr-none'
-                              : isFacultySender
-                              ? 'bg-white border border-slate-200/90 text-slate-900 rounded-tl-none'
-                              : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
-                          }`}>
-                            {msg.title && (
-                              <h4 className={`text-xs font-bold mb-1.5 pb-1 border-b ${
-                                isMe ? 'border-slate-700 text-white' : 'border-slate-100 text-slate-900'
-                              }`}>
-                                {msg.title}
-                              </h4>
-                            )}
+                          <div className={`relative flex items-center gap-1.5 max-w-full ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+                            {/* Hover Actions Menu Trigger */}
+                            <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0 ${
+                              activeGroupMenuMsgId === msg.id ? 'opacity-100' : ''
+                            }`}>
+                              {!msg.is_deleted && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReplyingToGroupMsg(msg);
+                                    groupInputRef.current?.focus();
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-lg transition-colors"
+                                  title="Reply"
+                                >
+                                  <CornerUpLeft className="w-3.5 h-3.5" />
+                                </button>
+                              )}
 
-                            <p className="whitespace-pre-wrap">{msg.message}</p>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveGroupMenuMsgId(activeGroupMenuMsgId === msg.id ? null : msg.id);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-lg transition-colors"
+                                  title="More actions"
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
 
-                            {msg.attachment_url && (() => {
-                              const isImg = isImageAttachment(msg.attachment_url, msg.attachment_type, msg.attachment_name);
-                              return (
-                                <div className="mt-2.5 space-y-1.5">
-                                  {isImg && (
-                                    <div
-                                      onClick={() => setPreviewImageUrl(msg.attachment_url || null)}
-                                      className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 max-w-sm hover:opacity-95 transition-opacity bg-slate-100 group relative"
+                                {/* Popover Menu */}
+                                {activeGroupMenuMsgId === msg.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute bottom-full mb-1 z-30 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1 text-xs animate-in fade-in zoom-in-95 ${
+                                      isMe ? 'right-0' : 'left-0'
+                                    }`}
+                                  >
+                                    {!msg.is_deleted && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setReplyingToGroupMsg(msg);
+                                            setActiveGroupMenuMsgId(null);
+                                            groupInputRef.current?.focus();
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <CornerUpLeft className="w-3.5 h-3.5 text-slate-500" />
+                                          Reply
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(msg.message);
+                                            showToast('Message copied to clipboard');
+                                            setActiveGroupMenuMsgId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <Copy className="w-3.5 h-3.5 text-slate-500" />
+                                          Copy text
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {canEditOrDelete && !msg.is_deleted && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleStartEditGroupMessage(msg)}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                                          Edit
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDeleteGroupModalMsg(msg);
+                                            setActiveGroupMenuMsgId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                          Delete for everyone
+                                        </button>
+                                      </>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDeleteForMeGroupModalMsg(msg);
+                                        setActiveGroupMenuMsgId(null);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors border-t border-slate-100"
                                     >
-                                      <img
-                                        src={msg.attachment_url}
-                                        alt={msg.attachment_name || 'Attachment'}
-                                        className="w-full max-h-60 object-cover object-center rounded-xl"
-                                      />
-                                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
-                                        <span className="px-2.5 py-1 bg-white/95 text-slate-900 rounded-lg text-[11px] flex items-center gap-1 font-semibold shadow-md">
-                                          <Eye className="w-3.5 h-3.5 text-slate-700" /> View Image
-                                        </span>
-                                      </div>
-                                    </div>
+                                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                      Delete for me
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Message Bubble Body */}
+                            <div className={`max-w-[85%] sm:max-w-xl p-3.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
+                              msg.is_deleted
+                                ? isMe
+                                  ? 'bg-slate-800/70 border border-slate-700 text-slate-400 italic rounded-tr-none'
+                                  : 'bg-slate-100 border border-slate-200 text-slate-500 italic rounded-tl-none'
+                                : isMe
+                                ? 'bg-[#0f172a] text-white font-normal rounded-tr-none'
+                                : isFacultySender
+                                ? 'bg-white border border-slate-200/90 text-slate-900 rounded-tl-none'
+                                : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                            }`}>
+                              {/* Deleted message notice */}
+                              {msg.is_deleted ? (
+                                <div className="flex items-center gap-1.5">
+                                  <RotateCcw className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                                  <span>{isMe ? 'You deleted this message' : 'This announcement was deleted'}</span>
+                                </div>
+                              ) : editingGroupMsgId === msg.id ? (
+                                /* Inline Edit Form */
+                                <div className="p-1 space-y-2 w-full min-w-[260px] sm:min-w-[340px]">
+                                  {isFacultySender && (
+                                    <input
+                                      type="text"
+                                      placeholder="Announcement Title (optional)..."
+                                      value={editGroupInputTitle}
+                                      onChange={(e) => setEditGroupInputTitle(e.target.value)}
+                                      className="w-full text-xs p-2 rounded-xl border border-slate-300 text-slate-900 bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 font-medium"
+                                    />
                                   )}
-                                  <div className={`p-2 rounded-xl flex items-center justify-between gap-2 text-[11px] ${
-                                    isMe ? 'bg-white/10 text-white' : 'bg-slate-50 border border-slate-200 text-slate-800'
-                                  }`}>
-                                    <div className="flex items-center gap-2 truncate">
-                                      {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
-                                      <span className="truncate">{msg.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
-                                    </div>
-                                    <a
-                                      href={msg.attachment_url}
-                                      download={msg.attachment_name || 'download'}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="p-1 hover:bg-black/5 rounded transition-colors shrink-0"
+                                  <textarea
+                                    value={editGroupInputText}
+                                    onChange={(e) => setEditGroupInputText(e.target.value)}
+                                    className="w-full text-xs p-2 rounded-xl border border-slate-300 text-slate-900 bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none font-medium"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingGroupMsgId(null);
+                                        setEditGroupInputText('');
+                                        setEditGroupInputTitle('');
+                                      }}
+                                      disabled={isSavingGroupEdit}
+                                      className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
                                     >
-                                      <Download className="w-3.5 h-3.5" />
-                                    </a>
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveGroupEdit(msg.id)}
+                                      disabled={isSavingGroupEdit || !editGroupInputText.trim() || (editGroupInputText.trim() === msg.message && editGroupInputTitle.trim() === (msg.title || ''))}
+                                      className="px-3 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                                    >
+                                      {isSavingGroupEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                      Save
+                                    </button>
                                   </div>
                                 </div>
-                              );
-                            })()}
+                              ) : (
+                                /* Normal Announcement / Message */
+                                <>
+                                  {/* Replied Parent Quote */}
+                                  {msg.reply_to_message_id && (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (msg.reply_to_message_id) {
+                                          handleScrollToGroupMessage(msg.reply_to_message_id);
+                                        }
+                                      }}
+                                      className={`mb-2 p-2 rounded-xl text-[11px] cursor-pointer border-l-[3px] transition-all hover:opacity-90 ${
+                                        isMe
+                                          ? 'bg-white/10 border-sky-400 text-slate-100 hover:bg-white/15'
+                                          : 'bg-slate-50 border-[#0f172a] text-slate-800 hover:bg-slate-100'
+                                      }`}
+                                      title="Click to jump to original message"
+                                    >
+                                      <div className={`font-semibold text-[10.5px] mb-0.5 flex items-center gap-1.5 ${
+                                        isMe ? 'text-sky-300' : 'text-slate-800'
+                                      }`}>
+                                        <CornerUpLeft className="w-3 h-3 opacity-80 shrink-0" />
+                                        <span className="truncate">{replyQuote?.sender_name || 'Class announcement'}</span>
+                                      </div>
+                                      <p className={`line-clamp-2 text-[11px] leading-snug break-words ${
+                                        isMe ? 'text-slate-200' : 'text-slate-600'
+                                      }`}>
+                                        {replyQuote?.is_deleted ? (
+                                          <span className="italic opacity-85 flex items-center gap-1">
+                                            <RotateCcw className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                            Message deleted
+                                          </span>
+                                        ) : (
+                                          <span>{replyQuote?.title ? `[${replyQuote.title}] ` : ''}{replyQuote?.message || 'Original message'}</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {msg.title && (
+                                    <h4 className={`text-xs font-bold mb-1.5 pb-1 border-b ${
+                                      isMe ? 'border-slate-700 text-white' : 'border-slate-100 text-slate-900'
+                                    }`}>
+                                      {renderHighlightedGroupMessage(msg.title, msg.id)}
+                                    </h4>
+                                  )}
+
+                                  <p className="whitespace-pre-wrap">{renderHighlightedGroupMessage(msg.message, msg.id)}</p>
+
+                                  {msg.attachment_url && (() => {
+                                    const isImg = isImageAttachment(msg.attachment_url, msg.attachment_type, msg.attachment_name);
+                                    return (
+                                      <div className="mt-2.5 space-y-1.5">
+                                        {isImg && (
+                                          <div
+                                            onClick={() => setPreviewImageUrl(msg.attachment_url || null)}
+                                            className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 max-w-sm hover:opacity-95 transition-opacity bg-slate-100 group relative"
+                                          >
+                                            <img
+                                              src={msg.attachment_url}
+                                              alt={msg.attachment_name || 'Attachment'}
+                                              className="w-full max-h-60 object-cover object-center rounded-xl"
+                                            />
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                              <span className="px-2.5 py-1 bg-white/95 text-slate-900 rounded-lg text-[11px] flex items-center gap-1 font-semibold shadow-md">
+                                                <Eye className="w-3.5 h-3.5 text-slate-700" /> View Image
+                                              </span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className={`p-2 rounded-xl flex items-center justify-between gap-2 text-[11px] ${
+                                          isMe ? 'bg-white/10 text-white' : 'bg-slate-50 border border-slate-200 text-slate-800'
+                                        }`}>
+                                          <div className="flex items-center gap-2 truncate">
+                                            {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
+                                            <span className="truncate">{msg.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
+                                          </div>
+                                          <a
+                                            href={msg.attachment_url}
+                                            download={msg.attachment_name || 'download'}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-1 hover:bg-black/5 rounded transition-colors shrink-0"
+                                          >
+                                            <Download className="w-3.5 h-3.5" />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Message Footer: Timestamp, Edited badge, Delivery status / Retry */}
+                          <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] font-mono ${
+                            isMe ? 'justify-end text-slate-500' : 'justify-start text-slate-500'
+                          }`}>
+                            <span>
+                              {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {msg.edited_at && !msg.is_deleted && (
+                              <span className="text-[10px] italic text-slate-400 font-sans">(edited)</span>
+                            )}
+                            {isMe && (
+                              <span className="inline-flex items-center ml-0.5">
+                                {msg.delivery_status === 'sending' ? (
+                                  <span title="Sending...">
+                                    <Clock className="w-3 h-3 text-slate-400 animate-pulse" />
+                                  </span>
+                                ) : msg.delivery_status === 'failed' ? (
+                                  <span className="inline-flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRetryGroupMessage(msg)}
+                                      className="inline-flex items-center gap-1 text-rose-500 hover:text-rose-600 font-semibold cursor-pointer underline text-[10px]"
+                                      title="Message failed to deliver. Tap to retry."
+                                    >
+                                      <AlertCircle className="w-3 h-3 text-rose-500" />
+                                      <span>Failed · Retry</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteFailedGroupMessage(msg.id)}
+                                      className="text-slate-400 hover:text-rose-600"
+                                      title="Remove failed message"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                ) : (
+                                  <span title="Delivered">
+                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
                       );
                     })
                   )}
                   <div ref={messagesEndRef} />
+
+                  {/* Floating New Messages Indicator Button */}
+                  {hasUnreadBelow && (
+                    <div className="sticky bottom-2 flex justify-center z-20 pointer-events-none">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (groupScrollContainerRef.current) {
+                            groupScrollContainerRef.current.scrollTo({
+                              top: groupScrollContainerRef.current.scrollHeight,
+                              behavior: 'smooth'
+                            });
+                            setHasUnreadBelow(false);
+                            isAtBottomRef.current = true;
+                          }
+                        }}
+                        className="pointer-events-auto px-3.5 py-1.5 rounded-full bg-[#0f172a] text-white text-xs font-semibold shadow-lg hover:bg-slate-800 transition-all flex items-center gap-1.5 animate-in fade-in slide-in-from-bottom-2"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                        <span>New messages</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Group Message Composer */}
                 {(isFacultyOrAdmin || selectedGroup.allow_student_replies) ? (
                   <form onSubmit={handleSendGroupMessage} className="p-3 border-t border-slate-200 bg-white space-y-2 shrink-0">
+                    {/* Replying-to Preview Banner */}
+                    {replyingToGroupMsg && (
+                      <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2 text-xs animate-in fade-in">
+                        <div className="flex items-center gap-2 truncate">
+                          <CornerUpLeft className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span className="font-semibold text-slate-700">Replying to {replyingToGroupMsg.sender_name}:</span>
+                          <span className="text-slate-500 truncate max-w-xs">{replyingToGroupMsg.message}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReplyingToGroupMsg(null)}
+                          className="text-slate-400 hover:text-slate-700 p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Error Alert if send fails */}
                     {messageSendError && (
                       <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 animate-in fade-in">
@@ -1715,6 +2728,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         </button>
                       </div>
                     )}
+
                     {/* Optional Title input for Faculty */}
                     {isFacultyOrAdmin && showTitleInput && (
                       <div className="flex items-center gap-2">
@@ -1783,6 +2797,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       )}
 
                       <textarea
+                        ref={groupInputRef}
                         rows={1}
                         placeholder={
                           isFacultyOrAdmin
@@ -2679,6 +3694,108 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               >
                 {isClearingConv ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 Clear Conversation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Group Message For Everyone Confirmation Modal */}
+      {deleteGroupModalMsg && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Delete announcement for everyone?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Everyone in this class group will see that this announcement was deleted. This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isDeletingGroupMsg}
+                onClick={() => setDeleteGroupModalMsg(null)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingGroupMsg}
+                onClick={handleConfirmDeleteGroupMessage}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isDeletingGroupMsg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Delete for Everyone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Group Message For Me Confirmation Modal */}
+      {deleteForMeGroupModalMsg && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Delete message for you?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              This announcement will be removed from your view only. Other group members will still see it.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isDeletingForMeGroupMsg}
+                onClick={() => setDeleteForMeGroupModalMsg(null)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingForMeGroupMsg}
+                onClick={handleConfirmDeleteGroupMessageForMe}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isDeletingForMeGroupMsg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Delete for Me
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Group Chat Confirmation Modal */}
+      {isClearGroupModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Clear group chat?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              This will clear all previous announcements in this class group from your view. Other students and faculty will still see the chat history.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isClearingGroupChat}
+                onClick={() => setIsClearGroupModalOpen(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isClearingGroupChat}
+                onClick={handleConfirmClearGroupChat}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isClearingGroupChat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Clear Chat
               </button>
             </div>
           </div>

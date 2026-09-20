@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileText, 
   Upload, 
@@ -30,8 +30,13 @@ export const StudentAssignmentsPage: React.FC = () => {
     students,
     assignments,
     timetable,
-    submitAssignment 
+    submitAssignment,
+    refreshAssessments
   } = useAcademic();
+
+  useEffect(() => {
+    refreshAssessments();
+  }, [refreshAssessments]);
 
   const currentStudent = useMemo(() => {
     return students.find(s => s.id === user?.student_id || s.id === user?.student?.id || s.roll_number === user?.student?.roll_number || s.id === user?.id) || user?.student;
@@ -51,7 +56,7 @@ export const StudentAssignmentsPage: React.FC = () => {
   // Filter assignments strictly applicable to student's section
   const myAssignments = useMemo(() => {
     if (!mySectionId) return [];
-    return courseAssignments.filter(a => a.section_id === mySectionId && a.active);
+    return courseAssignments.filter(a => a.section_id === mySectionId && a.active && !a.deleted_at);
   }, [courseAssignments, mySectionId]);
 
   const filteredAssignments = useMemo(() => {
