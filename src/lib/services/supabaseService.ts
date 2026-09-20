@@ -4033,12 +4033,16 @@ export const supabaseService = {
   // QUIZZES MODULE
   // ==========================================
   async createQuiz(quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) {
-    if (!quiz.google_form_url.startsWith('http')) {
-      throw new Error('Please enter a valid Google Forms URL (starting with https://)');
+    let formUrl = (quiz.google_form_url || '').trim();
+    if (!formUrl) {
+      formUrl = 'https://vctm.in/quizzes';
+    } else if (!formUrl.startsWith('http')) {
+      formUrl = `https://${formUrl}`;
     }
 
     const payload = {
       ...quiz,
+      google_form_url: formUrl,
       start_time: quiz.start_time || new Date().toISOString(),
       end_time: quiz.end_time || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     };
@@ -4129,6 +4133,21 @@ export const supabaseService = {
         .eq('id', params.quizId);
     }
 
+    // Resolve valid faculty ID for foreign key integrity
+    let validFacultyId = params.facultyId;
+    if (validFacultyId) {
+      const { data: fac } = await supabase.from('faculty').select('id').eq('id', validFacultyId).maybeSingle();
+      if (!fac) {
+        const { data: facByAuth } = await supabase.from('faculty').select('id').eq('auth_user_id', validFacultyId).maybeSingle();
+        if (facByAuth) {
+          validFacultyId = facByAuth.id;
+        } else {
+          const { data: defaultFac } = await supabase.from('faculty').select('id').limit(1).maybeSingle();
+          if (defaultFac) validFacultyId = defaultFac.id;
+        }
+      }
+    }
+
     const rows = params.studentMarks.map(sm => {
       if (sm.marksObtained < 0 || sm.marksObtained > quiz.max_marks) {
         throw new Error(`Invalid marks for student: ${sm.marksObtained}. Must be between 0 and ${quiz.max_marks}.`);
@@ -4137,7 +4156,7 @@ export const supabaseService = {
         quiz_id: params.quizId,
         student_id: sm.studentId,
         marks_obtained: sm.marksObtained,
-        graded_by: params.facultyId,
+        graded_by: validFacultyId,
         graded_at: new Date().toISOString(),
         remarks: sm.remarks,
         updated_at: new Date().toISOString(),
@@ -4159,7 +4178,7 @@ export const supabaseService = {
         student_id: sm.studentId,
         subject_id: quiz.subject_id,
         new_marks: sm.marksObtained,
-        updated_by: params.facultyId,
+        updated_by: validFacultyId,
         reason: targetStatus === 'published' ? 'Quiz Marks Published' : 'Quiz Marks Recorded (Draft)'
       });
     }
@@ -4214,10 +4233,24 @@ export const supabaseService = {
       throw new Error('Sessional title is required.');
     }
 
+    // Resolve auth_user_id for sessional_assessments.faculty_id (references auth.users.id)
+    let authFacultyId = assessment.faculty_id;
+    if (authFacultyId) {
+      const { data: fac } = await supabase.from('faculty').select('auth_user_id').eq('id', authFacultyId).maybeSingle();
+      if (fac?.auth_user_id) {
+        authFacultyId = fac.auth_user_id;
+      }
+    }
+    if (!authFacultyId) {
+      const { data: currentAuth } = await supabase.auth.getUser();
+      authFacultyId = currentAuth?.user?.id || assessment.faculty_id;
+    }
+
     const { data, error } = await supabase
       .from('sessional_assessments')
       .insert({
         ...assessment,
+        faculty_id: authFacultyId,
         status: assessment.status || 'draft',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -4295,10 +4328,13 @@ export const supabaseService = {
 
     const toCreate: Array<{ title: string; max_marks: number }> = [];
     if (!titles.has('sessional 1')) {
-      toCreate.push({ title: 'Sessional 1', max_marks: 30 });
+      toCreate.push({ title: 'Sessional 1', max_marks: 20 });
     }
     if (!titles.has('sessional 2')) {
-      toCreate.push({ title: 'Sessional 2', max_marks: 30 });
+      toCreate.push({ title: 'Sessional 2', max_marks: 20 });
+    }
+    if (!titles.has('sessional 3')) {
+      toCreate.push({ title: 'Sessional 3', max_marks: 20 });
     }
 
     if (toCreate.length === 0) {
@@ -4325,6 +4361,80 @@ export const supabaseService = {
     }
 
     return [...currentList, ...newAssessments];
+  },
+
+  async ensureDefaultQuizzes(params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+  }): Promise<Quiz[]> {
+    const { data: existing, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('subject_id', params.subjectId)
+      .eq('section_id', params.sectionId);
+
+    if (error) {
+      console.warn('Error checking existing quizzes:', error.message);
+      return [];
+    }
+
+    const currentList = (existing as Quiz[]) || [];
+    const titles = new Set(currentList.map(q => q.title?.trim().toLowerCase()));
+
+    const toCreate: Array<{ title: string; max_marks: number }> = [];
+    for (let i = 1; i <= 5; i++) {
+      const qTitle = `Quiz ${i}`;
+      if (!titles.has(qTitle.toLowerCase())) {
+        toCreate.push({ title: qTitle, max_marks: 20 });
+      }
+    }
+
+    if (toCreate.length === 0) {
+      return currentList;
+    }
+
+    const createdList: Quiz[] = [];
+    for (const item of toCreate) {
+      try {
+        const now = new Date();
+        const created = await this.createQuiz({
+          faculty_id: params.facultyId,
+          subject_id: params.subjectId,
+          section_id: params.sectionId,
+          title: item.title,
+          max_marks: item.max_marks,
+          quiz_date: now.toISOString().split('T')[0],
+          start_time: now.toISOString(),
+          end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          google_form_url: 'https://vctm.in/quizzes',
+          status: 'draft',
+          active: true
+        });
+        createdList.push(created);
+      } catch (err) {
+        console.warn(`Failed to auto-create quiz ${item.title}:`, err);
+      }
+    }
+
+    return [...currentList, ...createdList];
+  },
+
+  async ensureDefaultAssessments(params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+    semesterId?: string;
+  }): Promise<{ sessionals: SessionalAssessment[]; quizzes: Quiz[] }> {
+    const [sessionals, quizzes] = await Promise.all([
+      this.ensureDefaultSessionalAssessments(params),
+      this.ensureDefaultQuizzes({
+        subjectId: params.subjectId,
+        sectionId: params.sectionId,
+        facultyId: params.facultyId
+      })
+    ]);
+    return { sessionals, quizzes };
   },
 
   async saveSessionalMarks(params: {
@@ -4385,13 +4495,44 @@ export const supabaseService = {
         .eq('sessional_assessment_id', params.sessionalAssessmentId);
     }
 
+    // Resolve valid faculty ID for foreign key integrity
+    let validFacultyId = params.facultyId;
+    if (validFacultyId) {
+      const { data: fac } = await supabase
+        .from('faculty')
+        .select('id, auth_user_id')
+        .eq('id', validFacultyId)
+        .maybeSingle();
+      if (!fac) {
+        const { data: facByAuth } = await supabase
+          .from('faculty')
+          .select('id')
+          .eq('auth_user_id', validFacultyId)
+          .maybeSingle();
+        if (facByAuth) {
+          validFacultyId = facByAuth.id;
+        } else {
+          const { data: defaultFac } = await supabase.from('faculty').select('id').limit(1).maybeSingle();
+          if (defaultFac) validFacultyId = defaultFac.id;
+        }
+      }
+    }
+
+    // Resolve auth user ID for updated_by (references auth.users.id)
+    const { data: currentAuth } = await supabase.auth.getUser();
+    let authUpdaterId = currentAuth?.user?.id || null;
+    if (!authUpdaterId && params.facultyId) {
+      const { data: fac } = await supabase.from('faculty').select('auth_user_id').eq('id', params.facultyId).maybeSingle();
+      if (fac?.auth_user_id) authUpdaterId = fac.auth_user_id;
+    }
+
     const rows = params.studentMarks.map(sm => {
       if (sm.marksObtained < 0 || sm.marksObtained > params.maxMarks!) {
         throw new Error(`Marks ${sm.marksObtained} exceeds valid range (0 - ${params.maxMarks}).`);
       }
       return {
         sessional_assessment_id: params.sessionalAssessmentId || null,
-        faculty_id: params.facultyId,
+        faculty_id: validFacultyId,
         subject_id: params.subjectId,
         section_id: params.sectionId,
         student_id: sm.studentId,
@@ -4400,7 +4541,7 @@ export const supabaseService = {
         marks_obtained: sm.marksObtained,
         remarks: sm.remarks,
         status: targetStatus,
-        updated_by: params.facultyId,
+        updated_by: authUpdaterId,
         updated_at: new Date().toISOString(),
       };
     });
@@ -4431,7 +4572,7 @@ export const supabaseService = {
           subject_id: params.subjectId,
           old_marks: sm.oldMarks,
           new_marks: sm.marksObtained,
-          updated_by: params.facultyId,
+          updated_by: validFacultyId,
           reason: `${params.sessionalType || 'Sessional'} Marks Updated`
         });
       }

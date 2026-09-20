@@ -81,6 +81,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
     assignments: facultySubjectAssignments,
     createSessionalAssessment,
     ensureDefaultSessionalAssessments,
+    ensureDefaultAssessments,
+    createQuiz,
     saveSessionalMarks,
     saveQuizMarks
   } = useAcademic();
@@ -233,20 +235,20 @@ export const FacultyMarksManagementPage: React.FC = () => {
     }
   }, [availableSubjects, selectedSubjectId]);
 
-  // 5. Ensure default Sessional 1 & 2 exist when Subject & Section are selected
+  // 5. Ensure default assessments (Sessionals 1, 2, 3 and Quizzes 1-5) exist when Subject & Section are selected
   useEffect(() => {
     if (selectedSubjectId && selectedSectionId && currentFacultyId) {
       const currentSec = sections.find(s => s.id === selectedSectionId);
-      ensureDefaultSessionalAssessments({
+      ensureDefaultAssessments({
         subjectId: selectedSubjectId,
         sectionId: selectedSectionId,
         facultyId: currentFacultyId,
         semesterId: currentSec?.semester_id
       }).catch(err => {
-        console.warn('Auto-ensuring default sessionals noticed:', err);
+        console.warn('Auto-ensuring default assessments noticed:', err);
       });
     }
-  }, [selectedSubjectId, selectedSectionId, currentFacultyId, sections, ensureDefaultSessionalAssessments]);
+  }, [selectedSubjectId, selectedSectionId, currentFacultyId, sections, ensureDefaultAssessments]);
 
   // 6. Build Assessment List for current (Subject, Section)
   const assessmentOptions = useMemo<SelectedAssessmentInfo[]>(() => {
@@ -258,14 +260,13 @@ export const FacultyMarksManagementPage: React.FC = () => {
     const matchedSessionals = sessionalAssessments.filter(
       sa => sa.subject_id === selectedSubjectId && sa.section_id === selectedSectionId
     );
-    // Sort sessionals: Sessional 1 first, then Sessional 2, then others
+    // Sort sessionals: Sessional 1, 2, 3, etc.
     matchedSessionals.sort((a, b) => {
       const aTitle = a.title.toLowerCase();
       const bTitle = b.title.toLowerCase();
-      if (aTitle.includes('1') && !bTitle.includes('1')) return -1;
-      if (!aTitle.includes('1') && bTitle.includes('1')) return 1;
-      if (aTitle.includes('2') && !bTitle.includes('2')) return -1;
-      if (!aTitle.includes('2') && bTitle.includes('2')) return 1;
+      const aNum = parseInt(aTitle.replace(/\D/g, '')) || 99;
+      const bNum = parseInt(bTitle.replace(/\D/g, '')) || 99;
+      if (aNum !== bNum) return aNum - bNum;
       return a.title.localeCompare(b.title);
     });
 
@@ -274,7 +275,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
         id: sa.id,
         kind: 'sessional',
         title: sa.title,
-        maxMarks: sa.max_marks,
+        maxMarks: sa.max_marks || 20,
         status: (sa.status === 'published' || sa.status === 'completed') ? 'published' : 'draft',
         date: sa.exam_date
       });
@@ -284,6 +285,16 @@ export const FacultyMarksManagementPage: React.FC = () => {
     const matchedQuizzes = quizzes.filter(
       q => q.subject_id === selectedSubjectId && q.section_id === selectedSectionId
     );
+    // Sort quizzes: Quiz 1, 2, 3, 4, 5, etc.
+    matchedQuizzes.sort((a, b) => {
+      const aTitle = (a.title || '').toLowerCase();
+      const bTitle = (b.title || '').toLowerCase();
+      const aNum = parseInt(aTitle.replace(/\D/g, '')) || 99;
+      const bNum = parseInt(bTitle.replace(/\D/g, '')) || 99;
+      if (aNum !== bNum) return aNum - bNum;
+      return (a.title || '').localeCompare(b.title || '');
+    });
+
     for (const q of matchedQuizzes) {
       list.push({
         id: q.id,
@@ -312,6 +323,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     return list;
   }, [selectedSubjectId, selectedSectionId, sessionalAssessments, quizzes, courseAssignments]);
+
+  const sessionalsGroup = useMemo(() => assessmentOptions.filter(a => a.kind === 'sessional'), [assessmentOptions]);
+  const quizzesGroup = useMemo(() => assessmentOptions.filter(a => a.kind === 'quiz'), [assessmentOptions]);
+  const assignmentsGroup = useMemo(() => assessmentOptions.filter(a => a.kind === 'assignment'), [assessmentOptions]);
 
   // Set default assessment selection
   useEffect(() => {
@@ -626,49 +641,76 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
   // 12. Modals State
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const [isAddSessionalModalOpen, setIsAddSessionalModalOpen] = useState(false);
+  const [isAddAssessmentModalOpen, setIsAddAssessmentModalOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isCsvImportModalOpen, setIsCsvImportModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // Add Sessional Form State
-  const [newSessionalTitle, setNewSessionalTitle] = useState('');
-  const [newSessionalMaxMarks, setNewSessionalMaxMarks] = useState<number>(30);
-  const [newSessionalDate, setNewSessionalDate] = useState(getISTTodayDate());
-  const [isCreatingSessional, setIsCreatingSessional] = useState(false);
+  // Add Assessment Form State (supports both Sessionals and Quizzes)
+  const [newAssessmentKind, setNewAssessmentKind] = useState<'sessional' | 'quiz'>('sessional');
+  const [newAssessmentTitle, setNewAssessmentTitle] = useState('');
+  const [newAssessmentMaxMarks, setNewAssessmentMaxMarks] = useState<number>(20);
+  const [newAssessmentDate, setNewAssessmentDate] = useState(getISTTodayDate());
+  const [isCreatingAssessment, setIsCreatingAssessment] = useState(false);
 
-  const handleCreateSessional = async (e: React.FormEvent) => {
+  const handleCreateAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSessionalTitle.trim() || !selectedSubjectId || !selectedSectionId || !currentFacultyId) return;
+    if (!newAssessmentTitle.trim() || !selectedSubjectId || !selectedSectionId || !currentFacultyId) return;
 
     try {
-      setIsCreatingSessional(true);
+      setIsCreatingAssessment(true);
       const currentSec = sections.find(s => s.id === selectedSectionId);
-      const created = await createSessionalAssessment({
-        title: newSessionalTitle.trim(),
-        subject_id: selectedSubjectId,
-        section_id: selectedSectionId,
-        faculty_id: currentFacultyId,
-        semester_id: currentSec?.semester_id,
-        max_marks: Number(newSessionalMaxMarks) || 30,
-        exam_date: newSessionalDate || getISTTodayDate(),
-        status: 'draft'
-      });
 
-      setSelectedAssessmentId(created.id);
-      setIsAddSessionalModalOpen(false);
-      setNewSessionalTitle('');
-      setNotificationToast({
-        type: 'success',
-        message: `Assessment "${created.title}" created successfully.`
-      });
+      if (newAssessmentKind === 'sessional') {
+        const created = await createSessionalAssessment({
+          title: newAssessmentTitle.trim(),
+          subject_id: selectedSubjectId,
+          section_id: selectedSectionId,
+          faculty_id: currentFacultyId,
+          semester_id: currentSec?.semester_id,
+          max_marks: Number(newAssessmentMaxMarks) || 20,
+          exam_date: newAssessmentDate || getISTTodayDate(),
+          status: 'draft'
+        });
+
+        setSelectedAssessmentId(created.id);
+        setIsAddAssessmentModalOpen(false);
+        setNewAssessmentTitle('');
+        setNotificationToast({
+          type: 'success',
+          message: `Sessional assessment "${created.title}" created successfully.`
+        });
+      } else {
+        const now = new Date();
+        const created = await createQuiz({
+          title: newAssessmentTitle.trim(),
+          subject_id: selectedSubjectId,
+          section_id: selectedSectionId,
+          faculty_id: currentFacultyId,
+          max_marks: Number(newAssessmentMaxMarks) || 20,
+          quiz_date: newAssessmentDate || getISTTodayDate(),
+          start_time: now.toISOString(),
+          end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          google_form_url: 'https://vctm.in/quizzes',
+          status: 'draft',
+          active: true
+        });
+
+        setSelectedAssessmentId(created.id);
+        setIsAddAssessmentModalOpen(false);
+        setNewAssessmentTitle('');
+        setNotificationToast({
+          type: 'success',
+          message: `Quiz "${created.title}" created successfully.`
+        });
+      }
     } catch (err: any) {
       setNotificationToast({
         type: 'error',
         message: err?.message || 'Failed to create assessment.'
       });
     } finally {
-      setIsCreatingSessional(false);
+      setIsCreatingAssessment(false);
     }
   };
 
@@ -1066,20 +1108,20 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
       {/* Faculty Assignment Filter Bar */}
       <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 items-end">
           {/* 1. Academic Year */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+          <div className="xl:col-span-2">
+            <label className="block text-xs font-bold text-slate-800 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-600" />
               Academic Year
             </label>
             <select
               value={selectedYearId}
               onChange={(e) => setSelectedYearId(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all shadow-xs cursor-pointer"
             >
               {facultyTeachingScope.assignedYears.map(yr => (
-                <option key={yr.id} value={yr.id}>
+                <option key={yr.id} value={yr.id} className="text-slate-900 bg-white font-medium">
                   {yr.name}
                 </option>
               ))}
@@ -1090,18 +1132,18 @@ export const FacultyMarksManagementPage: React.FC = () => {
           </div>
 
           {/* 2. Section */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-slate-500" />
+          <div className="xl:col-span-2">
+            <label className="block text-xs font-bold text-slate-800 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-slate-600" />
               Section
             </label>
             <select
               value={selectedSectionId}
               onChange={(e) => setSelectedSectionId(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all shadow-xs cursor-pointer"
             >
               {availableSections.map(sec => (
-                <option key={sec.id} value={sec.id}>
+                <option key={sec.id} value={sec.id} className="text-slate-900 bg-white font-medium">
                   {sec.name} ({sec.room_number ? `Room ${sec.room_number}` : 'Active'})
                 </option>
               ))}
@@ -1112,18 +1154,18 @@ export const FacultyMarksManagementPage: React.FC = () => {
           </div>
 
           {/* 3. Subject */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+          <div className="xl:col-span-4">
+            <label className="block text-xs font-bold text-slate-800 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-slate-600" />
               Subject
             </label>
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all shadow-xs cursor-pointer"
             >
               {availableSubjects.map(sub => (
-                <option key={sub.id} value={sub.id}>
+                <option key={sub.id} value={sub.id} className="text-slate-900 bg-white font-medium">
                   {sub.subject_name} ({sub.subject_code})
                 </option>
               ))}
@@ -1134,31 +1176,59 @@ export const FacultyMarksManagementPage: React.FC = () => {
           </div>
 
           {/* 4. Assessment */}
-          <div>
+          <div className="xl:col-span-4">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-slate-500" />
+              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-slate-600" />
                 Assessment
               </label>
               <button
                 type="button"
-                onClick={() => setIsAddSessionalModalOpen(true)}
-                className="text-[11px] text-slate-900 hover:text-black flex items-center gap-0.5 transition-colors font-bold"
+                onClick={() => {
+                  setNewAssessmentKind('sessional');
+                  setNewAssessmentTitle('');
+                  setNewAssessmentMaxMarks(20);
+                  setNewAssessmentDate(getISTTodayDate());
+                  setIsAddAssessmentModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-black bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2.5 py-0.5 rounded-lg transition-colors shadow-2xs cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 Add Assessment
               </button>
             </div>
             <select
               value={selectedAssessmentId}
               onChange={(e) => setSelectedAssessmentId(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all font-medium"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition-all shadow-xs cursor-pointer"
             >
-              {assessmentOptions.map(opt => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.title} ({opt.maxMarks} Marks) • {opt.status === 'published' ? 'Published' : 'Draft'}
-                </option>
-              ))}
+              {sessionalsGroup.length > 0 && (
+                <optgroup label="SESSIONALS" className="font-bold text-slate-700 bg-slate-100">
+                  {sessionalsGroup.map(opt => (
+                    <option key={opt.id} value={opt.id} className="text-slate-900 bg-white font-medium py-1">
+                      {opt.title} — {opt.maxMarks} Marks • {opt.status === 'published' ? 'Published' : 'Draft'}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {quizzesGroup.length > 0 && (
+                <optgroup label="QUIZZES" className="font-bold text-slate-700 bg-slate-100">
+                  {quizzesGroup.map(opt => (
+                    <option key={opt.id} value={opt.id} className="text-slate-900 bg-white font-medium py-1">
+                      {opt.title} — {opt.maxMarks} Marks • {opt.status === 'published' ? 'Published' : 'Draft'}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {assignmentsGroup.length > 0 && (
+                <optgroup label="ASSIGNMENTS" className="font-bold text-slate-700 bg-slate-100">
+                  {assignmentsGroup.map(opt => (
+                    <option key={opt.id} value={opt.id} className="text-slate-900 bg-white font-medium py-1">
+                      {opt.title} — {opt.maxMarks} Marks • {opt.status === 'published' ? 'Published' : 'Draft'}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
               {assessmentOptions.length === 0 && (
                 <option value="">No Assessments Found</option>
               )}
@@ -1171,98 +1241,98 @@ export const FacultyMarksManagementPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total Students */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <Users className="w-3 h-3 text-slate-400" />
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+            <Users className="w-3 h-3 text-slate-500" />
             Total Roster
           </span>
-          <div className="text-xl font-bold text-slate-900 mt-1 font-serif-institutional">
+          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans tracking-tight">
             {stats.totalStudents}
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">Enrolled in Section</span>
+          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Enrolled in Section</span>
         </div>
 
         {/* Marks Entered */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
             Entered
           </span>
-          <div className="text-xl font-bold text-emerald-800 mt-1 font-serif-institutional">
+          <div className="text-2xl font-bold text-emerald-700 mt-1 font-sans tracking-tight">
             {stats.enteredCount}
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">
+          <span className="text-[11px] font-medium text-emerald-700 mt-0.5">
             {stats.totalStudents > 0 ? `${((stats.enteredCount / stats.totalStudents) * 100).toFixed(0)}% Completed` : '0%'}
           </span>
         </div>
 
         {/* Marks Missing */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+          <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
             <AlertCircle className="w-3 h-3 text-amber-600" />
             Missing
           </span>
-          <div className="text-xl font-bold text-amber-800 mt-1 font-serif-institutional">
+          <div className="text-2xl font-bold text-amber-700 mt-1 font-sans tracking-tight">
             {stats.missingCount}
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">Pending input</span>
+          <span className="text-[11px] font-medium text-amber-700 mt-0.5">Pending input</span>
         </div>
 
         {/* Publication Status */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <Eye className="w-3 h-3 text-slate-400" />
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+            <Eye className="w-3 h-3 text-slate-500" />
             Status
           </span>
           <div className="mt-1">
             {activeAssessment?.status === 'published' ? (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
                 Published
               </span>
             ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
                 Draft Only
               </span>
             )}
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">
+          <span className="text-[11px] font-medium text-slate-600 mt-0.5">
             {activeAssessment?.status === 'published' ? 'Live to Students' : 'Hidden from Students'}
           </span>
         </div>
 
         {/* Class Average */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-slate-400" />
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+            <TrendingUp className="w-3 h-3 text-slate-500" />
             Class Average
           </span>
-          <div className="text-xl font-bold text-slate-900 mt-1 font-serif-institutional">
-            {stats.avgMarks} <span className="text-xs font-normal text-slate-500">/ {activeAssessment?.maxMarks || 30}</span>
+          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans tracking-tight">
+            {stats.avgMarks} <span className="text-xs font-medium text-slate-500">/ {activeAssessment?.maxMarks || 20}</span>
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">Mean Performance</span>
+          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Mean Performance</span>
         </div>
 
         {/* Highest Mark */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <Award className="w-3 h-3 text-slate-400" />
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+            <Award className="w-3 h-3 text-slate-500" />
             Highest Mark
           </span>
-          <div className="text-xl font-bold text-slate-900 mt-1 font-serif-institutional">
-            {stats.highest} <span className="text-xs font-normal text-slate-500">/ {activeAssessment?.maxMarks || 30}</span>
+          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans tracking-tight">
+            {stats.highest} <span className="text-xs font-medium text-slate-500">/ {activeAssessment?.maxMarks || 20}</span>
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">Top Score</span>
+          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Top Score</span>
         </div>
 
         {/* Lowest & Pass Rate */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <Percent className="w-3 h-3 text-slate-400" />
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+            <Percent className="w-3 h-3 text-slate-500" />
             Pass Rate
           </span>
-          <div className="text-xl font-bold text-emerald-800 mt-1 font-serif-institutional">
+          <div className="text-2xl font-bold text-emerald-700 mt-1 font-sans tracking-tight">
             {stats.passPercentage}%
           </div>
-          <span className="text-[10px] text-slate-500 mt-0.5">Min: {stats.lowest}</span>
+          <span className="text-[11px] font-medium text-slate-500 mt-0.5">Min: {stats.lowest}</span>
         </div>
       </div>
 
@@ -1564,36 +1634,87 @@ export const FacultyMarksManagementPage: React.FC = () => {
         </div>
       </Modal>
 
-      {/* MODAL 2: Add Sessional / Assessment Modal */}
+      {/* MODAL 2: Add Assessment Modal */}
       <Modal
-        isOpen={isAddSessionalModalOpen}
-        onClose={() => setIsAddSessionalModalOpen(false)}
+        isOpen={isAddAssessmentModalOpen}
+        onClose={() => setIsAddAssessmentModalOpen(false)}
         title={
           <div className="flex items-center gap-2 text-slate-900">
             <Plus className="w-5 h-5 text-slate-900" />
-            <span>Add Sessional Assessment</span>
+            <span className="font-bold">Add Assessment</span>
           </div>
         }
-        description={`Create a new continuous assessment for ${currentSubjectObj?.subject_name} (${currentSectionObj?.name})`}
+        description={`Create a new continuous assessment for ${currentSubjectObj?.subject_name || 'Subject'} (${currentSectionObj?.name || 'Section'})`}
       >
-        <form onSubmit={handleCreateSessional} className="space-y-4 pt-2">
+        <form onSubmit={handleCreateAssessment} className="space-y-4 pt-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-800 mb-1.5 uppercase tracking-wider">
+              Assessment Type <span className="text-rose-600">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={clsx(
+                'flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all',
+                newAssessmentKind === 'sessional' 
+                  ? 'bg-slate-100 border-slate-900 text-slate-900 font-bold shadow-xs' 
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+              )}>
+                <input
+                  type="radio"
+                  name="assessmentKind"
+                  value="sessional"
+                  checked={newAssessmentKind === 'sessional'}
+                  onChange={() => {
+                    setNewAssessmentKind('sessional');
+                    if (!newAssessmentTitle || newAssessmentTitle.toLowerCase().includes('quiz')) {
+                      setNewAssessmentTitle('Sessional 3');
+                    }
+                  }}
+                  className="text-slate-900 focus:ring-slate-900"
+                />
+                <span className="text-xs">Sessional Exam</span>
+              </label>
+
+              <label className={clsx(
+                'flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all',
+                newAssessmentKind === 'quiz' 
+                  ? 'bg-slate-100 border-slate-900 text-slate-900 font-bold shadow-xs' 
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+              )}>
+                <input
+                  type="radio"
+                  name="assessmentKind"
+                  value="quiz"
+                  checked={newAssessmentKind === 'quiz'}
+                  onChange={() => {
+                    setNewAssessmentKind('quiz');
+                    if (!newAssessmentTitle || newAssessmentTitle.toLowerCase().includes('sessional')) {
+                      setNewAssessmentTitle('Quiz 6');
+                    }
+                  }}
+                  className="text-slate-900 focus:ring-slate-900"
+                />
+                <span className="text-xs">Quiz / Class Test</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-800 mb-1.5">
               Assessment Title <span className="text-rose-600">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. Sessional 3, PUT (Pre-University Test), Class Test 1"
-              value={newSessionalTitle}
-              onChange={(e) => setNewSessionalTitle(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
+              placeholder={newAssessmentKind === 'sessional' ? 'e.g. Sessional 3, PUT, Midterm Exam' : 'e.g. Quiz 6, Chapter 1 Quiz, Surprise Test'}
+              value={newAssessmentTitle}
+              onChange={(e) => setNewAssessmentTitle(e.target.value)}
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-800 mb-1.5">
                 Maximum Marks <span className="text-rose-600">*</span>
               </label>
               <input
@@ -1601,21 +1722,21 @@ export const FacultyMarksManagementPage: React.FC = () => {
                 required
                 min="5"
                 max="100"
-                value={newSessionalMaxMarks}
-                onChange={(e) => setNewSessionalMaxMarks(parseInt(e.target.value) || 30)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
+                value={newAssessmentMaxMarks}
+                onChange={(e) => setNewAssessmentMaxMarks(parseInt(e.target.value) || 20)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 font-mono focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Exam Date
+              <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                Date
               </label>
               <input
                 type="date"
-                value={newSessionalDate}
-                onChange={(e) => setNewSessionalDate(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-slate-400"
+                value={newAssessmentDate}
+                onChange={(e) => setNewAssessmentDate(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500"
               />
             </div>
           </div>
@@ -1625,8 +1746,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
               variant="outline"
               size="sm"
               type="button"
-              onClick={() => setIsAddSessionalModalOpen(false)}
-              className="border-slate-300 text-slate-700"
+              onClick={() => setIsAddAssessmentModalOpen(false)}
+              className="border-slate-300 text-slate-700 font-semibold"
             >
               Cancel
             </Button>
@@ -1634,10 +1755,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
               variant="primary"
               size="sm"
               type="submit"
-              disabled={isCreatingSessional}
+              disabled={isCreatingAssessment}
               className="bg-[#0f172a] hover:bg-black text-white font-bold"
             >
-              {isCreatingSessional ? (
+              {isCreatingAssessment ? (
                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
               ) : (
                 <Plus className="w-4 h-4 mr-1.5" />

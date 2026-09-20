@@ -267,6 +267,17 @@ interface AcademicContextType {
     facultyId: string;
     semesterId?: string;
   }) => Promise<SessionalAssessment[]>;
+  ensureDefaultQuizzes: (params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+  }) => Promise<Quiz[]>;
+  ensureDefaultAssessments: (params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+    semesterId?: string;
+  }) => Promise<{ sessionals: SessionalAssessment[]; quizzes: Quiz[] }>;
   saveSessionalMarks: (params: {
     sessionalAssessmentId?: string;
     facultyId: string;
@@ -3063,6 +3074,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const createQuiz = async (quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createQuiz(quiz);
+    setQuizzes(prev => {
+      const exists = prev.some(q => q.id === res.id);
+      return exists ? prev : [res, ...prev];
+    });
     await refreshAssessments();
     return res;
   };
@@ -3086,6 +3101,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     isPublished?: boolean;
   }) => {
     const res = await supabaseService.saveQuizMarks(params);
+    if (res && res.length > 0) {
+      setQuizResults(prev => {
+        const updatedStudentIds = new Set(params.studentMarks.map(sm => sm.studentId));
+        const filtered = prev.filter(
+          qr => !(qr.quiz_id === params.quizId && updatedStudentIds.has(qr.student_id))
+        );
+        return [...(res as QuizResult[]), ...filtered];
+      });
+    }
     if (params.isPublished !== undefined) {
       const nextStatus = params.isPublished ? 'published' : 'draft';
       setQuizzes(prev => prev.map(q => q.id === params.quizId ? { ...q, status: nextStatus } : q));
@@ -3096,6 +3120,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const createSessionalAssessment = async (data: Omit<SessionalAssessment, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.createSessionalAssessment(data);
+    setSessionalAssessments(prev => {
+      const exists = prev.some(sa => sa.id === res.id);
+      return exists ? prev : [res, ...prev];
+    });
     await refreshAssessments();
     return res;
   };
@@ -3122,12 +3150,47 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   };
 
+  const ensureDefaultQuizzes = async (params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+  }) => {
+    const res = await supabaseService.ensureDefaultQuizzes(params);
+    setQuizzes(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const newlyAdded = res.filter(r => !existingIds.has(r.id));
+      return newlyAdded.length > 0 ? [...prev, ...newlyAdded] : prev;
+    });
+    return res;
+  };
+
+  const ensureDefaultAssessments = async (params: {
+    subjectId: string;
+    sectionId: string;
+    facultyId: string;
+    semesterId?: string;
+  }) => {
+    const { sessionals, quizzes: ensuredQuizzes } = await supabaseService.ensureDefaultAssessments(params);
+    setSessionalAssessments(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const newlyAdded = sessionals.filter(r => !existingIds.has(r.id));
+      return newlyAdded.length > 0 ? [...prev, ...newlyAdded] : prev;
+    });
+    setQuizzes(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const newlyAdded = ensuredQuizzes.filter(r => !existingIds.has(r.id));
+      return newlyAdded.length > 0 ? [...prev, ...newlyAdded] : prev;
+    });
+    return { sessionals, quizzes: ensuredQuizzes };
+  };
+
   const ensureDefaultSessionalAssessments = async (params: {
     subjectId: string;
     sectionId: string;
     facultyId: string;
     semesterId?: string;
   }) => {
+    ensureDefaultQuizzes(params).catch(() => {});
     const res = await supabaseService.ensureDefaultSessionalAssessments(params);
     setSessionalAssessments(prev => {
       const existingIds = new Set(prev.map(p => p.id));
@@ -3712,6 +3775,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateSessionalAssessment,
     deleteSessionalAssessment,
     ensureDefaultSessionalAssessments,
+    ensureDefaultQuizzes,
+    ensureDefaultAssessments,
     saveSessionalMarks,
     getStudentAcademicScorecard,
     addDepartment,
@@ -3855,6 +3920,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateSessionalAssessment,
     deleteSessionalAssessment,
     ensureDefaultSessionalAssessments,
+    ensureDefaultQuizzes,
+    ensureDefaultAssessments,
     saveSessionalMarks,
     getStudentAcademicScorecard,
     addDepartment,
