@@ -88,6 +88,36 @@ export const AppContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Role-Based Code-Splitting Prefetching: Preload key role pages into browser cache for instant switching
+  useEffect(() => {
+    if (!isAuthenticated || !role) return;
+
+    const timer = setTimeout(() => {
+      if (role === 'faculty') {
+        import('./pages/faculty/TakeAttendancePage');
+        import('./pages/faculty/FacultyTimetablePage');
+        import('./pages/faculty/FacultyMarksManagementPage');
+        import('./pages/communication/MessagesPage');
+      } else if (role === 'student') {
+        import('./pages/student/StudentAttendancePage');
+        import('./pages/student/StudentTimetablePage');
+        import('./pages/student/StudentMarksPage');
+        import('./pages/communication/MessagesPage');
+      } else if (role === 'hod') {
+        import('./pages/admin/TimetableManagerPage');
+        import('./pages/leave/LeaveManagementPage');
+        import('./pages/faculty/FacultyTimetablePage');
+        import('./pages/communication/MessagesPage');
+      } else if (role === 'super_admin') {
+        import('./pages/admin/StudentDirectoryPage');
+        import('./pages/admin/FacultyDirectoryPage');
+        import('./pages/admin/TimetableManagerPage');
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, role]);
+
   const handleToggleTeachingMode = (enabled: boolean) => {
     setIsTeachingMode(enabled);
     setActiveTab('dashboard');

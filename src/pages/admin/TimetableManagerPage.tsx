@@ -89,6 +89,7 @@ export const TimetableManagerPage: React.FC = () => {
     findOrCreateClassroom,
     saveSingleTimetableSlot,
     checkTimetableConflict,
+    refreshTimetable,
     refreshData,
     isLoading 
   } = useAcademic();
@@ -602,7 +603,7 @@ export const TimetableManagerPage: React.FC = () => {
       const successMsg = `Slot for ${editingSlot.day_of_week} Period ${editingSlot.period_number} saved to live database successfully.`;
       setPublishSuccessMsg(successMsg);
       setEditingSlot(null);
-      await refreshData();
+      await refreshTimetable(currentSection.id);
       setPublishSuccessMsg(successMsg);
     } catch (err: any) {
       console.error('Error saving timetable slot:', err);
@@ -665,7 +666,7 @@ export const TimetableManagerPage: React.FC = () => {
         setDraftSlots(new Map());
         setIsEditMode(false);
         setShowDeleteConfirm(false);
-        await refreshData(true);
+        await refreshTimetable(selectedSectionId);
       } else {
         setPublishError('Failed to delete section timetable.');
       }
@@ -738,7 +739,7 @@ export const TimetableManagerPage: React.FC = () => {
       setPublishSuccessMsg(`Section ${currentSection?.name} Timetable published successfully to Supabase! (${result.count} active periods verified)`);
       setIsEditMode(false);
       setDetectedConflicts([]);
-      await refreshData(true);
+      await refreshTimetable(selectedSectionId);
     } catch (err: any) {
       console.error('Publish error:', err);
       setPublishError(err.message || 'Failed to publish section timetable to database.');

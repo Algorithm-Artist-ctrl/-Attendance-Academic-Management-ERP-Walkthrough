@@ -586,7 +586,10 @@ function deduplicateSessionals(list: SessionalAssessment[]): SessionalAssessment
 
 export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, role, isLoading: authLoading, isAuthenticated } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    return !(erpStorage.getStudents().length > 0 || erpStorage.getTimetable().length > 0);
+  });
+  const inFlightLoadDataRef = useRef<Promise<void> | null>(null);
   const [claimWindowDays, setClaimWindowDays] = useState<number>(7);
   const seenNotificationIdsRef = useRef<Set<string>>(new Set());
 
@@ -717,25 +720,34 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const lastAttendanceSaveTimeRef = useRef<number>(0);
   const lastMarksSaveTimeRef = useRef<number>(0);
 
-  // Function to load and enrich latest records from Supabase (Role-Scoped Fast Pipeline)
+  // Function to load and enrich latest records from Supabase (Role-Scoped Fast Pipeline with In-Flight Deduplication)
   const loadDataFromSupabase = useCallback(async (forceRefreshMaster = false) => {
-    try {
-      lastFullLoadRef.current = Date.now();
-      const currentAuthUser = user || erpStorage.getCurrentSessionUser();
-      const currentRole = role || currentAuthUser?.role;
-      const studentId = currentAuthUser?.student_id || currentAuthUser?.student?.id;
-      const sectionId = currentAuthUser?.student?.section_id || (currentAuthUser as any)?.section_id;
-      const facultyId = currentAuthUser?.faculty_id || currentAuthUser?.faculty?.id || currentAuthUser?.id;
-      const departmentId = currentAuthUser?.department_id || currentAuthUser?.faculty?.department_id;
+    if (inFlightLoadDataRef.current && !forceRefreshMaster) {
+      return inFlightLoadDataRef.current;
+    }
+    const currentAuthUser = user || erpStorage.getCurrentSessionUser();
+    const currentRole = role || currentAuthUser?.role;
+    if (!currentRole) {
+      setIsLoading(false);
+      return;
+    }
 
-      const data = await supabaseService.fetchScopedData({
-        role: currentRole,
-        studentId: currentRole === 'student' ? studentId : undefined,
-        sectionId: currentRole === 'student' ? sectionId : undefined,
-        facultyId: (currentRole === 'faculty' || currentRole === 'hod') ? facultyId : undefined,
-        departmentId,
-        forceRefreshMaster,
-      });
+    const task = (async () => {
+      try {
+        lastFullLoadRef.current = Date.now();
+        const studentId = currentAuthUser?.student_id || currentAuthUser?.student?.id;
+        const sectionId = currentAuthUser?.student?.section_id || (currentAuthUser as any)?.section_id;
+        const facultyId = currentAuthUser?.faculty_id || currentAuthUser?.faculty?.id || currentAuthUser?.id;
+        const departmentId = currentAuthUser?.department_id || currentAuthUser?.faculty?.department_id;
+
+        const data = await supabaseService.fetchScopedData({
+          role: currentRole,
+          studentId: currentRole === 'student' ? studentId : undefined,
+          sectionId: currentRole === 'student' ? sectionId : undefined,
+          facultyId: (currentRole === 'faculty' || currentRole === 'hod') ? facultyId : undefined,
+          departmentId,
+          forceRefreshMaster,
+        });
       if (data) {
         const loadedInst = data.institutions[0] || erpStorage.getInstitution();
         const loadedDepts = data.departments || [];
@@ -943,9 +955,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (err) {
       console.error('Failed to sync from Supabase, using local cache:', err);
     } finally {
+      inFlightLoadDataRef.current = null;
       setIsLoading(false);
     }
-  }, [user?.id, role]);
+  })();
+  inFlightLoadDataRef.current = task;
+  return task;
+}, [user?.id, role]);
 
   // Granular Entity Refreshers for Targeted UI Updates Without Full-App Reload
   const refreshStudents = useCallback(async () => {
@@ -1366,19 +1382,21 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, delay);
   }, []);
 
-  // Initial load & automatic refresh on auth state changes (no manual browser refresh needed)
+  // Initial load & automatic refresh on auth state changes (strictly authenticated)
   useEffect(() => {
     if (authLoading) return;
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
 
     loadDataFromSupabase(false);
     let deferTimer: NodeJS.Timeout | null = null;
-    if (isAuthenticated) {
-      deferTimer = setTimeout(() => {
-        refreshNotifications();
-        refreshConversations();
-        refreshLeaveApplications();
-      }, 200);
-    }
+    deferTimer = setTimeout(() => {
+      refreshNotifications();
+      refreshConversations();
+      refreshLeaveApplications();
+    }, 200);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
@@ -1399,6 +1417,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setNotifications([]);
         setConversations([]);
         setLeaveApplications([]);
+        setIsLoading(false);
       }
     });
 
@@ -1447,13 +1466,17 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Realtime Supabase Channel Subscription with role-scoped event handlers and idempotency protection
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const activeUserId = user?.id || erpStorage.getCurrentSessionUser()?.id;
     const activeRole = role || erpStorage.getCurrentSessionUser()?.role;
+    if (!activeUserId) return;
+
     const activeStudentId = user?.student_id || user?.student?.id || erpStorage.getCurrentSessionUser()?.student_id;
     const activeFacultyId = user?.faculty_id || user?.faculty?.id || erpStorage.getCurrentSessionUser()?.faculty_id;
     const activeSectionId = user?.student?.section_id || erpStorage.getCurrentSessionUser()?.student?.section_id;
 
-    const channelName = activeUserId ? `vctm-erp-realtime-${activeRole || 'user'}-${activeUserId}` : 'vctm-erp-realtime-public';
+    const channelName = 'vctm-erp-realtime-channel';
 
     let builder = supabase
       .channel(channelName)
@@ -1790,7 +1813,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, role, debounceTableSync]);
+  }, [isAuthenticated, user?.id, role, debounceTableSync]);
 
   const refreshData = async (forceRefreshMaster = false) => {
     await loadDataFromSupabase(forceRefreshMaster);
@@ -2001,11 +2024,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const sessionRecords = attendanceRecords.filter(r => r.attendance_session_id === session.id);
-
-    // If session is present in database but its records have not been loaded into local context yet, trigger lazy loading
-    if (sessionRecords.length === 0) {
-      ensureSessionAttendanceLoaded(session.id);
-    }
 
     const studentStatusMap = new Map<string, string>();
     for (const r of sessionRecords) {

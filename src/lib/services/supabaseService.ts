@@ -119,7 +119,31 @@ const _inFlightFacultyDashboard = new Map<string, Promise<FacultyDashboardPayloa
 const _facultyDashboardCache = new Map<string, { timestamp: number; data: FacultyDashboardPayload }>();
 const FACULTY_DASHBOARD_CACHE_TTL_MS = 20 * 1000; // 20-second cache for dashboard payload
 
+let _broadcastChannel: ReturnType<typeof supabase.channel> | null = null;
+function getBroadcastChannel() {
+  if (!_broadcastChannel) {
+    _broadcastChannel = supabase.channel('vctm-erp-realtime-channel');
+    _broadcastChannel.subscribe((status) => {
+      if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+        _broadcastChannel = null;
+      }
+    });
+  }
+  return _broadcastChannel;
+}
+
 export const supabaseService = {
+  // Invalidate faculty dashboard cache on changes
+  invalidateFacultyDashboard(facultyId?: string) {
+    if (facultyId) {
+      _facultyDashboardCache.delete(facultyId);
+      _inFlightFacultyDashboard.delete(facultyId);
+    } else {
+      _facultyDashboardCache.clear();
+      _inFlightFacultyDashboard.clear();
+    }
+  },
+
   // Clear in-memory static cache when structural entities change
   invalidateMasterCache() {
     _staticCache = null;
@@ -746,7 +770,12 @@ export const supabaseService = {
           };
         }
 
-        // Default for Admin or initial load before auth resolves: delegate to fetchOperationalData
+        // If no role provided (anonymous caller / login page before auth resolves), do NOT run full operational queries
+        if (!params.role) {
+          return null;
+        }
+
+        // Default for Admin or HOD: delegate to fetchOperationalData
         const [operationalData, allStudents] = await Promise.all([
           this.fetchOperationalData(),
           this.fetchStudents(true),
@@ -891,9 +920,10 @@ export const supabaseService = {
       recordsData = (recsVerify.data as AttendanceRecord[]) || [];
     }
 
-    // 3. Broadcast Realtime Attendance Update
+    // 3. Broadcast Realtime Attendance Update & Invalidate Faculty Dashboard
+    this.invalidateFacultyDashboard(params.facultyId);
     try {
-      const channel = supabase.channel('vctm-erp-realtime-channel');
+      const channel = getBroadcastChannel();
       await channel.send({
         type: 'broadcast',
         event: 'attendance_updated',
@@ -947,8 +977,9 @@ export const supabaseService = {
     if (sessErr) throw sessErr;
 
     // 4. Broadcast Realtime event (do not invalidate master static setup cache)
+    this.invalidateFacultyDashboard();
     try {
-      const channel = supabase.channel('vctm-erp-realtime-channel');
+      const channel = getBroadcastChannel();
       await channel.send({
         type: 'broadcast',
         event: 'attendance_updated',
@@ -3262,7 +3293,7 @@ export const supabaseService = {
 
         this.invalidateMasterCache();
         try {
-          const channel = supabase.channel('vctm-erp-realtime-channel');
+          const channel = getBroadcastChannel();
           await channel.send({
             type: 'broadcast',
             event: 'timetable_updated',
@@ -3327,7 +3358,7 @@ export const supabaseService = {
     this.invalidateMasterCache();
 
     try {
-      const channel = supabase.channel('vctm-erp-realtime-channel');
+      const channel = getBroadcastChannel();
       await channel.send({
         type: 'broadcast',
         event: 'timetable_updated',
@@ -3468,7 +3499,7 @@ export const supabaseService = {
 
         // Broadcast Realtime Update
         try {
-          const channel = supabase.channel('vctm-erp-realtime-channel');
+          const channel = getBroadcastChannel();
           await channel.send({
             type: 'broadcast',
             event: 'timetable_updated',
@@ -3674,7 +3705,7 @@ export const supabaseService = {
 
     // 12. Broadcast Realtime Timetable Update Event
     try {
-      const channel = supabase.channel('vctm-erp-realtime-channel');
+      const channel = getBroadcastChannel();
       await channel.send({
         type: 'broadcast',
         event: 'timetable_updated',

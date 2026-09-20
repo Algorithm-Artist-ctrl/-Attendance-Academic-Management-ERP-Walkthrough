@@ -868,17 +868,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       status: 'sending'
     };
 
+    setDirectSending(true);
+    setMessageSendError(null);
+
     // Optimistically add message to thread immediately (0ms UI latency)
     setDirectMessages(prev => {
       const updated = [...prev, tempMsg];
       setCachedConversationMessages(selectedConvId, updated);
       return updated;
     });
-    setDirectInputMessage('');
-    setReplyingToMessage(null);
-    setDirectAttachment(null);
-    setDirectSending(true);
-    setMessageSendError(null);
 
     try {
       const res = await sendMessage({
@@ -892,6 +890,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       });
 
       if (!res.error && res.data) {
+        // CONFIRMED DATABASE PERSISTENCE: Safe to clear input box and attachments
+        setDirectInputMessage('');
+        setReplyingToMessage(null);
+        setDirectAttachment(null);
         setDirectSendSuccess(true);
         setTimeout(() => setDirectSendSuccess(false), 1200);
         setDirectMessages(prev => {
@@ -900,7 +902,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           return updated;
         });
       } else {
-        setMessageSendError(res.error?.message || 'Failed to deliver message. Tap retry below.');
+        // PRESERVE INPUT TEXT ON FAILURE
+        setMessageSendError(res.error?.message || 'Failed to deliver message. Your text has been preserved. Tap retry below.');
         setDirectMessages(prev => {
           const updated = prev.map(m => m.id === tempId ? { ...m, status: 'failed' as const } : m);
           setCachedConversationMessages(selectedConvId, updated);
@@ -908,7 +911,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         });
       }
     } catch (err: any) {
-      setMessageSendError(err.message || 'Error delivering message. Tap retry below.');
+      // PRESERVE INPUT TEXT ON EXCEPTION
+      setMessageSendError(err.message || 'Error delivering message. Your text has been preserved. Tap retry below.');
       setDirectMessages(prev => {
         const updated = prev.map(m => m.id === tempId ? { ...m, status: 'failed' as const } : m);
         setCachedConversationMessages(selectedConvId, updated);

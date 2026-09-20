@@ -127,7 +127,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
       }, 150);
     };
 
-    // Subscribe to realtime updates for this faculty member
+    // Subscribe to realtime updates strictly scoped for this faculty member
     const channel = supabase
       .channel(`faculty-dashboard-${facultyId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries', filter: `faculty_id=eq.${facultyId}` }, () => {
@@ -138,12 +138,6 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         refreshCoordinatorAssignments(facultyId);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions', filter: `faculty_id=eq.${facultyId}` }, () => {
-        debouncedLoad();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
-        debouncedLoad();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
         debouncedLoad();
       })
       .subscribe();

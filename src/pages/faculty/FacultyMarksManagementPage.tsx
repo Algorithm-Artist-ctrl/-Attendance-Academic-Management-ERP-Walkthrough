@@ -406,6 +406,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
   isSavingRef.current = isSaving;
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [notificationToast, setNotificationToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const prevAssessmentIdRef = useRef<string>('');
@@ -603,6 +604,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     try {
       setIsSaving(true);
+      setSaveStatus('saving');
       const studentMarksPayload: Array<{
         studentId: string;
         marksObtained: number;
@@ -651,21 +653,24 @@ export const FacultyMarksManagementPage: React.FC = () => {
       }
 
       setIsDirty(false);
+      setSaveStatus('saved');
+      setIsPublishModalOpen(false);
       setNotificationToast({
         type: 'success',
         message: publishMode === 'published' 
           ? `Marks successfully PUBLISHED! Scores are now visible on student dashboards.` 
           : `Marks saved securely as DRAFT (hidden from students).`
       });
+      setTimeout(() => setSaveStatus('idle'), 2500);
     } catch (err: any) {
       console.error('Save marks error:', err);
+      setSaveStatus('error');
       setNotificationToast({
         type: 'error',
         message: err?.message || 'Failed to save marks. Please check your network and try again.'
       });
     } finally {
       setIsSaving(false);
-      setIsPublishModalOpen(false);
     }
   };
 
@@ -1448,14 +1453,23 @@ export const FacultyMarksManagementPage: React.FC = () => {
             size="sm"
             onClick={() => handleSaveMarks('draft')}
             disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
-            className="border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl font-bold shadow-xs"
+            className={clsx(
+              "rounded-xl font-bold shadow-xs transition-all",
+              saveStatus === 'saved' && "border-emerald-300 bg-emerald-50 text-emerald-800",
+              saveStatus === 'error' && "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
+              saveStatus !== 'saved' && saveStatus !== 'error' && "border-slate-300 hover:bg-slate-50 text-slate-700"
+            )}
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 mr-1.5 animate-spin text-slate-600" />
+            ) : saveStatus === 'saved' ? (
+              <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
+            ) : saveStatus === 'error' ? (
+              <AlertCircle className="w-4 h-4 mr-1.5 text-rose-600" />
             ) : (
               <Save className="w-4 h-4 mr-1.5 text-slate-600" />
             )}
-            Save Draft
+            {saveStatus === 'saved' ? 'Draft Saved' : saveStatus === 'error' ? 'Save Failed — Retry' : 'Save Draft'}
           </Button>
 
           <Button
