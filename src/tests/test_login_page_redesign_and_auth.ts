@@ -28,10 +28,9 @@ async function runLoginVerificationTests() {
   assert(content.includes('with Technology'), 'LoginPage renders "with Technology"');
   assert(content.includes('A Smarter Campus for a Brighter Tomorrow'), 'LoginPage renders hero subtitle');
 
-  // Verify Quotations & Slices
-  assert(content.includes('Education Today, A Better Tomorrow'), 'LoginPage renders top-right institutional motto');
-  assert(content.includes('Together'), 'LoginPage renders "Together"');
-  assert(content.includes('for a Better Future'), 'LoginPage renders "for a Better Future"');
+  // Verify Clean Layout & Removed Clutter
+  assert(!content.includes('Education Today, A Better Tomorrow'), 'LoginPage cleanly removed top-right quote clutter as requested');
+  assert(!content.includes('clipPath'), 'LoginPage removed excessive geometric clipPath slices');
 
   // Verify Core Values Navigation
   assert(content.includes('LEARN'), 'LoginPage renders LEARN value');
