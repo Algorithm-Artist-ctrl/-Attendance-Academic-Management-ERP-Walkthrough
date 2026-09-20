@@ -71,6 +71,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     departments,
     corrections,
     students,
+    faculty,
+    classCoordinatorAssignments,
     courseAssignments,
     assignmentSubmissions,
     quizzes,
@@ -194,6 +196,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
   const sessionName = session?.name || 'Academic Session';
   const semTitle = sem?.name ? `${sem.name} Attendance Ratio` : 'Semester Attendance Ratio';
 
+  // Active Class Coordinator for Student's Section
+  const classCoordinator = useMemo(() => {
+    if (!currentStudent?.section_id) return null;
+    const activeAssignment = (classCoordinatorAssignments || []).find(
+      cca => cca.active && cca.section_id === currentStudent.section_id
+    );
+    const coordFacultyId = activeAssignment?.faculty_id || section?.class_coordinator_id;
+    if (!coordFacultyId) return null;
+
+    const fac = faculty.find(f => f.id === coordFacultyId) || (activeAssignment?.faculty as any);
+    if (!fac) return null;
+
+    const yrName = year?.name || (activeAssignment?.academic_year as any)?.name || 'Academic Year';
+    const secName = section?.name ? `Section ${section.name}` : 'Section Assigned';
+
+    return {
+      name: fac.full_name,
+      yearName: yrName,
+      sectionName: secName,
+    };
+  }, [currentStudent?.section_id, classCoordinatorAssignments, section, faculty, year]);
+
   // Today's Date in Asia/Kolkata (IST)
   const todayDateStr = getISTTodayDate();
   const todayDay = getISTDayOfWeek(todayDateStr);
@@ -219,7 +243,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
     <div className="space-y-6">
       {/* 1. WELCOME BANNER */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1 z-10">
+        <div className="space-y-1.5 z-10">
           <div className="flex items-center gap-2">
             <h1 className="font-serif-institutional text-2xl sm:text-3xl font-black text-[#0f172a] tracking-tight">
               Welcome back, {student?.full_name || user?.full_name || 'Student'} 👋
@@ -228,6 +252,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
           <p className="text-sm sm:text-[15px] text-[#475569] font-medium">
             Roll No. <strong className="text-[#0f172a] font-bold">{student?.roll_number || '—'}</strong> • {prog?.name || 'B.Tech'} <strong className="text-[#0f172a] font-bold">{branchName}</strong> • {year?.name || 'Academic Year'} • {section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(${section.room_number})` : ''}
           </p>
+          <div className="pt-0.5 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-[#334155] shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
+              Class Coordinator:{' '}
+              {classCoordinator ? (
+                <>
+                  <strong className="text-[#0f172a] font-bold">{classCoordinator.name}</strong>{' '}
+                  <span className="text-[#475569]">({classCoordinator.yearName} • {classCoordinator.sectionName})</span>
+                </>
+              ) : (
+                <span className="text-slate-500 font-medium italic">No coordinator assigned</span>
+              )}
+            </span>
+          </div>
         </div>
 
         <div className="z-10 flex items-center gap-3">

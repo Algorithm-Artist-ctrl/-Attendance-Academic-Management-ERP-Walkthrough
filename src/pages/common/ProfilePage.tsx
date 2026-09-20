@@ -669,6 +669,20 @@ export const ProfilePage: React.FC = () => {
                       className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Class Coordinator Assignment</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={
+                        coordinatedSections.length > 0
+                          ? coordinatedSections.map(cSec => `${cSec.year_name || 'Academic Year'} • Section ${cSec.name}${cSec.room_number ? ` (Room ${cSec.room_number})` : ''}`).join(', ')
+                          : 'No coordinator assignment'
+                      }
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
+                    />
+                  </div>
                 </>
               )}
             </div>
@@ -703,57 +717,74 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {/* 1.5 CLASS COORDINATOR ASSIGNMENTS (IF APPLICABLE) */}
       {/* ======================================================== */}
-      {coordinatedSections.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  OFFICIAL ACADEMIC ROLE
-                </span>
+      {role === 'faculty' && (
+        coordinatedSections.length > 0 ? (
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    OFFICIAL ACADEMIC ROLE
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2 mt-1">
+                  <GraduationCap className="w-5 h-5 text-slate-700" />
+                  Class Coordinator Assignments
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Official coordinator responsibility for complete section oversight and master timetable monitoring
+                </p>
               </div>
-              <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2 mt-1">
-                <GraduationCap className="w-5 h-5 text-slate-700" />
-                Class Coordinator Assignments
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                Official coordinator responsibility for complete section oversight and master timetable monitoring
-              </p>
+
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Coordinator Active
+              </span>
             </div>
 
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Coordinator Active
-            </span>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {coordinatedSections.map(cSec => {
+                const cStudents = students.filter(s => s.section_id === cSec.id && s.active);
+                const cLectures = timetable.filter(t => t.section_id === cSec.id && t.active);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {coordinatedSections.map(cSec => {
-              const cStudents = students.filter(s => s.section_id === cSec.id && s.active);
-              const cLectures = timetable.filter(t => t.section_id === cSec.id && t.active);
-
-              return (
-                <div key={cSec.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">Class Coordinator</span>
-                      <h4 className="text-sm font-bold text-slate-900 mt-0.5">
-                        {branchName} — {cSec.year_name || 'Academic Year'} — Section {cSec.name}
-                      </h4>
+                return (
+                  <div key={cSec.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">Class Coordinator</span>
+                        <h4 className="text-sm font-bold text-slate-900 mt-0.5">
+                          {branchName} — {cSec.year_name || 'Academic Year'} — Section {cSec.name}
+                        </h4>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-white border border-slate-200 text-slate-900 shadow-2xs">
+                        {cSec.room_number ? `Room ${cSec.room_number}` : `Section ${cSec.name}`}
+                      </span>
                     </div>
-                    <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-white border border-slate-200 text-slate-900 shadow-2xs">
-                      {cSec.room_number ? `Room ${cSec.room_number}` : `Section ${cSec.name}`}
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-200/80">
-                    <div>Enrolled Students: <strong className="text-slate-900 font-mono">{cStudents.length}</strong></div>
-                    <div>Master Classes: <strong className="text-slate-900 font-mono">{cLectures.length} / Week</strong></div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-200/80">
+                      <div>Enrolled Students: <strong className="text-slate-900 font-mono">{cStudents.length}</strong></div>
+                      <div>Master Classes: <strong className="text-slate-900 font-mono">{cLectures.length} / Week</strong></div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-slate-700" />
+                Class Coordinator Assignment
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-600">
+                Not Assigned
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 font-medium leading-relaxed">
+              Class Coordinator: <strong className="text-slate-900">No coordinator assignment</strong>. Coordinator roles are assigned by the Head of Department (HOD) or Super Administrator in the Faculty Directory.
+            </p>
+          </div>
+        )
       )}
 
       {/* ======================================================== */}

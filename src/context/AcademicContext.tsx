@@ -183,7 +183,13 @@ interface AcademicContextType {
     attachmentName?: string;
     attachmentType?: string;
     attachmentSize?: number;
+    replyToMessageId?: string | null;
   }) => Promise<{ data: Message | null; error: any }>;
+  editDirectMessage: (messageId: string, newContent: string) => Promise<{ data: Message | null; error: any }>;
+  unsendDirectMessage: (messageId: string) => Promise<{ data: Message | null; error: any }>;
+  deleteMessageForMe: (messageId: string) => Promise<{ success: boolean; error?: any }>;
+  clearConversationForMe: (conversationId: string) => Promise<{ success: boolean; error?: any }>;
+  markConversationUnread: (conversationId: string) => Promise<{ success: boolean; error?: any }>;
   getOrCreateConversation: (params: {
     facultyId?: string;
     studentId?: string;
@@ -316,6 +322,10 @@ interface AcademicContextType {
       section_id: string;
       subject_id: string;
     }>;
+    coordinatorAssignments?: Array<{
+      section_id: string;
+      academic_year_id?: string;
+    }>;
     actorName?: string;
   }) => Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }>;
   updateFaculty: (id: string, updates: Partial<Faculty>) => Promise<Faculty>;
@@ -328,8 +338,14 @@ interface AcademicContextType {
       section_id: string;
       subject_id: string;
     }>;
+    coordinatorAssignments?: Array<{
+      section_id: string;
+      academic_year_id?: string;
+    }>;
     actorName?: string;
   }) => Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }>;
+  assignCoordinator: (facultyId: string, sectionId: string, sessionId?: string, assignedBy?: string) => Promise<{ success: boolean; error?: string; replacedFacultyId?: string; replacedFacultyName?: string }>;
+  removeCoordinator: (facultyId: string, sectionId: string) => Promise<{ success: boolean; error?: string }>;
   setFacultyStatus: (facultyId: string, status: 'ACTIVE' | 'BLOCKED', reason?: string, actorName?: string) => Promise<Faculty>;
   checkFacultyHistoricalRecords: (facultyId: string) => Promise<{
     hasHistoricalData: boolean;
@@ -782,10 +798,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         // Enriched Corrections
         const enrichedCorrections: AttendanceCorrection[] = (data.corrections || []).map(c => {
-          const rec = enrichedRecords.find(r => r.id === c.attendance_record_id);
-          const matchedSession = rec?.session || enrichedSessions.find(s => s.id === rec?.attendance_session_id);
-          const matchedStudent = enrichedStudents.find(s => s.id === c.student_id);
-          const matchedReviewer = loadedFaculty.find(f => f.id === c.reviewed_by);
+          const rec = (c as any).record || enrichedRecords.find(r => r.id === c.attendance_record_id);
+          const matchedSession = rec?.session || (c as any).session || enrichedSessions.find(s => s.id === rec?.attendance_session_id);
+          const matchedStudent = (c as any).student || enrichedStudents.find(s => s.id === c.student_id);
+          const matchedReviewer = (c as any).reviewer || loadedFaculty.find(f => f.id === c.reviewed_by);
           return {
             ...c,
             record: rec,
@@ -995,10 +1011,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const curFaculty = facultyRef.current;
 
       const enrichedCorrections: AttendanceCorrection[] = rawCorrections.map(c => {
-        const rec = curRecords.find(r => r.id === c.attendance_record_id);
-        const matchedSession = rec?.session || curSessions.find(s => s.id === rec?.attendance_session_id);
-        const matchedStudent = curStudents.find(s => s.id === c.student_id);
-        const matchedReviewer = curFaculty.find(f => f.id === c.reviewed_by);
+        const rec = (c as any).record || curRecords.find(r => r.id === c.attendance_record_id);
+        const matchedSession = rec?.session || (c as any).session || curSessions.find(s => s.id === rec?.attendance_session_id);
+        const matchedStudent = (c as any).student || curStudents.find(s => s.id === c.student_id);
+        const matchedReviewer = (c as any).reviewer || curFaculty.find(f => f.id === c.reviewed_by);
         return {
           ...c,
           record: rec,
@@ -2260,10 +2276,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       section_id: string;
       subject_id: string;
     }>;
+    coordinatorAssignments?: Array<{
+      section_id: string;
+      academic_year_id?: string;
+    }>;
     actorName?: string;
   }) => {
     const res = await supabaseService.createFacultyWithAssignments(params);
-    await Promise.all([refreshFaculty(), refreshAssignments()]);
+    await Promise.all([refreshFaculty(), refreshAssignments(), refreshCoordinatorAssignments()]);
     return res;
   };
 
@@ -2282,10 +2302,26 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       section_id: string;
       subject_id: string;
     }>;
+    coordinatorAssignments?: Array<{
+      section_id: string;
+      academic_year_id?: string;
+    }>;
     actorName?: string;
   }) => {
     const res = await supabaseService.updateFacultyWithAssignments(params);
-    await Promise.all([refreshFaculty(), refreshAssignments()]);
+    await Promise.all([refreshFaculty(), refreshAssignments(), refreshCoordinatorAssignments()]);
+    return res;
+  };
+
+  const assignCoordinator = async (facultyId: string, sectionId: string, sessionId?: string, assignedBy?: string) => {
+    const res = await supabaseService.assignClassCoordinator(facultyId, sectionId, sessionId, assignedBy);
+    await refreshCoordinatorAssignments();
+    return res;
+  };
+
+  const removeCoordinator = async (facultyId: string, sectionId: string) => {
+    const res = await supabaseService.removeClassCoordinator(facultyId, sectionId);
+    await refreshCoordinatorAssignments();
     return res;
   };
 
@@ -2977,15 +3013,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 10. Filter Attendance Claims strictly for the assigned faculty
   const getFacultyCorrectionRequests = (facultyId: string): AttendanceCorrection[] => {
-    const myAssignments = assignments.filter(a => a.faculty_id === facultyId);
-    const myCoordAssignments = classCoordinatorAssignments.filter(c => c.faculty_id === facultyId && c.active);
+    const myAssignments = assignments.filter(a => a.faculty_id === facultyId && a.active);
 
     return corrections.filter(c => {
       // If already reviewed by this faculty
       if (c.reviewed_by === facultyId) return true;
 
-      const rec = c.record || attendanceRecords.find(r => r.id === c.attendance_record_id);
-      const sess = rec?.session || attendanceSessions.find(s => s.id === rec?.attendance_session_id);
+      const rec = (c as any).record || attendanceRecords.find(r => r.id === c.attendance_record_id);
+      const sess = rec?.session || (c as any).session || attendanceSessions.find(s => s.id === rec?.attendance_session_id);
 
       if (!sess) return false;
 
@@ -2997,11 +3032,6 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         a => a.subject_id === sess.subject_id && a.section_id === sess.section_id
       );
       if (isAssigned) return true;
-
-      // Match 3: Faculty is Class Coordinator for this section
-      const isCoordinator = myCoordAssignments.some(ca => ca.section_id === sess.section_id) ||
-                            sections.some(s => s.id === sess.section_id && s.class_coordinator_id === facultyId);
-      if (isCoordinator) return true;
 
       return false;
     });
@@ -3570,6 +3600,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     attachmentName?: string;
     attachmentType?: string;
     attachmentSize?: number;
+    replyToMessageId?: string | null;
   }) => {
     const res = await supabaseService.sendMessage(params);
     if (!res.error) {
@@ -3577,6 +3608,46 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     return res;
   }, [refreshConversations]);
+
+  const editDirectMessage = useCallback(async (messageId: string, newContent: string) => {
+    const res = await supabaseService.editMessage(messageId, newContent);
+    if (!res.error) {
+      await refreshConversations();
+    }
+    return res;
+  }, [refreshConversations]);
+
+  const unsendDirectMessage = useCallback(async (messageId: string) => {
+    const res = await supabaseService.unsendMessage(messageId);
+    if (!res.error) {
+      await refreshConversations();
+    }
+    return res;
+  }, [refreshConversations]);
+
+  const deleteMessageForMe = useCallback(async (messageId: string) => {
+    const res = await supabaseService.deleteMessageForMe(messageId);
+    return res;
+  }, []);
+
+  const clearConversationForMe = useCallback(async (conversationId: string) => {
+    const res = await supabaseService.clearConversationForMe(conversationId);
+    if (res.success) {
+      await refreshConversations();
+      refreshNotifications();
+    }
+    return res;
+  }, [refreshConversations, refreshNotifications]);
+
+  const markConversationUnread = useCallback(async (conversationId: string) => {
+    const res = await supabaseService.markConversationUnread(conversationId);
+    if (res.success) {
+      setConversations(prev =>
+        prev.map(c => (c.id === conversationId ? { ...c, marked_unread: true, unread_count: Math.max(c.unread_count || 0, 1) } : c))
+      );
+    }
+    return res;
+  }, []);
 
   const getOrCreateConversation = useCallback(async (params: {
     facultyId?: string;
@@ -3766,6 +3837,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchGroupMembers,
     fetchStudentProfile,
     sendMessage,
+    editDirectMessage,
+    unsendDirectMessage,
+    deleteMessageForMe,
+    clearConversationForMe,
+    markConversationUnread,
     getOrCreateConversation,
     markConversationRead,
     updateConversationStatus,
@@ -3835,6 +3911,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     createFacultyWithAssignments,
     updateFaculty,
     updateFacultyWithAssignments,
+    assignCoordinator,
+    removeCoordinator,
     setFacultyStatus,
     checkFacultyHistoricalRecords,
     safeDeleteFaculty,
@@ -3980,6 +4058,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     createFacultyWithAssignments,
     updateFaculty,
     updateFacultyWithAssignments,
+    assignCoordinator,
+    removeCoordinator,
     setFacultyStatus,
     checkFacultyHistoricalRecords,
     safeDeleteFaculty,
@@ -4027,6 +4107,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchGroupMembers,
     fetchStudentProfile,
     sendMessage,
+    editDirectMessage,
+    unsendDirectMessage,
+    deleteMessageForMe,
+    clearConversationForMe,
+    markConversationUnread,
     getOrCreateConversation,
     markConversationRead,
     updateConversationStatus,

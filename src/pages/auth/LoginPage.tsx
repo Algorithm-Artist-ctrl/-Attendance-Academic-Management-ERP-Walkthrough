@@ -11,6 +11,7 @@ import {
   Users, 
   FileText, 
   TrendingUp, 
+  Calendar,
   Loader2 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -62,31 +63,33 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden w-full flex flex-col justify-between bg-white select-none relative overflow-x-hidden">
+    <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden w-full flex flex-col justify-between bg-slate-50 select-none relative overflow-x-hidden">
       
       {/* ======================================================== */}
-      {/* 1. CAMPUS BACKGROUND PHOTO & FOCUSED SKY GRADIENT        */}
+      {/* 1. CAMPUS BACKGROUND PHOTO & RESPONSIVE OVERLAYS         */}
       {/* ======================================================== */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
           src={vctmCampusImage}
           alt="Vivekananda College of Technology & Management Campus"
-          className="w-full h-full object-cover object-[center_22%]"
+          className="w-full h-full object-cover object-[center_top] lg:object-[center_25%]"
           loading="eager"
         />
-        {/* Localized sky gradient strictly in upper-left sky (y < 25%): ensures crisp headline readability without washing out roofline, pediment, or facade */}
-        <div className="absolute top-0 left-0 w-[420px] max-w-[45%] h-[24%] bg-gradient-to-br from-white/70 via-white/20 to-transparent pointer-events-none" />
-        {/* Mobile wash for readability on small screen sizes */}
-        <div className="absolute inset-0 bg-white/45 lg:hidden pointer-events-none" />
+        {/* Desktop localized sky gradient (upper-left) */}
+        <div className="hidden lg:block absolute top-0 left-0 w-[480px] max-w-[48%] h-[28%] bg-gradient-to-br from-white/85 via-white/30 to-transparent pointer-events-none" />
+        {/* Mobile balanced backdrop overlay for readability while keeping the building visible */}
+        <div className="absolute inset-0 bg-slate-900/25 lg:hidden pointer-events-none" />
+        {/* Desktop subtle right-side contrast shadow */}
+        <div className="hidden lg:block absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-slate-900/10 pointer-events-none" />
       </div>
 
       {/* ======================================================== */}
-      {/* 2. TOP HEADER BAR                                        */}
+      {/* 2. DESKTOP HEADER BAR (Hidden on Mobile to Avoid Clutter)*/}
       {/* ======================================================== */}
-      <header className="relative z-20 w-full px-6 sm:px-10 lg:px-12 py-2 sm:py-2.5 shrink-0 bg-white/85 backdrop-blur-sm border-b border-slate-200/60 flex items-center justify-between">
+      <header className="hidden lg:flex relative z-20 w-full px-8 lg:px-12 py-2.5 shrink-0 bg-white/90 backdrop-blur-md border-b border-slate-200/70 items-center justify-between shadow-xs">
         {/* Left: Official College Logo & Institutional Branding */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center">
+          <div className="w-10 h-10 shrink-0 flex items-center justify-center">
             <img 
               src={vctmOfficialLogo} 
               alt="VCTM Official Emblem" 
@@ -95,21 +98,21 @@ export const LoginPage: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <div className="flex items-baseline gap-2">
-              <h1 className="font-serif-hero font-bold text-xl sm:text-2xl text-slate-900 tracking-wider leading-none">
+              <h1 className="font-serif-hero font-bold text-xl text-slate-900 tracking-wider leading-none">
                 VCTM ERP
               </h1>
-              <span className="hidden sm:inline-block text-[9px] font-bold text-slate-500 tracking-[0.25em]">
+              <span className="text-[9px] font-bold text-slate-500 tracking-[0.25em]">
                 ALIGARH
               </span>
             </div>
-            <span className="text-[11px] sm:text-xs text-slate-600 font-medium tracking-normal mt-0.5">
+            <span className="text-xs text-slate-600 font-medium tracking-normal mt-0.5">
               Vivekananda College of Technology & Management
             </span>
           </div>
         </div>
 
-        {/* Right: Core Institutional Values Navigation */}
-        <nav className="hidden lg:flex items-center gap-3.5 text-xs font-semibold text-slate-700 tracking-[0.25em] uppercase">
+        {/* Right: Institutional Values Navigation */}
+        <nav className="flex items-center gap-3 text-xs font-semibold text-slate-700 tracking-[0.25em] uppercase">
           <span>LEARN</span>
           <span className="text-slate-300 font-normal">|</span>
           <span>INNOVATE</span>
@@ -123,107 +126,122 @@ export const LoginPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. MAIN HERO & FLOATING LOGIN CARD                       */}
       {/* ======================================================== */}
-      <main className="relative z-20 flex-1 min-h-0 w-full px-6 sm:px-10 lg:px-12 max-w-[1780px] mx-auto flex flex-col lg:flex-row items-stretch justify-between gap-6 pt-2 sm:pt-3 pb-3 sm:pb-4">
+      <main className="relative z-20 flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-12 max-w-[1780px] mx-auto flex flex-col lg:flex-row items-center lg:items-stretch justify-center lg:justify-between gap-4 lg:gap-8 py-4 sm:py-6 lg:py-4">
         
-        {/* Left Column: Hero Text (Top-Left in Sky) & Feature Bar (Bottom-Left over Lawn) */}
-        <div className="flex-1 flex flex-col justify-between min-w-0 pr-0 lg:pr-6 h-full">
-          {/* Hero Headlines - Positioned strictly in the upper sky area */}
-          <div className="max-w-md lg:max-w-lg">
+        {/* Left Column (Desktop Only): Hero Text & Compact Information Strip */}
+        <div className="hidden lg:flex flex-1 flex-col justify-between min-w-0 pr-6 h-full">
+          {/* Hero Headlines (Positioned in upper sky) */}
+          <div className="max-w-lg pt-4">
             <h2 
               className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.04] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
-              style={{ fontSize: 'clamp(28px, 2.8vw, 46px)' }}
+              style={{ fontSize: 'clamp(32px, 3vw, 48px)' }}
             >
               Empowering <br />
               Education <span className="font-normal font-serif-hero text-slate-900">with Technology</span>
             </h2>
-            <p className="text-xs sm:text-sm lg:text-[15px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-1.5 max-w-md">
+            <p className="text-sm lg:text-[15px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-2 max-w-md">
               A Smarter Campus for a Brighter Tomorrow
             </p>
           </div>
 
-          {/* Bottom Floating Dark Feature Bar - Anchored strictly to bottom over green lawn, leaving entrance & facade fully visible */}
-          <div className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-2.5 sm:p-3 shadow-2xl border border-slate-700/60 mt-auto">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/60">
-              
-              {/* Feature 1 */}
-              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
-                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
-                  <GraduationCap className="w-3 h-3" />
+          {/* Compact Single Horizontal Feature Strip (Anchored to bottom over green lawn) */}
+          <div className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-xl py-2.5 px-4 shadow-xl border border-slate-700/60 mt-auto">
+            <div className="flex items-center justify-between divide-x divide-slate-700/60 text-xs font-semibold tracking-wide">
+              <div className="flex items-center gap-2 pr-3">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <GraduationCap className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-xs font-bold text-white leading-tight">Academic Management</span>
-                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Classes, Subjects & Timetable</span>
+                <span>ACADEMICS</span>
               </div>
-
-              {/* Feature 2 */}
-              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
-                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
-                  <Users className="w-3 h-3" />
+              <div className="flex items-center gap-2 px-3">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-xs font-bold text-white leading-tight">Student Information</span>
-                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Profiles, Records & Performance</span>
+                <span>ATTENDANCE</span>
               </div>
-
-              {/* Feature 3 */}
-              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
-                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
-                  <FileText className="w-3 h-3" />
+              <div className="flex items-center gap-2 px-3">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <Calendar className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-xs font-bold text-white leading-tight">Assignments & Grading</span>
-                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Sessional, Quizzes & Evaluations</span>
+                <span>TIMETABLE</span>
               </div>
-
-              {/* Feature 4 */}
-              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
-                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
-                  <TrendingUp className="w-3 h-3" />
+              <div className="flex items-center gap-2 pl-3">
+                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <FileText className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-xs font-bold text-white leading-tight">Attendance & Reports</span>
-                <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Real-time Tracking & Insights</span>
+                <span>ASSESSMENTS</span>
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* Right Column: Anchored to far right edge over rightmost walkway/trees */}
-        <div className="w-full lg:w-[380px] xl:w-[400px] shrink-0 flex items-center justify-end my-auto">
-          <div className="w-full max-w-[375px] sm:max-w-[385px] xl:max-w-[400px] bg-white/98 backdrop-blur-md rounded-2xl sm:rounded-[22px] p-4 sm:p-5 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.22)] border border-slate-200/90 relative overflow-hidden transition-all duration-300">
+        {/* Right Side / Mobile Center: Login Card Container */}
+        <div className="w-full lg:w-[410px] xl:w-[430px] shrink-0 flex flex-col items-center justify-center my-auto">
+          
+          {/* Mobile-Only Compact Brand Header (Positioned immediately above login card) */}
+          <div className="lg:hidden flex flex-col items-center text-center mb-3 sm:mb-4 px-2">
+            <div className="w-14 h-14 mb-1.5 flex items-center justify-center bg-white/95 rounded-2xl p-1.5 shadow-md border border-slate-200/80">
+              <img 
+                src={vctmOfficialLogo} 
+                alt="VCTM Official Emblem" 
+                className="w-full h-full object-contain drop-shadow-xs" 
+              />
+            </div>
+            <h1 className="font-serif-hero font-extrabold text-2xl text-slate-950 tracking-tight leading-tight drop-shadow-sm">
+              VCTM ERP
+            </h1>
+            <p className="text-xs font-semibold text-slate-800 tracking-wide mt-0.5 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+              Vivekananda College of Technology & Management
+            </p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[10px] font-bold tracking-[0.2em] text-slate-700 uppercase">
+                ALIGARH
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="inline-flex items-center text-[11px] font-semibold text-slate-700 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
+                Smart Campus. One ERP.
+              </span>
+            </div>
+          </div>
+
+          {/* Premium Login Card */}
+          <div className="w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[440px] bg-white rounded-[22px] sm:rounded-[24px] p-5 sm:p-6 lg:p-7 shadow-[0_12px_40px_-10px_rgba(15,23,42,0.22)] border border-slate-200/90 relative overflow-hidden transition-all duration-300">
             
-            {/* Card Emblem & Title */}
-            <div className="text-center mb-3">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 mx-auto mb-1 flex items-center justify-center">
+            {/* Desktop Card Header (Hidden on mobile where compact brand header is rendered above) */}
+            <div className="hidden lg:block text-center mb-4">
+              <div className="w-12 h-12 mx-auto mb-1.5 flex items-center justify-center">
                 <img 
                   src={vctmOfficialLogo} 
                   alt="VCTM Emblem" 
-                  className="w-full h-full object-contain drop-shadow-sm" 
+                  className="w-full h-full object-contain drop-shadow-xs" 
                 />
               </div>
-              <h3 className="font-serif-hero font-bold text-lg sm:text-xl text-slate-900 tracking-wider">
+              <h3 className="font-serif-hero font-bold text-xl text-slate-900 tracking-wider">
                 VCTM ERP
               </h3>
-              <p className="text-[11px] sm:text-xs text-slate-700 font-medium mt-0.5">
+              <p className="text-xs text-slate-700 font-medium mt-0.5">
                 Vivekananda College of Technology & Management
               </p>
-              <div className="flex items-center justify-center gap-2 mt-0.5 text-[9px] font-bold text-slate-600 tracking-[0.25em]">
+              <div className="flex items-center justify-center gap-2 mt-1 text-[9px] font-bold text-slate-600 tracking-[0.25em]">
                 <span className="h-px w-5 bg-slate-300"></span>
                 <span>ALIGARH</span>
                 <span className="h-px w-5 bg-slate-300"></span>
               </div>
             </div>
 
-            {/* Role Selection Tabs (Student / Faculty / Admin) */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-50/90 p-1 rounded-xl mb-3 border border-slate-200/80 text-xs">
+            {/* Role Selection Tabs (Student / Faculty-HOD / Admin) */}
+            <div className="grid grid-cols-3 gap-1 bg-slate-100/90 p-1 rounded-xl mb-4 border border-slate-200">
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('student')}
                 className={clsx(
-                  'py-1.5 px-1 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1',
+                  'h-11 px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1.5 min-h-[44px]',
                   activeRoleTab === 'student'
-                    ? 'bg-[#111827] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
+                    ? 'bg-[#0f172a] text-white shadow-sm font-bold'
+                    : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
                 )}
               >
-                <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                <GraduationCap className="w-4 h-4 shrink-0" />
                 <span>Student</span>
               </button>
 
@@ -231,44 +249,44 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('faculty')}
                 className={clsx(
-                  'py-1.5 px-1 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1',
+                  'h-11 px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1.5 min-h-[44px]',
                   activeRoleTab === 'faculty'
-                    ? 'bg-[#111827] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
+                    ? 'bg-[#0f172a] text-white shadow-sm font-bold'
+                    : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
                 )}
               >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span>Faculty / HOD</span>
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="truncate">Faculty / HOD</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('admin')}
                 className={clsx(
-                  'py-1.5 px-1 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1',
+                  'h-11 px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1.5 min-h-[44px]',
                   activeRoleTab === 'admin'
-                    ? 'bg-[#111827] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
+                    ? 'bg-[#0f172a] text-white shadow-sm font-bold'
+                    : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
                 )}
               >
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <ShieldCheck className="w-4 h-4 shrink-0" />
                 <span>Admin</span>
               </button>
             </div>
 
-            {/* Error Message Banner */}
+            {/* Error Message Alert */}
             {(localError || error) && (
-              <div className="mb-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600" />
-                <span className="font-medium">{localError || error}</span>
+              <div className="mb-3.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-2.5 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                <span className="font-semibold">{localError || error}</span>
               </div>
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
-              {/* College ID / Faculty ID Input */}
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
+              {/* College ID / Roll Number Input */}
               <div>
-                <label className="block text-xs sm:text-sm font-bold text-[#0f172a] mb-1">
+                <label className="block text-xs sm:text-sm font-bold text-[#0f172a] mb-1.5">
                   {activeRoleTab === 'student' 
                     ? 'College Roll Number' 
                     : activeRoleTab === 'faculty' 
@@ -276,8 +294,8 @@ export const LoginPage: React.FC = () => {
                     : 'Admin Identifier / Email'}
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#475569]">
-                    <User className="w-3.5 h-3.5" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <User className="w-4 h-4" />
                   </div>
                   <input
                     type="text"
@@ -288,31 +306,31 @@ export const LoginPage: React.FC = () => {
                       activeRoleTab === 'student' 
                         ? 'Enter roll number (e.g. 210123)' 
                         : activeRoleTab === 'faculty' 
-                        ? 'Enter your college ID / faculty ID' 
-                        : 'Enter admin ID/email'
+                        ? 'Enter college ID / faculty email' 
+                        : 'Enter admin ID / email'
                     }
-                    className="w-full pl-8.5 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl text-[#0f172a] font-semibold placeholder:text-[#475569] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full h-[52px] pl-10 pr-3.5 py-3 text-sm bg-white border border-[#e2e8f0] rounded-xl text-[#0f172a] font-semibold placeholder:text-[#64748b] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                 </div>
               </div>
 
               {/* Password Input */}
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs sm:text-sm font-bold text-[#0f172a]">
                     Password
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(true)}
-                    className="text-xs font-bold text-[#0f172a] hover:underline transition-colors cursor-pointer"
+                    className="text-xs font-bold text-[#0f172a] hover:underline transition-colors cursor-pointer py-1"
                   >
                     Forgot Password?
                   </button>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#475569]">
-                    <Lock className="w-3.5 h-3.5" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Lock className="w-4 h-4" />
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -320,25 +338,25 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-8.5 pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl text-[#0f172a] font-semibold placeholder:text-[#475569] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full h-[52px] pl-10 pr-12 py-3 text-sm bg-white border border-[#e2e8f0] rounded-xl text-[#0f172a] font-semibold placeholder:text-[#64748b] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[#475569] hover:text-[#0f172a] transition-colors cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-[#0f172a] transition-colors cursor-pointer min-w-[44px] justify-center"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               {/* Submit Button */}
-              <div className="pt-0.5">
+              <div className="pt-1">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full h-[52px] px-4 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-sm sm:text-base transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -355,19 +373,15 @@ export const LoginPage: React.FC = () => {
               </div>
             </form>
 
-            {/* Bottom Helper Note inside Card */}
-            <div className="mt-3 pt-2 border-t border-slate-100 text-center">
-              <div className="flex items-center justify-center gap-2">
-                <span className="h-px w-4 bg-slate-300"></span>
-                <p className="text-[10px] sm:text-[11px] text-[#334155] font-medium leading-relaxed max-w-xs">
-                  {activeRoleTab === 'student' 
-                    ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
-                    : activeRoleTab === 'faculty' 
-                    ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
-                    : 'Access institutional administration, department oversight, and academic records.'}
-                </p>
-                <span className="h-px w-4 bg-slate-300"></span>
-              </div>
+            {/* Helper Note inside Card */}
+            <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+              <p className="text-[11px] text-[#334155] font-medium leading-relaxed max-w-xs mx-auto">
+                {activeRoleTab === 'student' 
+                  ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
+                  : activeRoleTab === 'faculty' 
+                  ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
+                  : 'Access institutional administration, department oversight, and academic records.'}
+              </p>
             </div>
           </div>
         </div>
@@ -377,15 +391,15 @@ export const LoginPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 4. PAGE FOOTER                                           */}
       {/* ======================================================== */}
-      <footer className="relative z-20 w-full px-6 sm:px-10 lg:px-12 py-1.5 sm:py-2 shrink-0 border-t border-slate-200/70 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-600">
-        <p className="text-center sm:text-left">
+      <footer className="relative z-20 w-full px-4 sm:px-8 lg:px-12 py-2 sm:py-2.5 shrink-0 border-t border-slate-200/80 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-600">
+        <p className="text-center sm:text-left font-medium">
           © 2026 Vivekananda College of Technology & Management, Aligarh. All Rights Reserved.
         </p>
 
-        <div className="flex items-center gap-2 text-slate-500">
-          <span className="hidden sm:inline-block h-px w-8 bg-slate-300"></span>
+        <div className="flex items-center gap-2 text-slate-500 font-medium">
+          <span className="hidden sm:inline-block h-px w-6 bg-slate-300"></span>
           <span>
-            Designed & Developed by <strong className="text-slate-900 font-semibold">Tarun Kushwah</strong>
+            Designed & Developed by <strong className="text-[#0f172a] font-bold">Tarun Kushwah</strong>
           </span>
         </div>
       </footer>

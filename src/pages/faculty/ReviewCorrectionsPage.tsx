@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RotateCcw, 
   Check, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import { supabase } from '../../lib/supabase/supabaseClient';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { clsx } from 'clsx';
@@ -31,6 +32,8 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
     getFacultyCorrectionRequests, 
     corrections, 
     reviewCorrectionRequest,
+    refreshCorrections,
+    refreshNotifications,
     attendanceRecords,
     attendanceSessions,
     subjects,
@@ -48,6 +51,25 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
          (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
   ) || user?.faculty;
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';
+
+  useEffect(() => {
+    refreshCorrections();
+    refreshNotifications();
+
+    const channel = supabase
+      .channel('vctm-faculty-review-corrections')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
+        refreshCorrections();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        refreshNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshCorrections, refreshNotifications]);
 
   // Filter requests strictly assigned to this faculty (or department-wide for HOD, or all for admin)
   const myClaims = React.useMemo(() => {
@@ -238,11 +260,11 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
             {/* MOBILE VIEW: Touch-Friendly Claim Cards */}
             <div className="space-y-3 md:hidden">
               {currentList.map((item) => {
-                const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
-                const session = record?.session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                const record = (item as any).record || attendanceRecords.find(r => r.id === item.attendance_record_id);
+                const session = record?.session || (item as any).session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
                 const sub = session?.subject || subjects.find(s => s.id === session?.subject_id);
                 const sec = session?.section || sections.find(s => s.id === session?.section_id);
-                const stud = item.student || students.find(s => s.id === item.student_id);
+                const stud = (item as any).student || students.find(s => s.id === item.student_id);
                 const isProcessing = processingId === item.id;
 
                 return (
@@ -338,11 +360,11 @@ export const ReviewCorrectionsPage: React.FC<ReviewCorrectionsPageProps> = ({ fo
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {currentList.map((item) => {
-                      const record = item.record || attendanceRecords.find(r => r.id === item.attendance_record_id);
-                      const session = record?.session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
+                      const record = (item as any).record || attendanceRecords.find(r => r.id === item.attendance_record_id);
+                      const session = record?.session || (item as any).session || attendanceSessions.find(s => s.id === record?.attendance_session_id);
                       const sub = session?.subject || subjects.find(s => s.id === session?.subject_id);
                       const sec = session?.section || sections.find(s => s.id === session?.section_id);
-                      const stud = item.student || students.find(s => s.id === item.student_id);
+                      const stud = (item as any).student || students.find(s => s.id === item.student_id);
 
                       const isProcessing = processingId === item.id;
 

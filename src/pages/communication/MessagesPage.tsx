@@ -10,6 +10,7 @@ import {
   ArrowLeft, 
   Plus, 
   ChevronDown, 
+  ChevronUp,
   Clock, 
   Calendar, 
   GraduationCap, 
@@ -31,7 +32,15 @@ import {
   Lock,
   Unlock,
   Building2,
-  CheckCircle2
+  CheckCircle2,
+  MoreVertical,
+  Edit2,
+  Trash2,
+  RotateCcw,
+  CornerUpLeft,
+  Copy,
+  Mail,
+  Eraser
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -89,7 +98,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     activeGroupId,
     setActiveGroupId,
     sendGroupMessage,
-    markGroupRead
+    markGroupRead,
+    editDirectMessage,
+    unsendDirectMessage,
+    deleteMessageForMe,
+    clearConversationForMe,
+    markConversationUnread
   } = useAcademic();
 
   const role = user?.role;
@@ -147,9 +161,42 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   // Mobile layout state
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
 
+  // Migration 039 Premium messaging controls state
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [unsendModalMsg, setUnsendModalMsg] = useState<Message | null>(null);
+  const [isUnsending, setIsUnsending] = useState(false);
+  const [deleteForMeModalMsg, setDeleteForMeModalMsg] = useState<Message | null>(null);
+  const [isDeletingForMe, setIsDeletingForMe] = useState(false);
+  const [isClearConvModalOpen, setIsClearConvModalOpen] = useState(false);
+  const [isClearingConv, setIsClearingConv] = useState(false);
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+
+  // In-conversation message search
+  const [isSearchingConv, setIsSearchingConv] = useState(false);
+  const [convSearchQuery, setConvSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Toast feedback
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const directFileInputRef = useRef<HTMLInputElement>(null);
+  const directInputRef = useRef<HTMLInputElement>(null);
 
   // Deep linking effects for external navigation or notification clicks
   useEffect(() => {
@@ -302,9 +349,21 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           if (!isMounted) return;
           const newMsg = payload.new as Message;
           if (newMsg && newMsg.id) {
+            // If deleted for current user, ignore
+            if (newMsg.deleted_by_users && user?.id && newMsg.deleted_by_users.includes(user.id)) {
+              return;
+            }
             setDirectMessages(prev => {
               if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
+              const optIndex = prev.findIndex(
+                m => m.status === 'sending' && m.message === newMsg.message && m.sender_user_id === newMsg.sender_user_id
+              );
+              if (optIndex !== -1) {
+                const updated = [...prev];
+                updated[optIndex] = { ...newMsg, status: 'sent' };
+                return updated;
+              }
+              return [...prev, { ...newMsg, status: 'sent' }];
             });
             markConversationRead(selectedConvId);
           } else {
@@ -316,20 +375,36 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConvId}` },
+        async (payload) => {
+          if (!isMounted) return;
+          const updatedMsg = payload.new as Message;
+          if (updatedMsg && updatedMsg.id) {
+            // If message was deleted for this user
+            if (updatedMsg.deleted_by_users && user?.id && updatedMsg.deleted_by_users.includes(user.id)) {
+              setDirectMessages(prev => prev.filter(m => m.id !== updatedMsg.id));
+              return;
+            }
+            setDirectMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg } : m));
+          }
+        }
+      )
       .subscribe();
 
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedConvId, markConversationRead]);
+  }, [selectedConvId, markConversationRead, user?.id]);
 
   // Auto-scroll on direct messages
   useEffect(() => {
-    if (activeTab === 'DIRECT') {
+    if (activeTab === 'DIRECT' && !isSearchingConv) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [directMessages, activeTab]);
+  }, [directMessages, activeTab, isSearchingConv]);
 
   // Selected Group Object
   const selectedGroup = useMemo(() => {
@@ -340,6 +415,50 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const selectedConversation = useMemo(() => {
     return conversations.find(c => c.id === selectedConvId) || null;
   }, [conversations, selectedConvId]);
+
+  // Matching message IDs for In-Conversation Search
+  const matchingDirectMsgIds = useMemo(() => {
+    if (!convSearchQuery.trim()) return [];
+    const q = convSearchQuery.toLowerCase();
+    return directMessages
+      .filter(m => !m.is_unsent && m.message.toLowerCase().includes(q))
+      .map(m => m.id);
+  }, [directMessages, convSearchQuery]);
+
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [convSearchQuery]);
+
+  const handlePrevMatch = () => {
+    if (matchingDirectMsgIds.length === 0) return;
+    setCurrentMatchIndex(prev => (prev > 0 ? prev - 1 : matchingDirectMsgIds.length - 1));
+  };
+
+  const handleNextMatch = () => {
+    if (matchingDirectMsgIds.length === 0) return;
+    setCurrentMatchIndex(prev => (prev < matchingDirectMsgIds.length - 1 ? prev + 1 : 0));
+  };
+
+  useEffect(() => {
+    if (matchingDirectMsgIds.length > 0 && matchingDirectMsgIds[currentMatchIndex]) {
+      const targetId = matchingDirectMsgIds[currentMatchIndex];
+      const el = document.getElementById(`msg-${targetId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentMatchIndex, matchingDirectMsgIds]);
+
+  const handleScrollToMessage = (messageId: string) => {
+    const el = document.getElementById(`msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(messageId);
+      setTimeout(() => {
+        setHighlightedMsgId(null);
+      }, 2000);
+    }
+  };
 
   // Filtered Groups
   const filteredGroups = useMemo(() => {
@@ -379,7 +498,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
       const matchStatus = 
         directStatusFilter === 'ALL' || 
-        (directStatusFilter === 'UNREAD' ? (c.unread_count && c.unread_count > 0) : c.status === directStatusFilter);
+        (directStatusFilter === 'UNREAD' ? ((c.unread_count && c.unread_count > 0) || !!c.marked_unread) : c.status === directStatusFilter);
 
       const matchCategory = directCategoryFilter === 'ALL' || c.category === directCategoryFilter;
 
@@ -393,7 +512,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   }, [messageGroups]);
 
   const totalDirectUnread = useMemo(() => {
-    return conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
+    return conversations.reduce((acc, c) => acc + (c.unread_count || (c.marked_unread ? 1 : 0)), 0);
   }, [conversations]);
 
   // Handle Send Group Message
@@ -437,38 +556,195 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
-  // Handle Send Direct Message
+  // Handle Send Direct Message with Optimistic UI & Reply
   const handleSendDirectMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedConvId || !directInputMessage.trim() || directSending) return;
+    if (!selectedConvId || !selectedConversation || !directInputMessage.trim() || directSending) return;
 
+    const messageText = directInputMessage.trim();
+    const tempId = `temp-${Date.now()}`;
+    const replyId = replyingToMessage?.id || null;
+    const replyingSnapshot = replyingToMessage ? {
+      id: replyingToMessage.id,
+      message: replyingToMessage.message,
+      sender_user_id: replyingToMessage.sender_user_id,
+      sender_role: replyingToMessage.sender_role,
+      sender_name: replyingToMessage.sender_name,
+      is_unsent: replyingToMessage.is_unsent,
+    } : null;
+
+    const tempMsg: Message = {
+      id: tempId,
+      conversation_id: selectedConvId,
+      sender_user_id: user?.id || '',
+      receiver_user_id: isStudent ? selectedConversation.faculty_id : selectedConversation.student_id,
+      student_id: selectedConversation.student_id,
+      faculty_id: selectedConversation.faculty_id,
+      sender_role: (role as any) || 'faculty',
+      message: messageText,
+      attachment_url: directAttachment?.dataUrl,
+      attachment_name: directAttachment?.file.name,
+      attachment_type: directAttachment?.file.type,
+      attachment_size: directAttachment?.file.size,
+      reply_to_message_id: replyId,
+      reply_to: replyingSnapshot,
+      created_at: new Date().toISOString(),
+      status: 'sending'
+    };
+
+    // Optimistically add message to thread immediately
+    setDirectMessages(prev => [...prev, tempMsg]);
+    setDirectInputMessage('');
+    setReplyingToMessage(null);
+    setDirectAttachment(null);
     setDirectSending(true);
     setMessageSendError(null);
+
     try {
       const res = await sendMessage({
         conversationId: selectedConvId,
-        message: directInputMessage.trim(),
-        attachmentUrl: directAttachment?.dataUrl,
-        attachmentName: directAttachment?.file.name,
-        attachmentType: directAttachment?.file.type,
-        attachmentSize: directAttachment?.file.size,
+        message: messageText,
+        attachmentUrl: tempMsg.attachment_url || undefined,
+        attachmentName: tempMsg.attachment_name || undefined,
+        attachmentType: tempMsg.attachment_type || undefined,
+        attachmentSize: tempMsg.attachment_size || undefined,
+        replyToMessageId: replyId,
       });
 
-      if (!res.error) {
-        setDirectInputMessage('');
-        setDirectAttachment(null);
-        setMessageSendError(null);
+      if (!res.error && res.data) {
         setDirectSendSuccess(true);
         setTimeout(() => setDirectSendSuccess(false), 1200);
-        const updated = await supabaseService.fetchConversationMessages(selectedConvId);
-        setDirectMessages(updated);
+        setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...res.data!, reply_to: replyingSnapshot, status: 'sent' } : m));
       } else {
         setMessageSendError(res.error?.message || 'Failed to send direct message. Please check connection and retry.');
+        setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
       }
     } catch (err: any) {
       setMessageSendError(err.message || 'Error sending message. Your text has been preserved.');
+      setDirectMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
     } finally {
       setDirectSending(false);
+    }
+  };
+
+  // Handle Save Edit
+  const handleSaveEdit = async (msgId: string) => {
+    if (!editingText.trim() || isSavingEdit) return;
+    setIsSavingEdit(true);
+    const trimmed = editingText.trim();
+    try {
+      setDirectMessages(prev => prev.map(m => m.id === msgId ? { ...m, message: trimmed, edited_at: new Date().toISOString() } : m));
+      setEditingMsgId(null);
+      showToast('Message updated');
+
+      const res = await editDirectMessage(msgId, trimmed);
+      if (res.error) {
+        showToast('Failed to edit message');
+        if (selectedConvId) {
+          const fresh = await supabaseService.fetchConversationMessages(selectedConvId);
+          setDirectMessages(fresh);
+        }
+      }
+    } catch (err) {
+      showToast('Failed to update message');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Handle Confirm Unsend
+  const handleConfirmUnsend = async () => {
+    if (!unsendModalMsg || isUnsending) return;
+    setIsUnsending(true);
+    const msgId = unsendModalMsg.id;
+    try {
+      setDirectMessages(prev => prev.map(m => m.id === msgId ? {
+        ...m,
+        message: 'Message unsent',
+        is_unsent: true,
+        unsent_at: new Date().toISOString(),
+        attachment_url: null,
+        attachment_name: null,
+        attachment_type: null,
+        attachment_size: null,
+      } : m));
+      setUnsendModalMsg(null);
+      showToast('Message unsent');
+
+      const res = await unsendDirectMessage(msgId);
+      if (res.error) {
+        showToast('Failed to unsend message');
+        if (selectedConvId) {
+          const fresh = await supabaseService.fetchConversationMessages(selectedConvId);
+          setDirectMessages(fresh);
+        }
+      }
+    } catch (err) {
+      showToast('Failed to unsend message');
+    } finally {
+      setIsUnsending(false);
+    }
+  };
+
+  // Handle Confirm Delete For Me
+  const handleConfirmDeleteForMe = async () => {
+    if (!deleteForMeModalMsg || isDeletingForMe) return;
+    setIsDeletingForMe(true);
+    const msgId = deleteForMeModalMsg.id;
+    try {
+      setDirectMessages(prev => prev.filter(m => m.id !== msgId));
+      setDeleteForMeModalMsg(null);
+      showToast('Message deleted for you');
+
+      const res = await deleteMessageForMe(msgId);
+      if (!res.success) {
+        showToast('Failed to delete message');
+        if (selectedConvId) {
+          const fresh = await supabaseService.fetchConversationMessages(selectedConvId);
+          setDirectMessages(fresh);
+        }
+      }
+    } catch (err) {
+      showToast('Failed to delete message');
+    } finally {
+      setIsDeletingForMe(false);
+    }
+  };
+
+  // Handle Confirm Clear Conversation
+  const handleConfirmClearConversation = async () => {
+    if (!selectedConvId || isClearingConv) return;
+    setIsClearingConv(true);
+    try {
+      setDirectMessages([]);
+      setIsClearConvModalOpen(false);
+      setHeaderMenuOpen(false);
+      showToast('Conversation cleared');
+
+      const res = await clearConversationForMe(selectedConvId);
+      if (!res.success) {
+        showToast('Failed to clear conversation');
+        const fresh = await supabaseService.fetchConversationMessages(selectedConvId);
+        setDirectMessages(fresh);
+      }
+    } catch (err) {
+      showToast('Failed to clear conversation');
+    } finally {
+      setIsClearingConv(false);
+    }
+  };
+
+  // Handle Mark As Unread
+  const handleMarkConversationUnread = async (convId?: string) => {
+    const targetId = convId || selectedConvId;
+    if (!targetId) return;
+    setHeaderMenuOpen(false);
+    try {
+      await markConversationUnread(targetId);
+      showToast('Marked conversation as unread');
+      refreshConversations();
+    } catch (err) {
+      showToast('Failed to mark conversation unread');
     }
   };
 
@@ -502,8 +778,39 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     reader.readAsDataURL(file);
   };
 
+  // Helper to highlight matching text in message body
+  const renderHighlightedMessage = (text: string, msgId: string) => {
+    if (!convSearchQuery.trim() || !text.toLowerCase().includes(convSearchQuery.toLowerCase())) {
+      return text;
+    }
+    const isCurrentActive = matchingDirectMsgIds[currentMatchIndex] === msgId;
+    const escaped = convSearchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, idx) =>
+      part.toLowerCase() === convSearchQuery.toLowerCase() ? (
+        <mark
+          key={idx}
+          className={`${
+            isCurrentActive ? 'bg-amber-300 text-slate-900 font-bold ring-1 ring-amber-500' : 'bg-yellow-200 text-slate-900'
+          } rounded-xs px-0.5`}
+        >
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto p-2 sm:p-4 gap-3">
+    <div 
+      onClick={() => {
+        setActiveMenuMsgId(null);
+        setHeaderMenuOpen(false);
+      }}
+      className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto p-2 sm:p-4 gap-3"
+    >
       {/* Top Header Card */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
@@ -730,7 +1037,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               ) : (
                 filteredConversations.map((conv) => {
                   const isSelected = conv.id === selectedConvId;
-                  const hasUnread = (conv.unread_count || 0) > 0;
+                  const hasUnread = (conv.unread_count || 0) > 0 || !!conv.marked_unread;
                   const otherPerson = isStudent ? conv.faculty : conv.student;
                   return (
                     <div
@@ -738,6 +1045,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       onClick={() => {
                         setSelectedConvId(conv.id);
                         setMobileThreadOpen(true);
+                        markConversationRead(conv.id);
                       }}
                       className={`p-3.5 cursor-pointer transition-all border-l-4 ${
                         isSelected
@@ -776,7 +1084,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                           {hasUnread && (
                             <span className="px-1.5 py-0.2 text-[10px] font-bold bg-[#0f172a] text-white rounded-full shadow-xs">
-                              {conv.unread_count}
+                              {conv.unread_count && conv.unread_count > 0 ? conv.unread_count : '1'}
                             </span>
                           )}
                         </div>
@@ -1132,8 +1440,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Status Dropdown */}
-                  <div className="flex items-center gap-2">
+                  {/* Header Controls */}
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {loadingDirectMessages && (
                       <div className="flex items-center gap-1 text-[11px] text-slate-500 animate-pulse mr-1 font-medium">
                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1141,6 +1449,26 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       </div>
                     )}
 
+                    {/* Search in conversation toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSearchingConv(!isSearchingConv);
+                        if (isSearchingConv) {
+                          setConvSearchQuery('');
+                        }
+                      }}
+                      className={`p-2 rounded-xl transition-colors ${
+                        isSearchingConv
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                      title="Search in conversation"
+                    >
+                      <Search className="w-4 h-4" />
+                    </button>
+
+                    {/* Status badge */}
                     <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
                       selectedConversation.status === 'OPEN' ? 'bg-amber-50 border-amber-200 text-amber-800' :
                       selectedConversation.status === 'IN_PROGRESS' ? 'bg-blue-50 border-blue-200 text-blue-800' :
@@ -1149,8 +1477,115 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     }`}>
                       {selectedConversation.status}
                     </span>
+
+                    {/* Header three-dot menu */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHeaderMenuOpen(!headerMenuOpen);
+                        }}
+                        className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+                        title="Conversation settings"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {headerMenuOpen && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30 animate-in fade-in zoom-in-95 text-xs"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleMarkConversationUnread(selectedConversation.id)}
+                            className="w-full px-3.5 py-2 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-slate-500" />
+                            Mark as unread
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHeaderMenuOpen(false);
+                              setIsClearConvModalOpen(true);
+                            }}
+                            className="w-full px-3.5 py-2 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors border-t border-slate-100"
+                          >
+                            <Eraser className="w-3.5 h-3.5 text-rose-500" />
+                            Clear conversation
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* In-conversation Search Bar (Collapsible) */}
+                {isSearchingConv && (
+                  <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 shrink-0">
+                    <div className="flex-1 flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
+                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Search in conversation..."
+                        value={convSearchQuery}
+                        onChange={(e) => setConvSearchQuery(e.target.value)}
+                        autoFocus
+                        className="w-full text-xs text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none font-medium"
+                      />
+                      {convSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setConvSearchQuery('')}
+                          className="text-slate-400 hover:text-slate-600 p-0.5"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[11px] font-mono text-slate-500 font-medium whitespace-nowrap px-1">
+                        {convSearchQuery.trim()
+                          ? matchingDirectMsgIds.length > 0
+                            ? `${currentMatchIndex + 1} of ${matchingDirectMsgIds.length}`
+                            : '0 matches'
+                          : ''}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={matchingDirectMsgIds.length === 0}
+                        onClick={handlePrevMatch}
+                        className="p-1 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Previous match"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={matchingDirectMsgIds.length === 0}
+                        onClick={handleNextMatch}
+                        className="p-1 rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Next match"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSearchingConv(false);
+                          setConvSearchQuery('');
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors ml-1"
+                        title="Close search"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Direct Messages Thread */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[#f8fafc]">
@@ -1166,56 +1601,284 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   ) : (
                     directMessages.map((m) => {
                       const isMe = m.sender_user_id === user?.id;
+                      const isHighlighted = highlightedMsgId === m.id;
+                      const isSearchMatchActive = matchingDirectMsgIds[currentMatchIndex] === m.id;
+
+                      // Find reply quote data either attached on message or from thread
+                      const replyQuote = m.reply_to || (m.reply_to_message_id ? directMessages.find(x => x.id === m.reply_to_message_id) : null);
+
                       return (
                         <div
                           key={m.id}
-                          className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                          id={`msg-${m.id}`}
+                          className={`group relative flex flex-col ${isMe ? 'items-end' : 'items-start'} ${
+                            isHighlighted ? 'ring-2 ring-blue-500 ring-offset-2 rounded-2xl transition-all duration-300' : ''
+                          } ${isSearchMatchActive ? 'ring-2 ring-amber-400 ring-offset-2 rounded-2xl transition-all duration-300' : ''}`}
                         >
-                          <div className={`max-w-[85%] sm:max-w-md p-3 rounded-2xl text-xs leading-relaxed shadow-xs ${
-                            isMe 
-                              ? 'bg-[#0f172a] text-white font-normal rounded-tr-none' 
-                              : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
-                          }`}>
-                            <p className="whitespace-pre-wrap">{m.message}</p>
-                            {m.attachment_url && (() => {
-                              const isImg = isImageAttachment(m.attachment_url, m.attachment_type, m.attachment_name);
-                              return (
-                                <div className="mt-2 space-y-1.5">
-                                  {isImg && (
-                                    <div
-                                      onClick={() => setPreviewImageUrl(m.attachment_url || null)}
-                                      className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 max-w-xs hover:opacity-95 transition-opacity bg-slate-100 group relative"
+                          <div className={`relative flex items-center gap-1.5 max-w-full ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+                            {/* Hover Actions Menu Trigger */}
+                            <div className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0 ${
+                              activeMenuMsgId === m.id ? 'opacity-100' : ''
+                            }`}>
+                              {!m.is_unsent && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReplyingToMessage(m);
+                                    directInputRef.current?.focus();
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-lg transition-colors"
+                                  title="Reply"
+                                >
+                                  <CornerUpLeft className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuMsgId(activeMenuMsgId === m.id ? null : m.id);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/80 rounded-lg transition-colors"
+                                  title="More actions"
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Popover Menu */}
+                                {activeMenuMsgId === m.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute bottom-full mb-1 z-30 w-36 bg-white rounded-xl shadow-lg border border-slate-200 py-1 text-xs animate-in fade-in zoom-in-95 ${
+                                      isMe ? 'right-0' : 'left-0'
+                                    }`}
+                                  >
+                                    {!m.is_unsent && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setReplyingToMessage(m);
+                                            setActiveMenuMsgId(null);
+                                            directInputRef.current?.focus();
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <CornerUpLeft className="w-3.5 h-3.5 text-slate-500" />
+                                          Reply
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(m.message);
+                                            showToast('Message copied to clipboard');
+                                            setActiveMenuMsgId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <Copy className="w-3.5 h-3.5 text-slate-500" />
+                                          Copy text
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {isMe && !m.is_unsent && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingMsgId(m.id);
+                                            setEditingText(m.message);
+                                            setActiveMenuMsgId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                                          Edit
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setUnsendModalMsg(m);
+                                            setActiveMenuMsgId(null);
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left font-medium text-amber-700 hover:bg-amber-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                                          Unsend
+                                        </button>
+                                      </>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDeleteForMeModalMsg(m);
+                                        setActiveMenuMsgId(null);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors border-t border-slate-100"
                                     >
-                                      <img
-                                        src={m.attachment_url}
-                                        alt={m.attachment_name || 'Attachment'}
-                                        className="w-full max-h-52 object-cover object-center rounded-xl"
-                                      />
-                                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
-                                        <span className="px-2.5 py-1 bg-white/95 text-slate-900 rounded-lg text-[10px] flex items-center gap-1 font-semibold shadow-md">
-                                          <Eye className="w-3 h-3 text-slate-700" /> View Image
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div className={`p-1.5 rounded flex items-center justify-between gap-2 text-[10px] ${
-                                    isMe ? 'bg-white/10 text-white' : 'bg-slate-50 border border-slate-200 text-slate-800'
-                                  }`}>
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
-                                      <span className="truncate">{m.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
-                                    </div>
-                                    <a href={m.attachment_url} target="_blank" rel="noreferrer" download className="p-1 hover:bg-black/5 rounded transition-colors shrink-0">
-                                      <Download className="w-3.5 h-3.5" />
-                                    </a>
+                                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                      Delete for me
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Message Bubble Body */}
+                            <div className={`max-w-[85%] sm:max-w-md p-3 rounded-2xl text-xs leading-relaxed shadow-xs ${
+                              m.is_unsent
+                                ? isMe
+                                  ? 'bg-slate-800/70 border border-slate-700 text-slate-400 italic rounded-tr-none'
+                                  : 'bg-slate-100 border border-slate-200 text-slate-500 italic rounded-tl-none'
+                                : isMe 
+                                ? 'bg-[#0f172a] text-white font-normal rounded-tr-none' 
+                                : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
+                            }`}>
+                              {/* Replied Message Quote Box */}
+                              {replyQuote && !m.is_unsent && (
+                                <div
+                                  onClick={() => replyQuote.id && handleScrollToMessage(replyQuote.id)}
+                                  className={`mb-2 p-2 rounded-xl text-[11px] cursor-pointer border-l-4 transition-opacity hover:opacity-85 ${
+                                    isMe
+                                      ? 'bg-white/10 border-slate-400 text-slate-200'
+                                      : 'bg-slate-100 border-slate-700 text-slate-700'
+                                  }`}
+                                  title="Click to jump to message"
+                                >
+                                  <div className="font-bold text-[10px] mb-0.5 flex items-center gap-1">
+                                    <CornerUpLeft className="w-3 h-3 opacity-70" />
+                                    <span>{replyQuote.sender_name || (replyQuote.sender_user_id === user?.id ? 'You' : 'Participant')}</span>
+                                  </div>
+                                  <p className="truncate line-clamp-1 italic text-[11px]">
+                                    {replyQuote.is_unsent ? 'Original message was unsent' : replyQuote.message}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Unsent Message Placeholder */}
+                              {m.is_unsent ? (
+                                <div className="flex items-center gap-1.5">
+                                  <RotateCcw className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                                  <span>{isMe ? 'You unsent a message' : 'This message was unsent'}</span>
+                                </div>
+                              ) : editingMsgId === m.id ? (
+                                /* Inline Edit Form */
+                                <div className="p-1 space-y-2 w-full min-w-[240px]">
+                                  <textarea
+                                    value={editingText}
+                                    onChange={(e) => setEditingText(e.target.value)}
+                                    className="w-full text-xs p-2 rounded-xl border border-slate-300 text-slate-900 bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none font-medium"
+                                    rows={2}
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingMsgId(null);
+                                        setEditingText('');
+                                      }}
+                                      disabled={isSavingEdit}
+                                      className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEdit(m.id)}
+                                      disabled={isSavingEdit || !editingText.trim() || editingText.trim() === m.message}
+                                      className="px-3 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                                    >
+                                      {isSavingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                      Save
+                                    </button>
                                   </div>
                                 </div>
-                              );
-                            })()}
+                              ) : (
+                                /* Normal Message Body */
+                                <>
+                                  <p className="whitespace-pre-wrap">
+                                    {renderHighlightedMessage(m.message, m.id)}
+                                  </p>
+
+                                  {m.attachment_url && (() => {
+                                    const isImg = isImageAttachment(m.attachment_url, m.attachment_type, m.attachment_name);
+                                    return (
+                                      <div className="mt-2 space-y-1.5">
+                                        {isImg && (
+                                          <div
+                                            onClick={() => setPreviewImageUrl(m.attachment_url || null)}
+                                            className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 max-w-xs hover:opacity-95 transition-opacity bg-slate-100 group relative"
+                                          >
+                                            <img
+                                              src={m.attachment_url}
+                                              alt={m.attachment_name || 'Attachment'}
+                                              className="w-full max-h-52 object-cover object-center rounded-xl"
+                                            />
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                              <span className="px-2.5 py-1 bg-white/95 text-slate-900 rounded-lg text-[10px] flex items-center gap-1 font-semibold shadow-md">
+                                                <Eye className="w-3 h-3 text-slate-700" /> View Image
+                                              </span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className={`p-1.5 rounded flex items-center justify-between gap-2 text-[10px] ${
+                                          isMe ? 'bg-white/10 text-white' : 'bg-slate-50 border border-slate-200 text-slate-800'
+                                        }`}>
+                                          <div className="flex items-center gap-1.5 truncate">
+                                            {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
+                                            <span className="truncate">{m.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
+                                          </div>
+                                          <a href={m.attachment_url} target="_blank" rel="noreferrer" download className="p-1 hover:bg-black/5 rounded transition-colors shrink-0">
+                                            <Download className="w-3.5 h-3.5" />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <span className="text-[11px] text-[#475569] font-mono font-medium mt-1 px-1">
-                            {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+
+                          {/* Message Footer: Timestamp, Edited badge, Delivery / Read Status */}
+                          <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] font-mono ${
+                            isMe ? 'justify-end text-slate-500' : 'justify-start text-slate-500'
+                          }`}>
+                            <span>
+                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {m.edited_at && !m.is_unsent && (
+                              <span className="text-[10px] italic text-slate-400 font-sans">(edited)</span>
+                            )}
+                            {isMe && (
+                              <span className="inline-flex items-center ml-0.5">
+                                {m.status === 'sending' ? (
+                                  <span title="Sending...">
+                                    <Clock className="w-3 h-3 text-slate-400 animate-pulse" />
+                                  </span>
+                                ) : m.status === 'failed' ? (
+                                  <span title="Failed to send">
+                                    <AlertCircle className="w-3 h-3 text-rose-500" />
+                                  </span>
+                                ) : m.read_at ? (
+                                  <span title={`Read at ${new Date(m.read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}>
+                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                  </span>
+                                ) : (
+                                  <span title="Delivered">
+                                    <CheckCheck className="w-3.5 h-3.5 text-slate-400 opacity-70" />
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })
@@ -1225,6 +1888,29 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                 {/* Direct Message Composer */}
                 <form onSubmit={handleSendDirectMessage} className="p-3 border-t border-slate-200 bg-white space-y-2 shrink-0">
+                  {/* Replying-to Preview Banner */}
+                  {replyingToMessage && (
+                    <div className="flex items-center justify-between bg-slate-100/90 border-l-4 border-[#0f172a] px-3 py-1.5 rounded-r-xl text-xs animate-in fade-in">
+                      <div className="flex items-center gap-2 truncate">
+                        <CornerUpLeft className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                        <span className="font-bold text-slate-800 shrink-0">
+                          Replying to {replyingToMessage.sender_name || (replyingToMessage.sender_user_id === user?.id ? 'yourself' : 'Participant')}:
+                        </span>
+                        <span className="text-slate-600 truncate max-w-[260px] sm:max-w-md font-medium">
+                          {replyingToMessage.message}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingToMessage(null)}
+                        className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/80 transition-colors shrink-0"
+                        title="Cancel reply"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Error Alert if send fails */}
                   {messageSendError && (
                     <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 animate-in fade-in">
@@ -1267,7 +1953,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
                     <input
                       type="text"
-                      placeholder="Type a direct message..."
+                      ref={directInputRef}
+                      placeholder={replyingToMessage ? "Type your reply..." : "Type a direct message..."}
                       value={directInputMessage}
                       onChange={(e) => setDirectInputMessage(e.target.value)}
                       className="flex-1 text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
@@ -1370,6 +2057,116 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Unsend Message Confirmation Modal */}
+      {unsendModalMsg && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Unsend this message?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Everyone in this conversation will see that this message was removed. This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isUnsending}
+                onClick={() => setUnsendModalMsg(null)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isUnsending}
+                onClick={handleConfirmUnsend}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isUnsending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Unsend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete For Me Confirmation Modal */}
+      {deleteForMeModalMsg && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Delete message for you?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              This message will be removed from your view only. The other participant will still be able to see it.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isDeletingForMe}
+                onClick={() => setDeleteForMeModalMsg(null)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingForMe}
+                onClick={handleConfirmDeleteForMe}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isDeletingForMe ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Delete for Me
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Conversation Confirmation Modal */}
+      {isClearConvModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Clear entire conversation?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              This will hide all previous messages in this conversation from your view. The other participant will still have their full conversation history.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isClearingConv}
+                onClick={() => setIsClearConvModalOpen(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isClearingConv}
+                onClick={handleConfirmClearConversation}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isClearingConv ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Clear Conversation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 font-medium">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

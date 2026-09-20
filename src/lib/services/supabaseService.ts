@@ -405,7 +405,19 @@ export const supabaseService = {
   async fetchCorrections(limit = 200): Promise<AttendanceCorrection[]> {
     const { data, error } = await supabase
       .from('attendance_corrections')
-      .select('*')
+      .select(`
+        *,
+        student:students(*),
+        record:attendance_records(
+          *,
+          session:attendance_sessions(
+            *,
+            subject:subjects(*),
+            section:sections(*),
+            faculty:faculty(*)
+          )
+        )
+      `)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) {
@@ -1960,9 +1972,13 @@ export const supabaseService = {
       section_id: string;
       subject_id: string;
     }>;
+    coordinatorAssignments?: Array<{
+      section_id: string;
+      academic_year_id?: string;
+    }>;
     actorName?: string;
   }): Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }> {
-    const { faculty: facData, assignments: assignList, actorName = 'Administrator' } = params;
+    const { faculty: facData, assignments: assignList, coordinatorAssignments = [], actorName = 'Administrator' } = params;
 
     // 1. Validate employee code uniqueness
     const { data: existingCode } = await supabase
@@ -1999,6 +2015,13 @@ export const supabaseService = {
     });
 
     if (!rpcErr && rpcRes?.faculty_id) {
+      // Assign class coordinator roles if requested
+      if (coordinatorAssignments.length > 0) {
+        for (const coord of coordinatorAssignments) {
+          await this.assignClassCoordinator(rpcRes.faculty_id, coord.section_id);
+        }
+      }
+
       const { data: createdFac } = await supabase
         .from('faculty')
         .select('*')
@@ -2106,6 +2129,13 @@ export const supabaseService = {
       }
     }
 
+    // Assign coordinator roles if requested in fallback
+    if (coordinatorAssignments.length > 0) {
+      for (const coord of coordinatorAssignments) {
+        await this.assignClassCoordinator(createdFac.id, coord.section_id);
+      }
+    }
+
     // 7. Audit log
     try {
       await supabase.from('audit_logs').insert({
@@ -2143,9 +2173,13 @@ export const supabaseService = {
       section_id: string;
       subject_id: string;
     }>;
+    coordinatorAssignments?: Array<{
+      section_id: string;
+      academic_year_id?: string;
+    }>;
     actorName?: string;
   }): Promise<{ faculty: Faculty; assignments: FacultySubjectAssignment[] }> {
-    const { facultyId, updates, assignments: newAssignments, actorName = 'Administrator' } = params;
+    const { facultyId, updates, assignments: newAssignments, coordinatorAssignments, actorName = 'Administrator' } = params;
 
     // 1. Update faculty
     const { data: updatedFac, error: facErr } = await supabase
@@ -2253,7 +2287,25 @@ export const supabaseService = {
       finalAssignments = (refetched as FacultySubjectAssignment[]) || [];
     }
 
-    // 4. Audit log
+    // 4. Reconcile class coordinator assignments if provided
+    if (coordinatorAssignments !== undefined) {
+      const existingCoords = await this.fetchClassCoordinatorAssignments(facultyId);
+      const newSecIds = new Set(coordinatorAssignments.map(c => c.section_id));
+
+      // Remove coordinator assignments no longer present
+      for (const ex of existingCoords) {
+        if (!newSecIds.has(ex.section_id)) {
+          await this.removeClassCoordinator(facultyId, ex.section_id);
+        }
+      }
+
+      // Add/ensure coordinator assignments
+      for (const coord of coordinatorAssignments) {
+        await this.assignClassCoordinator(facultyId, coord.section_id);
+      }
+    }
+
+    // 5. Audit log
     try {
       await supabase.from('audit_logs').insert({
         action: 'FACULTY_UPDATED',
@@ -5159,7 +5211,7 @@ export const supabaseService = {
     }
   },
 
-  // 13. Class Coordinator Relational Management (Migration 017)
+  // 13. Class Coordinator Relational Management (Migration 017 & 038)
   async fetchClassCoordinatorAssignments(facultyId?: string): Promise<ClassCoordinatorAssignment[]> {
     try {
       let q = supabase
@@ -5169,6 +5221,8 @@ export const supabaseService = {
           faculty_id,
           section_id,
           academic_session_id,
+          academic_year_id,
+          assigned_by,
           active,
           created_at,
           updated_at,
@@ -5189,7 +5243,8 @@ export const supabaseService = {
               )
             )
           ),
-          academic_session:academic_sessions(*)
+          academic_session:academic_sessions(*),
+          academic_year:academic_years(*)
         `)
         .eq('active', true);
 
@@ -5236,6 +5291,8 @@ export const supabaseService = {
           active: true,
           faculty: sec.class_coordinator,
           section: sec,
+          academic_year: sec.semester?.academic_year,
+          academic_year_id: sec.semester?.academic_year?.id,
         }));
       }
 
@@ -5246,7 +5303,12 @@ export const supabaseService = {
     }
   },
 
-  async assignClassCoordinator(facultyId: string, sectionId: string, sessionId?: string): Promise<{ success: boolean; error?: string }> {
+  async assignClassCoordinator(
+    facultyId: string, 
+    sectionId: string, 
+    sessionId?: string,
+    assignedBy?: string
+  ): Promise<{ success: boolean; error?: string; replacedFacultyId?: string; replacedFacultyName?: string }> {
     try {
       let effectiveSessionId = sessionId;
       if (!effectiveSessionId) {
@@ -5254,12 +5316,44 @@ export const supabaseService = {
         effectiveSessionId = session?.id;
       }
 
+      // Try Atomic RPC first (Migration 038)
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc('assign_class_coordinator_atomic', {
+        p_faculty_id: facultyId,
+        p_section_id: sectionId,
+        p_academic_session_id: effectiveSessionId || null,
+        p_assigned_by: assignedBy || null,
+      });
+
+      if (!rpcErr && rpcRes && rpcRes.success) {
+        this.invalidateMasterCache();
+        return { 
+          success: true, 
+          replacedFacultyId: rpcRes.replaced_faculty_id,
+          replacedFacultyName: rpcRes.replaced_faculty_name
+        };
+      }
+
+      if (rpcErr) {
+        console.warn('assign_class_coordinator_atomic RPC fallback:', rpcErr.message);
+      }
+
+      // Fallback Direct Mutation
+      // Deactivate any existing active coordinator for this section and session if different faculty
+      await supabase
+        .from('class_coordinator_assignments')
+        .update({ active: false, updated_at: new Date().toISOString() })
+        .eq('section_id', sectionId)
+        .eq('academic_session_id', effectiveSessionId || '')
+        .eq('active', true)
+        .neq('faculty_id', facultyId);
+
       const { error: ccaErr } = await supabase
         .from('class_coordinator_assignments')
         .upsert({
           faculty_id: facultyId,
           section_id: sectionId,
           academic_session_id: effectiveSessionId || null,
+          assigned_by: assignedBy || null,
           active: true,
           updated_at: new Date().toISOString()
         }, {
@@ -5273,12 +5367,56 @@ export const supabaseService = {
 
       await supabase
         .from('sections')
-        .update({ class_coordinator_id: facultyId })
+        .update({ class_coordinator_id: facultyId, updated_at: new Date().toISOString() })
         .eq('id', sectionId);
 
+      this.invalidateMasterCache();
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Failed to assign class coordinator.' };
+    }
+  },
+
+  async removeClassCoordinator(facultyId: string, sectionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Try Atomic RPC first (Migration 038)
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc('remove_class_coordinator_atomic', {
+        p_faculty_id: facultyId,
+        p_section_id: sectionId,
+      });
+
+      if (!rpcErr && rpcRes && rpcRes.success) {
+        this.invalidateMasterCache();
+        return { success: true };
+      }
+
+      if (rpcErr) {
+        console.warn('remove_class_coordinator_atomic RPC fallback:', rpcErr.message);
+      }
+
+      // Fallback Direct Mutation
+      const { error } = await supabase
+        .from('class_coordinator_assignments')
+        .update({ active: false, updated_at: new Date().toISOString() })
+        .eq('faculty_id', facultyId)
+        .eq('section_id', sectionId);
+
+      if (error) {
+        console.error('Failed to remove class coordinator assignment:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      await supabase
+        .from('sections')
+        .update({ class_coordinator_id: null, updated_at: new Date().toISOString() })
+        .eq('id', sectionId)
+        .eq('class_coordinator_id', facultyId);
+
+      this.invalidateMasterCache();
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error removing class coordinator:', err);
+      return { success: false, error: err?.message || 'Failed to remove class coordinator.' };
     }
   },
 
@@ -5333,7 +5471,7 @@ export const supabaseService = {
       const rawTimetable = (timetableRes.data || []) as TimetableEntry[];
       const rawCorrections = (correctionsRes.data || []) as AttendanceCorrection[];
 
-      // Scope pending corrections strictly to this faculty member (session faculty, assigned subject & section, or class coordinator)
+      // Scope pending corrections strictly to this faculty member's teaching responsibility (session faculty or assigned subject & section)
       const pendingCorrections = rawCorrections.filter(c => {
         const session = (c as any).record?.session;
         if (!session) return false;
@@ -5342,10 +5480,6 @@ export const supabaseService = {
           a => a.section_id === session.section_id && a.subject_id === session.subject_id
         );
         if (isAssigned) return true;
-        const isCoordinator = coordAssignments.some(
-          ca => ca.section_id === session.section_id && ca.active
-        );
-        if (isCoordinator) return true;
         return false;
       });
 
@@ -5680,6 +5814,8 @@ export const supabaseService = {
       const conversations = (data || []) as Conversation[];
       if (conversations.length > 0) {
         const convIds = conversations.map(c => c.id);
+        
+        // Fetch unread messages count for this user
         const { data: unreadMsgs } = await supabase
           .from('messages')
           .select('conversation_id')
@@ -5687,15 +5823,36 @@ export const supabaseService = {
           .eq('receiver_user_id', userId)
           .is('read_at', null);
 
+        // Fetch per-user conversation settings (marked_unread, cleared_at)
+        const { data: userSettings } = await supabase
+          .from('conversation_user_settings')
+          .select('*')
+          .in('conversation_id', convIds)
+          .eq('user_id', userId);
+
+        const settingsMap: Record<string, { marked_unread: boolean; cleared_at?: string | null }> = {};
+        if (userSettings) {
+          userSettings.forEach((s: any) => {
+            settingsMap[s.conversation_id] = {
+              marked_unread: Boolean(s.marked_unread),
+              cleared_at: s.cleared_at || null,
+            };
+          });
+        }
+
+        const counts: Record<string, number> = {};
         if (unreadMsgs) {
-          const counts: Record<string, number> = {};
           unreadMsgs.forEach(m => {
             counts[m.conversation_id] = (counts[m.conversation_id] || 0) + 1;
           });
-          conversations.forEach(c => {
-            c.unread_count = counts[c.id] || 0;
-          });
         }
+
+        conversations.forEach(c => {
+          const setting = settingsMap[c.id];
+          const unreadCount = counts[c.id] || 0;
+          c.marked_unread = setting?.marked_unread || false;
+          c.unread_count = c.marked_unread ? Math.max(unreadCount, 1) : unreadCount;
+        });
       }
 
       return conversations;
@@ -5705,11 +5862,28 @@ export const supabaseService = {
     }
   },
 
-  async fetchConversationMessages(conversationId: string, limit: number = 100): Promise<Message[]> {
+  async fetchConversationMessages(conversationId: string, currentUserId?: string, limit: number = 200): Promise<Message[]> {
     try {
+      // Check if user cleared this conversation
+      let clearedAt: string | null = null;
+      if (currentUserId) {
+        const { data: settings } = await supabase
+          .from('conversation_user_settings')
+          .select('cleared_at')
+          .eq('conversation_id', conversationId)
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+        if (settings && settings.cleared_at) {
+          clearedAt = settings.cleared_at;
+        }
+      }
+
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          reply_to:messages!reply_to_message_id(id, message, sender_user_id, sender_role, is_unsent)
+        `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
         .limit(limit);
@@ -5719,7 +5893,22 @@ export const supabaseService = {
         return [];
       }
 
-      return (data || []) as Message[];
+      let messages = (data || []) as Message[];
+
+      // Filter out messages deleted for this user
+      if (currentUserId) {
+        messages = messages.filter(m => {
+          if (m.deleted_by_users && Array.isArray(m.deleted_by_users) && m.deleted_by_users.includes(currentUserId)) {
+            return false;
+          }
+          if (clearedAt && new Date(m.created_at) <= new Date(clearedAt)) {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      return messages;
     } catch (err) {
       console.error('Exception in fetchConversationMessages:', err);
       return [];
@@ -5777,6 +5966,7 @@ export const supabaseService = {
     attachmentName?: string;
     attachmentType?: string;
     attachmentSize?: number;
+    replyToMessageId?: string | null;
   }): Promise<{ data: Message | null; error: any }> {
     try {
       const { data, error } = await supabase.rpc('send_message', {
@@ -5786,6 +5976,7 @@ export const supabaseService = {
         p_attachment_name: params.attachmentName || null,
         p_attachment_type: params.attachmentType || null,
         p_attachment_size: params.attachmentSize || null,
+        p_reply_to_message_id: params.replyToMessageId || null,
       });
 
       if (error) {
@@ -5796,6 +5987,97 @@ export const supabaseService = {
     } catch (err: any) {
       console.error('Exception in sendMessage:', err);
       return { data: null, error: err };
+    }
+  },
+
+  async editMessage(messageId: string, newContent: string): Promise<{ data: Message | null; error: any }> {
+    try {
+      const { data, error } = await supabase.rpc('edit_message', {
+        p_message_id: messageId,
+        p_new_content: newContent,
+      });
+
+      if (error) {
+        console.error('Error in editMessage:', error);
+        return { data: null, error };
+      }
+
+      return { data: data as Message, error: null };
+    } catch (err: any) {
+      console.error('Exception in editMessage:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async unsendMessage(messageId: string): Promise<{ data: Message | null; error: any }> {
+    try {
+      const { data, error } = await supabase.rpc('unsend_message', {
+        p_message_id: messageId,
+      });
+
+      if (error) {
+        console.error('Error in unsendMessage:', error);
+        return { data: null, error };
+      }
+
+      return { data: data as Message, error: null };
+    } catch (err: any) {
+      console.error('Exception in unsendMessage:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  async deleteMessageForMe(messageId: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const { data, error } = await supabase.rpc('delete_message_for_me', {
+        p_message_id: messageId,
+      });
+
+      if (error) {
+        console.error('Error in deleteMessageForMe:', error);
+        return { success: false, error };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Exception in deleteMessageForMe:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  async clearConversationForMe(conversationId: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const { data, error } = await supabase.rpc('clear_conversation_for_me', {
+        p_conversation_id: conversationId,
+      });
+
+      if (error) {
+        console.error('Error in clearConversationForMe:', error);
+        return { success: false, error };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Exception in clearConversationForMe:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  async markConversationUnread(conversationId: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const { data, error } = await supabase.rpc('mark_conversation_unread', {
+        p_conversation_id: conversationId,
+      });
+
+      if (error) {
+        console.error('Error in markConversationUnread:', error);
+        return { success: false, error };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Exception in markConversationUnread:', err);
+      return { success: false, error: err };
     }
   },
 

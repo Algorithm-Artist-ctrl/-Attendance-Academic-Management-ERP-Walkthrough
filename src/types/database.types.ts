@@ -163,12 +163,15 @@ export interface ClassCoordinatorAssignment {
   faculty_id: string;
   section_id: string;
   academic_session_id?: string;
+  academic_year_id?: string;
+  assigned_by?: string;
   active: boolean;
   created_at?: string;
   updated_at?: string;
   faculty?: Faculty;
   section?: Section;
   academic_session?: AcademicSession;
+  academic_year?: AcademicYear;
 }
 
 export interface Student {
@@ -756,6 +759,15 @@ export interface Conversation {
   section?: Section;
   academic_year?: AcademicYear;
   unread_count?: number;
+  marked_unread?: boolean;
+}
+
+export interface ConversationUserSettings {
+  conversation_id: string;
+  user_id: string;
+  cleared_at?: string | null;
+  marked_unread: boolean;
+  updated_at: string;
 }
 
 export interface Message {
@@ -775,6 +787,21 @@ export interface Message {
   read_at?: string | null;
   created_at: string;
   sender_name?: string;
+  // Migration 039 Premium Chat Features
+  edited_at?: string | null;
+  is_unsent?: boolean;
+  unsent_at?: string | null;
+  deleted_by_users?: string[];
+  reply_to_message_id?: string | null;
+  reply_to?: {
+    id: string;
+    message: string;
+    sender_user_id: string;
+    sender_role?: string;
+    sender_name?: string;
+    is_unsent?: boolean;
+  } | null;
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
 }
 
 export interface EligibleFacultyForStudent {

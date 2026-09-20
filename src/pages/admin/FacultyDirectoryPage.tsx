@@ -30,6 +30,13 @@ interface StagedAssignment {
   subject_name: string;
 }
 
+interface StagedCoordinator {
+  section_id: string;
+  academic_year_id: string;
+  year_name: string;
+  section_name: string;
+}
+
 export const FacultyDirectoryPage: React.FC = () => {
   const { user, role } = useAuth();
   const { 
@@ -159,6 +166,11 @@ export const FacultyDirectoryPage: React.FC = () => {
   const [assignSubjectId, setAssignSubjectId] = useState('');
   const [stagedAssignments, setStagedAssignments] = useState<StagedAssignment[]>([]);
 
+  // Add Faculty - Class Coordinator Builder State
+  const [assignCoordYearId, setAssignCoordYearId] = useState('');
+  const [assignCoordSectionId, setAssignCoordSectionId] = useState('');
+  const [stagedCoordinators, setStagedCoordinators] = useState<StagedCoordinator[]>([]);
+
   // ==========================================
   // Edit Faculty Modal State
   // ==========================================
@@ -174,6 +186,21 @@ export const FacultyDirectoryPage: React.FC = () => {
   const [editAssignSectionId, setEditAssignSectionId] = useState('');
   const [editAssignSubjectId, setEditAssignSubjectId] = useState('');
   const [editModalError, setEditModalError] = useState<string | null>(null);
+
+  // Edit Faculty - Class Coordinator State
+  const [editAssignCoordYearId, setEditAssignCoordYearId] = useState('');
+  const [editAssignCoordSectionId, setEditAssignCoordSectionId] = useState('');
+  const [editCoordinators, setEditCoordinators] = useState<StagedCoordinator[]>([]);
+
+  // Duplicate Coordinator Replacement Confirmation Modal
+  const [confirmReplacementModal, setConfirmReplacementModal] = useState<{
+    isOpen: boolean;
+    sectionName: string;
+    yearName: string;
+    currentFacultyName: string;
+    newFacultyName: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Initialize deptId when departments load
   React.useEffect(() => {
@@ -218,6 +245,26 @@ export const FacultyDirectoryPage: React.FC = () => {
     return subjects.filter(s => s.active && s.semester_id === targetSemId);
   }, [subjects, sections, editAssignSectionId]);
 
+  // Coordinator Cascading helpers for Add Modal
+  const availableAddCoordSections = useMemo(() => {
+    if (!assignCoordYearId) return [];
+    return sections.filter(s => {
+      if (!s.active) return false;
+      const sem = semesters.find(sm => sm.id === s.semester_id);
+      return sem?.academic_year_id === assignCoordYearId;
+    });
+  }, [sections, semesters, assignCoordYearId]);
+
+  // Coordinator Cascading helpers for Edit Modal
+  const availableEditCoordSections = useMemo(() => {
+    if (!editAssignCoordYearId) return [];
+    return sections.filter(s => {
+      if (!s.active) return false;
+      const sem = semesters.find(sm => sm.id === s.semester_id);
+      return sem?.academic_year_id === editAssignCoordYearId;
+    });
+  }, [sections, semesters, editAssignCoordYearId]);
+
   // Add staged assignment to Add Modal
   const handleAddStagedAssignment = () => {
     setAddModalError(null);
@@ -253,6 +300,62 @@ export const FacultyDirectoryPage: React.FC = () => {
     ]);
 
     setAssignSubjectId('');
+  };
+
+  // Add staged coordinator to Add Modal
+  const handleAddStagedCoordinator = () => {
+    setAddModalError(null);
+    if (!assignCoordYearId || !assignCoordSectionId) {
+      setAddModalError('Please select Academic Year and Section to assign as Class Coordinator.');
+      return;
+    }
+
+    const exists = stagedCoordinators.some(c => c.section_id === assignCoordSectionId);
+    if (exists) {
+      setAddModalError('This Section is already assigned as a Coordinator role.');
+      return;
+    }
+
+    const yr = years.find(y => y.id === assignCoordYearId);
+    const sec = sections.find(s => s.id === assignCoordSectionId);
+    const yearName = yr?.name || 'Academic Year';
+    const secName = (sec?.name || '').replace(/^section\s*/i, '').trim() || 'A';
+
+    // Check if section already has an active coordinator in database
+    const existingCoord = (classCoordinatorAssignments || []).find(
+      ca => ca.active && ca.section_id === assignCoordSectionId
+    );
+    const existingFacId = existingCoord?.faculty_id || (sec?.class_coordinator_id || null);
+    const existingFac = existingFacId ? faculty.find(f => f.id === existingFacId) : null;
+
+    const doAdd = () => {
+      setStagedCoordinators(prev => [
+        ...prev,
+        {
+          section_id: assignCoordSectionId,
+          academic_year_id: assignCoordYearId,
+          year_name: yearName,
+          section_name: secName,
+        }
+      ]);
+      setAssignCoordSectionId('');
+    };
+
+    if (existingFac && existingFac.id !== '') {
+      setConfirmReplacementModal({
+        isOpen: true,
+        sectionName: `Section ${secName}`,
+        yearName,
+        currentFacultyName: existingFac.full_name,
+        newFacultyName: fullName.trim() || 'New Faculty',
+        onConfirm: () => {
+          doAdd();
+          setConfirmReplacementModal(null);
+        }
+      });
+    } else {
+      doAdd();
+    }
   };
 
   // Add staged assignment to Edit Modal
@@ -292,6 +395,62 @@ export const FacultyDirectoryPage: React.FC = () => {
     setEditAssignSubjectId('');
   };
 
+  // Add coordinator to Edit Modal
+  const handleAddEditCoordinator = () => {
+    setEditModalError(null);
+    if (!editAssignCoordYearId || !editAssignCoordSectionId) {
+      setEditModalError('Please select Academic Year and Section to assign as Class Coordinator.');
+      return;
+    }
+
+    const exists = editCoordinators.some(c => c.section_id === editAssignCoordSectionId);
+    if (exists) {
+      setEditModalError('This Section is already assigned as a Coordinator role.');
+      return;
+    }
+
+    const yr = years.find(y => y.id === editAssignCoordYearId);
+    const sec = sections.find(s => s.id === editAssignCoordSectionId);
+    const yearName = yr?.name || 'Academic Year';
+    const secName = (sec?.name || '').replace(/^section\s*/i, '').trim() || 'A';
+
+    // Check if section already has an active coordinator in database other than this faculty
+    const existingCoord = (classCoordinatorAssignments || []).find(
+      ca => ca.active && ca.section_id === editAssignCoordSectionId && ca.faculty_id !== editingFaculty?.id
+    );
+    const existingFacId = existingCoord?.faculty_id || (sec?.class_coordinator_id !== editingFaculty?.id ? sec?.class_coordinator_id : null);
+    const existingFac = existingFacId ? faculty.find(f => f.id === existingFacId) : null;
+
+    const doAdd = () => {
+      setEditCoordinators(prev => [
+        ...prev,
+        {
+          section_id: editAssignCoordSectionId,
+          academic_year_id: editAssignCoordYearId,
+          year_name: yearName,
+          section_name: secName,
+        }
+      ]);
+      setEditAssignCoordSectionId('');
+    };
+
+    if (existingFac) {
+      setConfirmReplacementModal({
+        isOpen: true,
+        sectionName: `Section ${secName}`,
+        yearName,
+        currentFacultyName: existingFac.full_name,
+        newFacultyName: editFullName.trim() || editingFaculty?.full_name || 'Faculty',
+        onConfirm: () => {
+          doAdd();
+          setConfirmReplacementModal(null);
+        }
+      });
+    } else {
+      doAdd();
+    }
+  };
+
   // Open Edit Modal and prefill existing assignments
   const handleOpenEditModal = (f: Faculty) => {
     setEditingFaculty(f);
@@ -325,6 +484,23 @@ export const FacultyDirectoryPage: React.FC = () => {
     setEditAssignYearId(activeCohorts[0]?.id || '');
     setEditAssignSectionId('');
     setEditAssignSubjectId('');
+
+    // Populate active database coordinator assignments
+    const coords = getFacultyCoordinations(f.id);
+    const mappedCoords = coords.map(c => {
+      const sec = sections.find(s => s.id === c.sectionId);
+      const sem = semesters.find(sm => sm.id === sec?.semester_id);
+      const yr = years.find(y => y.id === sem?.academic_year_id);
+      return {
+        section_id: c.sectionId,
+        academic_year_id: yr?.id || '',
+        year_name: c.yearName,
+        section_name: c.sectionName,
+      };
+    });
+    setEditCoordinators(mappedCoords);
+    setEditAssignCoordYearId(activeCohorts[0]?.id || '');
+    setEditAssignCoordSectionId('');
   };
 
   // Submit Add Faculty
@@ -356,6 +532,10 @@ export const FacultyDirectoryPage: React.FC = () => {
           academic_year_id: a.academic_year_id,
           semester_id: a.semester_id,
         })),
+        coordinatorAssignments: stagedCoordinators.map(c => ({
+          section_id: c.section_id,
+          academic_year_id: c.academic_year_id,
+        })),
         actorName: user?.full_name || 'Administrator',
       });
 
@@ -366,6 +546,9 @@ export const FacultyDirectoryPage: React.FC = () => {
       setEmail('');
       setPhone('');
       setStagedAssignments([]);
+      setStagedCoordinators([]);
+      setAssignCoordYearId('');
+      setAssignCoordSectionId('');
       setIsAddModalOpen(false);
     } catch (err: any) {
       console.error('Failed to add faculty:', err);
@@ -403,6 +586,10 @@ export const FacultyDirectoryPage: React.FC = () => {
           subject_id: a.subject_id,
           academic_year_id: a.academic_year_id,
           semester_id: a.semester_id,
+        })),
+        coordinatorAssignments: editCoordinators.map(c => ({
+          section_id: c.section_id,
+          academic_year_id: c.academic_year_id,
         })),
         actorName: user?.full_name || 'Administrator',
       });
@@ -984,17 +1171,17 @@ export const FacultyDirectoryPage: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold text-[10px]">
                         {a.year_name} • Sec {a.section_name}
                       </span>
-                      <span className="font-mono font-bold text-white text-[11px]">
+                      <span className="font-mono font-bold text-slate-900 text-[11px]">
                         {a.subject_code}
                       </span>
-                      <span className="text-slate-400 text-[11px] truncate max-w-[200px]">
+                      <span className="text-slate-600 text-[11px] truncate max-w-[200px]">
                         {a.subject_name}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setStagedAssignments(prev => prev.filter((_, i) => i !== idx))}
-                      className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                      className="text-slate-500 hover:text-rose-500 p-1 cursor-pointer"
                       title="Remove assignment"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -1005,6 +1192,107 @@ export const FacultyDirectoryPage: React.FC = () => {
             ) : (
               <p className="text-[11px] text-slate-500 italic text-center py-1">
                 No assignments staged. You can add assignments now or assign later.
+              </p>
+            )}
+          </div>
+
+          {/* ======================================================== */}
+          {/* CLASS COORDINATOR ASSIGNMENT (YEAR -> SECTION) */}
+          {/* ======================================================== */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
+                  Class Coordinator Role Assignment
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Assign this faculty member as Class Coordinator for a specific section
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full">
+                {stagedCoordinators.length} Staged
+              </span>
+            </div>
+
+            {/* Cascading Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Academic Year</label>
+                <select
+                  value={assignCoordYearId}
+                  onChange={(e) => {
+                    setAssignCoordYearId(e.target.value);
+                    setAssignCoordSectionId('');
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs"
+                >
+                  <option value="">— Select Year —</option>
+                  {activeCohorts.map(y => (
+                    <option key={y.id} value={y.id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Section</label>
+                <select
+                  value={assignCoordSectionId}
+                  disabled={!assignCoordYearId}
+                  onChange={(e) => setAssignCoordSectionId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs disabled:opacity-50"
+                >
+                  <option value="">— Select Section —</option>
+                  {availableAddCoordSections.map(s => (
+                    <option key={s.id} value={s.id}>Section {s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddStagedCoordinator}
+                disabled={!assignCoordYearId || !assignCoordSectionId}
+                className="text-xs"
+              >
+                + Assign Coordinator Role
+              </Button>
+            </div>
+
+            {/* Staged Coordinators List */}
+            {stagedCoordinators.length > 0 ? (
+              <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                {stagedCoordinators.map((c, idx) => (
+                  <div
+                    key={`${c.section_id}_${idx}`}
+                    className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200/80 font-bold text-[10px]">
+                        Class Coordinator
+                      </span>
+                      <span className="font-bold text-slate-900 text-xs">
+                        {c.year_name} • Section {c.section_name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStagedCoordinators(prev => prev.filter((_, i) => i !== idx))}
+                      className="text-slate-500 hover:text-rose-500 p-1 cursor-pointer"
+                      title="Remove coordinator role"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 italic text-center py-1">
+                No coordinator role assigned (optional).
               </p>
             )}
           </div>
@@ -1145,17 +1433,17 @@ export const FacultyDirectoryPage: React.FC = () => {
                         <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold text-[10px]">
                           {a.year_name} • Sec {a.section_name}
                         </span>
-                        <span className="font-mono font-bold text-white text-[11px]">
+                        <span className="font-mono font-bold text-slate-900 text-[11px]">
                           {a.subject_code}
                         </span>
-                        <span className="text-slate-400 text-[11px] truncate max-w-[180px]">
+                        <span className="text-slate-600 text-[11px] truncate max-w-[180px]">
                           {a.subject_name}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setEditAssignments(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                        className="text-slate-500 hover:text-rose-500 p-1 cursor-pointer"
                         title="Remove assignment"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1170,7 +1458,7 @@ export const FacultyDirectoryPage: React.FC = () => {
               )}
 
               {/* Add New Assignment to Edit List */}
-              <div className="pt-2 border-t border-slate-800 space-y-2">
+              <div className="pt-2 border-t border-slate-200 space-y-2">
                 <span className="text-[11px] font-bold text-slate-700 block">Add New Assignment</span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <select
@@ -1233,6 +1521,104 @@ export const FacultyDirectoryPage: React.FC = () => {
               </div>
             </div>
 
+            {/* ======================================================== */}
+            {/* CLASS COORDINATOR ASSIGNMENTS (YEAR -> SECTION) */}
+            {/* ======================================================== */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
+                    Class Coordinator Role Assignments
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Manage active class coordinator assignments for this faculty member
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full">
+                  {editCoordinators.length} Assigned
+                </span>
+              </div>
+
+              {/* Current Coordinator Assignments */}
+              {editCoordinators.length > 0 ? (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {editCoordinators.map((c, idx) => (
+                    <div
+                      key={`${c.section_id}_${idx}`}
+                      className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200/80 font-bold text-[10px]">
+                          Class Coordinator
+                        </span>
+                        <span className="font-bold text-slate-900 text-xs">
+                          {c.year_name} • Section {c.section_name}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditCoordinators(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-slate-500 hover:text-rose-500 p-1 cursor-pointer"
+                        title="Remove coordinator role"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500 italic text-center py-1">
+                  No active class coordinator role assigned to this faculty member.
+                </p>
+              )}
+
+              {/* Add New Coordinator to Edit List */}
+              <div className="pt-2 border-t border-slate-200 space-y-2">
+                <span className="text-[11px] font-bold text-slate-700 block">Assign New Class Coordinator Role</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <select
+                    value={editAssignCoordYearId}
+                    onChange={(e) => {
+                      setEditAssignCoordYearId(e.target.value);
+                      setEditAssignCoordSectionId('');
+                    }}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs"
+                  >
+                    <option value="">— Select Year —</option>
+                    {activeCohorts.map(y => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={editAssignCoordSectionId}
+                    disabled={!editAssignCoordYearId}
+                    onChange={(e) => setEditAssignCoordSectionId(e.target.value)}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 shadow-xs disabled:opacity-50"
+                  >
+                    <option value="">— Select Section —</option>
+                    {availableEditCoordSections.map(s => (
+                      <option key={s.id} value={s.id}>Section {s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddEditCoordinator}
+                    disabled={!editAssignCoordYearId || !editAssignCoordSectionId}
+                    className="text-xs"
+                  >
+                    + Assign Coordinator Role
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <Button type="button" variant="outline" size="sm" onClick={() => setEditingFaculty(null)}>
                 Cancel
@@ -1248,6 +1634,49 @@ export const FacultyDirectoryPage: React.FC = () => {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Duplicate Coordinator Replacement Confirmation Modal */}
+      {confirmReplacementModal && confirmReplacementModal.isOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setConfirmReplacementModal(null)}
+          title="Confirm Coordinator Replacement"
+          description="A section can have only one active Class Coordinator"
+        >
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+              <p className="font-semibold text-sm text-slate-900">
+                Replace existing class coordinator?
+              </p>
+              <p className="text-slate-700 leading-relaxed">
+                <strong>{confirmReplacementModal.sectionName}</strong> ({confirmReplacementModal.yearName}) currently has{' '}
+                <strong className="text-slate-900">{confirmReplacementModal.currentFacultyName}</strong> as Class Coordinator.
+              </p>
+              <p className="text-slate-700 leading-relaxed">
+                Do you want to replace them with <strong className="text-slate-900">{confirmReplacementModal.newFacultyName}</strong>?
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmReplacementModal(null)}
+                className="border-slate-200 text-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={confirmReplacementModal.onConfirm}
+                className="bg-[#0f172a] hover:bg-black text-white rounded-xl shadow-xs font-bold"
+              >
+                Confirm Replacement
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
 
