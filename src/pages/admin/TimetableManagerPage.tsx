@@ -24,7 +24,10 @@ import {
   FileText,
   Search,
   BookOpen,
-  Loader2
+  Loader2,
+  Users,
+  RotateCw,
+  GraduationCap
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -41,6 +44,16 @@ import { TimetableVersionHistoryModal } from '../../components/timetable/Timetab
 import { TimetableConflictEngine, TimetableConflictItem } from '../../lib/services/timetableConflictEngine';
 import { classifyTimetableUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
+
+// Strips trailing seconds (:00) from time strings (e.g. 09:00:00 -> 09:00)
+function cleanTime(timeStr?: string): string {
+  if (!timeStr) return '';
+  const parts = timeStr.trim().split(':');
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+  }
+  return timeStr;
+}
 
 interface DraftSlot {
   id?: string;
@@ -361,11 +374,11 @@ export const TimetableManagerPage: React.FC = () => {
   const getStandardTimeForPeriod = (p: number) => {
     const existing = sectionTimetable.find(t => t.period_number === p && t.start_time && t.end_time);
     if (existing) {
-      return { start: existing.start_time, end: existing.end_time };
+      return { start: cleanTime(existing.start_time), end: cleanTime(existing.end_time) };
     }
     const standard = DEFAULT_INSTITUTIONAL_PERIODS.find(dp => dp.period_number === p);
     if (standard) {
-      return { start: standard.start_time, end: standard.end_time };
+      return { start: cleanTime(standard.start_time), end: cleanTime(standard.end_time) };
     }
     return { start: '09:00', end: '09:50' };
   };
@@ -1001,40 +1014,131 @@ export const TimetableManagerPage: React.FC = () => {
   const defaultDay = (days.includes(todayDay as any) ? todayDay : 'MON') as DayOfWeek;
   const [selectedMobileDay, setSelectedMobileDay] = useState<DayOfWeek>(defaultDay);
 
+  const [isImportPanelOpen, setIsImportPanelOpen] = useState(false);
+
   // Quick stats
   const scheduledCount = isEditMode ? draftSlots.size : sectionTimetable.length;
 
   return (
     <div className="space-y-6">
-      {/* Header Panel */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold font-serif-institutional text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Calendar className="w-6 h-6 text-slate-800" />
-            {isSuperAdmin ? 'Timetable Overview' : 'Department Schedule Management'}
-            {isSuperAdmin && (
-              <span className="text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold">
-                Institution View-Only
-              </span>
-            )}
+      {/* 1. Header Panel */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-800 uppercase tracking-wider">
+              {isSuperAdmin ? 'SUPER ADMIN OVERSIGHT' : 'HOD SCHEDULE MANAGEMENT'}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {isEditMode ? 'Draft Edit Mode Active' : 'Live Supabase Synced'}
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black font-serif-institutional text-[#0F172A] tracking-tight flex items-center gap-2.5">
+            <Calendar className="w-6 h-6 text-[#0F172A]" />
+            Department Timetable Workspace
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            {isSuperAdmin 
-              ? 'Institution-wide timetable inspection & conflict monitoring • Timetable operations managed by respective department HODs'
-              : 'Authoritative section-wise schedule matrix with live editing, collision resolution & real-time sync'}
+          <p className="text-xs text-slate-600 font-medium">
+            Academic Session: <strong className="text-slate-900">2026–2027</strong> • Department: <strong className="text-slate-900">{currentDept?.name || 'Department'}</strong> • {currentYear?.name ? `${currentYear.name} • ` : ''}Section <strong className="text-slate-900">{currentSection?.name || 'Assigned'}</strong>
           </p>
         </div>
 
-        {/* Action Controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refreshData(true)}
+            leftIcon={<RotateCw className="w-3.5 h-3.5 text-slate-600" />}
+            className="text-xs font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs"
+            title="Refresh from Database"
+          >
+            Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsVersionHistoryOpen(true)}
+            leftIcon={<History className="w-3.5 h-3.5 text-slate-600" />}
+            className="text-xs font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs"
+          >
+            {isSuperAdmin ? 'Audit Versions' : 'Versions'}
+          </Button>
+
+          {!isSuperAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-600" />}
+              className="text-xs font-semibold border-rose-200 text-rose-700 hover:bg-rose-50 shadow-2xs"
+              title={`Delete all timetable entries for Section ${currentSection?.name}`}
+            >
+              Clear Schedule
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Summary KPI Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Active Section</span>
+          <span className="text-base font-bold text-slate-900 mt-0.5 block truncate font-serif-institutional">
+            Section {currentSection?.name || 'A'}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Classroom Venue</span>
+          <span className="text-base font-bold text-slate-900 mt-0.5 block truncate font-mono">
+            {currentSection?.room_number || 'Room A007'}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Scheduled Classes</span>
+          <span className="text-base font-bold text-slate-900 mt-0.5 block font-mono">
+            {scheduledCount} Periods
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Published Status</span>
+          <div className="mt-1 flex items-center gap-1.5">
+            {sectionTimetable.length > 0 ? (
+              <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Published & Active
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                Unpublished / Draft
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Academic Session</span>
+          <span className="text-base font-bold text-slate-900 mt-0.5 block font-mono">
+            2026–2027
+          </span>
+        </div>
+      </div>
+
+      {/* 3. Professional Filter & Action Toolbar */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        {/* Left Side: Scope Dropdowns */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Department Selector (Super Admin Institution Monitoring) */}
+          {/* Department Selector for Super Admin */}
           {isSuperAdmin && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-400 font-bold hidden sm:inline">Dept:</span>
+              <span className="text-xs text-slate-500 font-bold hidden sm:inline">Dept:</span>
               <select
                 value={selectedDeptId}
                 onChange={(e) => setSelectedDeptId(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 touch-target cursor-pointer shadow-xs"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 touch-target cursor-pointer shadow-2xs"
               >
                 <option value="ALL">All Departments</option>
                 {departments.map(d => (
@@ -1044,9 +1148,9 @@ export const TimetableManagerPage: React.FC = () => {
             </div>
           )}
 
-          {/* Year Selector */}
+          {/* Academic Year Selector */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400 font-bold hidden sm:inline">Year:</span>
+            <span className="text-xs text-slate-500 font-bold hidden sm:inline">Year:</span>
             <select
               value={selectedYearId}
               onChange={(e) => {
@@ -1065,18 +1169,11 @@ export const TimetableManagerPage: React.FC = () => {
                 setEditingSlot(null);
                 setCsvPreview(null);
                 setCsvError(null);
-                setIsManualFaculty(false);
-                setIsManualSubject(false);
-                setIsManualRoom(false);
-                setFacultySearchTerm('');
-                setSlotModalError(null);
                 setPublishSuccessMsg(null);
                 setPublishError(null);
                 setDetectedConflicts([]);
-                setCrossSectionWarnings([]);
-                setFacultyConflicts([]);
               }}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 touch-target cursor-pointer shadow-xs"
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 touch-target cursor-pointer shadow-2xs"
             >
               <option value="ALL">All Years</option>
               {activeYears.map(y => (
@@ -1087,7 +1184,7 @@ export const TimetableManagerPage: React.FC = () => {
 
           {/* Dynamic Section Dropdown */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400 font-bold hidden sm:inline">Section:</span>
+            <span className="text-xs text-slate-500 font-bold hidden sm:inline">Section:</span>
             <select
               value={selectedSectionId}
               onChange={(e) => {
@@ -1096,18 +1193,11 @@ export const TimetableManagerPage: React.FC = () => {
                 setEditingSlot(null);
                 setCsvPreview(null);
                 setCsvError(null);
-                setIsManualFaculty(false);
-                setIsManualSubject(false);
-                setIsManualRoom(false);
-                setFacultySearchTerm('');
-                setSlotModalError(null);
                 setPublishSuccessMsg(null);
                 setPublishError(null);
                 setDetectedConflicts([]);
-                setCrossSectionWarnings([]);
-                setFacultyConflicts([]);
               }}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 touch-target cursor-pointer shadow-xs"
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 touch-target cursor-pointer shadow-2xs"
             >
               {filteredSections.map(s => {
                 const sem = semesters.find(sm => sm.id === s.semester_id);
@@ -1120,56 +1210,70 @@ export const TimetableManagerPage: React.FC = () => {
               })}
             </select>
           </div>
+        </div>
 
-          {/* HOD Operational Controls: Edit Mode Toggle */}
-          {!isSuperAdmin && (!isEditMode ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditMode(true)}
-              leftIcon={<Edit3 className="w-4 h-4 text-slate-700" />}
-              className="touch-target font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs"
-            >
-              Edit Timetable
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetToLive}
-              leftIcon={<X className="w-4 h-4 text-rose-600" />}
-              className="touch-target font-semibold border-rose-200 text-rose-700 hover:bg-rose-50 shadow-xs"
-            >
-              Cancel Edits
-            </Button>
-          ))}
-
-
-
-          {/* HOD Operational Controls: Delete Section Timetable */}
+        {/* Right Side: Operational Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
           {!isSuperAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDeleteConfirm(true)}
-              leftIcon={<Trash2 className="w-4 h-4 text-rose-600" />}
-              className="touch-target font-semibold border-rose-200 text-rose-700 hover:bg-rose-50 shadow-xs"
-              title={`Delete all timetable entries for Section ${currentSection?.name}`}
-            >
-              Delete Timetable
-            </Button>
-          )}
+            <>
+              {/* Import Toggle Button */}
+              <Button
+                variant={isImportPanelOpen ? "navy" : "outline"}
+                size="sm"
+                onClick={() => setIsImportPanelOpen(prev => !prev)}
+                leftIcon={<FileSpreadsheet className="w-4 h-4 text-slate-700" />}
+                className="text-xs font-bold border-slate-200 shadow-2xs"
+              >
+                {isImportPanelOpen ? 'Close Import' : 'Import Schedule'}
+              </Button>
 
-          {/* Versions History (View-Only Audit for Super Admin, Restore enabled for HOD) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsVersionHistoryOpen(true)}
-            leftIcon={<History className="w-4 h-4 text-slate-600" />}
-            className="touch-target font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs"
-          >
-            {isSuperAdmin ? 'Audit Versions' : 'Versions'}
-          </Button>
+              {/* Add Class Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenSlotEditor(selectedMobileDay || 'MON', 1)}
+                leftIcon={<Plus className="w-4 h-4 text-slate-700" />}
+                className="text-xs font-bold border-slate-200 shadow-2xs hover:bg-slate-50"
+              >
+                Add Class
+              </Button>
+
+              {/* Edit Mode Toggle */}
+              {!isEditMode ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditMode(true)}
+                  leftIcon={<Edit3 className="w-4 h-4 text-slate-700" />}
+                  className="text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs"
+                >
+                  Edit Matrix
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetToLive}
+                  leftIcon={<X className="w-4 h-4 text-rose-600" />}
+                  className="text-xs font-bold border-rose-200 text-rose-700 hover:bg-rose-50 shadow-2xs"
+                >
+                  Cancel Edits
+                </Button>
+              )}
+
+              {/* Publish Timetable */}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handlePublishTimetable}
+                isLoading={isPublishing}
+                leftIcon={<CheckCircle2 className="w-4 h-4 text-white" />}
+                className="text-xs font-black shadow-xs bg-[#0F172A] hover:bg-black text-white"
+              >
+                Publish Timetable
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1206,9 +1310,9 @@ export const TimetableManagerPage: React.FC = () => {
         </div>
       )}
 
-      {/* HOD OPERATIONAL TIMETABLE CSV SOURCE PANEL */}
-      {!isSuperAdmin && (
-        <div id="csv-sync-section" className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-4">
+      {/* 4. HOD OPERATIONAL TIMETABLE CSV SOURCE PANEL (COLLAPSIBLE) */}
+      {!isSuperAdmin && (isImportPanelOpen || !!selectedFileName || !!csvPreview) && (
+        <div id="csv-sync-section" className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-4 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 shadow-xs">
@@ -1624,74 +1728,41 @@ export const TimetableManagerPage: React.FC = () => {
         </div>
       )}
 
-      {/* SECTION SUMMARY BAR */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-4">
-          <div>
-            <span className="text-slate-500 block text-[10px] uppercase font-bold">Active Section</span>
-            <span className="font-bold font-serif-institutional text-slate-900 text-sm">Section {currentSection?.name}</span>
-          </div>
-          <div className="h-6 w-px bg-slate-200" />
-          <div>
-            <span className="text-slate-500 block text-[10px] uppercase font-bold">Classroom</span>
-            <span className="font-bold text-slate-900 text-sm">
-              {currentSection?.room_number 
-                ? (currentSection.room_number.startsWith('Room') ? currentSection.room_number : `Room ${currentSection.room_number}`) 
-                : 'Room Unassigned'}
-            </span>
-          </div>
-          <div className="h-6 w-px bg-slate-200" />
-          <div>
-            <span className="text-slate-500 block text-[10px] uppercase font-bold">Scheduled Classes</span>
-            <span className="font-bold text-slate-900 text-sm">{scheduledCount} Scheduled {scheduledCount === 1 ? 'Class' : 'Classes'}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-          {isLoading || isAnalyzingCSV ? (
-            <>
-              <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span>Synchronizing Database...</span>
-            </>
-          ) : sections.length === 0 ? (
-            <>
-              <span className="inline-block w-2 h-2 rounded-full bg-slate-500" />
-              <span>No Database Records</span>
-            </>
-          ) : (
-            <>
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-              <span>Live Supabase Synchronized</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* MOBILE VIEW: Day Selector Tab Bar & Vertical Period Cards */}
+      {/* ======================================================== */}
+      {/* 5. MOBILE VIEW: Day Selector Tab Bar & Vertical Cards     */}
+      {/* ======================================================== */}
       <div className="block lg:hidden space-y-4">
         {/* Day Selector Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200/80 overflow-x-auto no-scrollbar">
-          {days.map(d => (
-            <button
-              key={d}
-              onClick={() => setSelectedMobileDay(d)}
-              className={clsx(
-                'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center justify-center cursor-pointer touch-target',
-                selectedMobileDay === d
-                  ? 'bg-[#0f172a] text-white font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              )}
-            >
-              {d} • {dayLabels[d]}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-x-auto no-scrollbar">
+          {days.map(d => {
+            const isSelected = selectedMobileDay === d;
+            const dayEntriesCount = sectionTimetable.filter(e => e.day_of_week === d).length;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setSelectedMobileDay(d)}
+                className={clsx(
+                  'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer touch-target',
+                  isSelected
+                    ? 'bg-[#0f172a] text-white font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                )}
+              >
+                <span>{dayLabels[d]}</span>
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full font-mono", isSelected ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-600")}>
+                  {dayEntriesCount}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Schedule Cards for Selected Day */}
+        {/* Schedule Cards for Selected Mobile Day */}
         <div className="space-y-3">
           {periods.map(period => {
             const time = getStandardTimeForPeriod(period);
-            const timeStr = `${time.start} – ${time.end}`;
+            const timeStr = `${cleanTime(time.start)} – ${cleanTime(time.end)}`;
             const key = `${selectedMobileDay}-${period}`;
             
             // In edit mode use draftSlots, else live sectionTimetable
@@ -1707,27 +1778,40 @@ export const TimetableManagerPage: React.FC = () => {
               return (
                 <div 
                   key={period}
-                  className={clsx(
-                    "p-3.5 rounded-2xl border flex items-center justify-between text-xs transition-all",
-                    isEditMode 
-                      ? "bg-slate-50 border-dashed border-slate-300 hover:border-slate-500 cursor-pointer" 
-                      : "bg-slate-950/40 border-emerald-500/10 text-slate-500"
-                  )}
-                  onClick={isEditMode ? () => handleOpenSlotEditor(selectedMobileDay, period) : undefined}
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs transition-all"
+                  onClick={!isSuperAdmin ? () => handleOpenSlotEditor(selectedMobileDay, period) : undefined}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-slate-400">Period {period}</span>
-                    <span>({timeStr})</span>
+                    <span className="font-mono font-bold text-[#334155]">Period {period}</span>
+                    <span className="text-[#475569] font-medium font-mono">({timeStr})</span>
                   </div>
 
-                  {isEditMode ? (
-                    <span className="text-[11px] font-semibold text-slate-900 flex items-center gap-1">
+                  {!isSuperAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenSlotEditor(selectedMobileDay, period)}
+                      className="text-[11px] font-bold text-slate-800 flex items-center gap-1 hover:text-black cursor-pointer"
+                    >
                       <Plus className="w-3.5 h-3.5" />
                       Add Class
-                    </span>
+                    </button>
                   ) : (
-                    <span className="text-[11px] font-mono text-slate-600">Unassigned Slot</span>
+                    <span className="text-[11px] font-mono text-slate-500 font-medium">Unassigned Slot</span>
                   )}
+                </div>
+              );
+            }
+
+            if (entry.lecture_type === 'Lunch') {
+              return (
+                <div
+                  key={period}
+                  className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-center flex items-center justify-between text-xs"
+                >
+                  <span className="font-mono text-amber-900 font-bold">{timeStr}</span>
+                  <span className="px-3 py-1 rounded-full bg-amber-200/70 text-amber-950 text-[11px] font-bold tracking-wider uppercase font-mono">
+                    LUNCH RECESS
+                  </span>
                 </div>
               );
             }
@@ -1736,42 +1820,39 @@ export const TimetableManagerPage: React.FC = () => {
               <div 
                 key={period}
                 className={clsx(
-                  "rounded-2xl p-4 border space-y-2 transition-all",
+                  "rounded-2xl p-4 border space-y-3 transition-all bg-white shadow-2xs",
                   slotConflict 
-                    ? "bg-rose-50 border-2 border-rose-400 text-rose-900 shadow-xs" 
-                    : "bg-white border-slate-200/80 shadow-xs hover:border-slate-300"
+                    ? "bg-rose-50/70 border-2 border-rose-400 text-rose-900 shadow-xs" 
+                    : "border-slate-200/90 hover:border-slate-300"
                 )}
               >
-                <div className="flex items-center justify-between gap-2">
+                {/* Header: Period, Time, Type, Actions */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                      Period {period}
+                    <span className="px-2.5 py-0.5 rounded-lg text-xs font-mono font-black bg-[#0F172A] text-white tracking-wider">
+                      {sub?.subject_code || 'CODE'}
                     </span>
-                    <span className="text-xs font-mono text-slate-500 font-bold">{timeStr}</span>
-                    {slotConflict && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-rose-600" />
-                        {slotConflict.rule}
-                      </span>
-                    )}
+                    <span className="text-xs font-mono font-bold text-[#334155]">{timeStr}</span>
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700 uppercase tracking-wider">
                       {entry.lecture_type || 'Theory'}
                     </span>
-                    {isEditMode && (
+                    {!isSuperAdmin && (
                       <div className="flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={() => handleOpenSlotEditor(selectedMobileDay, period)}
-                          className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 cursor-pointer"
+                          className="p-1 rounded-lg text-slate-700 hover:bg-slate-100 cursor-pointer"
                           title="Edit Slot"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleClearSlot(selectedMobileDay, period)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
                           title="Clear Slot"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1781,52 +1862,71 @@ export const TimetableManagerPage: React.FC = () => {
                   </div>
                 </div>
 
-                {entry.lecture_type === 'Lunch' ? (
-                  <div className="py-2">
-                    <h4 className="text-sm font-black text-amber-800 tracking-wider">LUNCH BREAK</h4>
-                    <p className="text-xs text-slate-500 font-mono mt-0.5">12:20 – 13:10 • Refectory / Break Time</p>
+                {/* Conflict Alert (if any) */}
+                {slotConflict && (
+                  <div className="pt-0.5">
+                    <span className="text-[10px] font-bold text-rose-800 flex items-center gap-1 bg-rose-100/90 px-2 py-0.5 rounded-lg border border-rose-300">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>{slotConflict.message || slotConflict.rule}</span>
+                    </span>
                   </div>
-                ) : (
-                  <>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 tracking-tight">{sub?.subject_name || 'Subject'}</h4>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">{sub?.subject_code}</p>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
-                      <div className="flex items-center gap-1.5 truncate max-w-[65%]">
-                        <User className={clsx("w-3.5 h-3.5 shrink-0", fac?.full_name ? "text-slate-700" : "text-slate-400")} />
-                        <span className={clsx("truncate", !fac?.full_name && "text-slate-400 italic")}>
-                          {fac?.full_name || (entry.lecture_type === 'Sports' ? 'Sports Coordinator' : 'Unassigned Faculty')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="font-bold text-slate-900">{entry.room_number || currentSection?.room_number}</span>
-                      </div>
-                    </div>
-                  </>
                 )}
+
+                {/* Subject Title (Untruncated) */}
+                <div>
+                  <h4 className="text-[15px] font-bold text-[#0F172A] tracking-tight leading-snug font-serif-institutional break-words">
+                    {sub?.subject_name || 'Subject'}
+                  </h4>
+                </div>
+
+                {/* Footer Info: Faculty, Section, Room */}
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs gap-2 flex-wrap text-slate-600">
+                  <div className="flex items-center gap-1.5 text-[#334155] font-medium">
+                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="break-words">
+                      {fac?.full_name || 'Unassigned Faculty'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-slate-800 font-bold ml-auto">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{entry.room_number || currentSection?.room_number || 'Room TBD'}</span>
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* DESKTOP/TABLET VIEW: Grid Timetable Table */}
-      <div className="hidden lg:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* ======================================================== */}
+      {/* 6. DESKTOP VIEW: Grid Timetable Table (240px+ Cell Width) */}
+      {/* ======================================================== */}
+      <div className="hidden lg:block bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-center border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider">
-                <th className="p-4 text-left w-32 border-r border-slate-200/80">Day / Period</th>
+              <tr className="sticky top-0 z-20 bg-[#F8FAFC] border-b border-slate-200">
+                {/* Corner Cell: Sticky Top-Left */}
+                <th className="sticky top-0 left-0 z-30 bg-[#F1F5F9] border-r border-b border-slate-200 min-w-[140px] w-[140px] p-4 text-center text-xs font-black text-[#0F172A] tracking-wider uppercase shadow-xs">
+                  DAY / PERIOD
+                </th>
                 {periods.map(p => {
                   const time = getStandardTimeForPeriod(p);
+                  const isBreak = p === 5;
                   return (
-                    <th key={p} className="p-3.5 min-w-[135px] border-r border-slate-200/80 last:border-r-0">
-                      <span className="block text-slate-900 font-mono font-bold">Period {p}</span>
-                      <span className="text-[10px] text-slate-500 font-medium font-mono">
-                        {time.start} – {time.end}
+                    <th 
+                      key={p} 
+                      className={clsx(
+                        "p-3.5 border-r border-b border-slate-200 last:border-r-0 min-w-[240px] xl:min-w-[260px]",
+                        isBreak ? "bg-amber-50/50 w-[140px] min-w-[140px]" : "bg-[#F8FAFC]"
+                      )}
+                    >
+                      <span className="block text-[14px] font-bold text-[#0F172A] tracking-wide">
+                        {isBreak ? 'LUNCH RECESS' : `PERIOD ${p}`}
+                      </span>
+                      <span className="block text-[13px] font-semibold text-[#334155] mt-0.5 font-mono">
+                        {cleanTime(time.start)} – {cleanTime(time.end)}
                       </span>
                     </th>
                   );
@@ -1835,9 +1935,17 @@ export const TimetableManagerPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-xs">
               {days.map(day => (
-                <tr key={day} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="p-4 text-left font-black text-white bg-slate-950/50 border-r border-slate-200/80">
-                    <span className="text-sm text-slate-900 font-serif-institutional">{dayLabels[day]}</span>
+                <tr key={day} className="hover:bg-slate-50/40 transition-colors">
+                  {/* Sticky Left Day Column */}
+                  <td className="sticky left-0 z-10 bg-[#F1F5F9] border-r border-b border-slate-200 p-4 min-w-[140px] w-[140px] text-left border-l-4 border-l-[#0F172A] shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+                    <div className="space-y-0.5">
+                      <span className="block text-[17px] sm:text-[18px] font-bold text-[#0F172A] font-serif-institutional tracking-tight leading-tight">
+                        {dayLabels[day]}
+                      </span>
+                      <span className="block text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                        {day}
+                      </span>
+                    </div>
                   </td>
                   {periods.map(period => {
                     const key = `${day}-${period}`;
@@ -1848,20 +1956,25 @@ export const TimetableManagerPage: React.FC = () => {
 
                     const sub = entry ? (subjects.find(s => s.id === entry.subject_id) || (entry as any).subject) : undefined;
                     const fac = entry ? (faculty.find(f => f.id === entry.faculty_id) || (entry as any).faculty) : undefined;
+                    const time = getStandardTimeForPeriod(period);
 
                     if (!entry) {
                       return (
-                        <td key={period} className="p-2 border-r border-slate-200/80">
-                          {isEditMode ? (
+                        <td key={period} className="p-2 border-r border-b border-slate-100 min-w-[240px] xl:min-w-[260px]">
+                          {!isSuperAdmin ? (
                             <button
+                              type="button"
                               onClick={() => handleOpenSlotEditor(day, period)}
-                              className="w-full h-20 rounded-xl border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-800 cursor-pointer group"
+                              className="w-full h-32 rounded-2xl border border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50/80 transition-all flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-slate-800 cursor-pointer group"
                             >
-                              <Plus className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
-                              <span className="text-[10px] font-bold">Add Class</span>
+                              <Plus className="w-5 h-5 text-slate-400 group-hover:text-slate-700" />
+                              <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900">Add Class</span>
+                              <span className="text-[10px] font-mono text-slate-400">
+                                {cleanTime(time.start)} – {cleanTime(time.end)}
+                              </span>
                             </button>
                           ) : (
-                            <span className="text-slate-600 font-mono">—</span>
+                            <span className="text-slate-300 font-mono text-sm font-bold select-none">—</span>
                           )}
                         </td>
                       );
@@ -1869,104 +1982,117 @@ export const TimetableManagerPage: React.FC = () => {
 
                     if (entry.lecture_type === 'Lunch') {
                       return (
-                        <td key={period} className="p-2 border-r border-slate-200/80">
-                          <div className={clsx(
-                            "p-2.5 rounded-xl text-center space-y-1 group relative transition-all bg-slate-100 border border-slate-200/80 text-slate-800",
-                            isEditMode && "hover:border-slate-300"
-                          )}>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-mono font-bold text-amber-400/80 uppercase tracking-wider">Break</span>
-                              {isEditMode ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => handleOpenSlotEditor(day, period)}
-                                    className="text-amber-400 hover:text-white p-0.5 rounded cursor-pointer"
-                                    title="Edit Slot"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleClearSlot(day, period)}
-                                    className="text-slate-500 hover:text-rose-400 p-0.5 rounded cursor-pointer"
-                                    title="Clear Slot"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="py-1.5">
-                              <span className="font-bold text-slate-900 block text-xs tracking-wider">LUNCH BREAK</span>
-                              <span className="text-[10px] text-slate-400 font-mono">12:20 – 13:10</span>
-                            </div>
-                            <div className="text-[10px] pt-1 border-t border-amber-500/20 text-slate-400 truncate">
-                              Refectory
-                            </div>
+                        <td key={period} className="p-2.5 border-r border-b border-slate-200 text-center align-middle bg-amber-50/40 w-[140px] min-w-[140px]">
+                          <div className="flex flex-col items-center justify-center space-y-1.5 py-5">
+                            <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold tracking-wider uppercase font-mono border border-amber-200">
+                              RECESS
+                            </span>
+                            <span className="text-xs font-bold text-amber-950 font-serif-institutional">
+                              LUNCH BREAK
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-mono font-semibold">
+                              12:20 – 13:10
+                            </span>
                           </div>
                         </td>
                       );
                     }
 
                     return (
-                      <td key={period} className="p-2 border-r border-slate-200/80">
-                        <div className={clsx(
-                          "p-2.5 rounded-xl text-left space-y-1 group relative transition-all",
-                          slotConflict
-                            ? "bg-rose-50 border-2 border-rose-400 text-rose-900 shadow-xs"
-                            : isEditMode 
-                              ? "bg-white border-2 border-slate-300 hover:border-slate-500 shadow-xs"
-                              : "bg-white border border-slate-200/80 hover:border-slate-300 shadow-xs"
-                        )}>
-                          <div className="flex items-start justify-between gap-1">
-                            <span className="font-bold text-slate-900 block text-xs truncate max-w-[100px]" title={sub?.subject_name}>
-                              {sub?.subject_code || 'Subject'}
-                            </span>
-                            {isEditMode ? (
-                              <div className="flex items-center gap-1">
+                      <td key={period} className="p-2.5 border-r border-b border-slate-100 last:border-r-0 align-top min-w-[240px] xl:min-w-[260px]">
+                        <div
+                          onClick={() => handleOpenSlotEditor(day, period)}
+                          className={clsx(
+                            "group relative p-3.5 rounded-2xl bg-white border shadow-2xs hover:shadow-md hover:border-slate-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 h-full text-left",
+                            slotConflict 
+                              ? "bg-rose-50/70 border-2 border-rose-400 text-rose-900 ring-2 ring-rose-400/20" 
+                              : isEditMode 
+                                ? "border-2 border-slate-300 hover:border-slate-500" 
+                                : "border-slate-200/90"
+                          )}
+                        >
+                          {/* Top Row: Subject Code Badge + Lecture Type Badge + Hover Actions */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-[#0F172A] text-white tracking-wider shadow-2xs">
+                                {sub?.subject_code || 'CODE'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 border border-slate-200 text-slate-700 uppercase tracking-wide">
+                                {entry.lecture_type || 'Theory'}
+                              </span>
+                            </div>
+
+                            {/* Hover Quick Action Buttons */}
+                            {!isSuperAdmin && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                                 <button
-                                  onClick={() => handleOpenSlotEditor(day, period)}
-                                  className="text-emerald-400 hover:text-white p-0.5 rounded cursor-pointer"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenSlotEditor(day, period);
+                                  }}
+                                  className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                                   title="Edit Slot"
                                 >
-                                  <Edit3 className="w-3 h-3" />
+                                  <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => handleClearSlot(day, period)}
-                                  className="text-slate-500 hover:text-rose-400 p-0.5 rounded cursor-pointer"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleClearSlot(day, period);
+                                  }}
+                                  className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
                                   title="Clear Slot"
                                 >
-                                  <Trash2 className="w-3 h-3" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
-                            ) : null}
+                            )}
                           </div>
 
-                          <span className="text-[11px] text-slate-600 block truncate font-medium" title={sub?.subject_name}>
-                            {sub?.subject_name}
-                          </span>
+                          {/* Middle: Full Subject Name (Untruncated) */}
+                          <div className="space-y-1.5 flex-1">
+                            <h4 className="text-[15px] font-bold text-[#0F172A] leading-snug font-serif-institutional break-words">
+                              {sub?.subject_name || 'Subject Name'}
+                            </h4>
 
-                          {fac?.full_name ? (
-                            <span className="text-[11px] text-slate-900 block truncate font-mono font-medium" title={fac.full_name}>
-                              {fac.full_name}
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-slate-500 italic block truncate font-mono">
-                              Unassigned Faculty
-                            </span>
-                          )}
+                            {/* Faculty Name (Untruncated) */}
+                            <div className="text-[13px] font-medium text-[#334155] flex items-center gap-1.5 pt-0.5">
+                              <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="break-words font-medium">
+                                {fac?.full_name || 'Unassigned Faculty'}
+                              </span>
+                            </div>
 
+                            {/* Section Information */}
+                            <div className="text-[12px] font-semibold text-slate-700 flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>
+                                {currentYear?.name ? `${currentYear.name} • ` : ''}Section {currentSection?.name || 'A'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Conflict Alert (if any) */}
                           {slotConflict && (
-                            <div className="pt-0.5">
-                              <span className="text-[9px] font-black text-rose-300 flex items-center gap-1 bg-rose-900/60 px-1 py-0.5 rounded border border-rose-500/40 truncate" title={slotConflict.message}>
-                                <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-                                <span className="truncate">{slotConflict.rule}</span>
+                            <div className="pt-1">
+                              <span className="text-[10px] font-bold text-rose-800 flex items-center gap-1 bg-rose-100/90 px-2 py-0.5 rounded-lg border border-rose-300">
+                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                <span>{slotConflict.message || slotConflict.rule}</span>
                               </span>
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between text-[10px] pt-1 border-t border-slate-100">
-                            <span className="text-slate-900 font-bold">{entry.room_number || currentSection?.room_number}</span>
-                            <span className="text-slate-400 font-medium">{entry.lecture_type || 'Theory'}</span>
+                          {/* Bottom: Room & Time */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 gap-2">
+                            <div className="flex items-center gap-1.5 text-slate-800 font-bold">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>{entry.room_number || currentSection?.room_number || 'Room TBD'}</span>
+                            </div>
+                            <span className="text-[11px] font-mono text-slate-500 font-semibold">
+                              {cleanTime(entry.start_time)} – {cleanTime(entry.end_time)}
+                            </span>
                           </div>
                         </div>
                       </td>

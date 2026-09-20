@@ -4,6 +4,8 @@ import {
   Clock, 
   MapPin, 
   User, 
+  Users,
+  GraduationCap,
   CheckSquare, 
   ExternalLink,
   Sparkles,
@@ -61,7 +63,7 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
 }) => {
   const { subjects, faculty, sections, semesters, years } = useAcademic();
 
-  // Selected entry for Class Detail Modal
+  // Selected entry for Class Detail Modal (optional deeper detail)
   const [selectedEntry, setSelectedEntry] = useState<TimetableEntry | null>(null);
   const [modalDayLabel, setModalDayLabel] = useState<string>('');
   const [modalTimeLabel, setModalTimeLabel] = useState<string>('');
@@ -113,12 +115,12 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
         <div className="h-7 bg-slate-200 rounded-xl w-48 mb-6" />
         <div className="grid grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 bg-slate-100 rounded-2xl border border-slate-200/60" />
+            <div key={i} className="h-32 bg-slate-100 rounded-2xl border border-slate-200/60" />
           ))}
         </div>
         <div className="grid grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 bg-slate-100 rounded-2xl border border-slate-200/60" />
+            <div key={i} className="h-32 bg-slate-100 rounded-2xl border border-slate-200/60" />
           ))}
         </div>
       </div>
@@ -146,10 +148,12 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
 
   return (
     <>
-      {/* MOBILE / TABLET VIEW (< lg): Day Selector Pills + High-Contrast Vertical Cards */}
+      {/* ======================================================== */}
+      {/* MOBILE / TABLET VIEW (< lg): Day Selector + Vertical Cards*/}
+      {/* ======================================================== */}
       <div className="block lg:hidden space-y-4">
         {/* Day Selector Pill Bar */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-x-auto no-scrollbar">
           {ACADEMIC_DAYS.map(day => {
             const isSelected = selectedMobileDay === day;
             const dayEntriesCount = entries.filter(e => e.day_of_week === day).length;
@@ -165,8 +169,8 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 )}
               >
-                <span>{day}</span>
-                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full", isSelected ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-600")}>
+                <span>{DAY_LABELS[day]}</span>
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full font-mono", isSelected ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-600")}>
                   {dayEntriesCount}
                 </span>
               </button>
@@ -182,10 +186,10 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
               return (
                 <div
                   key={slot.period}
-                  className="p-3.5 rounded-2xl bg-slate-100/90 border border-slate-200 text-center flex items-center justify-between text-xs"
+                  className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-center flex items-center justify-between text-xs"
                 >
-                  <span className="font-mono text-slate-600 font-bold">{slot.time}</span>
-                  <span className="px-3 py-1 rounded-full bg-slate-200/80 text-slate-800 text-[11px] font-bold tracking-wider">
+                  <span className="font-mono text-amber-900 font-bold">{slot.time}</span>
+                  <span className="px-3 py-1 rounded-full bg-amber-200/70 text-amber-950 text-[11px] font-bold tracking-wider uppercase font-mono">
                     LUNCH RECESS
                   </span>
                 </div>
@@ -201,13 +205,13 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
               return (
                 <div
                   key={slot.period}
-                  className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 flex items-center justify-between text-xs"
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-[#334155]">{slot.label}</span>
                     <span className="text-[#475569] font-medium font-mono">({slot.time})</span>
                   </div>
-                  <span className="text-[11px] font-mono text-slate-600 font-medium">Free Period</span>
+                  <span className="text-[11px] font-mono text-slate-500 font-medium">Free Period</span>
                 </div>
               );
             }
@@ -216,7 +220,9 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
             const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
             const fac = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
             const sec = sections.find(s => s.id === entry.section_id) || entry.section;
-            const isMyLecture = currentFacultyId && entry.faculty_id === currentFacultyId;
+            const sem = semesters.find(s => s.id === sec?.semester_id);
+            const yr = years.find(y => y.id === sem?.academic_year_id);
+            const sectionFormatted = sec ? `${yr?.name ? `${yr.name} • ` : ''}Section ${sec.name}` : (activeSectionName ? `Section ${activeSectionName}` : 'Assigned Section');
 
             return (
               <div
@@ -224,38 +230,45 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                 onClick={() => handleCardClick(entry, selectedMobileDay, slot.label, slot.time)}
                 className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs hover:border-slate-400 hover:shadow-xs transition-all space-y-3 cursor-pointer"
               >
-                {/* Header: Period Pill, Time, Lecture Type */}
-                <div className="flex items-center justify-between gap-2">
+                {/* Header: Period, Time, Subject Code, Lecture Type */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-black bg-[#0F172A] text-white">
+                    <span className="px-2.5 py-0.5 rounded-lg text-xs font-mono font-black bg-[#0F172A] text-white tracking-wider">
                       {sub?.subject_code || 'CODE'}
                     </span>
                     <span className="text-xs font-mono font-bold text-[#334155]">{slot.time}</span>
                   </div>
 
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-700 uppercase tracking-wider">
                     {entry.lecture_type || 'Theory'}
                   </span>
                 </div>
 
-                {/* Subject Title */}
+                {/* Subject Title (Untruncated) */}
                 <div>
-                  <h4 className="text-[15px] font-bold text-[#0F172A] tracking-tight leading-snug font-serif-institutional">
+                  <h4 className="text-[15px] font-bold text-[#0F172A] tracking-tight leading-snug font-serif-institutional break-words">
                     {sub?.subject_name || 'Class Subject'}
                   </h4>
                 </div>
 
-                {/* Footer Info: Faculty, Room, Actions */}
-                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 truncate max-w-[65%] text-[#334155] font-medium">
-                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{fac?.full_name || 'Unassigned Faculty'}</span>
-                  </div>
+                {/* Footer Info: Faculty or Section, Room, Actions */}
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs gap-2 flex-wrap">
+                  {!isFacultyView ? (
+                    <div className="flex items-center gap-1.5 text-[#334155] font-medium">
+                      <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="break-words">{fac?.full_name || 'Unassigned Faculty'}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                      <GraduationCap className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span className="break-words">{sectionFormatted}</span>
+                    </div>
+                  )}
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2.5 ml-auto">
                     <div className="flex items-center gap-1 text-slate-800 font-bold">
                       <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{entry.room_number || sec?.room_number || activeRoomNumber || 'Room'}</span>
+                      <span>{entry.room_number || sec?.room_number || activeRoomNumber || 'Room TBD'}</span>
                     </div>
 
                     {isFacultyView && onTakeAttendance && (
@@ -265,7 +278,7 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                           e.stopPropagation();
                           onTakeAttendance(entry.id);
                         }}
-                        className="px-2.5 py-1 rounded-xl bg-[#0F172A] text-white text-[11px] font-bold hover:bg-black flex items-center gap-1 shadow-2xs cursor-pointer touch-target"
+                        className="px-2.5 py-1 rounded-xl bg-[#0F172A] text-white text-[11px] font-bold hover:bg-black flex items-center gap-1 shadow-2xs cursor-pointer touch-target shrink-0"
                         title="Take Attendance"
                       >
                         <CheckSquare className="w-3 h-3" />
@@ -280,9 +293,11 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
         </div>
       </div>
 
-      {/* DESKTOP VIEW (>= lg): Sticky Header & Sticky Day Column Master Grid */}
+      {/* ======================================================== */}
+      {/* DESKTOP VIEW (>= lg): Sticky Day Column Master Grid       */}
+      {/* ======================================================== */}
       <div className="hidden lg:block w-full overflow-x-auto rounded-3xl border border-slate-200/90 bg-white shadow-xs focus:outline-none">
-        <table className="w-full text-center border-collapse table-fixed">
+        <table className="w-full text-center border-collapse">
           {/* Header Row: Corner Cell + Periods 1 to 8 */}
           <thead>
             <tr className="sticky top-0 z-20 bg-[#F8FAFC] border-b border-slate-200">
@@ -291,13 +306,13 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                 DAY / PERIOD
               </th>
 
-              {/* Period Headers */}
+              {/* Period Headers with 240px-260px minimum width */}
               {periodSlots.map(slot => (
                 <th
                   key={slot.period}
                   className={clsx(
-                    "p-3.5 border-r border-b border-slate-200 last:border-r-0 min-w-[210px]",
-                    slot.isLunch ? "bg-slate-100/60 w-[140px] min-w-[140px]" : "bg-[#F8FAFC]"
+                    "p-3.5 border-r border-b border-slate-200 last:border-r-0 min-w-[240px] xl:min-w-[260px]",
+                    slot.isLunch ? "bg-amber-50/50 w-[140px] min-w-[140px]" : "bg-[#F8FAFC]"
                   )}
                 >
                   <span className="block text-[14px] font-bold text-[#0F172A] tracking-wide">
@@ -334,10 +349,10 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                     return (
                       <td
                         key={slot.period}
-                        className="p-3 bg-slate-100/50 border-r border-b border-slate-200 text-center align-middle"
+                        className="p-3 bg-amber-50/40 border-r border-b border-slate-200 text-center align-middle w-[140px] min-w-[140px]"
                       >
-                        <div className="flex flex-col items-center justify-center space-y-1 py-4">
-                          <span className="px-2.5 py-1 rounded-full bg-slate-200/80 text-slate-700 text-[10px] font-bold tracking-wider uppercase font-mono">
+                        <div className="flex flex-col items-center justify-center space-y-1.5 py-4">
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold tracking-wider uppercase font-mono border border-amber-200">
                             RECESS
                           </span>
                           <span className="text-[11px] text-slate-500 font-mono font-semibold">
@@ -358,7 +373,7 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                     return (
                       <td
                         key={slot.period}
-                        className="p-3 text-center border-r border-b border-slate-100 text-slate-300 font-mono text-sm align-middle"
+                        className="p-3 text-center border-r border-b border-slate-100 text-slate-300 font-mono text-sm align-middle min-w-[240px] xl:min-w-[260px]"
                       >
                         <span className="text-slate-300 font-mono text-sm font-bold select-none">—</span>
                       </td>
@@ -369,48 +384,63 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                   const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
                   const fac = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
                   const sec = sections.find(s => s.id === entry.section_id) || entry.section;
-                  const isMyLecture = currentFacultyId && entry.faculty_id === currentFacultyId;
+                  const sem = semesters.find(s => s.id === sec?.semester_id);
+                  const yr = years.find(y => y.id === sem?.academic_year_id);
+                  const sectionFormatted = sec ? `${yr?.name ? `${yr.name} • ` : ''}Section ${sec.name}` : (activeSectionName ? `Section ${activeSectionName}` : 'Assigned Section');
 
                   return (
                     <td
                       key={slot.period}
-                      className="p-2.5 border-r border-b border-slate-100 last:border-r-0 align-top min-w-[210px]"
+                      className="p-2.5 border-r border-b border-slate-100 last:border-r-0 align-top min-w-[240px] xl:min-w-[260px]"
                     >
                       <div
                         onClick={() => handleCardClick(entry, day, slot.label, slot.time)}
-                        className="group relative p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-2.5 h-full text-left"
+                        className="group relative p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-400 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 h-full text-left"
                       >
                         {/* Top: Badges */}
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-[#0F172A] text-white tracking-wider shadow-2xs">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-[#0F172A] text-white tracking-wider shadow-2xs shrink-0">
                             {sub?.subject_code || 'CODE'}
                           </span>
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 border border-slate-200 text-slate-700">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 border border-slate-200 text-slate-700 uppercase tracking-wide shrink-0">
                             {entry.lecture_type || 'Theory'}
                           </span>
                         </div>
 
-                        {/* Middle: Subject Name (wraps naturally, max 2-3 lines) */}
-                        <div className="space-y-1">
+                        {/* Middle: Subject Name (Untruncated, natural wrap) & Secondary Entity */}
+                        <div className="space-y-1.5 flex-1">
                           <h4
-                            className="text-[14px] sm:text-[15px] font-bold text-[#0F172A] leading-snug line-clamp-2 group-hover:text-black transition-colors font-serif-institutional"
-                            title={sub?.subject_name}
+                            className="text-[15px] font-bold text-[#0F172A] leading-snug group-hover:text-black transition-colors font-serif-institutional break-words"
                           >
                             {sub?.subject_name || 'Subject Name'}
                           </h4>
-                          <div className="text-[12px] sm:text-[13px] font-medium text-[#334155] flex items-center gap-1.5 truncate pt-0.5">
-                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate" title={fac?.full_name}>
-                              {fac?.full_name || 'Unassigned Faculty'}
-                            </span>
-                          </div>
+
+                          {/* Student View: Full Faculty Name */}
+                          {!isFacultyView && (
+                            <div className="text-[13px] font-medium text-[#334155] flex items-center gap-1.5 pt-0.5">
+                              <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="break-words font-medium">
+                                {fac?.full_name || 'Unassigned Faculty'}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Faculty View: Assigned Section */}
+                          {isFacultyView && (
+                            <div className="text-[13px] font-semibold text-slate-800 flex items-center gap-1.5 pt-0.5">
+                              <GraduationCap className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              <span className="break-words">
+                                {sectionFormatted}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Bottom: Divider & Footer Details */}
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                          <div className="flex items-center gap-1 text-slate-800 font-bold truncate">
+                        {/* Bottom: Divider & Room + Optional Attendance Action */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-slate-800 font-bold">
                             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">
+                            <span>
                               {entry.room_number || sec?.room_number || activeRoomNumber || 'Room TBD'}
                             </span>
                           </div>
@@ -422,11 +452,11 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                                 e.stopPropagation();
                                 onTakeAttendance(entry.id);
                               }}
-                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-white bg-[#0F172A] hover:bg-black transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-[#0F172A] hover:bg-black transition-colors flex items-center gap-1 cursor-pointer shadow-2xs shrink-0"
                               title="Take Attendance"
                             >
-                              <CheckSquare className="w-3 h-3" />
-                              <span>Take</span>
+                              <CheckSquare className="w-3.5 h-3.5" />
+                              <span>Attendance</span>
                             </button>
                           )}
                         </div>
@@ -440,7 +470,7 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
         </table>
       </div>
 
-      {/* Interactive Class Detail Modal */}
+      {/* Interactive Class Detail Modal (Optional deep-dive) */}
       <TimetableClassDetailModal
         entry={fullSelectedEntry}
         isOpen={!!selectedEntry}
