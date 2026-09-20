@@ -71,13 +71,13 @@ export const LoginPage: React.FC = () => {
         <img
           src={vctmCampusImage}
           alt="Vivekananda College of Technology & Management Campus"
-          className="w-full h-full object-cover object-[center_35%]"
+          className="w-full h-full object-cover object-[center_22%]"
           loading="eager"
         />
-        {/* Localized sky/heading gradient only at top-left: protects text contrast over the sky while keeping building facade and lawn 100% photorealistic and vibrant */}
-        <div className="absolute top-0 left-0 w-full sm:w-[55%] lg:w-[46%] h-[52%] bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-white/90 via-white/40 to-transparent pointer-events-none" />
+        {/* Localized sky gradient strictly in upper-left sky (y < 25%): ensures crisp headline readability without washing out roofline, pediment, or facade */}
+        <div className="absolute top-0 left-0 w-[420px] max-w-[45%] h-[24%] bg-gradient-to-br from-white/70 via-white/20 to-transparent pointer-events-none" />
         {/* Mobile wash for readability on small screen sizes */}
-        <div className="absolute inset-0 bg-white/75 lg:hidden pointer-events-none" />
+        <div className="absolute inset-0 bg-white/45 lg:hidden pointer-events-none" />
       </div>
 
       {/* ======================================================== */}
@@ -121,61 +121,61 @@ export const LoginPage: React.FC = () => {
       </header>
 
       {/* ======================================================== */}
-      {/* 3. MAIN HERO & FLOATING LOGIN CARD GRID                  */}
+      {/* 3. MAIN HERO & FLOATING LOGIN CARD                       */}
       {/* ======================================================== */}
-      <main className="relative z-20 flex-1 min-h-0 max-w-7xl mx-auto w-full px-6 sm:px-10 lg:px-12 pt-2 sm:pt-3 pb-6 lg:pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+      <main className="relative z-20 flex-1 min-h-0 w-full px-6 sm:px-10 lg:px-12 max-w-[1780px] mx-auto flex flex-col lg:flex-row items-stretch justify-between gap-6 pt-2 sm:pt-3 pb-3 sm:pb-4">
         
-        {/* Left Column: Hero Text (Top-Left) & Feature Bar (Bottom-Left over Lawn) */}
-        <div className="lg:col-span-7 flex flex-col justify-between h-full min-h-0">
-          {/* Hero Headlines - Positioned in the clean upper sky area */}
-          <div className="max-w-xl">
+        {/* Left Column: Hero Text (Top-Left in Sky) & Feature Bar (Bottom-Left over Lawn) */}
+        <div className="flex-1 flex flex-col justify-between min-w-0 pr-0 lg:pr-6 h-full">
+          {/* Hero Headlines - Positioned strictly in the upper sky area */}
+          <div className="max-w-md lg:max-w-lg">
             <h2 
-              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.0] drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
-              style={{ fontSize: 'clamp(40px, 3.8vw, 62px)' }}
+              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.04] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
+              style={{ fontSize: 'clamp(28px, 2.8vw, 46px)' }}
             >
               Empowering <br />
               Education <span className="font-normal font-serif-hero text-slate-900">with Technology</span>
             </h2>
-            <p className="text-sm sm:text-base lg:text-[17px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-2 sm:mt-2.5 max-w-lg">
+            <p className="text-xs sm:text-sm lg:text-[15px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-1.5 max-w-md">
               A Smarter Campus for a Brighter Tomorrow
             </p>
           </div>
 
-          {/* Bottom Floating Dark Feature Bar - Anchored to bottom over lawn, leaving college building facade fully visible */}
-          <div className="w-full max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-3 sm:p-3.5 shadow-2xl border border-slate-700/60 mt-4 lg:mt-0">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/60">
+          {/* Bottom Floating Dark Feature Bar - Anchored strictly to bottom over green lawn, leaving entrance & facade fully visible */}
+          <div className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-2.5 sm:p-3 shadow-2xl border border-slate-700/60 mt-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/60">
               
               {/* Feature 1 */}
-              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
-                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
-                  <GraduationCap className="w-3.5 h-3.5" />
+              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
+                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
+                  <GraduationCap className="w-3 h-3" />
                 </div>
                 <span className="text-xs font-bold text-white leading-tight">Academic Management</span>
                 <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Classes, Subjects & Timetable</span>
               </div>
 
               {/* Feature 2 */}
-              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
-                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
-                  <Users className="w-3.5 h-3.5" />
+              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
+                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
+                  <Users className="w-3 h-3" />
                 </div>
                 <span className="text-xs font-bold text-white leading-tight">Student Information</span>
                 <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Profiles, Records & Performance</span>
               </div>
 
               {/* Feature 3 */}
-              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
-                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
-                  <FileText className="w-3.5 h-3.5" />
+              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
+                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
+                  <FileText className="w-3 h-3" />
                 </div>
                 <span className="text-xs font-bold text-white leading-tight">Assignments & Grading</span>
                 <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Sessional, Quizzes & Evaluations</span>
               </div>
 
               {/* Feature 4 */}
-              <div className="flex flex-col sm:px-3 pt-1.5 sm:pt-0">
-                <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center mb-1.5 text-white">
-                  <TrendingUp className="w-3.5 h-3.5" />
+              <div className="flex flex-col sm:px-3 pt-1 sm:pt-0">
+                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center mb-1 text-white">
+                  <TrendingUp className="w-3 h-3" />
                 </div>
                 <span className="text-xs font-bold text-white leading-tight">Attendance & Reports</span>
                 <span className="text-[10px] text-slate-300 mt-0.5 leading-snug">Real-time Tracking & Insights</span>
@@ -185,20 +185,20 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Floating White Login Card */}
-        <div className="lg:col-span-5 w-full max-w-[360px] sm:max-w-[375px] ml-auto flex items-center justify-end my-auto">
-          <div className="w-full bg-white/98 backdrop-blur-md rounded-2xl sm:rounded-[24px] p-5 sm:p-5.5 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.2)] border border-slate-200/90 relative overflow-hidden transition-all duration-300">
+        {/* Right Column: Anchored to far right edge over rightmost walkway/trees */}
+        <div className="w-full lg:w-[380px] xl:w-[400px] shrink-0 flex items-center justify-end my-auto">
+          <div className="w-full max-w-[375px] sm:max-w-[385px] xl:max-w-[400px] bg-white/98 backdrop-blur-md rounded-2xl sm:rounded-[22px] p-4 sm:p-5 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.22)] border border-slate-200/90 relative overflow-hidden transition-all duration-300">
             
             {/* Card Emblem & Title */}
-            <div className="text-center mb-3.5 sm:mb-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-1 flex items-center justify-center">
+            <div className="text-center mb-3">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 mx-auto mb-1 flex items-center justify-center">
                 <img 
                   src={vctmOfficialLogo} 
                   alt="VCTM Emblem" 
                   className="w-full h-full object-contain drop-shadow-sm" 
                 />
               </div>
-              <h3 className="font-serif-hero font-bold text-xl sm:text-2xl text-slate-900 tracking-wider">
+              <h3 className="font-serif-hero font-bold text-lg sm:text-xl text-slate-900 tracking-wider">
                 VCTM ERP
               </h3>
               <p className="text-[11px] sm:text-xs text-slate-700 font-medium mt-0.5">
@@ -212,12 +212,12 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Role Selection Tabs (Student / Faculty / Admin) */}
-            <div className="grid grid-cols-3 gap-1.5 bg-slate-50/90 p-1 rounded-xl mb-3.5 sm:mb-4 border border-slate-200/80 text-xs">
+            <div className="grid grid-cols-3 gap-1 bg-slate-50/90 p-1 rounded-xl mb-3 border border-slate-200/80 text-xs">
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('student')}
                 className={clsx(
-                  'py-2 px-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
+                  'py-1.5 px-1 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1',
                   activeRoleTab === 'student'
                     ? 'bg-[#111827] text-white shadow-sm font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
@@ -231,7 +231,7 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('faculty')}
                 className={clsx(
-                  'py-2 px-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
+                  'py-1.5 px-1 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1',
                   activeRoleTab === 'faculty'
                     ? 'bg-[#111827] text-white shadow-sm font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
@@ -245,7 +245,7 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('admin')}
                 className={clsx(
-                  'py-2 px-1.5 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1.5',
+                  'py-1.5 px-1 rounded-lg transition-all duration-200 cursor-pointer select-none font-semibold flex items-center justify-center gap-1',
                   activeRoleTab === 'admin'
                     ? 'bg-[#111827] text-white shadow-sm font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/60 hover:bg-slate-100'
@@ -258,14 +258,14 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Message Banner */}
             {(localError || error) && (
-              <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+              <div className="mb-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600" />
                 <span className="font-medium">{localError || error}</span>
               </div>
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
               {/* College ID / Faculty ID Input */}
               <div>
                 <label className="block text-xs font-semibold text-slate-800 mb-1">
@@ -277,7 +277,7 @@ export const LoginPage: React.FC = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <User className="w-4 h-4" />
+                    <User className="w-3.5 h-3.5" />
                   </div>
                   <input
                     type="text"
@@ -291,7 +291,7 @@ export const LoginPage: React.FC = () => {
                         ? 'Enter your college ID / faculty ID' 
                         : 'Enter admin ID/email'
                     }
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full pl-8.5 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -312,7 +312,7 @@ export const LoginPage: React.FC = () => {
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4" />
+                    <Lock className="w-3.5 h-3.5" />
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -320,25 +320,25 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full pl-8.5 pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
 
               {/* Submit Button */}
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 px-5 rounded-xl bg-[#111827] hover:bg-black text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#111827] hover:bg-black text-white font-semibold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -356,26 +356,18 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* Bottom Helper Note inside Card */}
-            <div className="mt-3.5 pt-2.5 border-t border-slate-100 text-center">
+            <div className="mt-3 pt-2 border-t border-slate-100 text-center">
               <div className="flex items-center justify-center gap-2">
-                <span className="h-px w-5 bg-slate-300"></span>
-                <p className="text-[11px] text-slate-600 font-normal leading-relaxed max-w-xs">
+                <span className="h-px w-4 bg-slate-300"></span>
+                <p className="text-[10px] sm:text-[11px] text-slate-600 font-normal leading-relaxed max-w-xs">
                   {activeRoleTab === 'student' 
                     ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
                     : activeRoleTab === 'faculty' 
                     ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
                     : 'Access institutional administration, department oversight, and academic records.'}
                 </p>
-                <span className="h-px w-5 bg-slate-300"></span>
+                <span className="h-px w-4 bg-slate-300"></span>
               </div>
-            </div>
-
-            {/* Subtle silver wavy layer accent at base of card */}
-            <div className="absolute -bottom-1 left-0 right-0 h-8 sm:h-9 overflow-hidden pointer-events-none rounded-b-[30px]">
-              <svg viewBox="0 0 500 120" preserveAspectRatio="none" className="w-full h-full opacity-60">
-                <path d="M0,40 C150,90 350,10 500,60 L500,120 L0,120 Z" fill="#e2e8f0" />
-                <path d="M0,70 C200,110 300,40 500,80 L500,120 L0,120 Z" fill="#cbd5e1" opacity="0.7" />
-              </svg>
             </div>
           </div>
         </div>
@@ -385,7 +377,7 @@ export const LoginPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 4. PAGE FOOTER                                           */}
       {/* ======================================================== */}
-      <footer className="relative z-20 w-full px-6 sm:px-10 lg:px-12 py-2 shrink-0 border-t border-slate-200/70 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-600">
+      <footer className="relative z-20 w-full px-6 sm:px-10 lg:px-12 py-1.5 sm:py-2 shrink-0 border-t border-slate-200/70 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-600">
         <p className="text-center sm:text-left">
           © 2026 Vivekananda College of Technology & Management, Aligarh. All Rights Reserved.
         </p>
