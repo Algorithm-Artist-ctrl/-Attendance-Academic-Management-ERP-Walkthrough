@@ -1057,6 +1057,48 @@ export const supabaseService = {
       throw err;
     }
 
+    // Dual-layer notification dispatch: Ensure assigned faculty member is notified
+    try {
+      if (res?.session_id) {
+        const { data: sess } = await supabase
+          .from('attendance_sessions')
+          .select('faculty_id, section:sections(name), subject:subjects(subject_name)')
+          .eq('id', res.session_id)
+          .maybeSingle();
+
+        if (sess?.faculty_id) {
+          const { data: fac } = await supabase.from('faculty').select('auth_user_id').eq('id', sess.faculty_id).maybeSingle();
+          const { data: st } = await supabase.from('students').select('full_name, roll_number').eq('id', params.studentId).maybeSingle();
+          
+          // Check if notification already created by database trigger to avoid duplicate
+          const { data: existingNotif } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('reference_id', res.claim_id)
+            .eq('recipient_faculty_id', sess.faculty_id)
+            .maybeSingle();
+
+          if (!existingNotif) {
+            await supabase.from('notifications').insert([{
+              recipient_user_id: fac?.auth_user_id || null,
+              recipient_faculty_id: sess.faculty_id,
+              recipient_role: 'faculty',
+              type: 'ATTENDANCE_CLAIM' as NotificationType,
+              title: 'New Attendance Correction Request',
+              message: `${st?.full_name || 'Student'} (${st?.roll_number || 'Roll N/A'}) submitted an attendance claim for ${(sess.subject as any)?.subject_name || 'Class'}. Reason: ${params.reason}`,
+              reference_type: 'attendance_correction',
+              reference_id: res.claim_id,
+              is_read: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }]);
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Notice: Background notification dispatch for claimAttendance:', notifErr);
+    }
+
     return {
       success: true,
       code: res.code,
@@ -5249,7 +5291,23 @@ export const supabaseService = {
         supabase.from('faculty_subject_assignments').select('*, section:sections(*), subject:subjects(*), academic_year:academic_years(*)').eq('faculty_id', facultyId).eq('active', true),
         this.fetchClassCoordinatorAssignments(facultyId),
         supabase.from('timetable_entries').select('*, section:sections(*), subject:subjects(*), classroom:classrooms(*)').eq('faculty_id', facultyId).eq('active', true).order('period_number', { ascending: true }),
-        supabase.from('attendance_corrections').select('*, student:students(*)').eq('status', 'pending')
+        supabase
+          .from('attendance_corrections')
+          .select(`
+            *,
+            student:students(*),
+            record:attendance_records(
+              *,
+              session:attendance_sessions(
+                *,
+                subject:subjects(*),
+                section:sections(*),
+                faculty:faculty(*)
+              )
+            )
+          `)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
       ]);
 
       const facultyMember = facultyRes.data;
@@ -5263,7 +5321,23 @@ export const supabaseService = {
       const rawAssignments = (assignmentsRes.data || []) as FacultySubjectAssignment[];
       const coordAssignments = coordRes;
       const rawTimetable = (timetableRes.data || []) as TimetableEntry[];
-      const pendingCorrections = (correctionsRes.data || []) as AttendanceCorrection[];
+      const rawCorrections = (correctionsRes.data || []) as AttendanceCorrection[];
+
+      // Scope pending corrections strictly to this faculty member (session faculty, assigned subject & section, or class coordinator)
+      const pendingCorrections = rawCorrections.filter(c => {
+        const session = (c as any).record?.session;
+        if (!session) return false;
+        if (session.faculty_id === facultyId) return true;
+        const isAssigned = rawAssignments.some(
+          a => a.section_id === session.section_id && a.subject_id === session.subject_id
+        );
+        if (isAssigned) return true;
+        const isCoordinator = coordAssignments.some(
+          ca => ca.section_id === session.section_id && ca.active
+        );
+        if (isCoordinator) return true;
+        return false;
+      });
 
       // Filter out break entries and entries without subject
       const facultyTimetable = rawTimetable.filter(t => !t.is_break && t.subject_id);
@@ -5422,7 +5496,7 @@ export const supabaseService = {
   // ==========================================
   // REAL-TIME NOTIFICATIONS ENGINE
   // ==========================================
-  async fetchStudentNotifications(studentId?: string, userId?: string, userRole?: string): Promise<StudentNotification[]> {
+  async fetchStudentNotifications(studentId?: string, userId?: string, userRole?: string, facultyId?: string): Promise<StudentNotification[]> {
     try {
       let query = supabase
         .from('notifications')
@@ -5433,6 +5507,7 @@ export const supabaseService = {
       const conditions: string[] = [];
       if (userId) conditions.push(`recipient_user_id.eq.${userId}`);
       if (studentId) conditions.push(`recipient_student_id.eq.${studentId}`);
+      if (facultyId) conditions.push(`recipient_faculty_id.eq.${facultyId}`);
       if (userRole) conditions.push(`recipient_role.eq.${userRole}`);
 
       if (conditions.length > 0) {
@@ -5451,8 +5526,14 @@ export const supabaseService = {
     }
   },
 
-  async markNotificationAsRead(notificationId: string): Promise<void> {
+  async markNotificationAsRead(notificationId: string, facultyId?: string): Promise<void> {
     try {
+      if (facultyId) {
+        await supabase.rpc('mark_faculty_notification_as_read', {
+          p_notification_id: notificationId,
+          p_faculty_id: facultyId
+        });
+      }
       const { error } = await supabase.rpc('mark_notification_as_read', {
         p_notification_id: notificationId,
       });
@@ -5468,10 +5549,10 @@ export const supabaseService = {
     }
   },
 
-  async markAllNotificationsAsRead(userId?: string, studentId?: string, userRole?: string): Promise<void> {
+  async markAllNotificationsAsRead(userId?: string, studentId?: string, userRole?: string, facultyId?: string): Promise<void> {
     try {
       const { error } = await supabase.rpc('mark_all_notifications_as_read');
-      if (error && (userId || studentId || userRole)) {
+      if (error && (userId || studentId || userRole || facultyId)) {
         // Fallback to direct update
         let query = supabase
           .from('notifications')
@@ -5481,6 +5562,7 @@ export const supabaseService = {
         const conditions: string[] = [];
         if (userId) conditions.push(`recipient_user_id.eq.${userId}`);
         if (studentId) conditions.push(`recipient_student_id.eq.${studentId}`);
+        if (facultyId) conditions.push(`recipient_faculty_id.eq.${facultyId}`);
         if (userRole) conditions.push(`recipient_role.eq.${userRole}`);
 
         if (conditions.length > 0) {

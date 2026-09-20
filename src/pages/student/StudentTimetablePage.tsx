@@ -86,8 +86,8 @@ export const StudentTimetablePage: React.FC = () => {
       {sectionEntries.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center text-slate-500 border border-slate-200/80 space-y-3 shadow-xs">
           <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-1" />
-          <h3 className="text-base font-bold text-slate-900 font-serif-institutional">No published timetable is available for your class.</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <h3 className="text-base font-bold text-[#0f172a] font-serif-institutional">No published timetable is available for your class.</h3>
+          <p className="text-sm text-[#475569] font-medium max-w-md mx-auto">
             The official academic timetable for Section {currentSection?.name || 'Assigned'} has not been published yet. Please check back later or contact your Class Coordinator ({classIncharge}).
           </p>
         </div>
@@ -142,8 +142,8 @@ export const StudentTimetablePage: React.FC = () => {
                       className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs text-slate-500"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-400">{slot.label}</span>
-                        <span>({slot.time})</span>
+                        <span className="font-mono font-bold text-[#334155]">{slot.label}</span>
+                        <span className="text-[#475569] font-medium">({slot.time})</span>
                       </div>
                       <span className="text-[11px] font-mono text-slate-600">Free Period</span>
                     </div>
@@ -242,22 +242,22 @@ export const StudentTimetablePage: React.FC = () => {
                           <td key={slot.period} className="p-2 border-r border-slate-200">
                             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-400 hover:bg-white transition-all text-left space-y-1 shadow-2xs">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] text-slate-900 font-mono font-black">
+                                <span className="text-[11px] text-[#0f172a] font-mono font-black">
                                   {sub?.subject_code}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-semibold">
+                                <span className="text-[11px] text-[#334155] font-semibold">
                                   {entry.room_number || currentSection?.room_number || 'Room'}
                                 </span>
                               </div>
-                              <span className="font-bold text-slate-900 block text-xs truncate" title={sub?.subject_name}>
+                              <span className="font-bold text-[#0f172a] block text-xs truncate" title={sub?.subject_name}>
                                 {sub?.subject_name || 'Subject'}
                               </span>
-                              <span className={clsx("text-[11px] font-medium block truncate", fac?.full_name ? "text-slate-300" : "text-slate-500 italic")} title={fac?.full_name}>
+                              <span className={clsx("text-xs font-semibold block truncate", fac?.full_name ? "text-[#0f172a]" : "text-[#475569] italic")} title={fac?.full_name}>
                                 {fac?.full_name || 'Unassigned Faculty'}
                               </span>
-                              <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-slate-200">
-                                <span className="text-slate-400">{entry.lecture_type || 'Theory'}</span>
-                                <span className="text-slate-500 font-mono">{slot.time}</span>
+                              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200">
+                                <span className="text-[#475569] font-medium">{entry.lecture_type || 'Theory'}</span>
+                                <span className="text-[#334155] font-mono font-bold">{slot.time}</span>
                               </div>
                             </div>
                           </td>

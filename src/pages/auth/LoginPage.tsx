@@ -268,7 +268,7 @@ export const LoginPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
               {/* College ID / Faculty ID Input */}
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1">
+                <label className="block text-xs sm:text-sm font-bold text-[#0f172a] mb-1">
                   {activeRoleTab === 'student' 
                     ? 'College Roll Number' 
                     : activeRoleTab === 'faculty' 
@@ -276,7 +276,7 @@ export const LoginPage: React.FC = () => {
                     : 'Admin Identifier / Email'}
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#475569]">
                     <User className="w-3.5 h-3.5" />
                   </div>
                   <input
@@ -291,7 +291,7 @@ export const LoginPage: React.FC = () => {
                         ? 'Enter your college ID / faculty ID' 
                         : 'Enter admin ID/email'
                     }
-                    className="w-full pl-8.5 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full pl-8.5 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl text-[#0f172a] font-semibold placeholder:text-[#475569] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -299,19 +299,19 @@ export const LoginPage: React.FC = () => {
               {/* Password Input */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-800">
+                  <label className="block text-xs sm:text-sm font-bold text-[#0f172a]">
                     Password
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(true)}
-                    className="text-xs font-semibold text-slate-700 hover:text-slate-950 transition-colors cursor-pointer"
+                    className="text-xs font-bold text-[#0f172a] hover:underline transition-colors cursor-pointer"
                   >
                     Forgot Password?
                   </button>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#475569]">
                     <Lock className="w-3.5 h-3.5" />
                   </div>
                   <input
@@ -320,12 +320,12 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-8.5 pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full pl-8.5 pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl text-[#0f172a] font-semibold placeholder:text-[#475569] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[#475569] hover:text-[#0f172a] transition-colors cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -338,11 +338,11 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#111827] hover:bg-black text-white font-semibold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
                       <span>Signing In to ERP...</span>
                     </>
                   ) : (
@@ -359,7 +359,7 @@ export const LoginPage: React.FC = () => {
             <div className="mt-3 pt-2 border-t border-slate-100 text-center">
               <div className="flex items-center justify-center gap-2">
                 <span className="h-px w-4 bg-slate-300"></span>
-                <p className="text-[10px] sm:text-[11px] text-slate-600 font-normal leading-relaxed max-w-xs">
+                <p className="text-[10px] sm:text-[11px] text-[#334155] font-medium leading-relaxed max-w-xs">
                   {activeRoleTab === 'student' 
                     ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
                     : activeRoleTab === 'faculty' 

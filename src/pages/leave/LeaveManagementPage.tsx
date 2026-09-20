@@ -648,9 +648,9 @@ export const LeaveManagementPage: React.FC = () => {
           </div>
         ) : filteredApplications.length === 0 ? (
           <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center text-slate-500 shadow-xs">
-            <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-            <p className="font-bold text-slate-900">No applications matching current filters</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <FileText className="w-12 h-12 text-[#475569] mx-auto mb-3 opacity-60" />
+            <p className="font-bold text-[#0f172a] text-base">No applications matching current filters</p>
+            <p className="text-sm text-[#475569] font-medium mt-1">
               {activeTab === 'pending' 
                 ? 'All pending leave requests have been reviewed!' 
                 : 'No historical leave records found in this category.'}

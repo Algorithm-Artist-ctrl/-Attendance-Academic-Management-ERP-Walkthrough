@@ -1081,38 +1081,38 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {/* Total Scheduled */}
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 text-center shadow-xs">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block">Total Lectures</span>
-                <span className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5 block font-mono">
+                <span className="text-[11px] uppercase tracking-wider font-bold text-[#334155] block">Total Lectures</span>
+                <span className="text-xl sm:text-2xl font-bold text-[#0f172a] mt-0.5 block font-mono">
                   {studentHistoryData.totalLectures}
                 </span>
-                <span className="text-[10px] text-slate-400">All Scheduled</span>
+                <span className="text-xs text-[#475569] font-medium">All Scheduled</span>
               </div>
 
               {/* Present Count */}
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 text-center shadow-xs">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-800 block">Attended (Present)</span>
+                <span className="text-[11px] uppercase tracking-wider font-bold text-emerald-900 block">Attended (Present)</span>
                 <span className="text-xl sm:text-2xl font-bold text-emerald-700 mt-0.5 block font-mono">
                   {studentHistoryData.presentCount}
                 </span>
-                <span className="text-[10px] text-emerald-600 font-semibold">Present in Class</span>
+                <span className="text-xs text-emerald-700 font-semibold">Present in Class</span>
               </div>
 
               {/* Absent Count */}
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 text-center shadow-xs">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-rose-800 block">Absent Count</span>
-                <span className="text-xl sm:text-2xl font-bold text-rose-600 mt-0.5 block font-mono">
+                <span className="text-[11px] uppercase tracking-wider font-bold text-rose-900 block">Absent Count</span>
+                <span className="text-xl sm:text-2xl font-bold text-rose-700 mt-0.5 block font-mono">
                   {studentHistoryData.absentCount}
                 </span>
-                <span className="text-[10px] text-rose-500 font-semibold">Unattended</span>
+                <span className="text-xs text-rose-700 font-semibold">Unattended</span>
               </div>
 
               {/* Excluded Slots */}
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 text-center shadow-xs">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block">Excluded Slots</span>
-                <span className="text-xl sm:text-2xl font-bold text-slate-700 mt-0.5 block font-mono">
+                <span className="text-[11px] uppercase tracking-wider font-bold text-[#334155] block">Excluded Slots</span>
+                <span className="text-xl sm:text-2xl font-bold text-[#0f172a] mt-0.5 block font-mono">
                   {studentHistoryData.notMarkedCount + studentHistoryData.cancelledCount}
                 </span>
-                <span className="text-[10px] text-slate-400">Not Marked / Cancelled</span>
+                <span className="text-xs text-[#475569] font-medium">Not Marked / Cancelled</span>
               </div>
 
               {/* Real Percentage */}

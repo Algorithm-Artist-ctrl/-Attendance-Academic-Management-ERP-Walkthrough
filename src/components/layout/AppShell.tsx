@@ -433,7 +433,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* ======================================================== */}
       {/* DESKTOP LEFT INSTITUTIONAL SIDEBAR */}
       {/* ======================================================== */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200/80 shrink-0 z-30 min-h-screen min-h-[100dvh]">
+      <aside className="hidden md:flex flex-col w-72 bg-white border-r border-slate-200/80 shrink-0 z-30 min-h-screen min-h-[100dvh]">
         {/* VCTM Brand Logo */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-white">
           <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">

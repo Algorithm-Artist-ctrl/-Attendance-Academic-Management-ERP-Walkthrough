@@ -708,6 +708,7 @@ export interface StudentNotification {
   id: string;
   recipient_user_id?: string;
   recipient_student_id?: string;
+  recipient_faculty_id?: string;
   user_id?: string;
   student_id?: string;
   recipient_role?: string;

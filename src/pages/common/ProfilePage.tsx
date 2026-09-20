@@ -409,37 +409,37 @@ export const ProfilePage: React.FC = () => {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">
-                  Full Legal Name {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
+                <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                  Full Legal Name {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>}
                 </label>
                 <input
                   type="text"
                   disabled={!isEditing || isSaving}
                   value={isEditing ? fullName : (user?.full_name || '')}
                   onChange={(e) => setFullName(e.target.value)}
-                  className={`w-full px-3.5 py-2 text-xs rounded-xl ${
+                  className={`w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl ${
                     isEditing 
-                      ? 'bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs' 
-                      : 'bg-slate-50 border border-slate-200 text-slate-700 font-semibold'
+                      ? 'bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs' 
+                      : 'bg-slate-50 border border-slate-300 text-[#0f172a] font-semibold cursor-not-allowed'
                   }`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">
-                  Email Address <span className="text-[10px] text-[#475569] font-medium">{role === 'student' ? '(Institutional Login Identifier)' : '(Managed via Account Security below)'}</span>
+                <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                  Email Address <span className="text-xs text-[#475569] font-medium">{role === 'student' ? '(Institutional Login Identifier)' : '(Managed via Account Security below)'}</span>
                 </label>
                 <input
                   type="email"
                   disabled
                   value={email}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl bg-slate-50 border border-slate-300 text-[#0f172a] font-semibold cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">
-                  Contact Phone {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
+                <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                  Contact Phone {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>}
                 </label>
                 <input
                   type="tel"
@@ -447,46 +447,46 @@ export const ProfilePage: React.FC = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 9876543210"
-                  className={`w-full px-3.5 py-2 text-xs rounded-xl ${
+                  className={`w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl ${
                     isEditing 
-                      ? 'bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs' 
-                      : 'bg-slate-50 border border-slate-200 text-slate-700 font-semibold'
+                      ? 'bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs' 
+                      : 'bg-slate-50 border border-slate-300 text-[#0f172a] font-semibold cursor-not-allowed'
                   }`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">Branch / Specialization</label>
+                <label className="block text-sm font-semibold text-[#334155] mb-1.5">Branch / Specialization</label>
                 <input
                   type="text"
                   disabled
                   value={branchName}
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                 />
               </div>
 
               {student && (
                 <>
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Enrolled Degree & Semester</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Enrolled Degree & Semester</label>
                     <input
                       type="text"
                       disabled
                       value={`${prog?.name || 'B.Tech in Computer Science & Engineering'}${year?.name ? ` • ${year.name}` : ''}${sem?.name ? ` • ${sem.name}` : ''}`}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Assigned Section {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                      Assigned Section {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <select
                         value={selectedSectionId}
                         onChange={(e) => handleSectionChange(e.target.value)}
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs"
                       >
                         <option value="">Select Section</option>
                         {studentAvailableSections.map((s) => (
@@ -500,14 +500,14 @@ export const ProfilePage: React.FC = () => {
                         type="text"
                         disabled
                         value={sec?.name ? `Section ${sec.name}` : 'Section Not Assigned'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-bold cursor-not-allowed"
                       />
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Assigned Classroom / Room {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                      Assigned Classroom / Room {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <input
@@ -516,28 +516,28 @@ export const ProfilePage: React.FC = () => {
                         onChange={(e) => setClassroomRoom(e.target.value)}
                         placeholder="e.g. Room 204 or LH-1"
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs"
                       />
                     ) : (
                       <input
                         type="text"
                         disabled
                         value={sec?.room_number || classroomRoom || '—'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-bold cursor-not-allowed"
                       />
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Admission Type {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                      Admission Type {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <select
                         value={admissionType}
                         onChange={(e) => setAdmissionType(e.target.value as AdmissionType)}
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs"
                       >
                         <option value="Regular">Regular</option>
                         <option value="Lateral Entry">Lateral Entry</option>
@@ -547,21 +547,21 @@ export const ProfilePage: React.FC = () => {
                         type="text"
                         disabled
                         value={student.admission_type || admissionType || 'Regular'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                       />
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Assigned Faculty Mentor {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                      Assigned Faculty Mentor {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <select
                         value={selectedMentorId}
                         onChange={(e) => setSelectedMentorId(e.target.value)}
                         disabled={isSaving}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs"
                       >
                         <option value="">No Faculty Mentor Assigned</option>
                         {faculty.filter(f => f.active).map((f) => (
@@ -575,7 +575,7 @@ export const ProfilePage: React.FC = () => {
                         type="text"
                         disabled
                         value={mentor?.full_name ? `${mentor.full_name} (${mentor.faculty_code || mentor.employee_code})` : 'Not Assigned'}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                       />
                     )}
                   </div>
@@ -585,32 +585,32 @@ export const ProfilePage: React.FC = () => {
               {role === 'super_admin' && (
                 <>
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Administrative Role</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Administrative Role</label>
                     <input
                       type="text"
                       disabled
                       value="System Owner • Full Institutional Control"
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-bold cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Institution</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Institution</label>
                     <input
                       type="text"
                       disabled
                       value={institution?.name || 'Vivekananda College of Technology & Management, Aligarh (Code: 340)'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Database Authority</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Database Authority</label>
                     <input
                       type="text"
                       disabled
                       value="Super Administrator • Authoritative DB Access"
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                     />
                   </div>
                 </>
@@ -619,18 +619,18 @@ export const ProfilePage: React.FC = () => {
               {currentFaculty && role !== 'super_admin' && (
                 <>
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Employee Code & Timetable Code</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Employee Code & Timetable Code</label>
                     <input
                       type="text"
                       disabled
                       value={`${currentFaculty.employee_code || '—'} • Timetable Code: ${currentFaculty.faculty_code || '—'}`}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono font-bold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-mono font-bold cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Designation {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>} & Department
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">
+                      Designation {isEditing && <span className="text-xs text-emerald-700 font-medium">(Editable)</span>} & Department
                     </label>
                     {isEditing ? (
                       <input
@@ -638,35 +638,35 @@ export const ProfilePage: React.FC = () => {
                         value={designation}
                         onChange={(e) => setDesignation(e.target.value)}
                         placeholder="e.g. Assistant Professor & Coordinator (Sec A)"
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base rounded-xl bg-white border border-slate-300 text-[#0f172a] font-semibold focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 shadow-xs"
                       />
                     ) : (
                       <input
                         type="text"
                         disabled
                         value={`${currentFaculty.designation || 'Assistant Professor'} • ${dept?.name || 'Academic Department'}`}
-                        className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                       />
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Assigned Teaching Subjects</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Assigned Teaching Subjects</label>
                     <input
                       type="text"
                       disabled
                       value={facultyAssignedSubjectNames || 'No subjects currently assigned'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Assigned Teaching Sections</label>
+                    <label className="block text-sm font-semibold text-[#334155] mb-1.5">Assigned Teaching Sections</label>
                     <input
                       type="text"
                       disabled
                       value={facultyAssignedSectionNames || 'No sections currently assigned'}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 text-sm sm:text-base bg-slate-50 border border-slate-300 rounded-xl text-[#0f172a] font-semibold cursor-not-allowed"
                     />
                   </div>
                 </>
@@ -761,13 +761,13 @@ export const ProfilePage: React.FC = () => {
       {/* ======================================================== */}
       {role !== 'student' && (
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
           <div>
-            <h3 className="text-base font-black text-[#0f172a] tracking-tight flex items-center gap-2">
-              <Lock className="w-5 h-5 text-slate-700" />
+            <h3 className="text-lg font-black text-[#0f172a] tracking-tight flex items-center gap-2">
+              <Lock className="w-5 h-5 text-[#0f172a]" />
               Account Security & Supabase Credentials
             </h3>
-            <p className="text-xs text-[#475569] mt-0.5 font-medium">
+            <p className="text-sm text-[#475569] mt-0.5 font-medium">
               Manage your real authentication email and login password for VCTM ERP
             </p>
           </div>
@@ -775,20 +775,20 @@ export const ProfilePage: React.FC = () => {
           {/* Security Status Badges */}
           <div className="flex items-center gap-2 flex-wrap">
             {user?.new_email || pendingNewEmail ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 border border-amber-300 text-amber-900 flex items-center gap-1 animate-pulse">
-                <AlertCircle className="w-3 h-3 text-amber-600" /> Verification Pending
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 border border-amber-300 text-amber-900 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Verification Pending
               </span>
             ) : user?.email_confirmed_at ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Email Verified
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Email Verified
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-300 text-[#0f172a] flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" /> Institutional Account
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 border border-slate-300 text-[#0f172a] flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Institutional Account
               </span>
             )}
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" /> Account Active
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Account Active
             </span>
           </div>
         </div>
@@ -799,10 +799,10 @@ export const ProfilePage: React.FC = () => {
           <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#334155]">
                     Authentication Login Email
                   </span>
-                  <h4 className="text-sm font-bold text-[#0f172a] font-mono mt-1 break-all">
+                  <h4 className="text-base sm:text-lg font-bold text-[#0f172a] font-mono mt-1.5 break-all">
                     {user?.email || 'faculty@vctm.in'}
                   </h4>
                 </div>
@@ -811,7 +811,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-xs text-[#475569] font-medium">
+              <p className="text-sm text-[#475569] font-medium">
                 Official authorized email used to sign in to the VCTM ERP portal.
               </p>
 
@@ -833,7 +833,7 @@ export const ProfilePage: React.FC = () => {
                       size="sm"
                       onClick={handleResendVerification}
                       isLoading={isResending}
-                      className="text-xs font-bold"
+                      className="text-xs font-bold border-slate-400 text-[#0f172a] hover:bg-slate-100 bg-white shadow-xs"
                     >
                       Resend Verification Email
                     </Button>
@@ -855,7 +855,7 @@ export const ProfilePage: React.FC = () => {
                     setEmailModalError('');
                     setIsEmailModalOpen(true);
                   }}
-                  className="text-xs font-bold"
+                  className="text-xs font-bold border-slate-400 text-[#0f172a] hover:bg-slate-100 bg-white shadow-xs"
                 >
                   Change Email Address
                 </Button>
@@ -866,10 +866,10 @@ export const ProfilePage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#334155]">
                     Authentication Password
                   </span>
-                  <h4 className="text-sm font-bold text-[#0f172a] tracking-widest font-mono mt-1">
+                  <h4 className="text-base sm:text-lg font-bold text-[#0f172a] tracking-widest font-mono mt-1.5">
                     ••••••••••••••••
                   </h4>
                 </div>
@@ -878,7 +878,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-xs text-[#475569] font-medium">
+              <p className="text-sm text-[#475569] font-medium">
                 Encrypted password managed via Supabase Auth. Never stored in plaintext.
               </p>
 

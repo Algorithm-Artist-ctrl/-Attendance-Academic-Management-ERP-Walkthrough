@@ -1183,20 +1183,21 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return classCoordinatorAssignments.filter(c => c.faculty_id === facultyId && c.active);
   }, [classCoordinatorAssignments]);
 
-  const refreshNotifications = useCallback(async (studentId?: string, userId?: string) => {
+  const refreshNotifications = useCallback(async (studentId?: string, userId?: string, facultyId?: string) => {
     try {
-      const activeUser = erpStorage.getCurrentSessionUser();
+      const activeUser = erpStorage.getCurrentSessionUser() || user;
       const stId = studentId || activeUser?.student_id || activeUser?.student?.id;
       const uId = userId || activeUser?.id;
+      const facId = facultyId || activeUser?.faculty_id || activeUser?.faculty?.id;
       const role = activeUser?.role;
-      if (stId || uId || role) {
-        const notifs = await supabaseService.fetchStudentNotifications(stId || '', uId, role);
+      if (stId || uId || facId || role) {
+        const notifs = await supabaseService.fetchStudentNotifications(stId || '', uId, role, facId);
         setNotifications(notifs);
       }
     } catch (err) {
       console.warn('Notice: Error refreshing notifications:', err);
     }
-  }, []);
+  }, [user]);
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -1423,15 +1424,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
           const curUserId = user?.id || erpStorage.getCurrentSessionUser()?.id;
           const curStudentId = user?.student_id || user?.student?.id || erpStorage.getCurrentSessionUser()?.student_id;
+          const curFacultyId = user?.faculty_id || user?.faculty?.id || erpStorage.getCurrentSessionUser()?.faculty_id;
           const curRole = role || erpStorage.getCurrentSessionUser()?.role;
 
           const targetStudId = newNotif.recipient_student_id || newNotif.student_id;
           const targetUserId = newNotif.recipient_user_id || newNotif.user_id;
+          const targetFacId = (newNotif as any).recipient_faculty_id;
           const isTargetUser = 
             (targetStudId && targetStudId === curStudentId) ||
             (targetUserId && targetUserId === curUserId) ||
+            (targetFacId && targetFacId === curFacultyId) ||
             (newNotif.recipient_role && curRole && newNotif.recipient_role.toUpperCase() === curRole.toUpperCase()) ||
-            (!targetStudId && !targetUserId && !newNotif.recipient_role);
+            (!targetStudId && !targetUserId && !targetFacId && !newNotif.recipient_role);
 
           if (isTargetUser) {
             setNotifications(prev => {
@@ -1978,6 +1982,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     setCorrections(prev => [newCorrection, ...prev.filter(c => c.id !== newCorrection.id)]);
+    refreshNotifications();
+    refreshCorrections();
     return newCorrection;
   };
 
@@ -2019,6 +2025,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return r;
       }));
     }
+
+    refreshNotifications();
+    refreshCorrections();
+    refreshAttendance();
 
     return res;
   };

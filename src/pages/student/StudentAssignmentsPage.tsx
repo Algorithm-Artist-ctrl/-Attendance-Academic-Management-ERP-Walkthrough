@@ -198,8 +198,8 @@ export const StudentAssignmentsPage: React.FC = () => {
         {filteredAssignments.length === 0 ? (
           <div className="col-span-full py-16 text-center bg-slate-50 border border-slate-200 rounded-2xl">
             <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-50" />
-            <h3 className="text-lg font-semibold text-slate-300">No Assignments Found</h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto mt-1">
+            <h3 className="text-lg font-bold text-[#0f172a]">No Assignments Found</h3>
+            <p className="text-sm text-[#475569] font-medium max-w-md mx-auto mt-1">
               Your faculty has not published any assignments for your section yet.
             </p>
           </div>
@@ -215,33 +215,33 @@ export const StudentAssignmentsPage: React.FC = () => {
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-[#0f172a] border border-slate-300">
                       {assignment.subject?.subject_code || 'Subject'} • Section {assignment.section?.name || ''}
                     </span>
                     <span className={clsx(
-                      "px-2.5 py-0.5 rounded text-[11px] font-semibold",
-                      !submission ? "bg-slate-100 text-slate-600 border border-slate-200" : submission.status === 'graded' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : submission.status === 'late_submission' ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-800 border border-slate-200"
+                      "px-2.5 py-0.5 rounded text-[11px] font-bold",
+                      !submission ? "bg-slate-100 text-[#334155] border border-slate-300" : submission.status === 'graded' ? "bg-emerald-50 text-emerald-800 border border-emerald-300" : submission.status === 'late_submission' ? "bg-amber-50 text-amber-900 border border-amber-300" : "bg-slate-100 text-[#0f172a] border border-slate-300"
                     )}>
                       {!submission ? 'Not Submitted' : submission.status === 'graded' ? 'Graded' : submission.status === 'late_submission' ? 'Late Submission' : 'Submitted'}
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">{assignment.title}</h3>
-                  <p className="text-xs text-slate-600 mb-2 font-medium">
+                  <h3 className="text-lg font-bold text-[#0f172a] mb-1">{assignment.title}</h3>
+                  <p className="text-xs text-[#334155] mb-2 font-semibold">
                     {assignment.subject?.subject_name}
                   </p>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-4">
+                  <p className="text-xs text-[#475569] font-medium line-clamp-2 mb-4">
                     {assignment.description || 'No specific instructions provided.'}
                   </p>
 
                   <div className="space-y-2 py-3 border-y border-slate-200 text-xs">
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-[#475569] font-medium">
                       <span>Maximum Marks:</span>
-                      <span className="font-semibold text-slate-900">{assignment.max_marks} Marks</span>
+                      <span className="font-bold text-[#0f172a]">{assignment.max_marks} Marks</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-[#475569] font-medium">
                       <span>Due Date:</span>
-                      <span className={clsx("font-semibold flex items-center gap-1", isDuePassed ? "text-amber-400" : "text-slate-300")}>
+                      <span className={clsx("font-bold flex items-center gap-1", isDuePassed ? "text-amber-800" : "text-[#0f172a]")}>
                         <Clock className="w-3.5 h-3.5" />
                         {new Date(assignment.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -252,8 +252,8 @@ export const StudentAssignmentsPage: React.FC = () => {
                   {submission && (
                     <div className="mt-4 p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Awarded Marks:</span>
-                        <span className="font-mono font-bold text-slate-900 text-sm">
+                        <span className="text-[#475569] font-medium">Awarded Marks:</span>
+                        <span className="font-mono font-bold text-[#0f172a] text-sm">
                           {submission.marks_obtained !== undefined && submission.marks_obtained !== null 
                             ? `${submission.marks_obtained} / ${assignment.max_marks}` 
                             : 'Pending Evaluation'}
@@ -314,30 +314,30 @@ export const StudentAssignmentsPage: React.FC = () => {
           )}
 
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-[#475569] font-medium">
               <span>Subject:</span>
-              <span className="text-slate-900 font-medium">{uploadModalAssignment?.subject?.subject_name}</span>
+              <span className="text-[#0f172a] font-bold">{uploadModalAssignment?.subject?.subject_name}</span>
             </div>
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-[#475569] font-medium">
               <span>Due Date:</span>
-              <span className="text-amber-400 font-semibold">
+              <span className="text-amber-800 font-bold">
                 {uploadModalAssignment && new Date(uploadModalAssignment.due_date).toLocaleString('en-IN')}
               </span>
             </div>
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-[#475569] font-medium">
               <span>Accepted Formats:</span>
-              <span className="text-slate-700">PDF, DOCX, PPT, XLSX, ZIP, JPG, PNG</span>
+              <span className="text-[#0f172a] font-semibold">PDF, DOCX, PPT, XLSX, ZIP, JPG, PNG</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-2">Select Assignment File *</label>
+            <label className="block text-sm font-semibold text-[#334155] mb-2">Select Assignment File *</label>
             <input
               type="file"
               required
               accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.jpg,.jpeg,.png"
               onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
-              className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0f172a] file:text-white hover:file:bg-black cursor-pointer"
+              className="w-full text-xs text-[#334155] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0f172a] file:text-white hover:file:bg-black cursor-pointer"
             />
           </div>
 

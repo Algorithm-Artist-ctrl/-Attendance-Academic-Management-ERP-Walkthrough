@@ -15,7 +15,9 @@ import {
   BookOpen,
   Layers,
   GraduationCap,
-  Loader2
+  Loader2,
+  X,
+  MessageSquare
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
@@ -32,7 +34,7 @@ import {
   isDateToday, 
   isDateInPast 
 } from '../../lib/utils/dateUtils';
-import { DayOfWeek, FacultyDashboardPayload } from '../../types/database.types';
+import { DayOfWeek, FacultyDashboardPayload, AttendanceCorrection } from '../../types/database.types';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { supabase } from '../../lib/supabase/supabaseClient';
 
@@ -76,6 +78,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     classCoordinatorAssignments,
     getFacultyCoordinatorAssignments,
     refreshCoordinatorAssignments,
+    reviewCorrectionRequest,
     refreshData
   } = useAcademic();
 
@@ -127,6 +130,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         refreshCoordinatorAssignments(facultyId);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions', filter: `faculty_id=eq.${facultyId}` }, () => {
+        loadScoped();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_corrections' }, () => {
+        loadScoped();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
         loadScoped();
       })
       .subscribe();
@@ -307,6 +316,49 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   const assignedSectionsCount = scopedDashboardData?.assignedSectionsCount ?? enrichedAssignedSections.length;
   const pendingCorrectionsCount = scopedDashboardData?.pendingCorrectionsCount ?? myPendingCorrections.length;
 
+  // Review Modal State
+  const [selectedCorrectionForReview, setSelectedCorrectionForReview] = useState<AttendanceCorrection | null>(null);
+  const [reviewRemarks, setReviewRemarks] = useState<string>('Attendance verified from register; marked Present.');
+  const [isReviewing, setIsReviewing] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState<string | null>(null);
+
+  const handleReviewAction = async (status: 'approved' | 'rejected') => {
+    if (!selectedCorrectionForReview) return;
+    setIsReviewing(true);
+    setReviewError(null);
+    try {
+      await reviewCorrectionRequest({
+        correctionId: selectedCorrectionForReview.id,
+        status,
+        reviewerFacultyId: facultyId,
+        reviewRemarks: reviewRemarks.trim() || (status === 'approved' ? 'Attendance verified from register; marked Present.' : 'Attendance record verified; absence confirmed.')
+      });
+      // Optimistically update scopedDashboardData
+      setScopedDashboardData(prev => {
+        if (!prev) return prev;
+        const updated = (prev.pendingCorrections || []).filter(c => c.id !== selectedCorrectionForReview.id);
+        return {
+          ...prev,
+          pendingCorrections: updated,
+          pendingCorrectionsCount: updated.length
+        };
+      });
+      setReviewSuccessMsg(`Claim successfully ${status === 'approved' ? 'approved and student marked Present' : 'rejected'}.`);
+      setTimeout(() => {
+        setSelectedCorrectionForReview(null);
+        setReviewSuccessMsg(null);
+      }, 1200);
+      // Reload fresh data from Supabase in background
+      const payload = await supabaseService.fetchFacultyDashboardData(facultyId);
+      if (payload) setScopedDashboardData(payload);
+    } catch (err: any) {
+      setReviewError(err?.message || `Failed to ${status} correction request.`);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   const dept = departments.find(d => d.id === currentFaculty?.department_id) || departments[0];
 
   return (
@@ -398,15 +450,18 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
           </div>
 
           {/* Pending Requests */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1 shadow-xs hover:border-slate-300 transition-all">
+          <div 
+            onClick={() => onNavigate('corrections')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 flex items-center justify-between col-span-2 sm:col-span-1 shadow-xs hover:border-slate-300 transition-all cursor-pointer hover:shadow-sm group"
+          >
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#475569]">Pending Requests</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-amber-900 mt-1 font-mono">
+              <h3 className="text-2xl sm:text-3xl font-black text-amber-900 mt-1 font-mono group-hover:text-amber-950">
                 {pendingCorrectionsCount}
               </h3>
-              <span className="text-xs text-amber-800 font-semibold">Requires Review</span>
+              <span className="text-xs text-amber-800 font-semibold">Requires Review →</span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 group-hover:bg-amber-100 transition-all">
               <RotateCcw className="w-5 h-5" />
             </div>
           </div>
@@ -711,6 +766,150 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         );
       })()}
 
+      {/* 2.7 ATTENDANCE CORRECTION REQUESTS COMPONENT */}
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 space-y-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800">
+              <RotateCcw className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-[#0f172a] font-serif-institutional tracking-tight">
+                ATTENDANCE CORRECTION REQUESTS
+              </h3>
+              <p className="text-[15px] text-[#475569] mt-0.5 font-medium leading-relaxed">
+                Student attendance claims and discrepancy review for your assigned classes
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {myPendingCorrections.length > 0 ? (
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-100 border border-amber-300 text-amber-900 font-mono flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                {myPendingCorrections.length} Requires Review
+              </span>
+            ) : (
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 font-mono flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                All Up To Date
+              </span>
+            )}
+          </div>
+        </div>
+
+        {myPendingCorrections.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h4 className="text-base font-bold text-[#0f172a]">
+              No pending correction requests
+            </h4>
+            <p className="text-[15px] text-[#475569] font-medium leading-relaxed max-w-md mx-auto">
+              All student attendance correction requests for your assigned classes and sections have been reviewed. New claims submitted by students during the claim window will appear here instantly.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myPendingCorrections.map((claim, index) => {
+                const rec = claim.record;
+                const sess = rec?.session;
+                const sub = sess?.subject;
+                const sec = sess?.section;
+                const studentName = claim.student?.full_name || 'Student';
+                const rollNumber = claim.student?.roll_number || 'Roll N/A';
+                const subjectName = sub?.subject_name || 'Subject Class';
+                const subjectCode = sub?.subject_code || 'CODE';
+                const sectionName = sec?.name ? `Section ${sec.name}` : 'Assigned Section';
+                const sessionDate = sess?.session_date ? formatDateFull(sess.session_date) : 'Scheduled Date';
+                const sessionTime = (sess?.start_time && sess?.end_time) 
+                  ? `${sess.start_time.slice(0, 5)} - ${sess.end_time.slice(0, 5)}`
+                  : 'Scheduled Period';
+
+                return (
+                  <div
+                    key={claim.id}
+                    className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200 hover:border-slate-300 transition-all flex flex-col justify-between gap-4 shadow-xs"
+                  >
+                    <div className="space-y-3">
+                      {/* Top Bar: # Number and Subject Pill */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-[#0f172a] text-white text-xs font-black flex items-center justify-center font-mono">
+                            #{index + 1}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold bg-white border border-slate-300 text-[#0f172a]">
+                            {subjectCode}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 border border-amber-300 text-amber-900 font-mono">
+                          Pending Review
+                        </span>
+                      </div>
+
+                      {/* Student & Class Details */}
+                      <div>
+                        <h4 className="text-base font-bold text-[#0f172a] tracking-tight">
+                          {studentName}
+                        </h4>
+                        <p className="text-xs text-[#334155] font-mono font-semibold mt-0.5">
+                          Roll: {rollNumber} • {sectionName}
+                        </p>
+                        <p className="text-xs text-[#475569] font-medium mt-0.5">
+                          {subjectName} • {sessionDate} ({sessionTime})
+                        </p>
+                      </div>
+
+                      {/* Student Stated Reason */}
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569] block mb-0.5">
+                          Student Reason
+                        </span>
+                        <p className="text-sm font-medium text-[#0f172a] italic">
+                          "{claim.reason || 'Attendance discrepancy reported.'}"
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card Footer: Review Button */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                      <span className="text-xs text-[#475569] font-mono">
+                        Claimed {new Date(claim.created_at).toLocaleDateString()}
+                      </span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCorrectionForReview(claim);
+                          setReviewRemarks('Attendance verified from register; marked Present.');
+                          setReviewError(null);
+                          setReviewSuccessMsg(null);
+                        }}
+                        className="text-xs font-bold py-1 px-3"
+                      >
+                        Review Request →
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer Navigation Link */}
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => onNavigate('corrections')}
+                className="text-xs font-bold text-[#0f172a] hover:underline cursor-pointer inline-flex items-center gap-1"
+              >
+                View All Correction Requests & Review History →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 3. TODAY'S SCHEDULE & RECENT REQUESTS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
@@ -971,7 +1170,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onNavigate('corrections')}
+                      onClick={() => {
+                        setSelectedCorrectionForReview(c);
+                        setReviewRemarks('Attendance verified from register; marked Present.');
+                        setReviewError(null);
+                        setReviewSuccessMsg(null);
+                      }}
                       className="text-xs py-1 px-2.5 shrink-0 text-[#0f172a] font-bold border-slate-300"
                     >
                       Review
@@ -984,6 +1188,131 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         </div>
 
       </div>
+
+      {/* REVIEW CORRECTION MODAL */}
+      {selectedCorrectionForReview && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full border border-slate-200 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800">
+                  <RotateCcw className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#0f172a] tracking-tight">
+                    Review Attendance Claim
+                  </h3>
+                  <p className="text-xs text-[#475569] font-medium">
+                    Institutional Attendance Discrepancy Verification
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCorrectionForReview(null)}
+                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Student & Class Details */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569] block">Student Details</span>
+                  <p className="text-sm font-bold text-[#0f172a]">
+                    {selectedCorrectionForReview.student?.full_name || 'Student'}
+                  </p>
+                  <p className="font-mono text-[#334155] font-semibold">
+                    Roll: {selectedCorrectionForReview.student?.roll_number || 'N/A'}
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 border border-amber-300 text-amber-900 font-mono">
+                  Requested: Present
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569] block">Class & Subject</span>
+                <p className="text-sm font-semibold text-[#0f172a]">
+                  {selectedCorrectionForReview.record?.session?.subject?.subject_name || 'Subject'} ({selectedCorrectionForReview.record?.session?.subject?.subject_code})
+                </p>
+                <p className="text-[#475569] font-mono">
+                  Section {selectedCorrectionForReview.record?.session?.section?.name || 'A'} • {selectedCorrectionForReview.record?.session?.session_date ? formatDateFull(selectedCorrectionForReview.record.session.session_date) : 'Scheduled Date'}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569] block mb-0.5">Student Reason for Claim</span>
+                <p className="text-sm font-medium text-[#0f172a] italic bg-white p-2.5 rounded-xl border border-slate-200">
+                  "{selectedCorrectionForReview.reason || 'Attendance discrepancy.'}"
+                </p>
+              </div>
+            </div>
+
+            {/* Faculty Remarks Input */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#334155]">
+                Faculty Review Remarks
+              </label>
+              <input
+                type="text"
+                value={reviewRemarks}
+                onChange={(e) => setReviewRemarks(e.target.value)}
+                placeholder="e.g. Attendance verified from register; marked Present."
+                className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-300 text-[#0f172a] font-medium focus:outline-none focus:border-slate-500 focus:bg-white transition-all"
+              />
+            </div>
+
+            {/* Error & Success Feedback */}
+            {reviewError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{reviewError}</span>
+              </div>
+            )}
+            {reviewSuccessMsg && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{reviewSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedCorrectionForReview(null)}
+                disabled={isReviewing}
+                className="text-xs font-bold border-slate-300 text-[#475569]"
+              >
+                Cancel
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => handleReviewAction('rejected')}
+                disabled={isReviewing}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-50 border border-rose-300 text-rose-800 hover:bg-rose-100 transition-all cursor-pointer disabled:opacity-50"
+              >
+                Reject Request
+              </button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleReviewAction('approved')}
+                isLoading={isReviewing}
+                leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                className="text-xs font-bold bg-emerald-700 hover:bg-emerald-800 border-emerald-800 text-white"
+              >
+                Approve & Mark Present
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -801,13 +801,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         {/* Classes Cards Grid */}
         {dayClasses.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 text-center space-y-3 shadow-xs">
-            <Calendar className="w-8 h-8 text-slate-400 mx-auto" />
-            <p className="font-bold text-slate-900 text-sm">
+            <Calendar className="w-10 h-10 text-[#475569] mx-auto opacity-70" />
+            <p className="font-bold text-[#0f172a] text-base">
               {selectedDayFilter === 'SUN'
                 ? 'Today is Sunday (Weekend / Holiday)'
                 : `No teaching lectures scheduled for ${selectedDayFilter} (${formatDateFull(sessionDate)})`}
             </p>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <p className="text-sm text-[#475569] max-w-md mx-auto font-medium">
               {selectedDayFilter === 'SUN' 
                 ? 'College academic lectures are not held on Sundays. Classes resume on Monday. You can select Monday–Saturday tabs to review weekly assignments.'
                 : `No active teaching periods are assigned to you on ${selectedDayFilter} in the published timetable.`}
@@ -863,13 +863,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                     </div>
 
                     {/* Meta info */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-[#475569] font-medium pt-2 border-t border-slate-100">
                       <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 text-[#475569] shrink-0" />
                         <span className="truncate">{cls.room_number || sec?.room_number || 'Room TBD'}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <Users className="w-3.5 h-3.5 text-[#475569] shrink-0" />
                         <span>{enrolledCount} Students</span>
                       </div>
                     </div>
@@ -1324,10 +1324,10 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       {/* 5. Student List (Optimized Fast Dual-Pill Rows) */}
       <div className="space-y-2">
         {filteredStudents.length === 0 ? (
-          <div className="bg-white p-10 text-center text-xs text-slate-500 rounded-3xl border border-slate-200/80 space-y-2 shadow-xs">
-            <Users className="w-8 h-8 text-slate-400 mx-auto" />
-            <p className="font-bold text-slate-900 text-sm">No students match current filter</p>
-            <p className="text-slate-500">Try adjusting your search query or status filter above</p>
+          <div className="bg-white p-10 text-center text-xs text-[#475569] rounded-3xl border border-slate-200/80 space-y-2 shadow-xs">
+            <Users className="w-8 h-8 text-[#475569] mx-auto opacity-70" />
+            <p className="font-bold text-[#0f172a] text-sm">No students match current filter</p>
+            <p className="text-xs text-[#475569] font-medium">Try adjusting your search query or status filter above</p>
           </div>
         ) : (
           filteredStudents.map((stud, idx) => {
