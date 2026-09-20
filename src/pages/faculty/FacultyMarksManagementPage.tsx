@@ -401,14 +401,32 @@ export const FacultyMarksManagementPage: React.FC = () => {
   // 8. Roster Marks State
   const [marksRoster, setMarksRoster] = useState<Record<string, { marks: number | ''; remarks: string }>>({});
   const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
+  isDirtyRef.current = isDirty;
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
+  isSavingRef.current = isSaving;
   const [notificationToast, setNotificationToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const prevAssessmentIdRef = useRef<string>('');
+  const prevSectionIdRef = useRef<string>('');
 
   // Sync marks roster when active assessment or students change
   useEffect(() => {
     if (!activeAssessment || sectionStudents.length === 0) {
       setMarksRoster({});
       setIsDirty(false);
+      prevAssessmentIdRef.current = '';
+      prevSectionIdRef.current = '';
+      return;
+    }
+
+    const isAssessmentSwitch = activeAssessment.id !== prevAssessmentIdRef.current;
+    const isSectionSwitch = selectedSectionId !== prevSectionIdRef.current;
+    const isExplicitSwitch = isAssessmentSwitch || isSectionSwitch;
+
+    // DATA-SAFETY GUARANTEE: If faculty is typing or saving, do NOT wipe entered marks from background updates
+    if (!isExplicitSwitch && (isDirtyRef.current || isSavingRef.current)) {
       return;
     }
 
@@ -445,7 +463,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     setMarksRoster(roster);
     setIsDirty(false);
-  }, [activeAssessment, sectionStudents, sessionalMarks, quizResults, assignmentSubmissions]);
+    prevAssessmentIdRef.current = activeAssessment.id;
+    prevSectionIdRef.current = selectedSectionId;
+  }, [activeAssessment, selectedSectionId, sectionStudents, sessionalMarks, quizResults, assignmentSubmissions]);
 
   // Auto-dismiss notification toast
   useEffect(() => {

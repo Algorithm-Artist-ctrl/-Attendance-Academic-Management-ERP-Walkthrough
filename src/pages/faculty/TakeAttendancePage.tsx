@@ -194,8 +194,9 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
 
     const isNewSelection = currentSelectionKey !== prevSelectionKeyRef.current;
 
-    // If it's not a new selection and user has unsaved changes, do not overwrite in-progress marks
-    if (!isNewSelection && hasUnsavedChangesRef.current) {
+    // DATA-SAFETY GUARANTEE: If not a new selection and user is saving or has unsaved/in-progress marks, NEVER overwrite
+    const hasLocalMarks = Object.values(attendanceMap).some(st => st === 'Present' || st === 'Absent');
+    if (!isNewSelection && (hasUnsavedChangesRef.current || isSavingRef.current || hasLocalMarks)) {
       return;
     }
 
@@ -236,7 +237,11 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       const records = attendanceRecords.filter(r => r.attendance_session_id === existingSession.id);
       if (records.length === 0) {
         ensureSessionAttendanceLoaded(existingSession.id).then(directRecords => {
+          // DATA-SAFETY GUARANTEE: Do not overwrite if user has started marking or is currently saving
           if (isCancelled || !directRecords || directRecords.length === 0) return;
+          if (hasUnsavedChangesRef.current || isSavingRef.current || Object.values(attendanceMap).some(st => st === 'Present' || st === 'Absent')) {
+            return;
+          }
           const directMap: Record<string, MarkState> = {};
           sectionStudents.forEach(s => {
             const found = directRecords.find(r => r.student_id === s.id);

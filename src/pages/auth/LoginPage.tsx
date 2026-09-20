@@ -63,7 +63,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen lg:max-h-screen lg:overflow-hidden w-full flex flex-col justify-between bg-slate-50 select-none relative overflow-x-hidden">
+    <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50 select-none relative overflow-x-hidden">
       
       {/* ======================================================== */}
       {/* 1. CAMPUS BACKGROUND PHOTO & RESPONSIVE OVERLAYS         */}
@@ -126,7 +126,7 @@ export const LoginPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. MAIN HERO & FLOATING LOGIN CARD                       */}
       {/* ======================================================== */}
-      <main className="relative z-20 flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-12 max-w-[1780px] mx-auto flex flex-col lg:flex-row items-center lg:items-stretch justify-center lg:justify-between gap-4 lg:gap-8 py-4 sm:py-6 lg:py-4">
+      <main className="relative z-20 flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-12 max-w-[1780px] mx-auto flex flex-col lg:flex-row items-center lg:items-center justify-center lg:justify-between gap-6 lg:gap-8 py-4 sm:py-6 lg:py-6 mb-6 sm:mb-8 lg:mb-10">
         
         {/* Left Column (Desktop Only): Hero Text & Compact Information Strip */}
         <div className="hidden lg:flex flex-1 flex-col justify-between min-w-0 pr-6 h-full">
@@ -391,16 +391,18 @@ export const LoginPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 4. PAGE FOOTER                                           */}
       {/* ======================================================== */}
-      <footer className="relative z-20 w-full px-4 sm:px-8 lg:px-12 py-2 sm:py-2.5 shrink-0 border-t border-slate-200/80 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] sm:text-xs text-slate-600">
-        <p className="text-center sm:text-left font-medium">
-          © 2026 Vivekananda College of Technology & Management, Aligarh. All Rights Reserved.
-        </p>
+      <footer className="relative z-20 w-full px-4 sm:px-8 lg:px-12 py-4 sm:py-5 shrink-0 border-t border-slate-200/90 bg-white/95 backdrop-blur-md shadow-sm">
+        <div className="max-w-[1780px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-slate-600">
+          <p className="text-center sm:text-left font-medium">
+            © 2026 Vivekananda College of Technology & Management, Aligarh. All Rights Reserved.
+          </p>
 
-        <div className="flex items-center gap-2 text-slate-500 font-medium">
-          <span className="hidden sm:inline-block h-px w-6 bg-slate-300"></span>
-          <span>
-            Designed & Developed by <strong className="text-[#0f172a] font-bold">Tarun Kushwah</strong>
-          </span>
+          <div className="flex items-center gap-2 text-slate-600 font-medium text-center">
+            <span className="hidden sm:inline-block h-px w-6 bg-slate-300"></span>
+            <span>
+              Designed & Developed by <strong className="text-[#0f172a] font-bold">Tarun Kushwah</strong>
+            </span>
+          </div>
         </div>
       </footer>
 

@@ -46,6 +46,21 @@ export interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function initEmailCache(): Map<string, string> {
+  const map = new Map<string, string>();
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('vctm_email_resolution_cache');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        Object.entries(parsed).forEach(([k, v]) => map.set(k, v as string));
+      }
+    }
+  } catch {}
+  map.set('admin', 'admin@vctm.in');
+  return map;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>(() => {
     const cached = erpStorage.getCurrentSessionUser();
@@ -71,9 +86,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   });
 
-  const emailCacheRef = useRef<Map<string, string>>(new Map());
+  const emailCacheRef = useRef<Map<string, string>>(initEmailCache());
   const inFlightProfileRef = useRef<Map<string, Promise<UserProfile | null>>>(new Map());
   const cachedProfileRef = useRef<Map<string, { profile: UserProfile; timestamp: number }>>(new Map());
+
+  const cacheResolvedEmail = (identifier: string, email: string) => {
+    const cleanId = identifier.toLowerCase().trim();
+    const cleanEmail = email.toLowerCase().trim();
+    emailCacheRef.current.set(cleanId, cleanEmail);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const obj: Record<string, string> = {};
+        emailCacheRef.current.forEach((v: string, k: string) => { obj[k] = v; });
+        localStorage.setItem('vctm_email_resolution_cache', JSON.stringify(obj));
+      }
+    } catch {}
+  };
 
   // Helper to resolve official email from any identifier (Roll Number, Employee ID, Faculty Code, 'admin')
   const resolveUserEmail = async (rawIdentifier: string): Promise<string | null> => {
@@ -90,21 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (cached) return cached;
 
     if (clean === 'admin') {
-      try {
-        const { data: adminProf } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('role', 'super_admin')
-          .limit(1)
-          .maybeSingle();
-        if (adminProf?.email) {
-          const res = adminProf.email.toLowerCase().trim();
-          emailCacheRef.current.set(clean, res);
-          return res;
-        }
-      } catch (err) {
-        console.warn('Failed to dynamically resolve super_admin email:', err);
-      }
       emailCacheRef.current.set(clean, 'admin@vctm.in');
       return 'admin@vctm.in';
     }
@@ -130,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const student = studentRes.data;
         if (student.email) {
           const res = student.email.toLowerCase().trim();
-          emailCacheRef.current.set(clean, res);
+          cacheResolvedEmail(clean, res);
           return res;
         }
         const { data: prof } = await supabase
@@ -140,17 +153,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
         if (prof?.email) {
           const res = prof.email.toLowerCase().trim();
-          emailCacheRef.current.set(clean, res);
+          cacheResolvedEmail(clean, res);
           return res;
         }
         const res = `${cleanRoll.toLowerCase()}@student.vctm.in`;
-        emailCacheRef.current.set(clean, res);
+        cacheResolvedEmail(clean, res);
         return res;
       }
 
       if (facultyRes.data?.email) {
         const res = facultyRes.data.email.toLowerCase().trim();
-        emailCacheRef.current.set(clean, res);
+        cacheResolvedEmail(clean, res);
         return res;
       }
 
@@ -163,14 +176,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profile?.email) {
         const res = profile.email.toLowerCase().trim();
-        emailCacheRef.current.set(clean, res);
+        cacheResolvedEmail(clean, res);
         return res;
       }
 
       // 5. If purely numeric, assume student roll number pattern
       if (/^\d+$/.test(cleanRoll)) {
         const res = `${cleanRoll.toLowerCase()}@student.vctm.in`;
-        emailCacheRef.current.set(clean, res);
+        cacheResolvedEmail(clean, res);
         return res;
       }
     } catch (err) {
@@ -187,6 +200,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cached = cachedProfileRef.current.get(authUserId);
       if (cached && (Date.now() - cached.timestamp < 60000)) {
         return Promise.resolve(cached.profile);
+      }
+      const sessionUser = erpStorage.getCurrentSessionUser();
+      if (sessionUser && sessionUser.id === authUserId && sessionUser.role) {
+        cachedProfileRef.current.set(authUserId, { profile: sessionUser, timestamp: Date.now() });
+        return Promise.resolve(sessionUser);
       }
     }
     const existing = inFlightProfileRef.current.get(authUserId);

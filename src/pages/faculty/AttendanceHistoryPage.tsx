@@ -22,15 +22,21 @@ export const AttendanceHistoryPage: React.FC<AttendanceHistoryProps> = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter sessions marked strictly by current faculty
-  const facultySessions = attendanceSessions
-    .filter(s => (facultyId ? s.faculty_id === facultyId : false) || user?.role === 'super_admin')
-    .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
+  const facultySessions = React.useMemo(() => {
+    return attendanceSessions
+      .filter(s => (facultyId ? s.faculty_id === facultyId : false) || user?.role === 'super_admin')
+      .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
+  }, [attendanceSessions, facultyId, user?.role]);
 
-  const filtered = facultySessions.filter(s =>
-    (s.subject?.subject_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.subject?.subject_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.session_date.includes(searchTerm)
-  );
+  const filtered = React.useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return facultySessions;
+    return facultySessions.filter(s =>
+      (s.subject?.subject_name || '').toLowerCase().includes(term) ||
+      (s.subject?.subject_code || '').toLowerCase().includes(term) ||
+      s.session_date.includes(term)
+    );
+  }, [facultySessions, searchTerm]);
 
   return (
     <div className="space-y-6">

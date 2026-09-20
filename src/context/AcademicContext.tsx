@@ -956,16 +956,28 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         section: curSections.find(sec => sec.id === t.section_id),
       }));
 
+      // Deduplicate enriched entries by ID to prevent any duplicate slot cards
+      const seenIds = new Set<string>();
+      const dedupedEnriched: TimetableEntry[] = [];
+      for (const entry of enriched) {
+        if (!seenIds.has(entry.id)) {
+          seenIds.add(entry.id);
+          dedupedEnriched.push(entry);
+        }
+      }
+
       if (sectionId) {
         setTimetable(prev => {
           const others = prev.filter(t => t.section_id !== sectionId);
-          const merged = [...others, ...enriched];
+          const idSet = new Set(others.map(o => o.id));
+          const newEntries = dedupedEnriched.filter(e => !idSet.has(e.id));
+          const merged = [...others, ...newEntries];
           erpStorage.setTimetable(merged);
           return merged;
         });
       } else {
-        setTimetable(enriched);
-        erpStorage.setTimetable(enriched);
+        setTimetable(dedupedEnriched);
+        erpStorage.setTimetable(dedupedEnriched);
       }
     } catch (err) {
       console.error('Failed to refresh timetable:', err);
@@ -1330,10 +1342,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (authLoading) return;
 
     loadDataFromSupabase(false);
+    let deferTimer: NodeJS.Timeout | null = null;
     if (isAuthenticated) {
-      refreshNotifications();
-      refreshConversations();
-      refreshLeaveApplications();
+      deferTimer = setTimeout(() => {
+        refreshNotifications();
+        refreshConversations();
+        refreshLeaveApplications();
+      }, 200);
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -1341,9 +1356,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Date.now() - lastFullLoadRef.current > 5000) {
           loadDataFromSupabase(false);
         }
-        refreshNotifications();
-        refreshConversations();
-        refreshLeaveApplications();
+        if (deferTimer) clearTimeout(deferTimer);
+        deferTimer = setTimeout(() => {
+          refreshNotifications();
+          refreshConversations();
+          refreshLeaveApplications();
+        }, 200);
       } else if (event === 'SIGNED_OUT') {
         setAttendanceSessions([]);
         setAttendanceRecords([]);
@@ -1356,6 +1374,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     return () => {
+      if (deferTimer) clearTimeout(deferTimer);
       subscription.unsubscribe();
     };
   }, [authLoading, isAuthenticated, loadDataFromSupabase, refreshNotifications, refreshConversations, refreshLeaveApplications]);
@@ -2753,103 +2772,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return null;
   };
 
-  // 7. Calculate Student Overall Attendance strictly based on Supabase database
-  const getStudentAttendance = (studentId: string): StudentOverallAttendance & {
-    notRecordedCount: number;
-    pendingClaimsCount: number;
-  } => {
-    const student = students.find(s => s.id === studentId);
-    const studSectionId = student?.section_id;
-    const studSection = sections.find(s => s.id === studSectionId);
-
-    // All registered attendance records for this student
-    const studentRecords = attendanceRecords.filter(r => r.student_id === studentId);
-
-    // Target subjects for THIS student's section or assignments
-    const sectionSubjectIds = new Set([
-      ...assignments.filter(a => a.section_id === studSectionId && a.active !== false).map(a => a.subject_id),
-      ...timetable.filter(t => t.section_id === studSectionId && t.active).map(t => t.subject_id)
-    ]);
-
-    const targetSubjects = subjects.filter(s => {
-      if (!s.active) return false;
-      if (sectionSubjectIds.size > 0) {
-        return sectionSubjectIds.has(s.id);
-      }
-      if (student?.semester_id && s.semester_id) {
-        return s.semester_id === student.semester_id;
-      }
-      if (student?.program_id && s.program_id) {
-        return s.program_id === student.program_id;
-      }
-      return false;
-    });
-
-    const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
-      // Find the specific assignment for THIS student's section
-      const assignment = studSectionId ? assignments.find(
-        a => a.subject_id === sub.id && a.section_id === studSectionId && a.active
-      ) : undefined;
-
-      const assignedFac = faculty.find(f => f.id === assignment?.faculty_id) ||
-                          faculty.find(f => timetable.some(t => t.subject_id === sub.id && t.section_id === studSectionId && t.faculty_id === f.id));
-
-      // Student's individual actual attendance records for this subject (strictly up to collegeToday)
-      const collegeToday = getCollegeToday();
-      const subRecords = studentRecords.filter(r => {
-        const sess = attendanceSessions.find(s => s.id === r.attendance_session_id);
-        return sess && 
-               sess.session_date <= collegeToday &&
-               sess.subject_id === sub.id && 
-               (studSectionId ? sess.section_id === studSectionId : true);
-      });
-
-      const attended = subRecords.filter(r => r.status === 'Present').length;
-      const absent = subRecords.filter(r => r.status === 'Absent').length;
-      const totalConducted = attended + absent;
-      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : null;
-
-      return {
-        subjectId: sub.id,
-        subjectCode: sub.subject_code,
-        subjectName: sub.subject_name,
-        lectureType: sub.lecture_type,
-        facultyName: assignedFac?.full_name || 'Faculty Member',
-        totalConducted,
-        attended,
-        percentage,
-        credits: sub.credits,
-      };
-    });
-
-    const totalLectures = subjectStats.reduce((acc, curr) => acc + curr.totalConducted, 0);
-    const presentLectures = subjectStats.reduce((acc, curr) => acc + curr.attended, 0);
-    const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : null;
-
-    // Student claims count
-    const studentClaims = corrections.filter(c => c.student_id === studentId);
-    const pendingClaimsCount = studentClaims.filter(c => c.status === 'pending').length;
-
-    // Not recorded count for today
-    const todayLectures = getTodayLecturesForStudent(studentId);
-    const notRecordedCount = todayLectures.filter(l => l.status === 'Not Recorded').length;
-
-    return {
-      studentId,
-      rollNumber: student?.roll_number || '—',
-      fullName: student?.full_name || 'Student',
-      sectionName: studSection?.name || '',
-      totalLectures,
-      presentLectures,
-      percentage: overallPercentage,
-      isDefaulter: totalLectures > 0 && overallPercentage !== null && overallPercentage < 75,
-      subjectStats,
-      notRecordedCount,
-      pendingClaimsCount,
-    };
-  };
-
-  // 8. Authoritative Master Timetable Query (Single Source of Truth for HOD, Faculty, Student, Attendance)
+  // 7. Authoritative Master Timetable Query (Single Source of Truth for HOD, Faculty, Student, Attendance)
   const getPublishedTimetable = useCallback((filter?: TimetableQueryFilter): TimetableEntry[] => {
     let result = timetable;
 
@@ -2902,8 +2825,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return getPublishedTimetable({ facultyId, dayOfWeek });
   }, [getPublishedTimetable]);
 
-  // 9. Get Today's Live Attendance Lectures for Student (Consumes Same Authoritative Timetable)
-  const getTodayLecturesForStudent = (studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
+  // 8. Get Today's Live Attendance Lectures for Student (Consumes Same Authoritative Timetable)
+  const getTodayLecturesForStudent = useCallback((studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
     let student = students.find(s => s.id === studentId || s.roll_number === studentId);
     if (!student) {
       const sessionUser = erpStorage.getCurrentSessionUser();
@@ -2989,7 +2912,137 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         claimReviewRemarks,
       };
     });
-  };
+  }, [students, getStudentTimetable, subjects, faculty, sections, attendanceSessions, attendanceRecords, corrections]);
+
+  // 9. Calculate Student Overall Attendance strictly based on Supabase database (Optimized O(1) Map Lookups)
+  const getStudentAttendance = useCallback((studentId: string): StudentOverallAttendance & {
+    notRecordedCount: number;
+    pendingClaimsCount: number;
+  } => {
+    const student = students.find(s => s.id === studentId);
+    const studSectionId = student?.section_id;
+    const studSection = sections.find(s => s.id === studSectionId);
+
+    // All registered attendance records for this student
+    const studentRecords = attendanceRecords.filter(r => r.student_id === studentId);
+
+    // Target subjects for THIS student's section or assignments
+    const sectionSubjectIds = new Set([
+      ...assignments.filter(a => a.section_id === studSectionId && a.active !== false).map(a => a.subject_id),
+      ...timetable.filter(t => t.section_id === studSectionId && t.active).map(t => t.subject_id)
+    ]);
+
+    const targetSubjects = subjects.filter(s => {
+      if (!s.active) return false;
+      if (sectionSubjectIds.size > 0) {
+        return sectionSubjectIds.has(s.id);
+      }
+      if (student?.semester_id && s.semester_id) {
+        return s.semester_id === student.semester_id;
+      }
+      if (student?.program_id && s.program_id) {
+        return s.program_id === student.program_id;
+      }
+      return false;
+    });
+
+    const collegeToday = getCollegeToday();
+
+    // Fast O(1) session lookup map
+    const sessionMap = new Map<string, AttendanceSession>();
+    for (const s of attendanceSessions) {
+      sessionMap.set(s.id, s);
+    }
+
+    // Pre-group student records by subject_id in a single pass O(N)
+    const recordsBySubject = new Map<string, { attended: number; absent: number }>();
+    for (const r of studentRecords) {
+      const sess = sessionMap.get(r.attendance_session_id);
+      if (!sess) continue;
+      if (sess.session_date > collegeToday) continue;
+      if (studSectionId && sess.section_id !== studSectionId) continue;
+
+      let stat = recordsBySubject.get(sess.subject_id);
+      if (!stat) {
+        stat = { attended: 0, absent: 0 };
+        recordsBySubject.set(sess.subject_id, stat);
+      }
+      if (r.status === 'Present') stat.attended++;
+      else if (r.status === 'Absent') stat.absent++;
+    }
+
+    // Fast faculty lookup map
+    const facultyMap = new Map<string, any>();
+    for (const f of faculty) {
+      facultyMap.set(f.id, f);
+    }
+
+    const subjectStats: SubjectAttendanceStat[] = targetSubjects.map(sub => {
+      // Find the specific assignment for THIS student's section
+      const assignment = studSectionId ? assignments.find(
+        a => a.subject_id === sub.id && a.section_id === studSectionId && a.active
+      ) : undefined;
+
+      let assignedFac = assignment?.faculty_id ? facultyMap.get(assignment.faculty_id) : undefined;
+      if (!assignedFac && studSectionId) {
+        const tMatch = timetable.find(t => t.subject_id === sub.id && t.section_id === studSectionId && t.faculty_id);
+        if (tMatch?.faculty_id) {
+          assignedFac = facultyMap.get(tMatch.faculty_id);
+        }
+      }
+
+      const stat = recordsBySubject.get(sub.id) || { attended: 0, absent: 0 };
+      const attended = stat.attended;
+      const absent = stat.absent;
+      const totalConducted = attended + absent;
+      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : null;
+
+      return {
+        subjectId: sub.id,
+        subjectCode: sub.subject_code,
+        subjectName: sub.subject_name,
+        lectureType: sub.lecture_type,
+        facultyName: assignedFac?.full_name || 'Faculty Member',
+        totalConducted,
+        attended,
+        percentage,
+        credits: sub.credits,
+      };
+    });
+
+    const totalLectures = subjectStats.reduce((acc, curr) => acc + curr.totalConducted, 0);
+    const presentLectures = subjectStats.reduce((acc, curr) => acc + curr.attended, 0);
+    const overallPercentage = totalLectures > 0 ? Math.round((presentLectures / totalLectures) * 100) : null;
+
+    // Student claims count
+    let pendingClaimsCount = 0;
+    for (const c of corrections) {
+      if (c.student_id === studentId && c.status === 'pending') {
+        pendingClaimsCount++;
+      }
+    }
+
+    // Not recorded count for today
+    const todayLectures = getTodayLecturesForStudent(studentId);
+    let notRecordedCount = 0;
+    for (const l of todayLectures) {
+      if (l.status === 'Not Recorded') notRecordedCount++;
+    }
+
+    return {
+      studentId,
+      rollNumber: student?.roll_number || '—',
+      fullName: student?.full_name || 'Student',
+      sectionName: studSection?.name || '',
+      totalLectures,
+      presentLectures,
+      percentage: overallPercentage,
+      isDefaulter: totalLectures > 0 && overallPercentage !== null && overallPercentage < 75,
+      subjectStats,
+      notRecordedCount,
+      pendingClaimsCount,
+    };
+  }, [students, sections, attendanceRecords, assignments, timetable, subjects, faculty, attendanceSessions, corrections, getTodayLecturesForStudent]);
 
   // 9. Get Date-wise Historical Lectures for Student
   const getDateLecturesForStudent = (studentId: string, dateStr: string): DateWiseAttendanceSummary => {

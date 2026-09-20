@@ -115,6 +115,9 @@ let _inFlightFetchAll: Promise<FullERPData | null> | null = null;
 const _inFlightScopedData = new Map<string, Promise<FullERPData | null>>();
 const _inFlightEnsureQuizzes = new Map<string, Promise<Quiz[]>>();
 const _inFlightEnsureSessionals = new Map<string, Promise<SessionalAssessment[]>>();
+const _inFlightFacultyDashboard = new Map<string, Promise<FacultyDashboardPayload | null>>();
+const _facultyDashboardCache = new Map<string, { timestamp: number; data: FacultyDashboardPayload }>();
+const FACULTY_DASHBOARD_CACHE_TTL_MS = 20 * 1000; // 20-second cache for dashboard payload
 
 export const supabaseService = {
   // Clear in-memory static cache when structural entities change
@@ -125,6 +128,8 @@ export const supabaseService = {
     _inFlightScopedData.clear();
     _inFlightEnsureQuizzes.clear();
     _inFlightEnsureSessionals.clear();
+    _inFlightFacultyDashboard.clear();
+    _facultyDashboardCache.clear();
   },
 
   // 1A. Fetch Static Academic Master Entities (Institutions, Depts, Programs, Sessions, Years, Semesters)
@@ -4302,17 +4307,19 @@ export const supabaseService = {
 
     if (error) throw new Error(error.message);
 
-    // Record audit logs
-    for (const sm of params.studentMarks) {
-      await supabase.from('marks_history').insert({
-        entity_type: 'quiz',
-        entity_id: params.quizId,
-        student_id: sm.studentId,
-        subject_id: quiz.subject_id,
-        new_marks: sm.marksObtained,
-        updated_by: validFacultyId,
-        reason: targetStatus === 'published' ? 'Quiz Marks Published' : 'Quiz Marks Recorded (Draft)'
-      });
+    // Record audit logs in bulk (eliminates sequential N-round-trip HTTP loops)
+    const quizHistoryRows = params.studentMarks.map(sm => ({
+      entity_type: 'quiz',
+      entity_id: params.quizId,
+      student_id: sm.studentId,
+      subject_id: quiz.subject_id,
+      new_marks: sm.marksObtained,
+      updated_by: validFacultyId,
+      reason: targetStatus === 'published' ? 'Quiz Marks Published' : 'Quiz Marks Recorded (Draft)'
+    }));
+    if (quizHistoryRows.length > 0) {
+      const { error: histErr } = await supabase.from('marks_history').insert(quizHistoryRows);
+      if (histErr) console.warn('Notice: Background marks_history bulk insert:', histErr.message);
     }
 
     // Notify students of evaluated quiz marks ONLY if published
@@ -4521,22 +4528,24 @@ export const supabaseService = {
           toCreate.push({ title: 'Sessional 3', max_marks: 20 });
         }
 
-        for (const item of toCreate) {
-          try {
-            const created = await this.createSessionalAssessment({
-              title: item.title,
-              subject_id: params.subjectId,
-              section_id: params.sectionId,
-              faculty_id: params.facultyId,
-              semester_id: params.semesterId,
-              max_marks: item.max_marks,
-              exam_date: new Date().toISOString().split('T')[0],
-              status: 'draft',
-            });
-            existingByTitle.set(item.title.toLowerCase(), created);
-          } catch (err) {
-            console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
-          }
+        if (toCreate.length > 0) {
+          await Promise.all(toCreate.map(async (item) => {
+            try {
+              const created = await this.createSessionalAssessment({
+                title: item.title,
+                subject_id: params.subjectId,
+                section_id: params.sectionId,
+                faculty_id: params.facultyId,
+                semester_id: params.semesterId,
+                max_marks: item.max_marks,
+                exam_date: new Date().toISOString().split('T')[0],
+                status: 'draft',
+              });
+              existingByTitle.set(item.title.toLowerCase(), created);
+            } catch (err) {
+              console.warn(`Failed to auto-create default assessment ${item.title}:`, err);
+            }
+          }));
         }
 
         return Array.from(existingByTitle.values());
@@ -4589,26 +4598,28 @@ export const supabaseService = {
           }
         }
 
-        for (const item of toCreate) {
-          try {
-            const now = new Date();
-            const created = await this.createQuiz({
-              faculty_id: params.facultyId,
-              subject_id: params.subjectId,
-              section_id: params.sectionId,
-              title: item.title,
-              max_marks: item.max_marks,
-              quiz_date: now.toISOString().split('T')[0],
-              start_time: now.toISOString(),
-              end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              google_form_url: 'https://vctm.in/quizzes',
-              status: 'draft',
-              active: true
-            });
-            existingByTitle.set(item.title.toLowerCase(), created);
-          } catch (err) {
-            console.warn(`Failed to auto-create quiz ${item.title}:`, err);
-          }
+        if (toCreate.length > 0) {
+          const now = new Date();
+          await Promise.all(toCreate.map(async (item) => {
+            try {
+              const created = await this.createQuiz({
+                faculty_id: params.facultyId,
+                subject_id: params.subjectId,
+                section_id: params.sectionId,
+                title: item.title,
+                max_marks: item.max_marks,
+                quiz_date: now.toISOString().split('T')[0],
+                start_time: now.toISOString(),
+                end_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                google_form_url: 'https://vctm.in/quizzes',
+                status: 'draft',
+                active: true
+              });
+              existingByTitle.set(item.title.toLowerCase(), created);
+            } catch (err) {
+              console.warn(`Failed to auto-create quiz ${item.title}:`, err);
+            }
+          }));
         }
 
         return Array.from(existingByTitle.values());
@@ -4763,20 +4774,22 @@ export const supabaseService = {
 
     if (upsertResult.error) throw new Error(upsertResult.error.message);
 
-    // Record in marks_history audit table
-    for (const sm of params.studentMarks) {
-      if (sm.oldMarks !== sm.marksObtained) {
-        await supabase.from('marks_history').insert({
-          entity_type: 'sessional',
-          entity_id: params.sessionalAssessmentId || params.subjectId,
-          student_id: sm.studentId,
-          subject_id: params.subjectId,
-          old_marks: sm.oldMarks,
-          new_marks: sm.marksObtained,
-          updated_by: validFacultyId,
-          reason: `${params.sessionalType || 'Sessional'} Marks Updated`
-        });
-      }
+    // Record in marks_history audit table in bulk (eliminates sequential N-round-trip HTTP loops)
+    const sessionalHistoryRows = params.studentMarks
+      .filter(sm => sm.oldMarks !== sm.marksObtained)
+      .map(sm => ({
+        entity_type: 'sessional',
+        entity_id: params.sessionalAssessmentId || params.subjectId,
+        student_id: sm.studentId,
+        subject_id: params.subjectId,
+        old_marks: sm.oldMarks,
+        new_marks: sm.marksObtained,
+        updated_by: validFacultyId,
+        reason: `${params.sessionalType || 'Sessional'} Marks Updated`
+      }));
+    if (sessionalHistoryRows.length > 0) {
+      const { error: histErr } = await supabase.from('marks_history').insert(sessionalHistoryRows);
+      if (histErr) console.warn('Notice: Background marks_history bulk insert:', histErr.message);
     }
 
     // Trigger Real-time notifications ONLY when marks are actually published
@@ -5421,15 +5434,27 @@ export const supabaseService = {
   },
 
   // 14. Scoped Fast Faculty Dashboard Query (Parallel, <100ms, Single Source of Truth)
-  async fetchFacultyDashboardData(facultyId: string): Promise<FacultyDashboardPayload | null> {
-    try {
-      if (!facultyId) return null;
+  async fetchFacultyDashboardData(facultyId: string, forceFresh = false): Promise<FacultyDashboardPayload | null> {
+    if (!facultyId) return null;
+    const now = Date.now();
+    if (!forceFresh) {
+      const cached = _facultyDashboardCache.get(facultyId);
+      if (cached && (now - cached.timestamp < FACULTY_DASHBOARD_CACHE_TTL_MS)) {
+        return cached.data;
+      }
+    }
+    const existing = _inFlightFacultyDashboard.get(facultyId);
+    if (existing) {
+      return existing;
+    }
 
-      const todayDay = getISTDayOfWeek();
+    const fetchPromise = (async (): Promise<FacultyDashboardPayload | null> => {
+      try {
+        const todayDay = getISTDayOfWeek();
 
-      // Parallel Step 1: Core faculty identity, assignments, timetable, and coordinators
-      const [
-        facultyRes,
+        // Parallel Step 1: Core faculty identity, assignments, timetable, and coordinators
+        const [
+          facultyRes,
         assignmentsRes,
         coordRes,
         timetableRes,
@@ -5611,30 +5636,37 @@ export const supabaseService = {
         : facultyTimetable
             .filter(t => t.day_of_week === todayDay)
             .sort((a, b) => a.period_number - b.period_number);
-
-      return {
+      const result: FacultyDashboardPayload = {
         faculty: facultyMember,
         assignments: rawAssignments,
         coordinatorAssignments: coordAssignments.filter(c => {
           const yrNum = (c.section as any)?.semester?.academic_year?.year_number;
           return yrNum !== 1;
         }),
-        timetable: facultyTimetable,
-        sections: enrichedSections,
-        subjects: allSubjects,
-        todaySchedule,
-        todayClassesCount: todaySchedule.length,
-        weeklyLoad: facultyTimetable.length,
-        assignedSectionsCount: enrichedSections.length,
-        assignedSubjectsCount: allSubjects.length,
-        pendingCorrectionsCount: pendingCorrections.length,
-        pendingCorrections,
-        attendanceSessions
-      };
-    } catch (err) {
-      console.error('Error in fetchFacultyDashboardData:', err);
-      return null;
-    }
+          timetable: facultyTimetable,
+          sections: enrichedSections,
+          subjects: allSubjects,
+          todaySchedule,
+          todayClassesCount: todaySchedule.length,
+          weeklyLoad: facultyTimetable.length,
+          assignedSectionsCount: enrichedSections.length,
+          assignedSubjectsCount: allSubjects.length,
+          pendingCorrectionsCount: pendingCorrections.length,
+          pendingCorrections,
+          attendanceSessions
+        };
+        _facultyDashboardCache.set(facultyId, { timestamp: Date.now(), data: result });
+        return result;
+      } catch (err) {
+        console.error('Error in fetchFacultyDashboardData:', err);
+        return null;
+      } finally {
+        _inFlightFacultyDashboard.delete(facultyId);
+      }
+    })();
+
+    _inFlightFacultyDashboard.set(facultyId, fetchPromise);
+    return fetchPromise;
   },
 
   // ==========================================
