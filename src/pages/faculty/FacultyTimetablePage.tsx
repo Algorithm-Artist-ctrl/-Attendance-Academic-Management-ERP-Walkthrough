@@ -38,8 +38,8 @@ export const FacultyTimetablePage: React.FC<FacultyTimetablePageProps> = ({ onTa
          f.id === user?.faculty?.id || 
          f.id === user?.id ||
          (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
-         (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
-         (user?.email && f.email.toLowerCase().trim() === user.email.toLowerCase().trim())
+         (user?.full_name && f.full_name?.toLowerCase().trim() === user.full_name?.toLowerCase().trim()) ||
+         (user?.email && f.email?.toLowerCase().trim() === user.email?.toLowerCase().trim())
   ) || user?.faculty;
   
   const facultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || '';

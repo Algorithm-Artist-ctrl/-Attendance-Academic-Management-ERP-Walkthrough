@@ -209,9 +209,6 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
         const sem = semesters.find(s => s.id === sec.semester_id);
         const yr = years.find(y => y.id === sem?.academic_year_id);
 
-        // Strictly exclude 1st Year (year_number === 1)
-        if (yr?.year_number === 1) return null;
-
         const secStudents = students.filter(s => s.section_id === sec.id && s.active);
 
         // Subjects taught or assigned to this faculty for this specific section

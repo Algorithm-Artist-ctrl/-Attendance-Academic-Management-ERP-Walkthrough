@@ -72,6 +72,13 @@ import {
   getClaimWindowStatus,
   isClassCompleted
 } from '../lib/utils/dateUtils';
+import {
+  FacultyTeachingScope,
+  FacultyResolvedAssignment,
+  resolveFacultyTeachingScope,
+  getAssignedSectionsForYear,
+  getAssignedSubjectsForSection,
+} from '../lib/utils/facultyAssignmentResolver';
 
 export interface AttendanceSummary {
   sessionId?: string;
@@ -523,6 +530,9 @@ interface AcademicContextType {
   getPublishedTimetable: (filter?: TimetableQueryFilter) => TimetableEntry[];
   getStudentTimetable: (studentId: string) => TimetableEntry[];
   getFacultyTimetable: (facultyId: string, dayOfWeek?: DayOfWeek) => TimetableEntry[];
+  getFacultyTeachingScope: (facultyId: string, isSuperAdminOrHOD?: boolean) => FacultyTeachingScope;
+  getAssignedSectionsForYear: (assignments: FacultyResolvedAssignment[], yearId?: string) => Section[];
+  getAssignedSubjectsForSection: (assignments: FacultyResolvedAssignment[], sectionId?: string, yearId?: string) => Subject[];
   getTodayLecturesForStudent: (studentId: string, customDateStr?: string) => TodayAttendanceLecture[];
   getDateLecturesForStudent: (studentId: string, dateStr: string) => DateWiseAttendanceSummary;
   getFacultyCorrectionRequests: (facultyId: string) => AttendanceCorrection[];
@@ -2987,6 +2997,27 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return getPublishedTimetable({ facultyId, dayOfWeek });
   }, [getPublishedTimetable]);
 
+  const getFacultyTeachingScope = useCallback((facultyId: string, isSuperAdminOrHOD?: boolean): FacultyTeachingScope => {
+    return resolveFacultyTeachingScope(facultyId, {
+      timetable,
+      facultySubjectAssignments: assignments,
+      sections,
+      subjects,
+      semesters,
+      years,
+      faculty,
+      isSuperAdminOrHOD,
+    });
+  }, [timetable, assignments, sections, subjects, semesters, years, faculty]);
+
+  const getAssignedSectionsForYearContext = useCallback((facultyAssignments: FacultyResolvedAssignment[], yearId?: string): Section[] => {
+    return getAssignedSectionsForYear(facultyAssignments, sections, yearId);
+  }, [sections]);
+
+  const getAssignedSubjectsForSectionContext = useCallback((facultyAssignments: FacultyResolvedAssignment[], sectionId?: string, yearId?: string): Subject[] => {
+    return getAssignedSubjectsForSection(facultyAssignments, subjects, sectionId, yearId);
+  }, [subjects]);
+
   // 8. Get Today's Live Attendance Lectures for Student (Consumes Same Authoritative Timetable)
   const getTodayLecturesForStudent = useCallback((studentId: string, customDateStr?: string): TodayAttendanceLecture[] => {
     let student = students.find(s => s.id === studentId || s.roll_number === studentId);
@@ -4303,6 +4334,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getStudentAttendance,
     getPublishedTimetable,
     getFacultyTimetable,
+    getFacultyTeachingScope,
+    getAssignedSectionsForYear: getAssignedSectionsForYearContext,
+    getAssignedSubjectsForSection: getAssignedSubjectsForSectionContext,
     getStudentTimetable,
     getTodayLecturesForStudent,
     getDateLecturesForStudent,
@@ -4455,6 +4489,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getStudentAttendance,
     getPublishedTimetable,
     getFacultyTimetable,
+    getFacultyTeachingScope,
+    getAssignedSectionsForYearContext,
+    getAssignedSubjectsForSectionContext,
     getStudentTimetable,
     getTodayLecturesForStudent,
     getDateLecturesForStudent,

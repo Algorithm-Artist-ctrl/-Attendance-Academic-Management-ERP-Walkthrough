@@ -39,6 +39,7 @@ export const FacultyQuizzesPage: React.FC = () => {
     students,
     timetable,
     assignments: facultySubjectAssignments,
+    getFacultyTeachingScope,
     createQuiz,
     deleteQuiz,
     saveQuizMarks
@@ -55,6 +56,10 @@ export const FacultyQuizzesPage: React.FC = () => {
 
   const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
   const isSuperAdmin = (user?.role === 'super_admin' || user?.role === 'hod') && !currentFacultyId;
+
+  const facultyScope = useMemo(() => {
+    return getFacultyTeachingScope(currentFacultyId, isSuperAdmin);
+  }, [getFacultyTeachingScope, currentFacultyId, isSuperAdmin]);
 
   // Filter quizzes created by this faculty (or all for HOD/Admin)
   const myQuizzes = useMemo(() => {
@@ -75,62 +80,49 @@ export const FacultyQuizzesPage: React.FC = () => {
     return Array.from(map.values());
   }, [quizzes, isSuperAdmin, currentFacultyId]);
 
-  // Allowed subjects & sections dynamically resolved from database relationships
+  // Allowed subjects & sections dynamically resolved strictly from database relationships
   const myAssignedSubjects = useMemo(() => {
-    // 1. Determine subjects taught by this faculty (FSA, Timetable, or Department curriculum)
-    const taughtSubjectIds = new Set<string>();
-    const directAssignedPairs = new Set<string>();
-
-    for (const fsa of facultySubjectAssignments) {
-      if (fsa.faculty_id === currentFacultyId && fsa.active) {
-        taughtSubjectIds.add(fsa.subject_id);
-        directAssignedPairs.add(`${fsa.subject_id}:${fsa.section_id}`);
-      }
-    }
-    for (const t of timetable) {
-      if (t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id) {
-        taughtSubjectIds.add(t.subject_id);
-        directAssignedPairs.add(`${t.subject_id}:${t.section_id}`);
-      }
-    }
-
-    const relevantSubjects = (taughtSubjectIds.size > 0 && !isSuperAdmin)
-      ? subjects.filter(s => taughtSubjectIds.has(s.id) && s.active)
-      : (currentFaculty?.department_id 
-          ? subjects.filter(s => (s.department_id === currentFaculty.department_id || !s.department_id) && s.active) 
-          : subjects.filter(s => s.active));
-
-    return relevantSubjects.map(sub => {
-      // Find active sections specifically taught or assigned to this faculty
-      const matchingSections = sections.filter(sec => {
-        if (!sec.active) return false;
-        if (isSuperAdmin) {
+    if (isSuperAdmin) {
+      return subjects.filter(s => s.active !== false).map(sub => {
+        const matchingSections = sections.filter(sec => {
+          if (!sec.active) return false;
           if (sub.semester_id) return sec.semester_id === sub.semester_id;
           return true;
-        }
-        return directAssignedPairs.has(`${sub.id}:${sec.id}`);
+        }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        return {
+          subject: sub,
+          sections: matchingSections,
+        };
       });
+    }
 
-      const sortedSections = matchingSections
-        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    // Group assigned sections by subject
+    const subMap = new Map<string, { subject: typeof subjects[0]; sections: Array<typeof sections[0]> }>();
+    for (const a of facultyScope.allAssignments) {
+      if (!a.subject || !a.section) continue;
+      if (!subMap.has(a.subject.id)) {
+        subMap.set(a.subject.id, {
+          subject: a.subject,
+          sections: [],
+        });
+      }
+      const entry = subMap.get(a.subject.id)!;
+      if (!entry.sections.some(s => s.id === a.section!.id)) {
+        entry.sections.push(a.section);
+      }
+    }
 
-      return {
-        subject: sub,
-        sections: sortedSections,
-      };
-    }).filter(item => isSuperAdmin || item.sections.length > 0);
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId, currentFaculty]);
+    return Array.from(subMap.values()).map(item => ({
+      subject: item.subject,
+      sections: item.sections.sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+    }));
+  }, [isSuperAdmin, subjects, sections, facultyScope]);
 
   const myAssignedSections = useMemo(() => {
     if (isSuperAdmin) return sections.filter(s => s.active);
-    const secSet = new Set<string>();
-    for (const item of myAssignedSubjects) {
-      for (const sec of item.sections) {
-        secSet.add(sec.id);
-      }
-    }
-    return sections.filter(sec => secSet.has(sec.id) && sec.active);
-  }, [isSuperAdmin, myAssignedSubjects, sections]);
+    return facultyScope.assignedSections;
+  }, [isSuperAdmin, sections, facultyScope]);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');

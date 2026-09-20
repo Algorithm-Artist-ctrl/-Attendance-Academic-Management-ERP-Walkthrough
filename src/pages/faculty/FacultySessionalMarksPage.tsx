@@ -43,6 +43,7 @@ export const FacultySessionalMarksPage: React.FC = () => {
     students,
     timetable,
     assignments: facultySubjectAssignments,
+    getFacultyTeachingScope,
     createSessionalAssessment,
     updateSessionalAssessment,
     deleteSessionalAssessment,
@@ -61,50 +62,34 @@ export const FacultySessionalMarksPage: React.FC = () => {
   const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
   const isSuperAdmin = (user?.role === 'super_admin' || user?.role === 'hod') && !currentFacultyId;
 
+  const facultyScope = useMemo(() => {
+    return getFacultyTeachingScope(currentFacultyId, isSuperAdmin);
+  }, [getFacultyTeachingScope, currentFacultyId, isSuperAdmin]);
+
   // Assigned subjects & sections strictly assigned to current faculty
   const myAssignedSubjects = useMemo(() => {
     if (isSuperAdmin) {
-      return subjects.map(s => ({
+      return subjects.filter(s => s.active !== false).map(s => ({
         subject: s,
-        sections: sections
+        sections: sections.filter(sec => sec.active !== false)
       }));
     }
-    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id);
+
     const subMap = new Map<string, { subject: typeof subjects[0]; sections: typeof sections }>();
-
-    for (const t of myTt) {
-      const sub = subjects.find(s => s.id === t.subject_id);
-      const sec = sections.find(s => s.id === t.section_id);
-      if (sub && sec && sec.active && sub.active) {
-        if (!subMap.has(sub.id)) {
-          subMap.set(sub.id, { subject: sub, sections: [sec] });
-        } else {
-          const existing = subMap.get(sub.id)!;
-          if (!existing.sections.some(s => s.id === sec.id)) {
-            existing.sections.push(sec);
-          }
-        }
-      }
-    }
-
-    const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
-    for (const fsa of myFsa) {
-      const sub = subjects.find(s => s.id === fsa.subject_id);
-      const sec = sections.find(s => s.id === fsa.section_id);
-      if (sub && sec && sec.active && sub.active) {
-        if (!subMap.has(sub.id)) {
-          subMap.set(sub.id, { subject: sub, sections: [sec] });
-        } else {
-          const existing = subMap.get(sub.id)!;
-          if (!existing.sections.some(s => s.id === sec.id)) {
-            existing.sections.push(sec);
-          }
+    for (const a of facultyScope.allAssignments) {
+      if (!a.subject || !a.section) continue;
+      if (!subMap.has(a.subject.id)) {
+        subMap.set(a.subject.id, { subject: a.subject, sections: [a.section] });
+      } else {
+        const existing = subMap.get(a.subject.id)!;
+        if (!existing.sections.some(s => s.id === a.section!.id)) {
+          existing.sections.push(a.section);
         }
       }
     }
 
     return Array.from(subMap.values());
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId]);
+  }, [isSuperAdmin, subjects, sections, facultyScope]);
 
   // Selections
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');

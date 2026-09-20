@@ -61,6 +61,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
     sessionalAssessments, 
     sessionalMarks, 
     assignments: facultySubjectAssignments,
+    getFacultyTeachingScope,
     createAssignment,
     deleteCourseAssignment,
     createQuiz,
@@ -84,57 +85,29 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
   const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
   const isSuperAdmin = (user?.role === 'super_admin' || user?.role === 'hod') && !currentFacultyId;
 
+  const facultyScope = useMemo(() => {
+    return getFacultyTeachingScope(currentFacultyId, isSuperAdmin);
+  }, [getFacultyTeachingScope, currentFacultyId, isSuperAdmin]);
+
   // 1. Determine all assigned Subject + Section pairs strictly for this faculty
   const myAssignedClasses = useMemo(() => {
     if (isSuperAdmin) {
       const list: Array<{ subject: typeof subjects[0]; section: typeof sections[0] }> = [];
-      for (const sub of subjects) {
-        for (const sec of sections) {
+      for (const sub of subjects.filter(s => s.active !== false)) {
+        for (const sec of sections.filter(s => s.active !== false)) {
           list.push({ subject: sub, section: sec });
         }
       }
       return list;
     }
 
-    const myFsa = facultySubjectAssignments.filter(fsa => fsa.faculty_id === currentFacultyId && fsa.active);
-    const myTt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id);
-    const taughtSubjectIds = new Set<string>();
-    const directAssignedPairs = new Set<string>();
-
-    for (const fsa of myFsa) {
-      taughtSubjectIds.add(fsa.subject_id);
-      directAssignedPairs.add(`${fsa.subject_id}:${fsa.section_id}`);
-    }
-    for (const t of myTt) {
-      if (t.subject_id) {
-        taughtSubjectIds.add(t.subject_id);
-        directAssignedPairs.add(`${t.subject_id}:${t.section_id}`);
-      }
-    }
-
-    const relevantSubjects = (taughtSubjectIds.size > 0 && !isSuperAdmin)
-      ? subjects.filter(s => taughtSubjectIds.has(s.id) && s.active)
-      : (currentFaculty?.department_id 
-          ? subjects.filter(s => (s.department_id === currentFaculty.department_id || !s.department_id) && s.active) 
-          : subjects.filter(s => s.active));
-
-    const list: Array<{ subject: typeof subjects[0]; section: typeof sections[0] }> = [];
-
-    for (const sub of relevantSubjects) {
-      const matchSecs = sections.filter(sec => {
-        if (!sec.active) return false;
-        return directAssignedPairs.has(`${sub.id}:${sec.id}`);
-      });
-
-      for (const sec of matchSecs) {
-        if (!list.some(item => item.subject.id === sub.id && item.section.id === sec.id)) {
-          list.push({ subject: sub, section: sec });
-        }
-      }
-    }
-
-    return list;
-  }, [isSuperAdmin, subjects, sections, facultySubjectAssignments, timetable, currentFacultyId, currentFaculty]);
+    return facultyScope.allAssignments
+      .filter(a => a.section && a.subject)
+      .map(a => ({
+        subject: a.subject!,
+        section: a.section!,
+      }));
+  }, [isSuperAdmin, subjects, sections, facultyScope]);
 
   // Selected Subject & Section State
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(

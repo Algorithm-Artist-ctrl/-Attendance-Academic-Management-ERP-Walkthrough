@@ -5814,12 +5814,11 @@ export const supabaseService = {
         }
       });
 
-      // Filter sections: strictly exclude 1st Year (year_number === 1)
+      // Enriched sections with authoritative academic year from database hierarchy
       const enrichedSections = rawSections
         .map(sec => {
           const sem = sec.semester;
           const yr = sem?.academic_year;
-          if (yr?.year_number === 1) return null;
 
           const cleanSecName = (sec.name || '').replace(/^section\s*/i, '').trim();
           const rawRoom = sec.room_number || '';

@@ -197,6 +197,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
     semesters,
     faculty,
     students: allContextStudents,
+    getFacultyTeachingScope,
+    getAssignedSectionsForYear,
+    getAssignedSubjectsForSection,
     timetable,
     assignments: facultySubjectAssignments,
     createSessionalAssessment,
@@ -224,83 +227,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
   const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
   const isSuperAdminOrHOD = (user?.role === 'super_admin' || user?.role === 'hod');
 
-  // 2. Discover faculty-assigned Years, Sections, and Subjects strictly
+  // 2. Discover faculty-assigned Years, Sections, and Subjects strictly from centralized resolver
   const facultyTeachingScope = useMemo(() => {
-    // If super admin or HOD in oversight mode (not acting as specific teacher), allow all active academic structures
-    if (isSuperAdminOrHOD && !currentFacultyId) {
-      const activeYears = years.filter(y => y.active);
-      const activeSecs = sections.filter(s => s.active);
-      const activeSubs = subjects.filter(s => s.active);
-      return {
-        assignedYears: activeYears,
-        assignedSections: activeSecs,
-        assignedSubjects: activeSubs,
-        validCombinations: []
-      };
-    }
-
-    // Collect valid combinations from timetable and facultySubjectAssignments
-    const pairs: Array<{ subjectId: string; sectionId: string }> = [];
-
-    // From timetable
-    const tt = timetable.filter(t => t.faculty_id === currentFacultyId && t.active && !t.is_break && t.subject_id);
-    for (const t of tt) {
-      if (t.subject_id && t.section_id) {
-        pairs.push({ subjectId: t.subject_id, sectionId: t.section_id });
-      }
-    }
-
-    // From facultySubjectAssignments
-    const fsa = facultySubjectAssignments.filter(a => a.faculty_id === currentFacultyId && a.active);
-    for (const a of fsa) {
-      pairs.push({ subjectId: a.subject_id, sectionId: a.section_id });
-    }
-
-    // Deduplicate pairs
-    const uniquePairKey = new Set<string>();
-    const deduplicatedPairs: Array<{ subjectId: string; sectionId: string }> = [];
-    for (const p of pairs) {
-      const key = `${p.subjectId}__${p.sectionId}`;
-      if (!uniquePairKey.has(key)) {
-        uniquePairKey.add(key);
-        deduplicatedPairs.push(p);
-      }
-    }
-
-    // Resolve assigned sections
-    const assignedSectionIds = new Set(deduplicatedPairs.map(p => p.sectionId));
-    const matchedSections = sections.filter(s => assignedSectionIds.has(s.id) && s.active);
-
-    // Resolve assigned years from sections via semester -> academic_year_id
-    const matchedYearIds = new Set<string>();
-    for (const sec of matchedSections) {
-      const sem = semesters.find(sm => sm.id === sec.semester_id);
-      if (sem?.academic_year_id) {
-        matchedYearIds.add(sem.academic_year_id);
-      }
-    }
-    const matchedYears = years.filter(y => matchedYearIds.has(y.id) && y.active);
-
-    // Resolve assigned subjects
-    const assignedSubjectIds = new Set(deduplicatedPairs.map(p => p.subjectId));
-    const matchedSubjects = subjects.filter(s => assignedSubjectIds.has(s.id) && s.active);
-
-    return {
-      assignedYears: matchedYears.length > 0 ? matchedYears : (isSuperAdminOrHOD ? years.filter(y => y.active) : []),
-      assignedSections: matchedSections.length > 0 ? matchedSections : (isSuperAdminOrHOD ? sections.filter(s => s.active) : []),
-      assignedSubjects: matchedSubjects.length > 0 ? matchedSubjects : (isSuperAdminOrHOD ? subjects.filter(s => s.active) : []),
-      validCombinations: deduplicatedPairs
-    };
-  }, [
-    isSuperAdminOrHOD, 
-    currentFacultyId, 
-    timetable, 
-    facultySubjectAssignments, 
-    sections, 
-    semesters, 
-    years, 
-    subjects
-  ]);
+    return getFacultyTeachingScope(currentFacultyId, isSuperAdminOrHOD && !currentFacultyId);
+  }, [getFacultyTeachingScope, currentFacultyId, isSuperAdminOrHOD]);
 
   // 3. Selection Filters
   const [selectedYearId, setSelectedYearId] = useState<string>('');
@@ -308,34 +238,36 @@ export const FacultyMarksManagementPage: React.FC = () => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>('');
 
-  // Available Sections based on selected Year
+  // Available Sections based on selected Year strictly from this faculty's assignments
   const availableSections = useMemo(() => {
-    if (!selectedYearId) return facultyTeachingScope.assignedSections;
-    return facultyTeachingScope.assignedSections.filter(sec => {
-      const sem = semesters.find(sm => sm.id === sec.semester_id);
-      return sem?.academic_year_id === selectedYearId;
-    });
-  }, [selectedYearId, facultyTeachingScope.assignedSections, semesters]);
-
-  // Available Subjects based on selected Section
-  const availableSubjects = useMemo(() => {
-    if (!selectedSectionId) return facultyTeachingScope.assignedSubjects;
-    if (isSuperAdminOrHOD && facultyTeachingScope.validCombinations.length === 0) {
-      const currentSec = sections.find(s => s.id === selectedSectionId);
-      return subjects.filter(s => s.active && (!currentSec || s.semester_id === currentSec.semester_id));
+    if (isSuperAdminOrHOD && !currentFacultyId) {
+      if (!selectedYearId) return sections.filter(s => s.active !== false);
+      return sections.filter(sec => {
+        const sem = semesters.find(sm => sm.id === sec.semester_id);
+        return sem?.academic_year_id === selectedYearId && sec.active !== false;
+      });
     }
-    const validSubjectIds = new Set(
-      facultyTeachingScope.validCombinations
-        .filter(c => c.sectionId === selectedSectionId)
-        .map(c => c.subjectId)
-    );
-    return facultyTeachingScope.assignedSubjects.filter(s => validSubjectIds.has(s.id));
-  }, [selectedSectionId, facultyTeachingScope, isSuperAdminOrHOD, sections, subjects]);
+    return getAssignedSectionsForYear(facultyTeachingScope.allAssignments, selectedYearId);
+  }, [isSuperAdminOrHOD, currentFacultyId, selectedYearId, sections, semesters, getAssignedSectionsForYear, facultyTeachingScope.allAssignments]);
+
+  // Available Subjects based on selected Section and Year strictly from this faculty's assignments
+  const availableSubjects = useMemo(() => {
+    if (isSuperAdminOrHOD && !currentFacultyId) {
+      if (!selectedSectionId) return subjects.filter(s => s.active !== false);
+      const currentSec = sections.find(s => s.id === selectedSectionId);
+      return subjects.filter(s => s.active !== false && (!currentSec || s.semester_id === currentSec.semester_id));
+    }
+    return getAssignedSubjectsForSection(facultyTeachingScope.allAssignments, selectedSectionId, selectedYearId);
+  }, [isSuperAdminOrHOD, currentFacultyId, selectedSectionId, selectedYearId, subjects, sections, getAssignedSubjectsForSection, facultyTeachingScope.allAssignments]);
 
   // 4. Initialize cascading filter state
   useEffect(() => {
-    if (facultyTeachingScope.assignedYears.length > 0 && !selectedYearId) {
-      setSelectedYearId(facultyTeachingScope.assignedYears[0].id);
+    if (facultyTeachingScope.assignedYears.length > 0) {
+      if (!selectedYearId || !facultyTeachingScope.assignedYears.some(y => y.id === selectedYearId)) {
+        setSelectedYearId(facultyTeachingScope.assignedYears[0].id);
+      }
+    } else {
+      setSelectedYearId('');
     }
   }, [facultyTeachingScope.assignedYears, selectedYearId]);
 
@@ -1362,6 +1294,19 @@ export const FacultyMarksManagementPage: React.FC = () => {
         </div>
       </div>
 
+      {/* No assignments notice if faculty has 0 assigned classes */}
+      {facultyTeachingScope.assignedYears.length === 0 && !isSuperAdminOrHOD && (
+        <div className="p-5 bg-amber-50/90 border border-amber-200 rounded-3xl text-amber-900 flex items-start gap-3.5 shadow-xs">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <h3 className="font-bold text-sm text-amber-950 mb-0.5">No Teaching Assignments Found</h3>
+            <p className="text-amber-800">
+              Your faculty profile ({currentFaculty?.full_name || 'Faculty'}) has no active teaching lectures or subjects allocated in the ERP directory. Please contact your HOD or Academic Administrator.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Faculty Assignment Filter Bar */}
       <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 items-end">
@@ -1679,6 +1624,55 @@ export const FacultyMarksManagementPage: React.FC = () => {
           <div className="p-12 flex flex-col items-center justify-center text-slate-500">
             <Loader2 className="w-8 h-8 animate-spin text-slate-900 mb-3" />
             <p className="text-sm">Loading student roster for {currentSectionObj?.name || 'selected section'}...</p>
+          </div>
+        ) : !activeAssessment ? (
+          <div className="p-12 text-center text-slate-600">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100/80 border border-amber-200 flex items-center justify-center mb-3">
+              <Award className="w-7 h-7 text-amber-700" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">
+              No Assessments Created Yet for {currentSubjectObj?.subject_name || 'Selected Subject'} ({currentSectionObj?.name || 'Selected Section'})
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto mb-5">
+              You are assigned to teach this subject and section. Create an assessment below to begin entering and grading marks for enrolled students.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={async () => {
+                  if (!selectedSubjectId || !selectedSectionId || !currentFacultyId) return;
+                  try {
+                    await ensureDefaultAssessments({
+                      subjectId: selectedSubjectId,
+                      sectionId: selectedSectionId,
+                      facultyId: currentFacultyId,
+                      semesterId: currentSectionObj?.semester_id
+                    });
+                  } catch (err) {
+                    console.error('Auto-creating default assessments error:', err);
+                  }
+                }}
+                className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl text-xs px-4 py-2 shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create Default Assessments (Sessional 1, 2, 3)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewAssessmentKind('sessional');
+                  setNewAssessmentTitle('Sessional 1');
+                  setNewAssessmentMaxMarks(20);
+                  setNewAssessmentDate(getISTTodayDate());
+                  setIsAddAssessmentModalOpen(true);
+                }}
+                className="rounded-xl text-xs font-semibold text-slate-700 border-slate-300 px-4 py-2"
+              >
+                Create Custom Assessment
+              </Button>
+            </div>
           </div>
         ) : displayedStudents.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
