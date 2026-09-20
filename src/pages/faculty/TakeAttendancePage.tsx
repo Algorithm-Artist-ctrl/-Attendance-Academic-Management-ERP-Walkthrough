@@ -669,8 +669,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
         {/* Header with Date Navigation & Quick Filters */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#172033] font-serif-institutional tracking-tight flex items-center gap-2.5 flex-wrap">
-              <CheckSquare className="w-6 h-6 text-[#172033]" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] font-serif-institutional tracking-tight flex items-center gap-2.5 flex-wrap">
+              <CheckSquare className="w-6 h-6 text-[#0f172a]" />
               <span>
                 {isToday
                   ? `Today's Assigned Classes (${todayDay})`
@@ -687,13 +687,13 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                 </span>
               )}
               {isPast && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-[#52627A] border border-slate-200">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-[#475569] border border-slate-200">
                   HISTORICAL
                 </span>
               )}
             </h1>
-            <p className="text-sm text-[#52627A] mt-1 font-medium">
-              {formatDateFull(sessionDate)} • Faculty: <span className="text-[#172033] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
+            <p className="text-sm text-[#475569] mt-1 font-medium">
+              {formatDateFull(sessionDate)} • Faculty: <span className="text-[#0f172a] font-bold">{currentFaculty?.full_name}</span> ({currentFaculty?.faculty_code || 'Faculty'}) • Department of CSE
             </p>
           </div>
 
@@ -1350,19 +1350,19 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
               >
                 {/* Left: Index, Roll, Name */}
                 <div className="min-w-0 flex-1 flex items-center gap-3">
-                  <span className="w-7 text-right font-mono text-xs font-bold text-[#52627A] shrink-0">
+                  <span className="w-7 text-right font-mono text-xs font-bold text-[#475569] shrink-0">
                     {idx + 1}.
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-black text-[#172033] tracking-wider">
+                      <span className="font-mono text-xs font-black text-[#0f172a] tracking-wider">
                         {stud.roll_number}
                       </span>
-                      <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-[#52627A] font-mono font-medium">
+                      <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-[#475569] font-mono font-medium">
                         {stud.admission_type || 'Regular'}
                       </span>
                     </div>
-                    <h4 className="text-base font-bold text-[#172033] truncate mt-0.5">
+                    <h4 className="text-base font-bold text-[#0f172a] truncate mt-0.5">
                       {stud.full_name}
                     </h4>
                   </div>

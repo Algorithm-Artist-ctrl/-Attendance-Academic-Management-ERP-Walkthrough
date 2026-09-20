@@ -807,8 +807,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                   {user?.full_name?.charAt(0) || 'U'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-semibold text-[#172033] truncate">{user?.full_name}</p>
-                  <p className="text-xs text-[#52627A] font-medium truncate">
+                  <p className="text-[15px] font-bold text-[#0f172a] truncate">{user?.full_name}</p>
+                  <p className="text-xs text-[#475569] font-bold truncate">
                     {user?.student?.roll_number 
                       ? `Roll: ${user.student.roll_number}` 
                       : (role === 'hod' && isTeachingMode)
@@ -824,7 +824,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 {role === 'hod' && isTeachingMode && (
                   <div className="mb-2 p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-left space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-normal text-[#172033] flex items-center gap-1.5">
+                      <span className="text-xs font-bold uppercase tracking-normal text-[#0f172a] flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-[#0f172a] animate-pulse" />
                         Faculty Mode Active
                       </span>
@@ -836,7 +836,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                         onTabChange('dashboard');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-[#172033]"
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-[#0f172a]"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
                       <span>Exit Faculty Mode</span>
@@ -855,14 +855,14 @@ export const AppShell: React.FC<AppShellProps> = ({
                         setIsMobileMenuOpen(false);
                       }}
                       className={clsx(
-                        'w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-[15px] font-medium transition-all touch-target',
+                        'w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-[15px] font-semibold transition-all touch-target',
                         isActive
-                          ? 'bg-[#0f172a] text-white font-semibold shadow-xs'
-                          : 'text-[#52627A] hover:text-[#172033] hover:bg-slate-100'
+                          ? 'bg-[#0f172a] text-white shadow-xs'
+                          : 'text-[#475569] hover:text-[#0f172a] hover:bg-slate-100'
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className={clsx('w-5 h-5 shrink-0', isActive ? 'text-white' : 'text-[#52627A]')} />
+                        <Icon className={clsx('w-5 h-5 shrink-0', isActive ? 'text-white' : 'text-[#475569]')} />
                         <span>{item.label}</span>
                       </div>
                       {item.badge && (
@@ -888,10 +888,10 @@ export const AppShell: React.FC<AppShellProps> = ({
                         onTabChange('dashboard');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-slate-50 border border-slate-200 text-[#172033]"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-slate-50 border border-slate-200 text-[#0f172a]"
                     >
                       <div className="flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-slate-700" />
+                        <GraduationCap className="w-4 h-4 text-[#334155]" />
                         <span>Teaching / Faculty Mode</span>
                       </div>
                       <span className="text-xs font-bold uppercase text-[#0f172a]">Switch →</span>
@@ -904,7 +904,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <div className="pt-3 border-t border-slate-100 pb-safe">
                 <button
                   onClick={logout}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[15px] font-medium text-[#52627A] hover:text-rose-700 hover:bg-rose-50 border border-slate-200 transition-all touch-target cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[15px] font-semibold text-[#475569] hover:text-rose-700 hover:bg-rose-50 border border-slate-300 transition-all touch-target cursor-pointer"
                 >
                   <LogOut className="w-5 h-5 shrink-0" />
                   <span>Sign Out</span>
@@ -930,7 +930,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 onClick={() => onTabChange(item.id)}
                 className={clsx(
                   'flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative touch-target',
-                  isActive ? 'text-[#0f172a]' : 'text-[#52627A] hover:text-[#172033]'
+                  isActive ? 'text-[#0f172a]' : 'text-[#475569] hover:text-[#0f172a]'
                 )}
               >
                 <div className={clsx(
@@ -939,7 +939,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 )}>
                   <Icon className="w-5 h-5" />
                 </div>
-                <span className={clsx('text-[11px] font-semibold mt-0.5 tracking-tight', isActive ? 'text-[#0f172a] font-bold' : 'text-[#52627A]')}>
+                <span className={clsx('text-[11px] font-semibold mt-0.5 tracking-tight', isActive ? 'text-[#0f172a] font-bold' : 'text-[#475569]')}>
                   {item.label}
                 </span>
                 {item.badge && (
@@ -953,8 +953,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         </nav>
 
         {/* Desktop/Tablet Footer */}
-        <footer className="hidden md:block border-t border-slate-200/80 bg-white py-4 px-6 text-center text-xs text-[#52627A]">
-          © 2026 <strong className="text-[#172033]">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
+        <footer className="hidden md:block border-t border-slate-200/80 bg-white py-4 px-6 text-center text-xs text-[#475569] font-medium">
+          © 2026 <strong className="text-[#0f172a]">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
         </footer>
 
         {/* Realtime Floating Non-Blocking Live Toast Banner */}
@@ -962,7 +962,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           <aside
             role="status"
             aria-live="polite"
-            className="fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-50 max-w-sm sm:max-w-md w-[calc(100vw-24px)] sm:w-auto p-4 rounded-2xl bg-white border border-slate-300 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200 text-[#172033]"
+            className="fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-50 max-w-sm sm:max-w-md w-[calc(100vw-24px)] sm:w-auto p-4 rounded-2xl bg-white border border-slate-300 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200 text-[#0f172a]"
           >
             <div className="flex items-start gap-3">
               <div className="mt-0.5 shrink-0">
@@ -970,13 +970,13 @@ export const AppShell: React.FC<AppShellProps> = ({
               </div>
               <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-[#172033]">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-[#0f172a]">
                     Live Notification
                   </span>
                   <span className="w-2 h-2 rounded-full bg-[#0f172a] animate-ping" />
                 </div>
-                <h5 className="text-sm font-bold text-[#172033] mt-0.5 truncate">{activeToast.title}</h5>
-                <p className="text-xs text-[#52627A] mt-0.5 line-clamp-2 leading-relaxed">
+                <h5 className="text-sm font-bold text-[#0f172a] mt-0.5 truncate">{activeToast.title}</h5>
+                <p className="text-xs text-[#475569] mt-0.5 line-clamp-2 leading-relaxed font-medium">
                   {activeToast.message}
                 </p>
                 <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-slate-100">
@@ -995,7 +995,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   <button
                     type="button"
                     onClick={dismissToast}
-                    className="px-2.5 py-1 rounded-lg bg-slate-100 text-[#52627A] hover:text-[#172033] text-xs font-semibold transition-colors cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 text-[#475569] hover:text-[#0f172a] text-xs font-bold transition-colors cursor-pointer"
                   >
                     Dismiss
                   </button>

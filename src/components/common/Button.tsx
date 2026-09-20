@@ -38,8 +38,8 @@ export const Button: React.FC<ButtonProps> = ({
     neon: 'bg-[#0f172a] hover:bg-black text-white shadow-xs',
     navy: 'bg-[#0f172a] hover:bg-black text-white shadow-xs',
     success: 'bg-[#0f172a] hover:bg-black text-white shadow-xs',
-    outline: 'bg-white hover:bg-slate-50 text-[#172033] border border-slate-300 shadow-xs',
-    ghost: 'text-[#52627A] hover:text-[#172033] hover:bg-slate-100',
+    outline: 'bg-white hover:bg-slate-50 text-[#0f172a] font-semibold border border-slate-300 shadow-xs',
+    ghost: 'text-[#475569] hover:text-[#0f172a] hover:bg-slate-100 font-semibold',
     maroon: 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 shadow-xs',
     danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs',
   };

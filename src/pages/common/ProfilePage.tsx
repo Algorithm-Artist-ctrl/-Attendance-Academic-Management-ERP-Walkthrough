@@ -409,8 +409,8 @@ export const ProfilePage: React.FC = () => {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">
-                  Full Legal Name {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                <label className="block text-xs font-bold text-[#475569] mb-1">
+                  Full Legal Name {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
                 </label>
                 <input
                   type="text"
@@ -426,8 +426,8 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">
-                  Email Address <span className="text-[10px] text-slate-400 font-normal">{role === 'student' ? '(Institutional Login Identifier)' : '(Managed via Account Security below)'}</span>
+                <label className="block text-xs font-bold text-[#475569] mb-1">
+                  Email Address <span className="text-[10px] text-[#475569] font-medium">{role === 'student' ? '(Institutional Login Identifier)' : '(Managed via Account Security below)'}</span>
                 </label>
                 <input
                   type="email"
@@ -438,8 +438,8 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">
-                  Contact Phone {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                <label className="block text-xs font-bold text-[#475569] mb-1">
+                  Contact Phone {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
                 </label>
                 <input
                   type="tel"
@@ -456,7 +456,7 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Branch / Specialization</label>
+                <label className="block text-xs font-bold text-[#475569] mb-1">Branch / Specialization</label>
                 <input
                   type="text"
                   disabled
@@ -468,7 +468,7 @@ export const ProfilePage: React.FC = () => {
               {student && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Enrolled Degree & Semester</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Enrolled Degree & Semester</label>
                     <input
                       type="text"
                       disabled
@@ -478,8 +478,8 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Assigned Section {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Assigned Section {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <select
@@ -506,8 +506,8 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Assigned Classroom / Room {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Assigned Classroom / Room {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <input
@@ -529,8 +529,8 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Admission Type {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Admission Type {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <select
@@ -553,8 +553,8 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Assigned Faculty Mentor {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>}
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Assigned Faculty Mentor {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>}
                     </label>
                     {isEditing ? (
                       <select
@@ -585,7 +585,7 @@ export const ProfilePage: React.FC = () => {
               {role === 'super_admin' && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Administrative Role</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Administrative Role</label>
                     <input
                       type="text"
                       disabled
@@ -595,7 +595,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Institution</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Institution</label>
                     <input
                       type="text"
                       disabled
@@ -605,7 +605,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Database Authority</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Database Authority</label>
                     <input
                       type="text"
                       disabled
@@ -619,7 +619,7 @@ export const ProfilePage: React.FC = () => {
               {currentFaculty && role !== 'super_admin' && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Employee Code & Timetable Code</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Employee Code & Timetable Code</label>
                     <input
                       type="text"
                       disabled
@@ -629,8 +629,8 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Designation {isEditing && <span className="text-[10px] text-emerald-400 font-normal">(Editable)</span>} & Department
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Designation {isEditing && <span className="text-[10px] text-emerald-700 font-medium">(Editable)</span>} & Department
                     </label>
                     {isEditing ? (
                       <input
@@ -651,7 +651,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Assigned Teaching Subjects</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Assigned Teaching Subjects</label>
                     <input
                       type="text"
                       disabled
@@ -661,7 +661,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Assigned Teaching Sections</label>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">Assigned Teaching Sections</label>
                     <input
                       type="text"
                       disabled
@@ -735,7 +735,7 @@ export const ProfilePage: React.FC = () => {
                 <div key={cSec.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Class Coordinator</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">Class Coordinator</span>
                       <h4 className="text-sm font-bold text-slate-900 mt-0.5">
                         {branchName} — {cSec.year_name || 'Academic Year'} — Section {cSec.name}
                       </h4>
@@ -763,11 +763,11 @@ export const ProfilePage: React.FC = () => {
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
-            <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <h3 className="text-base font-black text-[#0f172a] tracking-tight flex items-center gap-2">
               <Lock className="w-5 h-5 text-slate-700" />
               Account Security & Supabase Credentials
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            <p className="text-xs text-[#475569] mt-0.5 font-medium">
               Manage your real authentication email and login password for VCTM ERP
             </p>
           </div>
@@ -775,20 +775,20 @@ export const ProfilePage: React.FC = () => {
           {/* Security Status Badges */}
           <div className="flex items-center gap-2 flex-wrap">
             {user?.new_email || pendingNewEmail ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-1 animate-pulse">
-                <AlertCircle className="w-3 h-3 text-amber-400" /> Verification Pending
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 border border-amber-300 text-amber-900 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="w-3 h-3 text-amber-600" /> Verification Pending
               </span>
             ) : user?.email_confirmed_at ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Email Verified
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Email Verified
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800/80 border border-emerald-500/20 text-slate-700 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Institutional Account
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-300 text-[#0f172a] flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" /> Institutional Account
               </span>
             )}
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> Account Active
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3 text-emerald-600" /> Account Active
             </span>
           </div>
         </div>
@@ -799,46 +799,46 @@ export const ProfilePage: React.FC = () => {
           <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">
                     Authentication Login Email
                   </span>
-                  <h4 className="text-sm font-bold text-white font-mono mt-1 break-all">
+                  <h4 className="text-sm font-bold text-[#0f172a] font-mono mt-1 break-all">
                     {user?.email || 'faculty@vctm.in'}
                   </h4>
                 </div>
-                <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
                   <Mail className="w-4 h-4" />
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-[#475569] font-medium">
                 Official authorized email used to sign in to the VCTM ERP portal.
               </p>
 
               {(user?.new_email || pendingNewEmail) && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs space-y-2">
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block text-amber-300 text-[11.5px]">Email Change Awaiting Confirmation</span>
-                      <span className="text-[11px] text-slate-700">
-                        Supabase sent a confirmation link to <strong className="text-white font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
+                      <span className="font-bold block text-amber-900 text-[11.5px]">Email Change Awaiting Confirmation</span>
+                      <span className="text-xs text-[#475569] font-medium">
+                        Supabase sent a confirmation link to <strong className="text-[#0f172a] font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pt-1 border-t border-amber-500/15">
+                  <div className="flex items-center gap-2 pt-1 border-t border-amber-200">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={handleResendVerification}
                       isLoading={isResending}
-                      className="text-[10.5px] border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+                      className="text-xs font-bold"
                     >
                       Resend Verification Email
                     </Button>
                     {resendSuccess && (
-                      <span className="text-[10.5px] text-emerald-400 font-bold flex items-center gap-1">
+                      <span className="text-xs text-emerald-800 font-bold flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Link resent!
                       </span>
                     )}
@@ -866,10 +866,10 @@ export const ProfilePage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">
                     Authentication Password
                   </span>
-                  <h4 className="text-sm font-bold text-white tracking-widest font-mono mt-1">
+                  <h4 className="text-sm font-bold text-[#0f172a] tracking-widest font-mono mt-1">
                     ••••••••••••••••
                   </h4>
                 </div>
@@ -878,7 +878,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-[#475569] font-medium">
                 Encrypted password managed via Supabase Auth. Never stored in plaintext.
               </p>
 
@@ -905,19 +905,19 @@ export const ProfilePage: React.FC = () => {
 
       {/* Student Credential Policy Banner */}
       {role === 'student' && (
-        <div className="glass-panel rounded-3xl p-6 sm:p-7 border border-emerald-500/20 bg-slate-900/40 space-y-3">
+        <div className="bg-slate-50 rounded-3xl p-6 sm:p-7 border border-slate-200 space-y-3 shadow-xs">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 shrink-0 mt-0.5">
-              <ShieldCheck className="w-5 h-5" />
+              <ShieldCheck className="w-5 h-5 text-emerald-700" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white tracking-wide">
+              <h3 className="text-sm font-bold text-[#0f172a] tracking-wide">
                 Institutional Credential Policy & Security Protection
               </h3>
-              <p className="text-xs text-slate-700 leading-relaxed">
+              <p className="text-xs text-[#334155] leading-relaxed font-medium">
                 Student login credentials (official roll number, institutional login email, and initial access passwords) are centrally administered and protected by the Academic Registrar and Super Admin.
               </p>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-[#475569] leading-relaxed font-medium">
                 Students cannot self-alter institutional passwords. If you need a password reset or credential update, please contact the Super Admin or Academic Administration office.
               </p>
             </div>
@@ -1010,27 +1010,27 @@ export const ProfilePage: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">Current Login Email</label>
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 font-mono">
+              <label className="block text-[#0f172a] font-bold mb-1">Current Login Email</label>
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[#0f172a] font-bold font-mono">
                 {user?.email || 'N/A'}
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
+              <label className="block text-[#0f172a] font-bold mb-1">New Authorized Email (e.g. Gmail / College Email) *</label>
               <input
                 type="email"
                 required
                 value={newEmailInput}
                 onChange={(e) => setNewEmailInput(e.target.value)}
                 placeholder="e.g. hemlata.cse@gmail.com"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[#0f172a] font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/15 text-[11px] text-slate-700 space-y-1">
-              <p className="font-semibold text-emerald-400">Official Supabase Verification Notice:</p>
-              <p className="text-slate-400">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+              <p className="font-bold text-emerald-800">Official Supabase Verification Notice:</p>
+              <p className="text-[#475569] font-medium leading-relaxed">
                 Supabase Auth will dispatch a confirmation email with a secure verification link to your new address. Your login credentials and database records will automatically update once you click the confirmation link.
               </p>
             </div>

@@ -42,9 +42,9 @@ export const AttendanceStatusBadge: React.FC<AttendanceStatusBadgeProps> = ({
     'Not Recorded': {
       label: '— NOT RECORDED',
       bg: 'bg-slate-100',
-      text: 'text-[#52627A]',
+      text: 'text-[#475569]',
       border: 'border-slate-300',
-      icon: <Clock className="w-3.5 h-3.5 text-[#52627A]" />,
+      icon: <Clock className="w-3.5 h-3.5 text-[#475569]" />,
     },
     pending: {
       label: '⏳ PENDING',

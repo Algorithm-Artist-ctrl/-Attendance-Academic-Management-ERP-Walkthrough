@@ -772,7 +772,7 @@ export const LeaveManagementPage: React.FC = () => {
                           (Approved: {new Date(app.hod_approved_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})
                         </span>
                       ) : (
-                        <span className="text-slate-400 font-mono text-[10px]">(Waiting)</span>
+                        <span className="text-slate-600 font-mono text-[10px] font-semibold">(Waiting)</span>
                       )}
                     </div>
                   </div>
@@ -895,7 +895,7 @@ export const LeaveManagementPage: React.FC = () => {
                     ) : selectedApp.status === 'PENDING_HOD' ? (
                       <span className="text-cyan-700 font-bold block">Awaiting HOD Sanction</span>
                     ) : (
-                      <span className="text-slate-400 font-bold block">Waiting Level 1</span>
+                      <span className="text-slate-600 font-bold block">Waiting Level 1</span>
                     )}
                   </div>
                 </div>
