@@ -109,6 +109,74 @@ export const AppShell: React.FC<AppShellProps> = ({
     return 0;
   }, [leaveApplications, notifications, role, user, isTeachingMode]);
 
+  const prefetchTab = (tabId: string) => {
+    switch (tabId) {
+      case 'notices':
+        import('../../pages/common/NoticesPage');
+        break;
+      case 'messages':
+        import('../../pages/communication/MessagesPage');
+        break;
+      case 'profile':
+        import('../../pages/common/ProfilePage');
+        break;
+      case 'settings':
+        import('../../pages/common/SettingsPage');
+        break;
+      case 'timetable':
+        import('../../pages/student/StudentTimetablePage');
+        import('../../pages/faculty/FacultyTimetablePage');
+        break;
+      case 'attendance':
+        import('../../pages/student/StudentAttendancePage');
+        import('../../pages/faculty/TakeAttendancePage');
+        break;
+      case 'marks':
+      case 'marks_and_assessments':
+        import('../../pages/student/StudentMarksPage');
+        import('../../pages/faculty/FacultyMarksManagementPage');
+        break;
+      case 'quizzes':
+        import('../../pages/student/StudentQuizzesPage');
+        import('../../pages/faculty/FacultyQuizzesPage');
+        break;
+      case 'assignments':
+      case 'student_assignments':
+      case 'faculty_assignments':
+        import('../../pages/student/StudentAssignmentsPage');
+        import('../../pages/faculty/FacultyAssignmentsPage');
+        break;
+      case 'leave':
+        import('../../pages/student/LeaveApplicationPage');
+        import('../../pages/leave/LeaveManagementPage');
+        break;
+      case 'corrections':
+        import('../../pages/student/CorrectionRequestsPage');
+        import('../../pages/faculty/ReviewCorrectionsPage');
+        break;
+      case 'students':
+        import('../../pages/admin/StudentDirectoryPage');
+        break;
+      case 'faculty':
+        import('../../pages/admin/FacultyDirectoryPage');
+        break;
+      case 'timetable_manager':
+        import('../../pages/admin/TimetableManagerPage');
+        break;
+      case 'academic_setup':
+        import('../../pages/admin/AcademicSetupPage');
+        break;
+      case 'reports':
+        import('../../pages/admin/ReportsPage');
+        break;
+      case 'import':
+        import('../../pages/admin/CSVImportPage');
+        break;
+      default:
+        break;
+    }
+  };
+
   const pendingCorrectionsCount = React.useMemo(() => {
     if (role === 'student') {
       const studId = user?.student_id || user?.student?.id || user?.id;
@@ -123,16 +191,17 @@ export const AppShell: React.FC<AppShellProps> = ({
       if (!deptId) return corrections.filter(c => c.status === 'pending').length;
       return corrections.filter(c => {
         if (c.status !== 'pending') return false;
-        const rec = c.record || attendanceRecords.find(r => r.id === c.attendance_record_id);
-        const sess = rec?.session || attendanceSessions.find(s => s.id === rec?.attendance_session_id);
-        const sub = sess?.subject || subjects.find(s => s.id === sess?.subject_id);
-        const fac = sess?.faculty || faculty.find(f => f.id === sess?.faculty_id);
-        return sub?.department_id === deptId || fac?.department_id === deptId || !sub?.department_id;
+        const subDept = c.record?.session?.subject?.department_id;
+        const facDept = c.record?.session?.faculty?.department_id;
+        if (subDept || facDept) {
+          return subDept === deptId || facDept === deptId;
+        }
+        return true;
       }).length;
     }
     // super_admin
     return corrections.filter(c => c.status === 'pending').length;
-  }, [corrections, role, user, currentFaculty, isTeachingMode, getFacultyCorrectionRequests, attendanceRecords, attendanceSessions, subjects, faculty]);
+  }, [corrections, role, user, currentFaculty, isTeachingMode, getFacultyCorrectionRequests]);
 
   const handleNotificationNavigation = (type: string, refType?: string, _refId?: string) => {
     const t = (type || '').toUpperCase();
@@ -490,6 +559,8 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
+                onMouseEnter={() => prefetchTab(item.id)}
+                onTouchStart={() => prefetchTab(item.id)}
                 className={clsx(
                   'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[15px] transition-all duration-200 cursor-pointer select-none group',
                   isActive
@@ -854,6 +925,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                         onTabChange(item.id);
                         setIsMobileMenuOpen(false);
                       }}
+                      onMouseEnter={() => prefetchTab(item.id)}
+                      onTouchStart={() => prefetchTab(item.id)}
                       className={clsx(
                         'w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-[15px] font-semibold transition-all touch-target',
                         isActive
@@ -928,6 +1001,8 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
+                onMouseEnter={() => prefetchTab(item.id)}
+                onTouchStart={() => prefetchTab(item.id)}
                 className={clsx(
                   'flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative touch-target',
                   isActive ? 'text-[#0f172a]' : 'text-[#475569] hover:text-[#0f172a]'

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { 
   Award, 
   Search, 
@@ -60,6 +60,126 @@ interface SelectedAssessmentInfo {
   status: 'draft' | 'published';
   date?: string;
 }
+
+interface StudentMarkRowComponentProps {
+  student: Student;
+  index: number;
+  marks: number | '';
+  remarks: string;
+  maxMarks: number;
+  onMarkChange: (studentId: string, valueStr: string) => void;
+  onRemarkChange: (studentId: string, remarks: string) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>, index: number) => void;
+  registerInputRef: (studentId: string, el: HTMLInputElement | null) => void;
+}
+
+const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
+  student,
+  index,
+  marks,
+  remarks,
+  maxMarks,
+  onMarkChange,
+  onRemarkChange,
+  onKeyDown,
+  registerInputRef,
+}) => {
+  const hasMark = marks !== '' && marks !== undefined;
+  const percentage = hasMark ? ((Number(marks) / maxMarks) * 100).toFixed(1) : null;
+  const isPassing = hasMark && Number(marks) >= (maxMarks * 0.4);
+
+  return (
+    <tr 
+      className={clsx(
+        'hover:bg-slate-50/60 transition-colors',
+        !hasMark && 'bg-amber-50/30'
+      )}
+    >
+      {/* S.No */}
+      <td className="py-3 px-4 text-center text-slate-500 font-mono">
+        {index + 1}
+      </td>
+
+      {/* Roll Number */}
+      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+        {student.roll_number}
+      </td>
+
+      {/* Student Name */}
+      <td className="py-3 px-4 font-semibold text-slate-900">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
+            {student.full_name?.charAt(0) || 'S'}
+          </div>
+          <span>{student.full_name}</span>
+        </div>
+      </td>
+
+      {/* Marks Input */}
+      <td className="py-2.5 px-4 text-center">
+        <div className="flex items-center justify-center gap-1.5">
+          <input
+            ref={(el) => registerInputRef(student.id, el)}
+            type="number"
+            step="any"
+            min="0"
+            max={maxMarks}
+            value={marks}
+            placeholder="—"
+            onChange={(e) => onMarkChange(student.id, e.target.value)}
+            onKeyDown={(e) => onKeyDown(e, index)}
+            className={clsx(
+              'w-24 text-center py-1.5 px-2 rounded-xl font-mono text-sm font-bold transition-all focus:outline-none',
+              hasMark 
+                ? isPassing
+                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 focus:border-emerald-500'
+                  : 'bg-rose-50 text-rose-900 border border-rose-300 focus:border-rose-500'
+                : 'bg-white text-slate-900 border border-slate-300 border-dashed focus:border-slate-500'
+            )}
+          />
+          <span className="text-[11px] text-slate-500 font-mono">
+            /{maxMarks}
+          </span>
+        </div>
+      </td>
+
+      {/* Percentage */}
+      <td className="py-3 px-4 text-center font-mono font-semibold">
+        {percentage !== null ? (
+          <span className={clsx(isPassing ? 'text-slate-800' : 'text-rose-700')}>
+            {percentage}%
+          </span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
+      </td>
+
+      {/* Status */}
+      <td className="py-3 px-4 text-center">
+        {hasMark ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            Entered
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+            Missing
+          </span>
+        )}
+      </td>
+
+      {/* Remarks */}
+      <td className="py-2.5 px-4">
+        <input
+          type="text"
+          value={remarks}
+          placeholder="Add comment..."
+          onChange={(e) => onRemarkChange(student.id, e.target.value)}
+          className="w-full bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-slate-500 text-xs text-slate-800 placeholder-slate-400 focus:outline-none px-1 py-1 transition-colors"
+        />
+      </td>
+    </tr>
+  );
+});
 
 export const FacultyMarksManagementPage: React.FC = () => {
   const { user } = useAuth();
@@ -525,11 +645,17 @@ export const FacultyMarksManagementPage: React.FC = () => {
     }
   }, [notificationToast]);
 
-  // Handle Mark Input with Live Bounds Validation
-  const handleMarkChange = (studentId: string, valueStr: string) => {
-    if (!activeAssessment) return;
-    const maxMarks = activeAssessment.maxMarks;
+  // Keyboard navigation between student marks inputs
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const registerInputRef = useCallback((studentId: string, el: HTMLInputElement | null) => {
+    inputRefs.current[studentId] = el;
+  }, []);
+
+  // Handle Mark Input with Live Bounds Validation
+  const maxAllowedMarks = activeAssessment?.maxMarks || 30;
+
+  const handleMarkChange = useCallback((studentId: string, valueStr: string) => {
     if (valueStr.trim() === '') {
       setMarksRoster(prev => ({
         ...prev,
@@ -544,10 +670,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     // Constrain input: do not allow negative or > maxMarks
     if (num < 0) return;
-    if (num > maxMarks) {
+    if (num > maxAllowedMarks) {
       setNotificationToast({
         type: 'error',
-        message: `Maximum marks allowed is ${maxMarks}.`
+        message: `Maximum marks allowed is ${maxAllowedMarks}.`
       });
       return;
     }
@@ -557,20 +683,17 @@ export const FacultyMarksManagementPage: React.FC = () => {
       [studentId]: { ...prev[studentId], marks: num }
     }));
     setIsDirty(true);
-  };
+  }, [maxAllowedMarks]);
 
-  const handleRemarkChange = (studentId: string, remarks: string) => {
+  const handleRemarkChange = useCallback((studentId: string, remarks: string) => {
     setMarksRoster(prev => ({
       ...prev,
       [studentId]: { ...prev[studentId], remarks }
     }));
     setIsDirty(true);
-  };
+  }, []);
 
-  // Keyboard navigation between student marks inputs
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number) => {
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault();
       const nextStudent = sectionStudents[currentIndex + 1];
@@ -584,7 +707,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
         inputRefs.current[prevStudent.id]?.focus();
       }
     }
-  };
+  }, [sectionStudents]);
 
   // 9. Summary Metrics & Statistics
   const stats = useMemo(() => {
@@ -645,7 +768,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
       return true;
     });
-  }, [sectionStudents, searchTerm, showMissingOnly, marksRoster]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionStudents, searchTerm, showMissingOnly, showMissingOnly ? marksRoster : null]);
 
   // 11. Save Draft & Publish Marks Actions
   const handleSaveMarks = async (publishMode: 'draft' | 'published') => {
@@ -1585,107 +1709,19 @@ export const FacultyMarksManagementPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {displayedStudents.map((st, index) => {
                   const entry = marksRoster[st.id] || { marks: '', remarks: '' };
-                  const marksVal = entry.marks;
-                  const hasMark = marksVal !== '' && marksVal !== undefined;
-                  const maxMarks = activeAssessment?.maxMarks || 30;
-                  const percentage = hasMark ? ((Number(marksVal) / maxMarks) * 100).toFixed(1) : null;
-                  const isPassing = hasMark && Number(marksVal) >= (maxMarks * 0.4);
-
                   return (
-                    <tr 
-                      key={st.id} 
-                      className={clsx(
-                        'hover:bg-slate-50/60 transition-colors',
-                        !hasMark && 'bg-amber-50/30'
-                      )}
-                    >
-                      {/* S.No */}
-                      <td className="py-3 px-4 text-center text-slate-500 font-mono">
-                        {index + 1}
-                      </td>
-
-                      {/* Roll Number */}
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                        {st.roll_number}
-                      </td>
-
-                      {/* Student Name */}
-                      <td className="py-3 px-4 font-semibold text-slate-900">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
-                            {st.full_name?.charAt(0) || 'S'}
-                          </div>
-                          <span>{st.full_name}</span>
-                        </div>
-                      </td>
-
-                      {/* Marks Input */}
-                      <td className="py-2.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <input
-                            ref={el => { inputRefs.current[st.id] = el; }}
-                            type="number"
-                            step="any"
-                            min="0"
-                            max={maxMarks}
-                            value={marksVal}
-                            placeholder="—"
-                            onChange={(e) => handleMarkChange(st.id, e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(e, index)}
-                            className={clsx(
-                              'w-24 text-center py-1.5 px-2 rounded-xl font-mono text-sm font-bold transition-all focus:outline-none',
-                              hasMark 
-                                ? isPassing
-                                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 focus:border-emerald-500'
-                                  : 'bg-rose-50 text-rose-900 border border-rose-300 focus:border-rose-500'
-                                : 'bg-white text-slate-900 border border-slate-300 border-dashed focus:border-slate-500'
-                            )}
-                          />
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            /{maxMarks}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Percentage */}
-                      <td className="py-3 px-4 text-center font-mono font-semibold">
-                        {percentage !== null ? (
-                          <span 
-                            className={clsx(
-                              isPassing ? 'text-slate-800' : 'text-rose-700'
-                            )}
-                          >
-                            {percentage}%
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3 px-4 text-center">
-                        {hasMark ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Entered
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            Missing
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Remarks */}
-                      <td className="py-2.5 px-4">
-                        <input
-                          type="text"
-                          value={entry.remarks || ''}
-                          placeholder="Add comment..."
-                          onChange={(e) => handleRemarkChange(st.id, e.target.value)}
-                          className="w-full bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-slate-500 text-xs text-slate-800 placeholder-slate-400 focus:outline-none px-1 py-1 transition-colors"
-                        />
-                      </td>
-                    </tr>
+                    <MemoizedStudentMarkRow
+                      key={st.id}
+                      student={st}
+                      index={index}
+                      marks={entry.marks}
+                      remarks={entry.remarks || ''}
+                      maxMarks={activeAssessment?.maxMarks || 30}
+                      onMarkChange={handleMarkChange}
+                      onRemarkChange={handleRemarkChange}
+                      onKeyDown={handleKeyDown}
+                      registerInputRef={registerInputRef}
+                    />
                   );
                 })}
               </tbody>

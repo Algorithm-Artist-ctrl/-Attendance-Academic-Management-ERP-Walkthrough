@@ -85,16 +85,45 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
     }));
   }, []);
 
+  // Pre-indexed Map for O(1) slot lookup: keyed by `${day_of_week}_${period_number}`
+  const entriesMap = useMemo(() => {
+    const map = new Map<string, TimetableEntry>();
+    if (!entries) return map;
+    for (const e of entries) {
+      map.set(`${e.day_of_week}_${e.period_number}`, e);
+    }
+    return map;
+  }, [entries]);
+
+  // Pre-indexed lookup dictionaries for O(1) relational hydration
+  const subjectsMap = useMemo(() => new Map(subjects.map(s => [s.id, s])), [subjects]);
+  const facultyMap = useMemo(() => new Map(faculty.map(f => [f.id, f])), [faculty]);
+  const sectionsMap = useMemo(() => new Map(sections.map(s => [s.id, s])), [sections]);
+  const semestersMap = useMemo(() => new Map(semesters.map(s => [s.id, s])), [semesters]);
+  const yearsMap = useMemo(() => new Map(years.map(y => [y.id, y])), [years]);
+
+  // Pre-count entries per day for mobile pills
+  const dayCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const day of ACADEMIC_DAYS) counts[day] = 0;
+    if (entries) {
+      for (const e of entries) {
+        if (counts[e.day_of_week] !== undefined) counts[e.day_of_week]++;
+      }
+    }
+    return counts;
+  }, [entries]);
+
   // Hydrate selected entry with full relational objects from context if missing
   const fullSelectedEntry = useMemo(() => {
     if (!selectedEntry) return null;
     return {
       ...selectedEntry,
-      subject: selectedEntry.subject || subjects.find(s => s.id === selectedEntry.subject_id),
-      faculty: selectedEntry.faculty || faculty.find(f => f.id === selectedEntry.faculty_id),
-      section: selectedEntry.section || sections.find(s => s.id === selectedEntry.section_id),
+      subject: selectedEntry.subject || (selectedEntry.subject_id ? subjectsMap.get(selectedEntry.subject_id) : undefined),
+      faculty: selectedEntry.faculty || (selectedEntry.faculty_id ? facultyMap.get(selectedEntry.faculty_id) : undefined),
+      section: selectedEntry.section || (selectedEntry.section_id ? sectionsMap.get(selectedEntry.section_id) : undefined),
     };
-  }, [selectedEntry, subjects, faculty, sections]);
+  }, [selectedEntry, subjectsMap, facultyMap, sectionsMap]);
 
   const handleCardClick = (
     entry: TimetableEntry, 
@@ -156,7 +185,7 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
         <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-x-auto no-scrollbar">
           {ACADEMIC_DAYS.map(day => {
             const isSelected = selectedMobileDay === day;
-            const dayEntriesCount = entries.filter(e => e.day_of_week === day).length;
+            const dayEntriesCount = dayCounts[day] || 0;
             return (
               <button
                 key={day}
@@ -196,9 +225,7 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
               );
             }
 
-            const entry = entries.find(
-              e => e.day_of_week === selectedMobileDay && e.period_number === slot.period
-            );
+            const entry = entriesMap.get(`${selectedMobileDay}_${slot.period}`);
 
             // Free Period Row
             if (!entry) {
@@ -216,12 +243,12 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
               );
             }
 
-            // Hydrate entry relations
-            const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
-            const fac = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
-            const sec = sections.find(s => s.id === entry.section_id) || entry.section;
-            const sem = semesters.find(s => s.id === sec?.semester_id);
-            const yr = years.find(y => y.id === sem?.academic_year_id);
+            // Hydrate entry relations via O(1) map lookups
+            const sub = (entry.subject_id ? subjectsMap.get(entry.subject_id) : undefined) || entry.subject;
+            const fac = (entry.faculty_id ? facultyMap.get(entry.faculty_id) : undefined) || entry.faculty;
+            const sec = (entry.section_id ? sectionsMap.get(entry.section_id) : undefined) || entry.section;
+            const sem = sec?.semester_id ? semestersMap.get(sec.semester_id) : undefined;
+            const yr = sem?.academic_year_id ? yearsMap.get(sem.academic_year_id) : undefined;
             const sectionFormatted = sec ? `${yr?.name ? `${yr.name} • ` : ''}Section ${sec.name}` : (activeSectionName ? `Section ${activeSectionName}` : 'Assigned Section');
 
             return (
@@ -363,10 +390,8 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                     );
                   }
 
-                  // Find Timetable Entry for this (Day, Period)
-                  const entry = entries.find(
-                    e => e.day_of_week === day && e.period_number === slot.period
-                  );
+                  // Find Timetable Entry for this (Day, Period) via O(1) Map
+                  const entry = entriesMap.get(`${day}_${slot.period}`);
 
                   // Free Slot Cell
                   if (!entry) {
@@ -380,12 +405,12 @@ export const AcademicTimetableGrid: React.FC<AcademicTimetableGridProps> = ({
                     );
                   }
 
-                  // Hydrate relations
-                  const sub = subjects.find(s => s.id === entry.subject_id) || entry.subject;
-                  const fac = faculty.find(f => f.id === entry.faculty_id) || entry.faculty;
-                  const sec = sections.find(s => s.id === entry.section_id) || entry.section;
-                  const sem = semesters.find(s => s.id === sec?.semester_id);
-                  const yr = years.find(y => y.id === sem?.academic_year_id);
+                  // Hydrate relations via O(1) map lookups
+                  const sub = (entry.subject_id ? subjectsMap.get(entry.subject_id) : undefined) || entry.subject;
+                  const fac = (entry.faculty_id ? facultyMap.get(entry.faculty_id) : undefined) || entry.faculty;
+                  const sec = (entry.section_id ? sectionsMap.get(entry.section_id) : undefined) || entry.section;
+                  const sem = sec?.semester_id ? semestersMap.get(sec.semester_id) : undefined;
+                  const yr = sem?.academic_year_id ? yearsMap.get(sem.academic_year_id) : undefined;
                   const sectionFormatted = sec ? `${yr?.name ? `${yr.name} • ` : ''}Section ${sec.name}` : (activeSectionName ? `Section ${activeSectionName}` : 'Assigned Section');
 
                   return (

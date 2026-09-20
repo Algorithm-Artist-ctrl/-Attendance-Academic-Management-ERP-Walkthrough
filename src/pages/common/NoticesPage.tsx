@@ -27,6 +27,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
 import { supabaseService } from '../../lib/services/supabaseService';
 import { supabase } from '../../lib/supabase/supabaseClient';
+import { queryCache, queryKeys } from '../../lib/cache/queryCache';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
 import { NoticeItem } from '../../types/academic.types';
 import { clsx } from 'clsx';
@@ -36,8 +37,11 @@ export const NoticesPage: React.FC = () => {
   const { students, faculty, sections, departments, assignments, timetable } = useAcademic();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [notices, setNotices] = useState<NoticeItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Instant SWR Cache Initialization
+  const cachedNotices = queryCache.get<NoticeItem[]>(queryKeys.notices());
+  const [notices, setNotices] = useState<NoticeItem[]>(() => cachedNotices || []);
+  const [isLoading, setIsLoading] = useState(() => !cachedNotices);
   const [showArchived, setShowArchived] = useState(false);
 
   // New Notice Modal State
@@ -73,8 +77,10 @@ export const NoticesPage: React.FC = () => {
     ...timetable.filter(t => t.faculty_id === currentFaculty.id && t.active).map(t => t.section_id)
   ]) : new Set<string>();
 
-  const loadNotices = async () => {
-    setIsLoading(true);
+  const loadNotices = async (silent = false) => {
+    if (!silent && !queryCache.has(queryKeys.notices())) {
+      setIsLoading(true);
+    }
     try {
       const data = await supabaseService.fetchNotices();
       setNotices((data || []) as NoticeItem[]);
@@ -88,27 +94,34 @@ export const NoticesPage: React.FC = () => {
   useEffect(() => {
     loadNotices();
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const triggerReload = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadNotices(true);
+      }, 500);
+    };
+
     const channel = supabase
       .channel('vctm-notices-realtime-channel')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notices' },
-        () => {
-          loadNotices();
-        }
+        triggerReload
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'audit_logs' },
         (payload: any) => {
           if ((payload.new as any)?.action === 'NOTICE_PUBLISHED' || payload.eventType === 'DELETE') {
-            loadNotices();
+            triggerReload();
           }
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -209,73 +222,75 @@ export const NoticesPage: React.FC = () => {
   };
 
   // Strict Section-Wise & Role-Aware Notice Filtering
-  const visibleNotices = notices.filter(n => {
-    // Exclude deleted notices
-    if (n.status === 'DELETED') return false;
-    // Exclude archived notices unless showArchived is on
-    if (!showArchived && n.status === 'ARCHIVED') return false;
+  const visibleNotices = React.useMemo(() => {
+    return notices.filter(n => {
+      // Exclude deleted notices
+      if (n.status === 'DELETED') return false;
+      // Exclude archived notices unless showArchived is on
+      if (!showArchived && n.status === 'ARCHIVED') return false;
 
-    // 1. Super Admin sees all notices
-    if (user?.role === 'super_admin') return true;
+      // 1. Super Admin sees all notices
+      if (user?.role === 'super_admin') return true;
 
-    // 2. HOD sees notices for their department, sections in their department, or institution-wide
-    if (user?.role === 'hod') {
-      if (!n.targetDepartmentId && !n.targetSectionId) return true;
-      if (n.targetDepartmentId && user.department_id && n.targetDepartmentId !== user.department_id) return false;
+      // 2. HOD sees notices for their department, sections in their department, or institution-wide
+      if (user?.role === 'hod') {
+        if (!n.targetDepartmentId && !n.targetSectionId) return true;
+        if (n.targetDepartmentId && user.department_id && n.targetDepartmentId !== user.department_id) return false;
+        return true;
+      }
+
+      // 3. Student filtering (Strict Section & Department boundary)
+      if (user?.role === 'student') {
+        // Exclude faculty-only notices
+        if (n.targetRole === 'faculty' || n.targetAudience === 'Faculty') return false;
+
+        // If notice has a specific targetSectionId, student MUST belong to that section
+        if (n.targetSectionId) {
+          if (n.targetSectionId !== mySectionId && n.targetSectionId !== mySection?.id) return false;
+        }
+
+        // If targetAudience explicitly names a section like "Section A" or "Section B"
+        if (n.targetAudience && n.targetAudience.startsWith('Section ')) {
+          const targetSecName = n.targetAudience.replace('Section ', '').trim().toUpperCase();
+          if (mySection?.name && mySection.name.toUpperCase() !== targetSecName) return false;
+        }
+
+        // If notice has targetDepartmentId, student must belong to that department
+        if (n.targetDepartmentId && myDepartmentId && n.targetDepartmentId !== myDepartmentId) {
+          return false;
+        }
+
+        return true;
+      }
+
+      // 4. Faculty filtering (Assigned Sections & Department)
+      if (user?.role === 'faculty') {
+        // If notice has a targetSectionId, faculty must be assigned to that section
+        if (n.targetSectionId) {
+          if (!myAssignedSectionIds.has(n.targetSectionId)) return false;
+        }
+
+        // If targetAudience explicitly names a section
+        if (n.targetAudience && n.targetAudience.startsWith('Section ')) {
+          const targetSecName = n.targetAudience.replace('Section ', '').trim().toUpperCase();
+          const teachesInThisSection = Array.from(myAssignedSectionIds).some(secId => {
+            const sec = sections.find(s => s.id === secId);
+            return sec?.name?.toUpperCase() === targetSecName;
+          });
+          if (!teachesInThisSection) return false;
+        }
+
+        // If notice has targetDepartmentId, faculty must belong to that department
+        if (n.targetDepartmentId && currentFaculty?.department_id && n.targetDepartmentId !== currentFaculty.department_id) {
+          return false;
+        }
+
+        return true;
+      }
+
       return true;
-    }
-
-    // 3. Student filtering (Strict Section & Department boundary)
-    if (user?.role === 'student') {
-      // Exclude faculty-only notices
-      if (n.targetRole === 'faculty' || n.targetAudience === 'Faculty') return false;
-
-      // If notice has a specific targetSectionId, student MUST belong to that section
-      if (n.targetSectionId) {
-        if (n.targetSectionId !== mySectionId && n.targetSectionId !== mySection?.id) return false;
-      }
-
-      // If targetAudience explicitly names a section like "Section A" or "Section B"
-      if (n.targetAudience && n.targetAudience.startsWith('Section ')) {
-        const targetSecName = n.targetAudience.replace('Section ', '').trim().toUpperCase();
-        if (mySection?.name && mySection.name.toUpperCase() !== targetSecName) return false;
-      }
-
-      // If notice has targetDepartmentId, student must belong to that department
-      if (n.targetDepartmentId && myDepartmentId && n.targetDepartmentId !== myDepartmentId) {
-        return false;
-      }
-
-      return true;
-    }
-
-    // 4. Faculty filtering (Assigned Sections & Department)
-    if (user?.role === 'faculty') {
-      // If notice has a targetSectionId, faculty must be assigned to that section
-      if (n.targetSectionId) {
-        if (!myAssignedSectionIds.has(n.targetSectionId)) return false;
-      }
-
-      // If targetAudience explicitly names a section
-      if (n.targetAudience && n.targetAudience.startsWith('Section ')) {
-        const targetSecName = n.targetAudience.replace('Section ', '').trim().toUpperCase();
-        const teachesInThisSection = Array.from(myAssignedSectionIds).some(secId => {
-          const sec = sections.find(s => s.id === secId);
-          return sec?.name?.toUpperCase() === targetSecName;
-        });
-        if (!teachesInThisSection) return false;
-      }
-
-      // If notice has targetDepartmentId, faculty must belong to that department
-      if (n.targetDepartmentId && currentFaculty?.department_id && n.targetDepartmentId !== currentFaculty.department_id) {
-        return false;
-      }
-
-      return true;
-    }
-
-    return true;
-  });
+    });
+  }, [notices, showArchived, user?.role, user?.department_id, mySectionId, mySection?.id, mySection?.name, myDepartmentId, currentFaculty?.department_id, myAssignedSectionIds, sections]);
 
   // Deduplicate timetable version circulars if not showing archived versions
   const activeNotices = React.useMemo(() => {
