@@ -235,13 +235,13 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('student')}
                 className={clsx(
-                  'h-11 px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1.5 min-h-[44px]',
+                  'min-h-[44px] py-1 px-1.5 sm:px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5',
                   activeRoleTab === 'student'
                     ? 'bg-[#0f172a] text-white shadow-sm font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
                 )}
               >
-                <GraduationCap className="w-4 h-4 shrink-0" />
+                <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>Student</span>
               </button>
 
@@ -249,27 +249,27 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => handleRoleTabChange('faculty')}
                 className={clsx(
-                  'h-11 px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1.5 min-h-[44px]',
+                  'min-h-[44px] py-1 px-1 sm:px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5',
                   activeRoleTab === 'faculty'
                     ? 'bg-[#0f172a] text-white shadow-sm font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
                 )}
               >
-                <Users className="w-4 h-4 shrink-0" />
-                <span className="truncate">Faculty / HOD</span>
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="text-[11px] sm:text-xs leading-tight text-center">Faculty&nbsp;/ HOD</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleRoleTabChange('admin')}
                 className={clsx(
-                  'h-11 px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1.5 min-h-[44px]',
+                  'min-h-[44px] py-1 px-1.5 sm:px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5',
                   activeRoleTab === 'admin'
                     ? 'bg-[#0f172a] text-white shadow-sm font-bold'
                     : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
                 )}
               >
-                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>Admin</span>
               </button>
             </div>
