@@ -57,7 +57,8 @@ function initEmailCache(): Map<string, string> {
       }
     }
   } catch {}
-  map.set('admin', 'admin@vctm.in');
+  map.set('admin', 'tarunkushwah798@gmail.com');
+  map.set('admin@vctm.in', 'tarunkushwah798@gmail.com');
   return map;
 }
 
@@ -108,19 +109,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const trimmed = rawIdentifier.trim();
     if (!trimmed) return null;
 
+    const clean = trimmed.toLowerCase();
+
+    // Map super administrator aliases ('admin' and 'admin@vctm.in') to the active super_admin account
+    if (clean === 'admin' || clean === 'admin@vctm.in') {
+      emailCacheRef.current.set('admin', 'tarunkushwah798@gmail.com');
+      emailCacheRef.current.set('admin@vctm.in', 'tarunkushwah798@gmail.com');
+      return 'tarunkushwah798@gmail.com';
+    }
+
     // 1. Direct email provided
     if (trimmed.includes('@')) {
       return trimmed.toLowerCase();
     }
 
-    const clean = trimmed.toLowerCase();
     const cached = emailCacheRef.current.get(clean);
     if (cached) return cached;
-
-    if (clean === 'admin') {
-      emailCacheRef.current.set(clean, 'admin@vctm.in');
-      return 'admin@vctm.in';
-    }
 
     try {
       const cleanRoll = trimmed.replace(/[\s\-_]/g, '');
