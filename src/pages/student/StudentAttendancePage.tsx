@@ -42,6 +42,7 @@ export const StudentAttendancePage: React.FC = () => {
     getStudentAttendance, 
     getTodayLecturesForStudent,
     getDateLecturesForStudent,
+    getStudentAcademicContext,
     subjects, 
     faculty,
     sections,
@@ -60,14 +61,15 @@ export const StudentAttendancePage: React.FC = () => {
   const student = currentStudent;
   const studentId = currentStudent?.id || '';
   const stats = getStudentAttendance(studentId);
+  const studentContext = getStudentAcademicContext(studentId);
 
-  const currentSection = sections.find(s => s.id === currentStudent?.section_id);
-  const dept = departments.find(d => d.id === currentStudent?.department_id);
-  const program = programs.find(p => p.id === currentStudent?.program_id);
-  const year = years.find(y => y.id === currentStudent?.academic_year_id);
-  const sem = semesters.find(s => s.id === currentStudent?.semester_id);
-  const session = sessions.find(s => s.id === currentStudent?.academic_session_id) || sessions[0];
-  const branchName = dept?.name || program?.name || 'Computer Science & Engineering';
+  const currentSection = studentContext.section;
+  const dept = studentContext.department;
+  const program = studentContext.program;
+  const year = studentContext.academicYear;
+  const sem = studentContext.semester;
+  const session = studentContext.academicSession;
+  const branchName = studentContext.departmentName;
 
   // Primary Navigation Tab: 'today' | 'history' | 'table' | 'claims'
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'table' | 'claims'>('today');
@@ -322,7 +324,7 @@ export const StudentAttendancePage: React.FC = () => {
                 Scheduled Lectures for Today — {formattedTodayDate}
               </h2>
               <p className="text-sm text-[#475569] mt-0.5 font-medium">
-                Section {currentSection?.name} • Classroom: {currentSection?.room_number}
+                {studentContext.formattedSectionLabel}
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -624,7 +626,7 @@ export const StudentAttendancePage: React.FC = () => {
                   )}
                 </div>
                 <p className="text-sm text-[#475569] mt-0.5 font-medium">
-                  Section {currentSection?.name} • Room {currentSection?.room_number}
+                  {studentContext.formattedSectionLabel}
                 </p>
               </div>
 

@@ -50,6 +50,8 @@ import {
   ArchivedStats,
   StudentFullHistoricalRecord,
   FacultyFullHistoricalRecord,
+  StudentAcademicContext,
+  HODDepartmentContext,
 } from '../types/database.types';
 
 import {
@@ -78,6 +80,8 @@ import {
   resolveFacultyTeachingScope,
   getAssignedSectionsForYear,
   getAssignedSubjectsForSection,
+  cleanSectionName,
+  cleanRoomNumber,
 } from '../lib/utils/facultyAssignmentResolver';
 
 export interface AttendanceSummary {
@@ -531,6 +535,9 @@ interface AcademicContextType {
   getStudentTimetable: (studentId: string) => TimetableEntry[];
   getFacultyTimetable: (facultyId: string, dayOfWeek?: DayOfWeek) => TimetableEntry[];
   getFacultyTeachingScope: (facultyId: string, isSuperAdminOrHOD?: boolean) => FacultyTeachingScope;
+  getFacultyTeachingAssignments: (facultyId: string) => FacultyResolvedAssignment[];
+  getStudentAcademicContext: (studentId: string) => StudentAcademicContext;
+  getHODDepartmentContext: (hodId: string) => HODDepartmentContext;
   getAssignedSectionsForYear: (assignments: FacultyResolvedAssignment[], yearId?: string) => Section[];
   getAssignedSubjectsForSection: (assignments: FacultyResolvedAssignment[], sectionId?: string, yearId?: string) => Subject[];
   getTodayLecturesForStudent: (studentId: string, customDateStr?: string) => TodayAttendanceLecture[];
@@ -3010,6 +3017,138 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [timetable, assignments, sections, subjects, semesters, years, faculty]);
 
+  const getFacultyTeachingAssignments = useCallback((facultyId: string): FacultyResolvedAssignment[] => {
+    if (!facultyId) return [];
+    const scope = getFacultyTeachingScope(facultyId);
+    return scope.allAssignments || [];
+  }, [getFacultyTeachingScope]);
+
+  const getStudentAcademicContext = useCallback((studentId: string): StudentAcademicContext => {
+    let stud = students.find(s => s.id === studentId || s.roll_number === studentId);
+    if (!stud) {
+      const sessionUser = erpStorage.getCurrentSessionUser();
+      if (sessionUser?.student?.id === studentId || sessionUser?.student?.roll_number === studentId || sessionUser?.id === studentId) {
+        stud = sessionUser.student;
+      }
+    }
+
+    const sec = stud?.section_id ? (sections.find(s => s.id === stud.section_id) || stud?.section || null) : null;
+    const sem = semesters.find(s => s.id === (stud?.semester_id || sec?.semester_id)) || null;
+
+    let yr = years.find(y => y.id === (stud?.academic_year_id || sem?.academic_year_id)) || null;
+    if (!yr && sem?.semester_number) {
+      const deducedYearNum = Math.ceil(sem.semester_number / 2);
+      yr = years.find(y => y.year_number === deducedYearNum) || null;
+    }
+
+    const prog = programs.find(p => p.id === stud?.program_id) || programs[0] || null;
+    const dept = departments.find(d => d.id === stud?.department_id) || (prog ? departments.find(d => d.id === prog.department_id) : null) || departments[0] || null;
+    const sess = sessions.find(s => s.id === stud?.academic_session_id) || sessions.find(s => s.is_current) || sessions[0] || null;
+
+    let room = sec?.room_number ? cleanRoomNumber(sec.room_number) : '';
+    if (!room || room === 'Room TBD') {
+      const entryWithRoom = timetable.find(t => t.section_id === sec?.id && t.room_number);
+      if (entryWithRoom?.room_number) {
+        room = cleanRoomNumber(entryWithRoom.room_number);
+      }
+    }
+    const cleanSec = cleanSectionName(sec?.name);
+
+    let formattedSectionLabel = 'Section Assigned';
+    if (cleanSec) {
+      if (room && room !== 'Room TBD') {
+        formattedSectionLabel = `Section ${cleanSec} (${room})`;
+      } else {
+        formattedSectionLabel = `Section ${cleanSec}`;
+      }
+    }
+
+    let classCoordFaculty: Faculty | null = null;
+    if (sec?.id) {
+      const activeCoordAssign = (classCoordinatorAssignments || []).find(
+        cca => cca.active && cca.section_id === sec.id
+      );
+      const coordId = activeCoordAssign?.faculty_id || sec.class_coordinator_id;
+      if (coordId) {
+        classCoordFaculty = faculty.find(f => f.id === coordId) || (activeCoordAssign?.faculty as any) || null;
+      }
+    }
+
+    const mentorFac = faculty.find(f => f.id === stud?.mentor_faculty_id) || null;
+
+    return {
+      studentId: stud?.id || studentId,
+      student: stud || null,
+      academicYear: yr,
+      academicYearId: yr?.id || '',
+      academicYearName: yr?.name || 'Academic Year',
+      academicYearNumber: yr?.year_number || 0,
+      semester: sem,
+      semesterId: sem?.id || '',
+      semesterName: sem?.name || 'Semester',
+      semesterNumber: sem?.semester_number || 0,
+      program: prog,
+      programId: prog?.id || '',
+      programName: prog?.name || 'B.Tech',
+      department: dept,
+      departmentId: dept?.id || '',
+      departmentName: dept?.name || 'Computer Science & Engineering',
+      departmentCode: dept?.code || 'CSE',
+      section: sec,
+      sectionId: sec?.id || '',
+      sectionName: sec?.name || '',
+      cleanSectionName: cleanSec,
+      sectionCode: `SEC-${cleanSec}`,
+      roomNumber: room || 'Room TBD',
+      formattedSectionLabel,
+      academicSession: sess,
+      academicSessionId: sess?.id || '',
+      academicSessionName: sess?.name || 'Academic Session',
+      mentorFaculty: mentorFac,
+      classCoordinator: classCoordFaculty,
+    };
+  }, [students, sections, semesters, years, programs, departments, sessions, timetable, faculty, classCoordinatorAssignments]);
+
+  const getHODDepartmentContext = useCallback((hodId: string): HODDepartmentContext => {
+    const userFac = faculty.find(f => f.id === hodId || f.auth_user_id === hodId);
+    const dept = departments.find(
+      d => d.hod_faculty_id === hodId ||
+           d.hod_faculty_id === userFac?.id ||
+           d.id === userFac?.department_id
+    ) || departments[0] || null;
+
+    const deptFaculty = faculty.filter(f => f.department_id === dept?.id && f.active !== false);
+
+    const assignedFacultyIds = new Set([
+      ...assignments.filter(a => a.active !== false).map(a => a.faculty_id),
+      ...timetable.filter(t => t.active !== false).map(t => t.faculty_id)
+    ]);
+    const assignedDeptFaculty = deptFaculty.filter(f => assignedFacultyIds.has(f.id));
+    const workloadPercentage = deptFaculty.length > 0 
+      ? Math.round((assignedDeptFaculty.length / deptFaculty.length) * 100) 
+      : 0;
+
+    const deptStudents = students.filter(s => s.active !== false && (!dept?.id || s.department_id === dept.id));
+    const deptSections = sections.filter(sec => sec.active !== false);
+    const deptSubjects = subjects.filter(sub => sub.active !== false && (!dept?.id || sub.department_id === dept.id));
+
+    return {
+      department: dept,
+      departmentId: dept?.id || '',
+      departmentName: dept?.name || 'Computer Science & Engineering',
+      departmentCode: dept?.code || 'CSE',
+      hodFaculty: userFac || (dept?.hod_faculty_id ? faculty.find(f => f.id === dept.hod_faculty_id) || null : null),
+      departmentFaculty: deptFaculty,
+      activeFacultyCount: deptFaculty.length,
+      assignedFacultyCount: assignedDeptFaculty.length,
+      workloadPercentage,
+      departmentStudents: deptStudents,
+      studentCount: deptStudents.length,
+      sections: deptSections,
+      subjects: deptSubjects,
+    };
+  }, [faculty, departments, assignments, timetable, students, sections, subjects]);
+
   const getAssignedSectionsForYearContext = useCallback((facultyAssignments: FacultyResolvedAssignment[], yearId?: string): Section[] => {
     return getAssignedSectionsForYear(facultyAssignments, sections, yearId);
   }, [sections]);
@@ -4335,6 +4474,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getPublishedTimetable,
     getFacultyTimetable,
     getFacultyTeachingScope,
+    getFacultyTeachingAssignments,
+    getStudentAcademicContext,
+    getHODDepartmentContext,
     getAssignedSectionsForYear: getAssignedSectionsForYearContext,
     getAssignedSubjectsForSection: getAssignedSubjectsForSectionContext,
     getStudentTimetable,
@@ -4490,6 +4632,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getPublishedTimetable,
     getFacultyTimetable,
     getFacultyTeachingScope,
+    getFacultyTeachingAssignments,
+    getStudentAcademicContext,
+    getHODDepartmentContext,
     getAssignedSectionsForYearContext,
     getAssignedSubjectsForSectionContext,
     getStudentTimetable,

@@ -21,15 +21,14 @@ import {
   Plus,
   ArrowUpDown,
   FileSpreadsheet,
-  Check,
-  HelpCircle
+  Check
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { supabaseService } from '../../lib/services/supabaseService';
-import { 
+import type { 
   SessionalAssessment, 
   SessionalMark, 
   Quiz, 
@@ -200,18 +199,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
     getFacultyTeachingScope,
     getAssignedSectionsForYear,
     getAssignedSubjectsForSection,
-    timetable,
-    assignments: facultySubjectAssignments,
     createSessionalAssessment,
-    ensureDefaultSessionalAssessments,
     ensureDefaultAssessments,
     createQuiz,
     saveSessionalMarks,
     saveQuizMarks,
     publishAssessment,
     fetchAssessmentMarks,
-    deleteSessionalAssessment,
-    deleteQuiz
+    isLoading
   } = useAcademic();
 
   // 1. Identify logged-in faculty
@@ -224,7 +219,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
          (user?.email && f.email?.toLowerCase().trim() === user.email?.toLowerCase().trim())
   ) || user?.faculty;
 
-  const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.id || '';
+  const currentFacultyId = currentFaculty?.id || user?.faculty_id || user?.faculty?.id || user?.id || '';
   const isSuperAdminOrHOD = (user?.role === 'super_admin' || user?.role === 'hod');
 
   // 2. Discover faculty-assigned Years, Sections, and Subjects strictly from centralized resolver
@@ -955,7 +950,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
   };
 
   // 15. CSV Import & Validation
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [_csvFile, setCsvFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<{
     validRows: Array<{ studentId: string; rollNumber: string; studentName: string; marks: number; remarks: string }>;
     invalidRows: Array<{ rawRow: any; error: string }>;
@@ -1294,8 +1289,18 @@ export const FacultyMarksManagementPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Loading state indicator */}
+      {isLoading && (
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-3xl text-slate-700 flex items-center gap-3 shadow-xs">
+          <Loader2 className="w-4 h-4 text-slate-600 animate-spin shrink-0" />
+          <span className="text-xs font-semibold">
+            Loading assigned teaching curriculum and academic records...
+          </span>
+        </div>
+      )}
+
       {/* No assignments notice if faculty has 0 assigned classes */}
-      {facultyTeachingScope.assignedYears.length === 0 && !isSuperAdminOrHOD && (
+      {!isLoading && facultyTeachingScope.assignedYears.length === 0 && !isSuperAdminOrHOD && (
         <div className="p-5 bg-amber-50/90 border border-amber-200 rounded-3xl text-amber-900 flex items-start gap-3.5 shadow-xs">
           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-xs">

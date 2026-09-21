@@ -63,6 +63,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
   const { 
     getStudentAttendance, 
     getTodayLecturesForStudent,
+    getStudentAcademicContext,
     sections, 
     years, 
     semesters, 
@@ -184,20 +185,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
   };
 
   const stats = getStudentAttendance(studentId);
+  const studentContext = getStudentAcademicContext(studentId);
 
-  const section = sections.find(s => s.id === currentStudent?.section_id);
-  const dept = departments.find(d => d.id === currentStudent?.department_id);
-  const prog = programs.find(p => p.id === currentStudent?.program_id);
-  const branchName = dept?.name || prog?.name || 'Computer Science & Engineering';
+  const section = studentContext.section;
+  const dept = studentContext.department;
+  const prog = studentContext.program;
+  const branchName = studentContext.departmentName;
 
-  const year = years.find(y => y.id === currentStudent?.academic_year_id);
-  const sem = semesters.find(s => s.id === currentStudent?.semester_id);
-  const session = sessions.find(s => s.id === currentStudent?.academic_session_id) || sessions[0];
-  const sessionName = session?.name || 'Academic Session';
+  const year = studentContext.academicYear;
+  const sem = studentContext.semester;
+  const session = studentContext.academicSession;
+  const sessionName = studentContext.academicSessionName;
   const semTitle = sem?.name ? `${sem.name} Attendance Ratio` : 'Semester Attendance Ratio';
 
   // Active Class Coordinator for Student's Section
   const classCoordinator = useMemo(() => {
+    if (studentContext.classCoordinator) {
+      return {
+        name: studentContext.classCoordinator.full_name,
+        yearName: studentContext.academicYearName,
+        sectionName: studentContext.cleanSectionName ? `Section ${studentContext.cleanSectionName}` : 'Section Assigned',
+      };
+    }
     if (!currentStudent?.section_id) return null;
     const activeAssignment = (classCoordinatorAssignments || []).find(
       cca => cca.active && cca.section_id === currentStudent.section_id
@@ -216,7 +225,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
       yearName: yrName,
       sectionName: secName,
     };
-  }, [currentStudent?.section_id, classCoordinatorAssignments, section, faculty, year]);
+  }, [studentContext, currentStudent?.section_id, classCoordinatorAssignments, section, faculty, year]);
 
   // Today's Date in Asia/Kolkata (IST)
   const todayDateStr = getISTTodayDate();
@@ -261,7 +270,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
             <span className="text-slate-300">•</span>
             <span>{year?.name || 'Academic Year'}</span>
             <span className="text-slate-300">•</span>
-            <span>{section?.name ? `Section ${section.name}` : 'Section Assigned'} {section?.room_number ? `(Room ${section.room_number})` : ''}</span>
+            <span>{studentContext.formattedSectionLabel}</span>
           </p>
 
           <div className="pt-1 flex items-center gap-2">
@@ -332,7 +341,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
               </h2>
             </div>
             <p className="text-[15px] sm:text-base text-[#475569] mt-1 font-medium leading-relaxed">
-              Official live status for <strong className="text-[#0f172a]">{formattedTodayDate}</strong> • Section {section?.name} ({section?.room_number})
+              Official live status for <strong className="text-[#0f172a]">{formattedTodayDate}</strong> • {studentContext.formattedSectionLabel}
             </p>
           </div>
 

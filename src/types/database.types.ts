@@ -1141,3 +1141,51 @@ export interface BulkPromotionResult {
   graduated_count: number;
   excluded_count: number;
 }
+
+export interface StudentAcademicContext {
+  studentId: string;
+  student: Student | null;
+  academicYear: AcademicYear | null;
+  academicYearId: string;
+  academicYearName: string;
+  academicYearNumber: number;
+  semester: Semester | null;
+  semesterId: string;
+  semesterName: string;
+  semesterNumber: number;
+  program: Program | null;
+  programId: string;
+  programName: string;
+  department: Department | null;
+  departmentId: string;
+  departmentName: string;
+  departmentCode: string;
+  section: Section | null;
+  sectionId: string;
+  sectionName: string;
+  cleanSectionName: string;
+  sectionCode: string;
+  roomNumber: string;
+  formattedSectionLabel: string;
+  academicSession: AcademicSession | null;
+  academicSessionId: string;
+  academicSessionName: string;
+  mentorFaculty: Faculty | null;
+  classCoordinator: Faculty | null;
+}
+
+export interface HODDepartmentContext {
+  department: Department | null;
+  departmentId: string;
+  departmentName: string;
+  departmentCode: string;
+  hodFaculty: Faculty | null;
+  departmentFaculty: Faculty[];
+  activeFacultyCount: number;
+  assignedFacultyCount: number;
+  workloadPercentage: number;
+  departmentStudents: Student[];
+  studentCount: number;
+  sections: Section[];
+  subjects: Subject[];
+}

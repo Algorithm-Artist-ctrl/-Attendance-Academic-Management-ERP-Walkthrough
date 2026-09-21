@@ -52,18 +52,22 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
     corrections,
     attendanceRecords,
     getStudentAttendance,
+    getHODDepartmentContext,
     refreshData,
     isLoading
   } = useAcademic();
 
-  const dept = departments.find(
+  const hodId = user?.faculty_id || user?.faculty?.id || user?.id || '';
+  const hodContext = useMemo(() => getHODDepartmentContext(hodId), [getHODDepartmentContext, hodId]);
+
+  const dept = hodContext.department || departments.find(
     d => d.id === user?.faculty?.department_id || 
          d.id === user?.department_id ||
          d.hod_faculty_id === user?.faculty_id || 
          d.hod_faculty_id === user?.faculty?.id
   ) || departments[0];
 
-  const hodFaculty = faculty.find(
+  const hodFaculty = hodContext.hodFaculty || faculty.find(
     f => f.id === user?.faculty_id || 
          f.id === user?.faculty?.id || 
          f.id === dept?.hod_faculty_id
@@ -360,20 +364,9 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
   }, [studentStats]);
 
   // Strictly department-scoped active faculty
-  const deptFaculty = useMemo(() => {
-    return faculty.filter(f => f.department_id === dept?.id && f.active);
-  }, [faculty, dept?.id]);
-
-  // Compute workload assignment percentage based on real database records
-  const assignedDeptFacultyCount = useMemo(() => {
-    const assignedIds = new Set(assignments.filter(a => a.active).map(a => a.faculty_id));
-    return deptFaculty.filter(f => assignedIds.has(f.id)).length;
-  }, [deptFaculty, assignments]);
-
-  const workloadPercentage = useMemo(() => {
-    if (deptFaculty.length === 0) return 0;
-    return Math.round((assignedDeptFacultyCount / deptFaculty.length) * 100);
-  }, [deptFaculty.length, assignedDeptFacultyCount]);
+  const deptFaculty = hodContext.departmentFaculty;
+  const assignedDeptFacultyCount = hodContext.assignedFacultyCount;
+  const workloadPercentage = hodContext.workloadPercentage;
 
   const activeSessionName = useMemo(() => {
     const curr = sessions.find(s => s.is_current);

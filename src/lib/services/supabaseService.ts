@@ -215,27 +215,33 @@ export const supabaseService = {
       async () => {
         try {
           const [
-            { data: sections },
-            { data: subjects },
-            { data: faculty },
-            { data: assignments },
-            { data: classroomsList },
+            secRes,
+            subRes,
+            facRes,
+            asgRes,
+            clsRes,
           ] = await Promise.all([
-            supabase.from('sections').select('id, name, semester_id, room_number, capacity, active, created_at, updated_at').eq('active', true).order('name', { ascending: true }),
-            supabase.from('subjects').select('id, name, subject_name, subject_code, code, department_id, semester_id, program_id, lecture_type, credits, total_marks, is_elective, active, created_at, updated_at').eq('active', true).order('subject_code', { ascending: true }),
-            supabase.from('faculty').select('id, full_name, faculty_code, employee_code, designation, email, phone, department_id, active, status, is_hod, auth_user_id, created_at, updated_at').order('full_name', { ascending: true }),
-            supabase.from('faculty_subject_assignments').select('id, faculty_id, subject_id, section_id, semester_id, academic_year_id, active, created_at').eq('active', true),
-            supabase.from('classrooms').select('id, room_number, building, room_type, capacity, active, created_at').eq('active', true).order('room_number', { ascending: true }),
+            supabase.from('sections').select('*').eq('active', true).order('name', { ascending: true }),
+            supabase.from('subjects').select('*').eq('active', true).order('subject_code', { ascending: true }),
+            supabase.from('faculty').select('*').order('full_name', { ascending: true }),
+            supabase.from('faculty_subject_assignments').select('*').eq('active', true),
+            supabase.from('classrooms').select('*').eq('active', true).order('room_number', { ascending: true }),
           ]);
 
+          if (secRes.error) console.error('Error fetching sections in fetchAcademicEntities:', secRes.error.message);
+          if (subRes.error) console.error('Error fetching subjects in fetchAcademicEntities:', subRes.error.message);
+          if (facRes.error) console.error('Error fetching faculty in fetchAcademicEntities:', facRes.error.message);
+          if (asgRes.error) console.error('Error fetching assignments in fetchAcademicEntities:', asgRes.error.message);
+          if (clsRes.error) console.error('Error fetching classrooms in fetchAcademicEntities:', clsRes.error.message);
+
           return {
-            sections: (sections as Section[]) || [],
-            subjects: (subjects as Subject[]) || [],
-            faculty: (faculty as Faculty[]) || [],
-            assignments: (assignments as FacultySubjectAssignment[]) || [],
+            sections: (secRes.data as Section[]) || [],
+            subjects: (subRes.data as Subject[]) || [],
+            faculty: (facRes.data as Faculty[]) || [],
+            assignments: (asgRes.data as FacultySubjectAssignment[]) || [],
             students: [] as Student[],
             profiles: [] as UserProfile[],
-            classrooms: (classroomsList as Classroom[]) || [],
+            classrooms: (clsRes.data as Classroom[]) || [],
           };
         } catch (err) {
           console.error('Error fetching dynamic academic entities from Supabase:', err);
@@ -264,7 +270,7 @@ export const supabaseService = {
 
     const [staticSetup, academicEntities] = await Promise.all([
       this.fetchStaticSetup(forceRefresh),
-      this.fetchAcademicEntities(),
+      this.fetchAcademicEntities(forceRefresh),
     ]);
 
     if (!staticSetup || !academicEntities) return null;
@@ -451,7 +457,6 @@ export const supabaseService = {
         attendance_record_id,
         student_id,
         requested_status,
-        original_status,
         reason,
         status,
         reviewed_by,
@@ -624,16 +629,16 @@ export const supabaseService = {
             sessionalAssessmentsRes,
           ] = await Promise.all([
             resolvedSectionId
-              ? supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, total_marks, due_date, status, active, created_at, updated_at').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+              ? supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, max_marks, due_date, status, active, created_at, updated_at').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
               : Promise.resolve({ data: [] }),
-            supabase.from('assignment_submissions').select('id, assignment_id, student_id, submission_text, file_url, marks_obtained, feedback, status, submitted_at, graded_by, graded_at').eq('student_id', studentId).order('submitted_at', { ascending: false }).limit(100),
+            supabase.from('assignment_submissions').select('id, assignment_id, student_id, submission_type, file_path, file_name, marks_obtained, feedback, status, submitted_at, graded_by, graded_at').eq('student_id', studentId).order('submitted_at', { ascending: false }).limit(100),
             resolvedSectionId
-              ? supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, total_marks, passing_marks, quiz_date, duration_minutes, status, active, created_at, updated_at').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+              ? supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at, updated_at').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
               : Promise.resolve({ data: [] }),
             supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, status, graded_by, graded_at, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
             supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(200),
             resolvedSectionId
-              ? supabase.from('sessional_assessments').select('id, title, sessional_type, max_marks, subject_id, section_id, faculty_id, assessment_date, status, created_at, updated_at').eq('section_id', resolvedSectionId).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+              ? supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at, updated_at').eq('section_id', resolvedSectionId).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
               : Promise.resolve({ data: [] }),
           ]);
 
@@ -683,9 +688,9 @@ export const supabaseService = {
             assessmentsRes,
             sessionalMarksRes,
           ] = await Promise.all([
-            supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, total_marks, due_date, status, active, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
-            supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, total_marks, passing_marks, quiz_date, duration_minutes, status, active, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
-            supabase.from('sessional_assessments').select('id, title, sessional_type, max_marks, subject_id, section_id, faculty_id, assessment_date, status, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+            supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, max_marks, due_date, status, active, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+            supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+            supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
             supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at').eq('faculty_id', resolvedFacId).order('created_at', { ascending: false }).limit(2000),
           ]);
 
@@ -787,30 +792,38 @@ export const supabaseService = {
             sessionsRes,
             correctionsRes,
             { data: assignmentsList },
-            { data: quizzesList },
-            { data: assessmentsList },
           ] = await Promise.all([
             supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('faculty_id', params.facultyId).eq('active', true).order('period_number', { ascending: true }),
             supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').eq('faculty_id', params.facultyId).order('session_date', { ascending: false }).limit(100),
             this.fetchCorrections(50),
             supabase.from('assignments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
-            supabase.from('quizzes').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
-            supabase.from('sessional_assessments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
           ]);
 
-          // Fetch students strictly in sections assigned to this faculty
+          // Fetch students and assessments strictly for sections taught by this faculty (via timetable or FSA)
+          const fsaList = (masterData.assignments || []).filter(
+            (a: any) => a.faculty_id === params.facultyId && a.active !== false
+          );
           const sectionIds = Array.from(new Set([
-            ...(assignmentsList || []).map((a: any) => a.section_id),
+            ...fsaList.map((a: any) => a.section_id),
             ...(timetable || []).map((t: any) => t.section_id),
+            ...(assignmentsList || []).map((a: any) => a.section_id),
           ])).filter(Boolean);
 
-          const { data: facultyStudents } = sectionIds.length > 0
-            ? await supabase.from('students').select('*').in('section_id', sectionIds).eq('active', true).or('status.eq.ACTIVE,status.is.null').order('roll_number', { ascending: true })
-            : { data: [] };
+          const [quizzesRes, assessmentsRes, studentsRes] = await Promise.all([
+            sectionIds.length > 0
+              ? supabase.from('quizzes').select('*').or(`faculty_id.eq.${params.facultyId},section_id.in.(${sectionIds.join(',')})`).order('created_at', { ascending: false }).limit(100)
+              : supabase.from('quizzes').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+            sectionIds.length > 0
+              ? supabase.from('sessional_assessments').select('*').or(`faculty_id.eq.${params.facultyId},section_id.in.(${sectionIds.join(',')})`).order('created_at', { ascending: false }).limit(100)
+              : supabase.from('sessional_assessments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
+            sectionIds.length > 0
+              ? supabase.from('students').select('*').in('section_id', sectionIds).eq('active', true).or('status.eq.ACTIVE,status.is.null').order('roll_number', { ascending: true })
+              : Promise.resolve({ data: [] }),
+          ]);
 
           return {
             ...masterData,
-            students: (facultyStudents as Student[]) || [],
+            students: (studentsRes.data as Student[]) || [],
             timetable: (timetable as unknown as TimetableEntry[]) || [],
             attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
             attendanceRecords: [],
@@ -819,11 +832,11 @@ export const supabaseService = {
             timetableVersions: [],
             courseAssignments: (assignmentsList as Assignment[]) || [],
             assignmentSubmissions: [],
-            quizzes: (quizzesList as Quiz[]) || [],
+            quizzes: (quizzesRes.data as Quiz[]) || [],
             quizResults: [],
             sessionalMarks: [],
             marksHistory: [],
-            sessionalAssessments: (assessmentsList as SessionalAssessment[]) || [],
+            sessionalAssessments: (assessmentsRes.data as SessionalAssessment[]) || [],
           };
         }
 
@@ -4878,7 +4891,7 @@ export const supabaseService = {
           } else {
             const { data, error } = await supabase
               .from('assignment_submissions')
-              .select('id, assignment_id, student_id, submission_text, file_url, marks_obtained, feedback, status, submitted_at, graded_by, graded_at')
+              .select('id, assignment_id, student_id, submission_type, file_path, file_name, marks_obtained, feedback, status, submitted_at, graded_by, graded_at')
               .eq('assignment_id', assessmentId)
               .order('submitted_at', { ascending: true });
             if (error) throw error;

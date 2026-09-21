@@ -56,7 +56,7 @@ export interface FacultyAssignmentResolverContext {
  * Normalizes section names: "Section A" -> "A", "A" -> "A"
  */
 export function cleanSectionName(name?: string): string {
-  if (!name) return 'A';
+  if (!name) return '';
   return name.replace(/^section\s*/i, '').trim() || name;
 }
 
@@ -195,17 +195,30 @@ export function resolveFacultyTeachingScope(
     const sub = subjects.find(s => s.id === subjectId);
 
     const semId = rawSemesterId || sec?.semester_id || sub?.semester_id || '';
-    const sem = semesters.find(s => s.id === semId);
+    let sem = semesters.find(s => s.id === semId);
 
     const yrId = rawYearId || sem?.academic_year_id || '';
-    const yr = years.find(y => y.id === yrId);
+    let yr = years.find(y => y.id === yrId);
+
+    // Fallback: If yr not resolved directly, resolve via matched semester or section's semester
+    const semYearId = sem?.academic_year_id;
+    if (!yr && semYearId) {
+      yr = years.find(y => y.id === semYearId);
+    }
+    if (!yr && sec?.semester_id) {
+      const secSem = semesters.find(s => s.id === sec.semester_id);
+      if (secSem) {
+        sem = sem || secSem;
+        yr = years.find(y => y.id === secSem.academic_year_id);
+      }
+    }
 
     return { sec, sub, sem, yr };
   };
 
-  // 1. Process Timetable Entries for this faculty
+  // 1. Process Timetable Entries for this faculty (matches both direct faculty_id and nested faculty.id)
   const facultyTimetable = timetable.filter(
-    t => t.faculty_id === facultyId && 
+    t => (t.faculty_id === facultyId || t.faculty?.id === facultyId) && 
          t.active !== false && 
          !t.is_break && 
          Boolean(t.subject_id) && 
@@ -250,7 +263,7 @@ export function resolveFacultyTeachingScope(
 
   // 2. Process Faculty Subject Assignments (FSA) for this faculty
   const fsaList = facultySubjectAssignments.filter(
-    fsa => fsa.faculty_id === facultyId && 
+    fsa => (fsa.faculty_id === facultyId || fsa.faculty?.id === facultyId) && 
            fsa.active !== false && 
            Boolean(fsa.subject_id) && 
            Boolean(fsa.section_id)
@@ -302,9 +315,19 @@ export function resolveFacultyTeachingScope(
 
   // 3. Extract distinct Academic Years (sorted by year_number ASC, e.g. 1st, 2nd, 3rd, 4th Year)
   const assignedYearIds = new Set(allAssignments.map(a => a.academicYearId).filter(Boolean));
-  const assignedYears = years
+  let assignedYears = years
     .filter(y => assignedYearIds.has(y.id) && y.active !== false)
     .sort((a, b) => a.year_number - b.year_number);
+
+  // Fallback: If assignedYears is empty but assignments exist, derive years from assigned semesters
+  if (assignedYears.length === 0 && allAssignments.length > 0) {
+    const assignedSemIds = new Set(allAssignments.map(a => a.semesterId).filter(Boolean));
+    const matchedSemesters = semesters.filter(s => assignedSemIds.has(s.id));
+    const yearIdsFromSems = new Set(matchedSemesters.map(s => s.academic_year_id).filter(Boolean));
+    assignedYears = years
+      .filter(y => yearIdsFromSems.has(y.id) && y.active !== false)
+      .sort((a, b) => a.year_number - b.year_number);
+  }
 
   // 4. Extract distinct Semesters
   const assignedSemesterIds = new Set(allAssignments.map(a => a.semesterId).filter(Boolean));
