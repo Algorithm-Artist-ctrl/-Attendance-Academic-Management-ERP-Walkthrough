@@ -335,3 +335,41 @@ export async function fetchCSVContent(rawUrl: string, timeoutMs: number = 15000)
 
   throw new Error(`Failed to fetch CSV: ${lastError?.message || 'Network connection failed'}`);
 }
+
+/**
+ * Sanitizes URLs before they are bound to href attributes in the DOM.
+ * Prevents javascript: injection, data: XSS payloads, and malformed URI attacks.
+ */
+export function sanitizeExternalUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return '#';
+  const trimmed = url.trim();
+  if (!trimmed) return '#';
+
+  // Disallow dangerous URI schemes
+  if (/^(javascript|vbscript|data):/i.test(trimmed)) {
+    // Exception for safe base64 images or PDFs
+    if (/^data:(image\/(png|jpeg|jpg|webp|gif)|application\/pdf);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+      return trimmed;
+    }
+    return '#';
+  }
+
+  // Safe web protocols
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.toString();
+      }
+    } catch {
+      return '#';
+    }
+  }
+
+  // Safe relative paths starting with /
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+
+  return '#';
+}

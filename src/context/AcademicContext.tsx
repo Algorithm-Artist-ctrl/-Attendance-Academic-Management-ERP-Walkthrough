@@ -1193,12 +1193,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const facultyId = activeUser?.faculty_id || activeUser?.faculty?.id || activeUser?.id;
 
       let data: any;
-      if (currentRole === 'student' && studentId) {
-        data = await supabaseService.fetchStudentAcademicRecords(studentId, sectionId);
+      if (currentRole === 'student') {
+        if (studentId) {
+          data = await supabaseService.fetchStudentAcademicRecords(studentId, sectionId);
+        } else {
+          data = { courseAssignments: [], assignmentSubmissions: [], quizzes: [], quizResults: [], sessionalMarks: [], sessionalAssessments: [] };
+        }
       } else if ((currentRole === 'faculty' || currentRole === 'hod') && facultyId) {
         data = await supabaseService.fetchFacultyAcademicRecords(facultyId);
-      } else {
+      } else if (currentRole === 'super_admin') {
         data = await supabaseService.fetchAssessments();
+      } else {
+        data = { courseAssignments: [], assignmentSubmissions: [], quizzes: [], quizResults: [], sessionalMarks: [], sessionalAssessments: [] };
       }
 
       const curSubjects = subjectsRef.current;

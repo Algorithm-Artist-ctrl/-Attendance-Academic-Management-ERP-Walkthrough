@@ -3,8 +3,12 @@ import { supabase as clientA } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import * as fs from 'fs';
 
-const SUPABASE_URL = 'https://obssoojzryqiudllnlkh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co';
+if (!process.env.VITE_SUPABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Session B independent client simulating another user / browser tab
 const clientB = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

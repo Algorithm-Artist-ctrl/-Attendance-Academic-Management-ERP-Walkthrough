@@ -28,6 +28,7 @@ import { CardSkeleton, TimetableSkeleton } from '../../components/common/Skeleto
 import { CyberGauge3D } from '../../components/3d/CyberGauge3D';
 import { ClaimAttendanceModal } from '../../components/correction/ClaimAttendanceModal';
 import { Assignment, AssignmentSubmission, Quiz } from '../../types/database.types';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 import { 
   getISTTodayDate, 
   getISTDayOfWeek, 
@@ -1037,7 +1038,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                     </div>
 
                     <a
-                      href={quiz.google_form_url}
+                      href={sanitizeExternalUrl(quiz.google_form_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2 px-3 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-xs"
@@ -1101,7 +1102,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                   <span className="text-xs text-[#475569]">Complete the form externally if required</span>
                 </div>
                 <a
-                  href={quickSubmitAssignment.google_form_url}
+                  href={sanitizeExternalUrl(quickSubmitAssignment.google_form_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold inline-flex items-center gap-1.5 shadow-xs"

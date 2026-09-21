@@ -1,5 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Auto-load environment in Node runtime if available and not yet loaded
+if (typeof process !== 'undefined' && (!process.env?.VITE_SUPABASE_URL || !process.env?.VITE_SUPABASE_ANON_KEY)) {
+  try {
+    if (typeof (process as any).loadEnvFile === 'function') {
+      (process as any).loadEnvFile();
+    }
+  } catch {}
+}
+
 const getEnv = (key: string, fallback: string): string => {
   try {
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {

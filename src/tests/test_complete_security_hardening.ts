@@ -102,6 +102,48 @@ async function runSecurityAuditTests() {
   assert(checkDir(path.join(process.cwd(), 'scripts')), 'Zero leaked passwords found in scripts/');
   assert(checkDir(path.join(process.cwd(), 'api')), 'Zero leaked passwords found in api/');
 
+  // Verify render.yaml has sync: false for secret env vars
+  const renderYaml = fs.readFileSync(path.join(process.cwd(), 'render.yaml'), 'utf8');
+  assert(renderYaml.includes('key: VITE_SUPABASE_URL\n        sync: false'), 'render.yaml sets sync: false for VITE_SUPABASE_URL');
+  assert(renderYaml.includes('key: VITE_SUPABASE_ANON_KEY\n        sync: false'), 'render.yaml sets sync: false for VITE_SUPABASE_ANON_KEY');
+
+  // Verify zero hardcoded anon keys across tests and source
+  const anonKeySig = ['eFCU024aroXFp', 'TqnOaVUOpOUpONBwm', '3KDDdLfzlZ5co'].join('');
+  const checkAnonKeyLeak = (dir: string): boolean => {
+    let clean = true;
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        if (ent.name !== 'node_modules' && ent.name !== '.git' && ent.name !== 'dist') {
+          clean = checkAnonKeyLeak(fullPath) && clean;
+        }
+      } else if (ent.isFile() && (ent.name.endsWith('.ts') || ent.name.endsWith('.tsx') || ent.name.endsWith('.yaml') || ent.name.endsWith('.yml'))) {
+        if (ent.name === 'test_complete_security_hardening.ts') continue;
+        const content = fs.readFileSync(fullPath, 'utf8');
+        if (content.includes(anonKeySig)) {
+          console.error(`Leaked anon key found in: ${fullPath}`);
+          clean = false;
+        }
+      }
+    }
+    return clean;
+  };
+  assert(checkAnonKeyLeak(path.join(process.cwd(), 'src')), 'Zero hardcoded anon keys found in src/');
+  assert(!renderYaml.includes(anonKeySig), 'Zero hardcoded anon keys in render.yaml');
+
+  // -------------------------------------------------------------
+  // TEST 2B: URL Sanitization & Anti-XSS Verification (SEC-10)
+  // -------------------------------------------------------------
+  console.log('\n--- TEST 2B: URL Sanitization & Anti-XSS (sanitizeExternalUrl) ---');
+  const { sanitizeExternalUrl } = await import('../lib/utils/urlUtils');
+  assert(sanitizeExternalUrl('javascript:alert(document.cookie)') === '#', 'Dangerous javascript: URI is blocked');
+  assert(sanitizeExternalUrl('JAVASCRIPT:alert(1)') === '#', 'Case-insensitive JAVASCRIPT: URI is blocked');
+  assert(sanitizeExternalUrl('vbscript:msgbox(1)') === '#', 'Dangerous vbscript: URI is blocked');
+  assert(sanitizeExternalUrl('data:text/html,<script>alert(1)</script>') === '#', 'Dangerous data:text/html URI is blocked');
+  assert(sanitizeExternalUrl('https://docs.google.com/forms/d/e/1FAIpQLSc.../viewform') === 'https://docs.google.com/forms/d/e/1FAIpQLSc.../viewform', 'Legitimate HTTPS Google Form URL is preserved');
+  assert(sanitizeExternalUrl('/student/dashboard') === '/student/dashboard', 'Legitimate relative navigation URL is preserved');
+  assert(sanitizeExternalUrl('//evil.com') === '#', 'Protocol-relative URL is neutralized');
+
   // -------------------------------------------------------------
   // TEST 3: Database Trigger Verification via Direct Connection
   // -------------------------------------------------------------
@@ -147,6 +189,37 @@ async function runSecurityAuditTests() {
       `);
       assert(leavePol.rows.length > 0, 'leave_applications_select_policy exists');
       assert(leavePol.rows[0].qual.includes('PENDING_COORDINATOR'), 'leave_applications_select_policy enforces coordinator stage scoping');
+
+      // Verify quiz_results_write policy excludes student role (Migration 044)
+      const qPolRes = await client.query(`
+        SELECT policyname, qual, with_check 
+        FROM pg_policies 
+        WHERE schemaname = 'public' AND tablename = 'quiz_results' AND policyname = 'quiz_results_write';
+      `);
+      assert(qPolRes.rows.length > 0, 'quiz_results_write policy exists');
+      assert(!qPolRes.rows[0].qual.includes('current_user_student_id()'), 'quiz_results_write forbids student write access');
+
+      // Verify marks_history policies are locked down (Migration 044)
+      const mhPols = await client.query(`
+        SELECT policyname, roles, cmd, qual 
+        FROM pg_policies 
+        WHERE schemaname = 'public' AND tablename = 'marks_history';
+      `);
+      assert(mhPols.rows.length > 0, 'marks_history policies exist');
+      assert(!mhPols.rows.some(r => r.roles.includes('anon') || r.policyname.includes('allow_all')), 'marks_history has zero anon/wildcard policies');
+      assert(mhPols.rows.some(r => r.policyname === 'marks_history_read'), 'marks_history_read policy exists');
+      assert(mhPols.rows.some(r => r.policyname === 'marks_history_insert'), 'marks_history_insert policy exists');
+
+      // Verify assignment_submissions anti-tampering triggers (Migration 044)
+      const asTrgs = await client.query(`
+        SELECT tgname 
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        WHERE c.relname = 'assignment_submissions' 
+          AND tgname IN ('trg_prevent_student_submission_tampering', 'trg_prevent_graded_submission_deletion');
+      `);
+      assert(asTrgs.rows.some(r => r.tgname === 'trg_prevent_student_submission_tampering'), 'Grade tampering trigger is attached to assignment_submissions');
+      assert(asTrgs.rows.some(r => r.tgname === 'trg_prevent_graded_submission_deletion'), 'Graded submission deletion trigger is attached to assignment_submissions');
     } finally {
       await client.end();
     }

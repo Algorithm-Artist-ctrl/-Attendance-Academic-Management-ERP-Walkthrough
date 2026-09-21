@@ -619,14 +619,25 @@ export const supabaseService = {
 
   // 1F. Scoped Student Academic Records (Assignments, Submissions, Quizzes, Sessional Marks)
   async fetchStudentAcademicRecords(studentId: string, sectionId?: string, forceFresh = false) {
+    if (!studentId || !isValidUuid(studentId)) {
+      return {
+        courseAssignments: [],
+        assignmentSubmissions: [],
+        quizzes: [],
+        quizResults: [],
+        sessionalMarks: [],
+        sessionalAssessments: [],
+      };
+    }
+
     return queryCache.fetchWithCache(
       queryKeys.studentAcademicRecords(studentId, sectionId),
       async () => {
         try {
-          let resolvedSectionId = sectionId;
+          let resolvedSectionId = (sectionId && isValidUuid(sectionId)) ? sectionId : undefined;
           if (!resolvedSectionId && studentId) {
             const { data: st } = await supabase.from('students').select('section_id').eq('id', studentId).maybeSingle();
-            if (st?.section_id) resolvedSectionId = st.section_id;
+            if (st?.section_id && isValidUuid(st.section_id)) resolvedSectionId = st.section_id;
           }
 
           const [
@@ -703,8 +714,8 @@ export const supabaseService = {
             supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at').eq('faculty_id', resolvedFacId).order('created_at', { ascending: false }).limit(2000),
           ]);
 
-          const assignmentIds = (assignmentsRes.data || []).map(a => a.id);
-          const quizIds = (quizzesRes.data || []).map(q => q.id);
+          const assignmentIds = (assignmentsRes.data || []).map(a => a.id).filter(isValidUuid);
+          const quizIds = (quizzesRes.data || []).map(q => q.id).filter(isValidUuid);
 
           const [submissionsRes, quizResultsRes] = await Promise.all([
             assignmentIds.length > 0
@@ -4876,7 +4887,7 @@ export const supabaseService = {
   },
 
   async fetchAssessmentMarks(assessmentId: string, kind: 'sessional' | 'quiz' | 'assignment' = 'sessional', forceFresh = false): Promise<any[]> {
-    if (!assessmentId) return [];
+    if (!assessmentId || !isValidUuid(assessmentId)) return [];
     return queryCache.fetchWithCache(
       queryKeys.assessmentMarks(assessmentId, kind),
       async () => {

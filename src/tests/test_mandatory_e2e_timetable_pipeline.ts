@@ -48,7 +48,7 @@ async function runMandatoryE2ETests() {
   const adminEmail = adminProf?.email || 'tarunkushwah798@gmail.com';
   const { error: authErr } = await supabase.auth.signInWithPassword({
     email: adminEmail,
-    password: 'VctmAdmin@2026',
+    password: process.env.ADMIN_PASSWORD || process.env.VITE_ADMIN_PASSWORD || 'VctmAdmin@2026',
   });
   if (authErr) {
     console.warn('  ⚠️ Admin authentication warning:', authErr.message);
@@ -461,6 +461,7 @@ async function runMandatoryE2ETests() {
   console.log('   - CSV upload & Google Sheet CSV sync pipelines -> verified 48 slots');
   console.log('   - Faculty profile editing -> verified database persistence across reloads');
   console.log('================================================================================\n');
+  process.exit(0);
 }
 
 runMandatoryE2ETests().catch(err => {

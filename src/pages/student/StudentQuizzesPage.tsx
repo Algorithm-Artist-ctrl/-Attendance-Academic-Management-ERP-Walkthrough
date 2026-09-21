@@ -15,6 +15,7 @@ import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { Quiz } from '../../types/database.types';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
 
 export const StudentQuizzesPage: React.FC = () => {
@@ -186,7 +187,7 @@ export const StudentQuizzesPage: React.FC = () => {
 
                 <div className="mt-5 pt-3">
                   <a
-                    href={quiz.google_form_url}
+                    href={sanitizeExternalUrl(quiz.google_form_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={clsx(

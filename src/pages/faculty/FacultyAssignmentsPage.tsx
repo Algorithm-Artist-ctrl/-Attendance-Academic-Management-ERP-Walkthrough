@@ -26,6 +26,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Assignment, AssignmentSubmission, SubmissionType } from '../../types/database.types';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
 
 export const FacultyAssignmentsPage: React.FC = () => {
@@ -470,7 +471,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                 <div className="mt-5 pt-3 flex items-center gap-2">
                   {assignment.google_form_url && (
                     <a
-                      href={assignment.google_form_url}
+                      href={sanitizeExternalUrl(assignment.google_form_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-300 shadow-xs"
@@ -741,7 +742,7 @@ export const FacultyAssignmentsPage: React.FC = () => {
                       <td className="py-2.5 px-3">
                         {sub?.file_path ? (
                           <a
-                            href={sub.file_path}
+                            href={sanitizeExternalUrl(sub.file_path)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-slate-900 hover:underline flex items-center gap-1 font-semibold"

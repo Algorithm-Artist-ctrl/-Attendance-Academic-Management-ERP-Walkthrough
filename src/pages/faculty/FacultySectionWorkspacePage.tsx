@@ -28,6 +28,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Assignment, Quiz, SessionalAssessment, SubmissionType } from '../../types/database.types';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
 
 interface FacultySectionWorkspacePageProps {
@@ -881,7 +882,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                     <div className="flex items-center gap-2 pt-1">
                       {asgn.google_form_url && (
                         <a
-                          href={asgn.google_form_url}
+                          href={sanitizeExternalUrl(asgn.google_form_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-black hover:underline"
@@ -963,7 +964,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
                     <div className="flex items-center gap-2 pt-1">
                       {quiz.google_form_url && (
                         <a
-                          href={quiz.google_form_url}
+                          href={sanitizeExternalUrl(quiz.google_form_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-black hover:underline"

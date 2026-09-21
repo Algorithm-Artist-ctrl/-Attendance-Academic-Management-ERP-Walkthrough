@@ -23,6 +23,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Quiz, QuizResult } from '../../types/database.types';
 import { getISTTodayDate } from '../../lib/utils/dateUtils';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
 
 export const FacultyQuizzesPage: React.FC = () => {
@@ -483,7 +484,7 @@ export const FacultyQuizzesPage: React.FC = () => {
 
                 <div className="mt-5 pt-3 flex items-center gap-2">
                   <a
-                    href={quiz.google_form_url}
+                    href={sanitizeExternalUrl(quiz.google_form_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-300 shadow-xs"

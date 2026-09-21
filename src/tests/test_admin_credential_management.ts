@@ -6,8 +6,8 @@ import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
 import handleAdminAuth from "../../api/admin-auth";
 
-const supabaseUrl = "https://obssoojzryqiudllnlkh.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co";
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 const connectionString = process.env.DATABASE_URL || '';
 
 function createFreshClient() {

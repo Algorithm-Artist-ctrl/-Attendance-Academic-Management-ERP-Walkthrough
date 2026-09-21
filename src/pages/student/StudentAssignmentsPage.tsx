@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Assignment, AssignmentSubmission } from '../../types/database.types';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 import { clsx } from 'clsx';
 
 export const StudentAssignmentsPage: React.FC = () => {
@@ -278,7 +279,7 @@ export const StudentAssignmentsPage: React.FC = () => {
                 <div className="mt-5 pt-3 space-y-2">
                   {assignment.google_form_url && (
                     <a
-                      href={assignment.google_form_url}
+                      href={sanitizeExternalUrl(assignment.google_form_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => handleMarkGoogleFormSubmitted(assignment)}

@@ -3,8 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { supabaseService } from '../lib/services/supabaseService';
 
-const supabaseUrl = 'https://obssoojzryqiudllnlkh.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co';
+if (!process.env.VITE_SUPABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 
 function createFreshClient() {
   return createClient(supabaseUrl, supabaseAnonKey, {

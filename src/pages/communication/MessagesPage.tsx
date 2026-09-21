@@ -57,6 +57,7 @@ import { supabase } from '../../lib/supabase/supabaseClient';
 import { NewConversationModal } from '../../components/communication/NewConversationModal';
 import { NewGroupMessageModal } from '../../components/communication/NewGroupMessageModal';
 import { GroupMembersModal } from '../../components/communication/GroupMembersModal';
+import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
 
 interface MessagesPageProps {
   initialConversationId?: string;
@@ -2664,7 +2665,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                                             <span className="truncate">{msg.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
                                           </div>
                                           <a
-                                            href={msg.attachment_url}
+                                            href={sanitizeExternalUrl(msg.attachment_url)}
                                             download={msg.attachment_name || 'download'}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -3416,7 +3417,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                                             {isImg ? <ImageIcon className="w-3.5 h-3.5 shrink-0" /> : <FileText className="w-3.5 h-3.5 shrink-0" />}
                                             <span className="truncate">{m.attachment_name || (isImg ? 'Image attachment' : 'Attachment')}</span>
                                           </div>
-                                          <a href={m.attachment_url} target="_blank" rel="noreferrer" download className="p-1 hover:bg-black/5 rounded transition-colors shrink-0">
+                                          <a href={sanitizeExternalUrl(m.attachment_url)} target="_blank" rel="noreferrer" download className="p-1 hover:bg-black/5 rounded transition-colors shrink-0">
                                             <Download className="w-3.5 h-3.5" />
                                           </a>
                                         </div>
@@ -3630,7 +3631,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               </span>
               <div className="flex items-center gap-2">
                 <a
-                  href={previewImageUrl}
+                  href={sanitizeExternalUrl(previewImageUrl)}
                   download="image_attachment"
                   target="_blank"
                   rel="noopener noreferrer"
