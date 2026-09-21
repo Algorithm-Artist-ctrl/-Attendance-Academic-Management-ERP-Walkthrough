@@ -1,5 +1,3 @@
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { LeaveApplication } from '../../types/database.types';
 
 export interface GenerateLeavePdfParams {
@@ -18,8 +16,13 @@ export interface GenerateLeavePdfParams {
 /**
  * Generates and downloads an authentic, official VCTM ERP Leave Approval Certificate PDF
  * directly to the user's local machine Downloads directory.
+ * Heavy pdf generation libraries (jspdf and jspdf-autotable) are loaded dynamically on demand.
  */
-export function generateApprovedLeavePdf(params: GenerateLeavePdfParams): jsPDF {
+export async function generateApprovedLeavePdf(params: GenerateLeavePdfParams): Promise<any> {
+  const { jsPDF } = await import('jspdf');
+  const autoTableModule = await import('jspdf-autotable');
+  const autoTable = (autoTableModule.default || autoTableModule) as any;
+
   const {
     application,
     studentName,

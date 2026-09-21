@@ -58,6 +58,8 @@ import { NewConversationModal } from '../../components/communication/NewConversa
 import { NewGroupMessageModal } from '../../components/communication/NewGroupMessageModal';
 import { GroupMembersModal } from '../../components/communication/GroupMembersModal';
 import { sanitizeExternalUrl } from '../../lib/utils/urlUtils';
+import { durableMutationManager } from '../../lib/services/durableMutationManager';
+import { indexedDbQueue } from '../../lib/storage/indexedDbQueue';
 
 interface MessagesPageProps {
   initialConversationId?: string;
@@ -1149,6 +1151,96 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         });
       } else {
         const errorMsg = res.error?.message || 'Failed to send group message.';
+        const isOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || errorMsg.includes('fetch failed');
+        
+        if (isOffline) {
+          indexedDbQueue.putOutbox({
+            client_message_id: tempId,
+            group_id: selectedGroup.id,
+            payload: {
+              academicYearId: selectedGroup.academic_year_id,
+              sectionId: selectedGroup.section_id,
+              subjectId: selectedGroup.subject_id || undefined,
+              message: messageText,
+              title: titleText,
+              attachmentUrl: attached?.dataUrl,
+              attachmentName: attached?.file.name,
+              attachmentType: attached?.file.type,
+              attachmentSize: attached?.file.size,
+              replyToMessageId: replyId,
+            },
+            created_at: new Date().toISOString(),
+            status: 'QUEUED',
+            retry_count: 0
+          }).catch(() => {});
+
+          durableMutationManager.enqueue(
+            'SEND_GROUP_MESSAGE',
+            'group_messages',
+            tempId,
+            {
+              academicYearId: selectedGroup.academic_year_id,
+              sectionId: selectedGroup.section_id,
+              subjectId: selectedGroup.subject_id || undefined,
+              message: messageText,
+              title: titleText,
+              attachmentUrl: attached?.dataUrl,
+              attachmentName: attached?.file.name,
+              attachmentType: attached?.file.type,
+              attachmentSize: attached?.file.size,
+              replyToMessageId: replyId,
+              clientMessageId: tempId,
+            },
+            tempId
+          ).catch(() => {});
+
+          setMessageSendError('Offline: Message queued securely. Will automatically deliver when connected.');
+          setGroupMessages(prev => {
+            const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'sending' as const } : m);
+            setCachedGroupMessages(selectedGroup.id, updated);
+            return updated;
+          });
+        } else {
+          setMessageSendError(errorMsg);
+          setGroupMessages(prev => {
+            const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
+            setCachedGroupMessages(selectedGroup.id, updated);
+            return updated;
+          });
+        }
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || 'Error sending message.';
+      const isOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || errorMsg.includes('fetch failed') || errorMsg.includes('NetworkError');
+
+      if (isOffline) {
+        durableMutationManager.enqueue(
+          'SEND_GROUP_MESSAGE',
+          'group_messages',
+          tempId,
+          {
+            academicYearId: selectedGroup.academic_year_id,
+            sectionId: selectedGroup.section_id,
+            subjectId: selectedGroup.subject_id || undefined,
+            message: messageText,
+            title: titleText,
+            attachmentUrl: attached?.dataUrl,
+            attachmentName: attached?.file.name,
+            attachmentType: attached?.file.type,
+            attachmentSize: attached?.file.size,
+            replyToMessageId: replyId,
+            clientMessageId: tempId,
+          },
+          tempId
+        ).catch(() => {});
+
+        setMessageSendError('Offline: Message queued securely. Will automatically deliver when connected.');
+        setGroupMessages(prev => {
+          const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'sending' as const } : m);
+          setCachedGroupMessages(selectedGroup.id, updated);
+          return updated;
+        });
+      } else {
         setMessageSendError(errorMsg);
         setGroupMessages(prev => {
           const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
@@ -1156,14 +1248,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           return updated;
         });
       }
-    } catch (err: any) {
-      const errorMsg = err.message || 'Error sending message.';
-      setMessageSendError(errorMsg);
-      setGroupMessages(prev => {
-        const updated = prev.map(m => m.id === tempId ? { ...m, delivery_status: 'failed' as const, error: errorMsg } : m);
-        setCachedGroupMessages(selectedGroup.id, updated);
-        return updated;
-      });
     } finally {
       isSendingGroupRef.current = false;
       setGroupSending(false);

@@ -1,6 +1,3 @@
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 export type MarksReportType = 'CURRENT_ASSESSMENT' | 'SUBJECT_SCORECARD' | 'SECTION_REPORT' | 'STUDENT_REPORT';
 
 export interface StudentMarkRow {
@@ -54,7 +51,10 @@ export interface MarksPdfReportParams {
   };
 }
 
-export function generateMarksReportPdf(params: MarksPdfReportParams): jsPDF {
+export async function generateMarksReportPdf(params: MarksPdfReportParams): Promise<any> {
+  const { jsPDF } = await import('jspdf');
+  const autoTableModule = await import('jspdf-autotable');
+  const autoTable = (autoTableModule.default || autoTableModule) as any;
   const {
     reportType,
     institutionName = 'VIVEKANANDA COLLEGE OF TECHNOLOGY & MANAGEMENT',

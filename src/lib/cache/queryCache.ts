@@ -1,8 +1,11 @@
 /**
  * Stale-While-Revalidate (SWR) Client Query Cache & Request Deduplicator
  * Provides instant cached data rendering (0ms), background silent revalidation,
- * and in-flight Promise sharing to prevent duplicate network roundtrips.
+ * in-flight Promise sharing to prevent duplicate network roundtrips,
+ * and persistent IndexedDB storage for instant offline / cold-start paints.
  */
+
+import { indexedDbQueue } from '../storage/indexedDbQueue';
 
 interface CacheEntry<T> {
   data: T;
@@ -13,10 +16,42 @@ interface CacheEntry<T> {
 class QueryCacheManager {
   private cache = new Map<string, CacheEntry<any>>();
   private inFlight = new Map<string, Promise<any>>();
+  private abortControllers = new Map<string, AbortController>();
+  private isHydrated = false;
 
-  // Default TTL: 5 minutes; default staleTime: 30 seconds
-  private DEFAULT_TTL_MS = 5 * 60 * 1000;
-  private DEFAULT_STALE_TIME_MS = 30 * 1000;
+  // Default TTL: 15 minutes; default staleTime: 45 seconds
+  private DEFAULT_TTL_MS = 15 * 60 * 1000;
+  private DEFAULT_STALE_TIME_MS = 45 * 1000;
+
+  constructor() {
+    this.hydrateFromDisk();
+  }
+
+  /**
+   * Hydrates memory cache from persistent IndexedDB storage on startup.
+   */
+  async hydrateFromDisk(): Promise<void> {
+    if (this.isHydrated) return;
+    try {
+      const stored = await indexedDbQueue.getAllCache();
+      const now = Date.now();
+      for (const entry of stored) {
+        if (now - entry.timestamp < entry.ttl_ms) {
+          this.cache.set(entry.cache_key, {
+            data: entry.data,
+            timestamp: entry.timestamp,
+            ttlMs: entry.ttl_ms,
+          });
+        } else {
+          // Prune expired entry
+          indexedDbQueue.deleteCache(entry.cache_key).catch(() => {});
+        }
+      }
+      this.isHydrated = true;
+    } catch (err) {
+      console.warn('[QueryCache] Hydration warning:', err);
+    }
+  }
 
   /**
    * Retrieves data from cache synchronously if present and not expired
@@ -26,6 +61,7 @@ class QueryCacheManager {
     if (!entry) return undefined;
     if (Date.now() - entry.timestamp > entry.ttlMs) {
       this.cache.delete(key);
+      indexedDbQueue.deleteCache(key).catch(() => {});
       return undefined;
     }
     return entry.data as T;
@@ -39,14 +75,37 @@ class QueryCacheManager {
   }
 
   /**
-   * Directly sets data in cache
+   * Directly sets data in memory and persists to IndexedDB
    */
-  set<T>(key: string, data: T, ttlMs?: number): void {
+  set<T>(key: string, data: T, ttlMs?: number, persistToDisk = true): void {
+    const ttl = ttlMs ?? this.DEFAULT_TTL_MS;
+    const now = Date.now();
+
     this.cache.set(key, {
       data,
-      timestamp: Date.now(),
-      ttlMs: ttlMs ?? this.DEFAULT_TTL_MS,
+      timestamp: now,
+      ttlMs: ttl,
     });
+
+    if (persistToDisk) {
+      indexedDbQueue.putCache({
+        cache_key: key,
+        data,
+        timestamp: now,
+        ttl_ms: ttl,
+      }).catch((err) => console.warn('[QueryCache] Disk persistence warning:', err));
+    }
+  }
+
+  /**
+   * Surgically update a cache entry in place (e.g. from a Supabase Realtime event)
+   * without triggering a full page refetch.
+   */
+  update<T>(key: string, updater: (old: T | undefined) => T, ttlMs?: number): T {
+    const oldVal = this.get<T>(key);
+    const nextVal = updater(oldVal);
+    this.set(key, nextVal, ttlMs);
+    return nextVal;
   }
 
   /**
@@ -54,11 +113,12 @@ class QueryCacheManager {
    */
   getOrFetch<T>(
     key: string,
-    fetcher: () => Promise<T>,
+    fetcher: (signal?: AbortSignal) => Promise<T>,
     options?: {
       ttlMs?: number;
       staleTimeMs?: number;
       forceFresh?: boolean;
+      persistToDisk?: boolean;
       onBackgroundUpdate?: (data: T) => void;
     }
   ): Promise<T> {
@@ -76,24 +136,26 @@ class QueryCacheManager {
   }
 
   /**
-   * Core SWR Fetcher with in-flight Promise deduplication:
+   * Core SWR Fetcher with in-flight Promise deduplication and AbortController support:
    * 1. Returns fresh cache instantly (< 1ms).
    * 2. Returns stale cache instantly while triggering a silent background revalidation.
    * 3. Deduplicates concurrent calls to the same key into a single network Promise.
    */
   async fetchWithCache<T>(
     key: string,
-    fetcher: () => Promise<T>,
+    fetcher: (signal?: AbortSignal) => Promise<T>,
     options?: {
       ttlMs?: number;
       staleTimeMs?: number;
       forceFresh?: boolean;
+      persistToDisk?: boolean;
       onBackgroundUpdate?: (data: T) => void;
     }
   ): Promise<T> {
     const ttlMs = options?.ttlMs ?? this.DEFAULT_TTL_MS;
     const staleTimeMs = options?.staleTimeMs ?? this.DEFAULT_STALE_TIME_MS;
     const forceFresh = options?.forceFresh ?? false;
+    const persistToDisk = options?.persistToDisk ?? true;
 
     // 1. If not forcing fresh, check memory cache
     if (!forceFresh) {
@@ -106,7 +168,7 @@ class QueryCacheManager {
         }
 
         // Stale cache hit - return stale data immediately and revalidate in background
-        this.revalidateInBackground(key, fetcher, ttlMs, options?.onBackgroundUpdate);
+        this.revalidateInBackground(key, fetcher, ttlMs, persistToDisk, options?.onBackgroundUpdate);
         return entry.data as T;
       }
     }
@@ -117,16 +179,20 @@ class QueryCacheManager {
       return activePromise as Promise<T>;
     }
 
-    // 3. Initiate fetch with in-flight tracking
+    // 3. Initiate fetch with in-flight tracking & abort controller
+    const controller = new AbortController();
+    this.abortControllers.set(key, controller);
+
     const promise = (async () => {
       try {
-        const result = await fetcher();
+        const result = await fetcher(controller.signal);
         if (result !== undefined && result !== null) {
-          this.set(key, result, ttlMs);
+          this.set(key, result, ttlMs, persistToDisk);
         }
         return result;
       } finally {
         this.inFlight.delete(key);
+        this.abortControllers.delete(key);
       }
     })();
 
@@ -136,29 +202,36 @@ class QueryCacheManager {
 
   private revalidateInBackground<T>(
     key: string,
-    fetcher: () => Promise<T>,
+    fetcher: (signal?: AbortSignal) => Promise<T>,
     ttlMs: number,
+    persistToDisk: boolean,
     onBackgroundUpdate?: (data: T) => void
   ): void {
     if (this.inFlight.has(key)) return;
 
+    const controller = new AbortController();
+    this.abortControllers.set(key, controller);
+
     const promise = (async () => {
       try {
-        const freshData = await fetcher();
+        const freshData = await fetcher(controller.signal);
         if (freshData !== undefined && freshData !== null) {
-          this.set(key, freshData, ttlMs);
+          this.set(key, freshData, ttlMs, persistToDisk);
           if (onBackgroundUpdate) {
             try {
               onBackgroundUpdate(freshData);
             } catch (cbErr) {
-              console.warn('QueryCache background update callback warning:', cbErr);
+              console.warn('[QueryCache] Background update callback warning:', cbErr);
             }
           }
         }
-      } catch (err) {
-        console.warn(`QueryCache background revalidation failed for ${key}:`, err);
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.warn(`[QueryCache] Background revalidation failed for ${key}:`, err);
+        }
       } finally {
         this.inFlight.delete(key);
+        this.abortControllers.delete(key);
       }
     })();
 
@@ -166,11 +239,32 @@ class QueryCacheManager {
   }
 
   /**
-   * Invalidate exact key
+   * Cancel active in-flight requests matching key or prefix
+   */
+  cancelInFlight(keyPrefix?: string): void {
+    for (const [key, controller] of this.abortControllers.entries()) {
+      if (!keyPrefix || key.startsWith(keyPrefix)) {
+        try {
+          controller.abort();
+        } catch {}
+        this.abortControllers.delete(key);
+        this.inFlight.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Invalidate exact key from memory and persistent disk
    */
   invalidate(key: string): void {
     this.cache.delete(key);
     this.inFlight.delete(key);
+    const controller = this.abortControllers.get(key);
+    if (controller) {
+      try { controller.abort(); } catch {}
+      this.abortControllers.delete(key);
+    }
+    indexedDbQueue.deleteCache(key).catch(() => {});
   }
 
   /**
@@ -187,10 +281,7 @@ class QueryCacheManager {
         keysToDelete.push(key);
       }
     }
-    keysToDelete.forEach(k => {
-      this.cache.delete(k);
-      this.inFlight.delete(k);
-    });
+    keysToDelete.forEach(k => this.invalidate(k));
   }
 
   /**
@@ -198,7 +289,8 @@ class QueryCacheManager {
    */
   clear(): void {
     this.cache.clear();
-    this.inFlight.clear();
+    this.cancelInFlight();
+    indexedDbQueue.clearCache().catch(() => {});
   }
 
   /**

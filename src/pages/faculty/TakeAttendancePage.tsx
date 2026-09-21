@@ -41,6 +41,7 @@ import {
   isDateInPast 
 } from '../../lib/utils/dateUtils';
 import { supabaseService } from '../../lib/services/supabaseService';
+import { durableMutationManager } from '../../lib/services/durableMutationManager';
 import { clsx } from 'clsx';
 
 interface TakeAttendancePageProps {
@@ -619,6 +620,53 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('Failed to save attendance', err);
+
+      const isOfflineOrNetworkFailure = 
+        (typeof navigator !== 'undefined' && !navigator.onLine) || 
+        err?.message?.includes('fetch failed') || 
+        err?.message?.includes('NetworkError') ||
+        err?.message?.includes('Failed to fetch');
+
+      if (isOfflineOrNetworkFailure) {
+        try {
+          const [startTime, endTime] = timeSlot.split(' – ');
+          const idempotencyKey = `att_${facultyId}_${activeSection.id}_${activeSubject.id}_${sessionDate}_${startTime || '09:00'}`;
+
+          await durableMutationManager.enqueue(
+            'SAVE_ATTENDANCE',
+            'attendance_sessions',
+            idempotencyKey,
+            {
+              timetableEntryId: activeClass.id,
+              facultyId,
+              sectionId: activeSection.id,
+              subjectId: activeSubject.id,
+              sessionDate,
+              startTime: startTime || '09:00',
+              endTime: endTime || '09:50',
+              studentRecords: sectionStudents.map(s => ({
+                studentId: s.id,
+                status: (finalMap[s.id] || 'Unmarked') as (AttendanceStatus | 'Unmarked'),
+              })),
+            },
+            idempotencyKey
+          );
+
+          // Preserve marks on device so nothing is lost!
+          setSavedAttendanceMap({ ...finalMap });
+          setAttendanceMap({ ...finalMap });
+          setSaveStatus('saved');
+          setIsConfirmOpen(false);
+          setIsUnmarkedReviewOpen(false);
+          setSaveError('Offline Mode: Attendance recorded and saved to device queue. Will auto-sync when connection returns.');
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 5000);
+          return;
+        } catch (queueErr) {
+          console.error('Failed to enqueue attendance mutation:', queueErr);
+        }
+      }
+
       setSaveStatus('error');
       setSaveError(err?.message ? `Attendance Save Failed — Retry: ${err.message}` : 'Attendance Save Failed — Retry');
     } finally {

@@ -571,7 +571,7 @@ async function runLeaveWorkflowE2ETests() {
     assert(fullApprovedAppRow.status === 'APPROVED', 'Application verified as APPROVED in database');
 
     try {
-      const doc = generateApprovedLeavePdf({
+      const doc = await generateApprovedLeavePdf({
         application: fullApprovedAppRow,
         studentName: fullApprovedAppRow.student_name,
         rollNumber: fullApprovedAppRow.roll_number,

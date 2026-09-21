@@ -48,6 +48,7 @@ import {
 } from '../../lib/utils/marksPdfGenerator';
 import Papa from 'papaparse';
 import { clsx } from 'clsx';
+import { durableMutationManager } from '../../lib/services/durableMutationManager';
 
 type AssessmentKind = 'sessional' | 'quiz' | 'assignment';
 
@@ -779,6 +780,65 @@ export const FacultyMarksManagementPage: React.FC = () => {
       setTimeout(() => setSaveStatus('idle'), 2500);
     } catch (err: any) {
       console.error('Save marks error:', err);
+
+      const isOfflineOrNetworkFailure = 
+        (typeof navigator !== 'undefined' && !navigator.onLine) || 
+        err?.message?.includes('fetch failed') || 
+        err?.message?.includes('NetworkError') ||
+        err?.message?.includes('Failed to fetch');
+
+      if (isOfflineOrNetworkFailure && activeAssessment) {
+        try {
+          const idempotencyKey = `marks_${activeAssessment.id}_${publishMode}_${Date.now()}`;
+          const studentMarksPayload: Array<{
+            studentId: string;
+            marksObtained: number;
+            remarks?: string;
+            oldMarks?: number;
+          }> = [];
+
+          for (const st of sectionStudents) {
+            const entry = marksRoster[st.id];
+            if (entry && entry.marks !== '' && entry.marks !== undefined) {
+              studentMarksPayload.push({
+                studentId: st.id,
+                marksObtained: Number(entry.marks),
+                remarks: entry.remarks || undefined,
+              });
+            }
+          }
+
+          await durableMutationManager.enqueue(
+            publishMode === 'published' ? 'PUBLISH_MARKS' : 'SAVE_MARKS',
+            'sessional_assessments',
+            activeAssessment.id,
+            {
+              sessionalAssessmentId: activeAssessment.id,
+              facultyId: currentFacultyId,
+              subjectId: selectedSubjectId,
+              sectionId: selectedSectionId,
+              sessionalType: activeAssessment.title,
+              maxMarks: activeAssessment.maxMarks,
+              studentMarks: studentMarksPayload,
+              isPublished: publishMode === 'published'
+            },
+            idempotencyKey
+          );
+
+          setIsDirty(false);
+          setSaveStatus('saved');
+          setIsPublishModalOpen(false);
+          setNotificationToast({
+            type: 'success',
+            message: `Offline: Marks saved securely to device queue. Will auto-sync when network returns.`
+          });
+          setTimeout(() => setSaveStatus('idle'), 4000);
+          return;
+        } catch (queueErr) {
+          console.error('Failed to enqueue marks mutation:', queueErr);
+        }
+      }
+
       setSaveStatus('error');
       setNotificationToast({
         type: 'error',
@@ -1070,7 +1130,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
   const [selectedPdfReportType, setSelectedPdfReportType] = useState<MarksReportType>('CURRENT_ASSESSMENT');
   const [selectedStudentForPdf, setSelectedStudentForPdf] = useState<string>('');
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!activeAssessment || sectionStudents.length === 0) return;
 
     const currentSub = subjects.find(s => s.id === selectedSubjectId);
@@ -1167,7 +1227,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
       }
     }
 
-    const doc = generateMarksReportPdf({
+    const doc = await generateMarksReportPdf({
       reportType: selectedPdfReportType,
       institutionName: institution?.name || 'VIVEKANANDA COLLEGE OF TECHNOLOGY & MANAGEMENT',
       collegeCode: '340',

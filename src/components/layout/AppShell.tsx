@@ -25,11 +25,14 @@ import {
   UserCheck,
   Award,
   WifiOff,
+  RefreshCw,
+  AlertCircle,
   ExternalLink,
   Archive
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import { useNetworkStatus } from '../../lib/hooks/useNetworkStatus';
 import vctmOfficialLogo from '../../assets/vctm-logo.png';
 import { clsx } from 'clsx';
 import { NotificationSkeleton } from '../common/SkeletonLoader';
@@ -71,6 +74,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     markNotificationAsRead,
     markAllNotificationsAsRead
   } = useAcademic();
+  const networkStatus = useNetworkStatus();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
@@ -643,13 +647,43 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* MAIN VIEWPORT AREA */}
       {/* ======================================================== */}
       <div className="flex-1 flex flex-col min-w-0 max-w-full">
-        {/* Offline Reconnection Alert Banner */}
-        {!isOnline && (
+        {/* Offline & Durable Mutation Sync Status Banner */}
+        {networkStatus.isOffline ? (
           <aside role="status" className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-center gap-2 shadow-md z-30 sticky top-0">
             <WifiOff className="w-4 h-4 text-slate-950 shrink-0" />
-            <span>Connection interrupted. Reconnecting...</span>
+            <span>
+              Offline Mode — {networkStatus.pendingCount > 0 
+                ? `${networkStatus.pendingCount} action(s) securely queued on device. Data is safe.` 
+                : 'Showing local cached data.'}
+            </span>
+            {networkStatus.pendingCount > 0 && (
+              <button 
+                type="button"
+                onClick={networkStatus.forceSyncNow}
+                className="ml-2 px-2 py-0.5 rounded bg-slate-950 text-amber-400 text-xs font-bold hover:bg-slate-900 cursor-pointer"
+              >
+                Sync Now
+              </button>
+            )}
           </aside>
-        )}
+        ) : networkStatus.isSyncing || networkStatus.syncingCount > 0 ? (
+          <aside role="status" className="bg-sky-600 text-white px-4 py-1.5 text-xs font-semibold flex items-center justify-center gap-2 shadow-md z-30 sticky top-0 animate-in fade-in duration-200">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+            <span>Syncing changes with cloud ({networkStatus.syncingCount} syncing, {networkStatus.pendingCount} queued)...</span>
+          </aside>
+        ) : networkStatus.pendingCount > 0 ? (
+          <aside role="status" className="bg-amber-100 border-b border-amber-300 text-amber-900 px-4 py-1.5 text-xs font-semibold flex items-center justify-center gap-2 z-30 sticky top-0">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>{networkStatus.pendingCount} change(s) pending sync.</span>
+            <button 
+              type="button"
+              onClick={networkStatus.forceSyncNow}
+              className="ml-2 px-2 py-0.5 rounded bg-amber-200 hover:bg-amber-300 text-amber-900 text-xs font-bold cursor-pointer"
+            >
+              Sync Now
+            </button>
+          </aside>
+        ) : null}
 
         {/* Top Navbar */}
         <header className="sticky top-0 z-20 bg-white/95 border-b border-slate-200/80 backdrop-blur-md px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 max-w-full">
@@ -702,6 +736,27 @@ export const AppShell: React.FC<AppShellProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Network & Offline Queue Status Indicator Pill */}
+            {networkStatus.pendingCount > 0 ? (
+              <button
+                type="button"
+                onClick={networkStatus.forceSyncNow}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold shadow-xs hover:bg-amber-100 transition-all cursor-pointer"
+                title="Click to sync queued actions with cloud"
+              >
+                <RefreshCw className={clsx('w-3.5 h-3.5 text-amber-700', networkStatus.isSyncing && 'animate-spin')} />
+                <span>{networkStatus.pendingCount} queued</span>
+              </button>
+            ) : networkStatus.isDegraded ? (
+              <div 
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium shadow-xs"
+                title="Connection latency is elevated. Using cached responses."
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Slow Net</span>
+              </div>
+            ) : null}
 
             {/* Notification Bell */}
             <div className="relative">

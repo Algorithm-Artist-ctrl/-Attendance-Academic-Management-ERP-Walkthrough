@@ -169,7 +169,7 @@ async function runMarksAndAssessmentTests() {
     remarks: 'Verified'
   }));
 
-  const doc1 = generateMarksReportPdf({
+  const doc1 = await generateMarksReportPdf({
     reportType: 'CURRENT_ASSESSMENT',
     institutionName: 'VIVEKANANDA COLLEGE OF TECHNOLOGY & MANAGEMENT',
     collegeCode: '340',
@@ -200,7 +200,7 @@ async function runMarksAndAssessmentTests() {
     status: 'Pass'
   }));
 
-  const doc2 = generateMarksReportPdf({
+  const doc2 = await generateMarksReportPdf({
     reportType: 'SUBJECT_SCORECARD',
     institutionName: 'VIVEKANANDA COLLEGE OF TECHNOLOGY & MANAGEMENT',
     collegeCode: '340',
@@ -217,7 +217,7 @@ async function runMarksAndAssessmentTests() {
   console.log(`  ✓ Mode 2: SUBJECT_SCORECARD PDF generated (${buf2.byteLength} bytes)`);
 
   // Mode 3: Section Report
-  const doc3 = generateMarksReportPdf({
+  const doc3 = await generateMarksReportPdf({
     reportType: 'SECTION_REPORT',
     institutionName: 'VIVEKANANDA COLLEGE OF TECHNOLOGY & MANAGEMENT',
     collegeCode: '340',
@@ -234,7 +234,7 @@ async function runMarksAndAssessmentTests() {
   console.log(`  ✓ Mode 3: SECTION_REPORT PDF generated (${buf3.byteLength} bytes)`);
 
   // Mode 4: Individual Student Report
-  const doc4 = generateMarksReportPdf({
+  const doc4 = await generateMarksReportPdf({
     reportType: 'STUDENT_REPORT',
     institutionName: 'VIVEKANANDA COLLEGE OF TECHNOLOGY & MANAGEMENT',
     collegeCode: '340',
