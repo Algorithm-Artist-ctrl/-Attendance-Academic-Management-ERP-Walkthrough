@@ -5,10 +5,17 @@ export async function runDataReconciliation() {
   console.log('VCTM ERP: RECONCILING DUPLICATE QUIZZES & ASSESSMENTS');
   console.log('========================================================================\n');
 
-  // Authenticate as super admin
+  // Authenticate as super admin using environment variables only.
+  // Never commit real credentials into source control.
+  const adminEmail = process.env.ERP_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '';
+  const adminPassword = process.env.ERP_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '';
+  if (!adminEmail || !adminPassword) {
+    throw new Error('Missing ERP_ADMIN_EMAIL/ERP_ADMIN_PASSWORD environment variables.');
+  }
+
   const { data: auth, error: authErr } = await supabase.auth.signInWithPassword({
-    email: 'tarunkushwah798@gmail.com',
-    password: 'VctmAdmin@2026',
+    email: adminEmail,
+    password: adminPassword,
   });
 
   if (authErr || !auth.user) {
