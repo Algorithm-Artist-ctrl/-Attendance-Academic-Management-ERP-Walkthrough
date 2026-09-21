@@ -121,6 +121,13 @@ const _inFlightFacultyDashboard = new Map<string, Promise<FacultyDashboardPayloa
 const _facultyDashboardCache = new Map<string, { timestamp: number; data: FacultyDashboardPayload }>();
 const FACULTY_DASHBOARD_CACHE_TTL_MS = 20 * 1000; // 20-second cache for dashboard payload
 
+export const isValidUuid = (val?: string | null): boolean => {
+  return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val.trim());
+};
+
+const _inFlightGroupMessages = new Map<string, Promise<GroupMessage[]>>();
+const _inFlightUserMessageGroups = new Map<string, Promise<MessageGroup[]>>();
+
 let _broadcastChannel: ReturnType<typeof supabase.channel> | null = null;
 function getBroadcastChannel() {
   if (!_broadcastChannel) {
@@ -159,6 +166,8 @@ export const supabaseService = {
     _inFlightEnsureSessionals.clear();
     _inFlightFacultyDashboard.clear();
     _facultyDashboardCache.clear();
+    _inFlightGroupMessages.clear();
+    _inFlightUserMessageGroups.clear();
     queryCache.clear();
   },
 
@@ -6973,211 +6982,236 @@ export const supabaseService = {
       departmentId?: string | null;
     }
   ): Promise<MessageGroup[]> {
-    try {
-      let facultyId: string | null = profileContext?.facultyId || null;
-      let studentSectionId: string | null = profileContext?.studentSectionId || null;
-      let studentYearId: string | null = profileContext?.studentYearId || null;
-      let departmentId: string | null = profileContext?.departmentId || null;
-
-      if (!facultyId && !studentSectionId && !departmentId) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, role, student_id, faculty_id, department_id')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (profile) {
-          facultyId = profile.faculty_id || null;
-          departmentId = profile.department_id || null;
-        }
-
-        if (role === 'faculty' && !facultyId) {
-          const { data: fac } = await supabase
-            .from('faculty')
-            .select('id')
-            .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
-            .maybeSingle();
-          if (fac) facultyId = fac.id;
-        }
-
-        if (role === 'student') {
-          const { data: stu } = await supabase
-            .from('students')
-            .select('id, section_id, academic_year_id')
-            .or(`auth_user_id.eq.${userId},id.eq.${profile?.student_id || '00000000-0000-0000-0000-000000000000'}`)
-            .limit(1)
-            .maybeSingle();
-          if (stu) {
-            studentSectionId = stu.section_id;
-            studentYearId = stu.academic_year_id;
-          }
-        }
-      }
-
-      // Base query for groups
-      let query = supabase
-        .from('message_groups')
-        .select(`
-          *,
-          subject:subjects(id, subject_name, subject_code),
-          section:sections(id, name, room_number),
-          academic_year:academic_years(id, year_number, name),
-          department:departments(id, name, code)
-        `)
-        .order('last_message_at', { ascending: false });
-
-      if (role === 'student') {
-        if (!studentSectionId || !studentYearId) return [];
-        query = query.eq('section_id', studentSectionId).eq('academic_year_id', studentYearId);
-      } else if (role === 'hod' && departmentId) {
-        query = query.eq('department_id', departmentId);
-      }
-
-      const { data: groups, error } = await query;
-      if (error || !groups) {
-        console.error('Error fetching message groups:', error);
-        return [];
-      }
-
-      let filteredGroups = groups as MessageGroup[];
-
-      // For faculty, refine by assigned combinations and section-wide announcements
-      if (role === 'faculty' && facultyId) {
-        const { data: fsaList } = await supabase
-          .from('faculty_subject_assignments')
-          .select('section_id, subject_id')
-          .eq('faculty_id', facultyId)
-          .eq('active', true);
-
-        const { data: teList } = await supabase
-          .from('timetable_entries')
-          .select('section_id, subject_id')
-          .eq('faculty_id', facultyId)
-          .eq('active', true);
-
-        const { data: coordData } = await supabase
-          .from('sections')
-          .select('id')
-          .eq('class_coordinator_id', facultyId);
-
-        const validPairs = new Set<string>();
-        const assignedSectionIds = new Set<string>();
-
-        (fsaList || []).forEach(f => {
-          validPairs.add(`${f.section_id}_${f.subject_id}`);
-          assignedSectionIds.add(f.section_id);
-        });
-        (teList || []).forEach(t => {
-          if (t.section_id && t.subject_id) {
-            validPairs.add(`${t.section_id}_${t.subject_id}`);
-            assignedSectionIds.add(t.section_id);
-          }
-        });
-        (coordData || []).forEach(c => assignedSectionIds.add(c.id));
-
-        filteredGroups = filteredGroups.filter(g => {
-          if (g.subject_id) {
-            return validPairs.has(`${g.section_id}_${g.subject_id}`);
-          }
-          // Section-wide announcement: accessible if faculty teaches in section or is coordinator
-          return assignedSectionIds.has(g.section_id);
-        });
-      }
-
-      if (filteredGroups.length === 0) return [];
-
-      const groupIds = filteredGroups.map(g => g.id);
-      const relevantSectionIds = Array.from(new Set(filteredGroups.map(g => g.section_id)));
-
-      // Fetch member counts (distinct active students per section & year)
-      const { data: studentCounts } = await supabase
-        .from('students')
-        .select('id, section_id, academic_year_id')
-        .in('section_id', relevantSectionIds)
-        .eq('active', true)
-        .or('status.eq.ACTIVE,status.is.null');
-
-      const countMap: Record<string, number> = {};
-      const seenStudents = new Set<string>();
-      (studentCounts || []).forEach(s => {
-        if (!seenStudents.has(s.id)) {
-          seenStudents.add(s.id);
-          const key = `${s.section_id}_${s.academic_year_id}`;
-          countMap[key] = (countMap[key] || 0) + 1;
-        }
-      });
-
-      // Fetch user's read state for these groups
-      const { data: readStates } = await supabase
-        .from('group_member_read_state')
-        .select('group_id, last_read_at')
-        .eq('user_id', userId)
-        .in('group_id', groupIds);
-
-      const readMap: Record<string, string> = {};
-      (readStates || []).forEach(r => {
-        readMap[r.group_id] = r.last_read_at;
-      });
-
-      // Fetch unread message counts
-      const { data: allMessages } = await supabase
-        .from('group_messages')
-        .select('id, group_id, created_at, sender_user_id')
-        .in('group_id', groupIds)
-        .neq('sender_user_id', userId);
-
-      const unreadCountMap: Record<string, number> = {};
-      (allMessages || []).forEach(m => {
-        const lastRead = readMap[m.group_id] ? new Date(readMap[m.group_id]).getTime() : 0;
-        const msgTime = new Date(m.created_at).getTime();
-        if (msgTime > lastRead) {
-          unreadCountMap[m.group_id] = (unreadCountMap[m.group_id] || 0) + 1;
-        }
-      });
-
-      // Fetch faculty assigned for each group (to display assigned faculty name to students)
-      const { data: fsaAssignments } = await supabase
-        .from('faculty_subject_assignments')
-        .select('section_id, subject_id, faculty:faculty(id, full_name, designation, email)')
-        .in('section_id', relevantSectionIds)
-        .eq('active', true);
-
-      const facultyMap: Record<string, any> = {};
-      (fsaAssignments || []).forEach((f: any) => {
-        const key = `${f.section_id}_${f.subject_id}`;
-        if (f.faculty && !facultyMap[key]) {
-          facultyMap[key] = f.faculty;
-        }
-      });
-
-      return filteredGroups.map(g => {
-        const countKey = `${g.section_id}_${g.academic_year_id}`;
-        const facKey = `${g.section_id}_${g.subject_id}`;
-        const subName = (g.subject as any)?.subject_name || (g.subject as any)?.name || '';
-        const subCode = (g.subject as any)?.subject_code || (g.subject as any)?.code || '';
-        const displayName = subName 
-          ? `${subName} • Sec ${g.section?.name || ''}`
-          : `Class Announcement • Sec ${g.section?.name || ''}`;
-
-        return {
-          ...g,
-          name: displayName,
-          subject: g.subject ? {
-            id: g.subject.id,
-            name: subName,
-            subject_name: subName,
-            code: subCode,
-            subject_code: subCode
-          } as any : undefined,
-          members_count: countMap[countKey] || 0,
-          unread_count: unreadCountMap[g.id] || 0,
-          faculty: facultyMap[facKey] || g.faculty
-        };
-      });
-    } catch (err) {
-      console.error('Exception in fetchUserMessageGroups:', err);
+    if (!isValidUuid(userId)) {
       return [];
     }
+
+    const dedupKey = `user_groups_${userId}_${role}_${profileContext?.facultyId || ''}_${profileContext?.studentSectionId || ''}`;
+    const existing = _inFlightUserMessageGroups.get(dedupKey);
+    if (existing) {
+      return existing;
+    }
+
+    const fetchPromise = (async (): Promise<MessageGroup[]> => {
+      try {
+        let facultyId: string | null = profileContext?.facultyId || null;
+        let studentSectionId: string | null = profileContext?.studentSectionId || null;
+        let studentYearId: string | null = profileContext?.studentYearId || null;
+        let departmentId: string | null = profileContext?.departmentId || null;
+
+        if (!facultyId && !studentSectionId && !departmentId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, role, student_id, faculty_id, department_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (profile) {
+            facultyId = profile.faculty_id || null;
+            departmentId = profile.department_id || null;
+          }
+
+          if (role === 'faculty' && !facultyId) {
+            const { data: fac } = await supabase
+              .from('faculty')
+              .select('id')
+              .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
+              .maybeSingle();
+            if (fac) facultyId = fac.id;
+          }
+
+          if (role === 'student') {
+            const { data: stu } = await supabase
+              .from('students')
+              .select('id, section_id, academic_year_id')
+              .or(`auth_user_id.eq.${userId},id.eq.${profile?.student_id || '00000000-0000-0000-0000-000000000000'}`)
+              .limit(1)
+              .maybeSingle();
+            if (stu) {
+              studentSectionId = stu.section_id;
+              studentYearId = stu.academic_year_id;
+            }
+          }
+        }
+
+        // Base query for groups
+        let query = supabase
+          .from('message_groups')
+          .select(`
+            *,
+            subject:subjects(id, subject_name, subject_code),
+            section:sections(id, name, room_number),
+            academic_year:academic_years(id, year_number, name),
+            department:departments(id, name, code)
+          `)
+          .order('last_message_at', { ascending: false });
+
+        if (role === 'student') {
+          if (!studentSectionId || !studentYearId) return [];
+          query = query.eq('section_id', studentSectionId).eq('academic_year_id', studentYearId);
+        } else if (role === 'hod' && departmentId) {
+          query = query.eq('department_id', departmentId);
+        }
+
+        const { data: groups, error } = await query;
+        if (error || !groups) {
+          console.error('Error fetching message groups:', error);
+          return [];
+        }
+
+        let filteredGroups = groups as MessageGroup[];
+
+        // For faculty, refine by assigned combinations and section-wide announcements
+        if (role === 'faculty' && facultyId) {
+          const { data: fsaList } = await supabase
+            .from('faculty_subject_assignments')
+            .select('section_id, subject_id')
+            .eq('faculty_id', facultyId)
+            .eq('active', true);
+
+          const { data: teList } = await supabase
+            .from('timetable_entries')
+            .select('section_id, subject_id')
+            .eq('faculty_id', facultyId)
+            .eq('active', true);
+
+          const { data: coordData } = await supabase
+            .from('sections')
+            .select('id')
+            .eq('class_coordinator_id', facultyId);
+
+          const validPairs = new Set<string>();
+          const assignedSectionIds = new Set<string>();
+
+          (fsaList || []).forEach(f => {
+            validPairs.add(`${f.section_id}_${f.subject_id}`);
+            assignedSectionIds.add(f.section_id);
+          });
+          (teList || []).forEach(t => {
+            if (t.section_id && t.subject_id) {
+              validPairs.add(`${t.section_id}_${t.subject_id}`);
+              assignedSectionIds.add(t.section_id);
+            }
+          });
+          (coordData || []).forEach(c => assignedSectionIds.add(c.id));
+
+          filteredGroups = filteredGroups.filter(g => {
+            if (g.subject_id) {
+              return validPairs.has(`${g.section_id}_${g.subject_id}`);
+            }
+            // Section-wide announcement: accessible if faculty teaches in section or is coordinator
+            return assignedSectionIds.has(g.section_id);
+          });
+        }
+
+        if (filteredGroups.length === 0) return [];
+
+        const groupIds = filteredGroups.map(g => g.id).filter(isValidUuid);
+        const relevantSectionIds = Array.from(new Set(filteredGroups.map(g => g.section_id).filter(isValidUuid)));
+
+        // Fetch member counts (distinct active students per section & year)
+        const countMap: Record<string, number> = {};
+        if (relevantSectionIds.length > 0) {
+          const { data: studentCounts } = await supabase
+            .from('students')
+            .select('id, section_id, academic_year_id')
+            .in('section_id', relevantSectionIds)
+            .eq('active', true)
+            .or('status.eq.ACTIVE,status.is.null');
+
+          const seenStudents = new Set<string>();
+          (studentCounts || []).forEach(s => {
+            if (!seenStudents.has(s.id)) {
+              seenStudents.add(s.id);
+              const key = `${s.section_id}_${s.academic_year_id}`;
+              countMap[key] = (countMap[key] || 0) + 1;
+            }
+          });
+        }
+
+        // Fetch user's read state for these groups
+        const readMap: Record<string, string> = {};
+        if (groupIds.length > 0) {
+          const { data: readStates } = await supabase
+            .from('group_member_read_state')
+            .select('group_id, last_read_at')
+            .eq('user_id', userId)
+            .in('group_id', groupIds);
+
+          (readStates || []).forEach(r => {
+            readMap[r.group_id] = r.last_read_at;
+          });
+        }
+
+        // Fetch unread message counts
+        const unreadCountMap: Record<string, number> = {};
+        if (groupIds.length > 0) {
+          const { data: allMessages } = await supabase
+            .from('group_messages')
+            .select('id, group_id, created_at, sender_user_id')
+            .in('group_id', groupIds)
+            .neq('sender_user_id', userId);
+
+          (allMessages || []).forEach(m => {
+            const lastRead = readMap[m.group_id] ? new Date(readMap[m.group_id]).getTime() : 0;
+            const msgTime = new Date(m.created_at).getTime();
+            if (msgTime > lastRead) {
+              unreadCountMap[m.group_id] = (unreadCountMap[m.group_id] || 0) + 1;
+            }
+          });
+        }
+
+        // Fetch faculty assigned for each group (to display assigned faculty name to students)
+        const facultyMap: Record<string, any> = {};
+        if (relevantSectionIds.length > 0) {
+          const { data: fsaAssignments } = await supabase
+            .from('faculty_subject_assignments')
+            .select('section_id, subject_id, faculty:faculty(id, full_name, designation, email)')
+            .in('section_id', relevantSectionIds)
+            .eq('active', true);
+
+          (fsaAssignments || []).forEach((f: any) => {
+            const key = `${f.section_id}_${f.subject_id}`;
+            if (f.faculty && !facultyMap[key]) {
+              facultyMap[key] = f.faculty;
+            }
+          });
+        }
+
+        return filteredGroups.map(g => {
+          const countKey = `${g.section_id}_${g.academic_year_id}`;
+          const facKey = `${g.section_id}_${g.subject_id}`;
+          const subName = (g.subject as any)?.subject_name || (g.subject as any)?.name || '';
+          const subCode = (g.subject as any)?.subject_code || (g.subject as any)?.code || '';
+          const displayName = subName 
+            ? `${subName} • Sec ${g.section?.name || ''}`
+            : `Class Announcement • Sec ${g.section?.name || ''}`;
+
+          return {
+            ...g,
+            name: displayName,
+            subject: g.subject ? {
+              id: g.subject.id,
+              name: subName,
+              subject_name: subName,
+              code: subCode,
+              subject_code: subCode
+            } as any : undefined,
+            members_count: countMap[countKey] || 0,
+            unread_count: unreadCountMap[g.id] || 0,
+            faculty: facultyMap[facKey] || g.faculty
+          };
+        });
+      } catch (err) {
+        console.error('Exception in fetchUserMessageGroups:', err);
+        return [];
+      } finally {
+        _inFlightUserMessageGroups.delete(dedupKey);
+      }
+    })();
+
+    _inFlightUserMessageGroups.set(dedupKey, fetchPromise);
+    return fetchPromise;
   },
 
   async fetchGroupMessages(
@@ -7186,99 +7220,116 @@ export const supabaseService = {
     beforeCreatedAt?: string,
     currentUserId?: string
   ): Promise<GroupMessage[]> {
-    try {
-      let clearedAt: string | null = null;
-      if (currentUserId) {
-        try {
-          const { data: readState } = await supabase
-            .from('group_member_read_state')
-            .select('cleared_at')
-            .eq('group_id', groupId)
-            .eq('user_id', currentUserId)
-            .maybeSingle();
-          if (readState?.cleared_at) {
-            clearedAt = readState.cleared_at;
-          }
-        } catch {}
-      }
+    if (!isValidUuid(groupId)) {
+      return [];
+    }
 
-      let query = supabase
-        .from('group_messages')
-        .select('*')
-        .eq('group_id', groupId);
+    const dedupKey = `grp_msgs_${groupId}_${limit}_${beforeCreatedAt || 'latest'}_${currentUserId || 'anon'}`;
+    const existing = _inFlightGroupMessages.get(dedupKey);
+    if (existing) {
+      return existing;
+    }
 
-      if (clearedAt) {
-        query = query.gt('created_at', clearedAt);
-      }
-
-      if (beforeCreatedAt) {
-        query = query.lt('created_at', beforeCreatedAt);
-      }
-
-      query = query
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching group messages:', error);
-        return [];
-      }
-
-      let msgs = ((data || []) as GroupMessage[]);
-
-      // Filter out messages deleted by this specific user
-      if (currentUserId) {
-        msgs = msgs.filter(m => !(m.deleted_by_users && m.deleted_by_users.includes(currentUserId)));
-      }
-
-      // Populate reply_to references if any messages reply to another message
-      const replyIds = msgs.map(m => m.reply_to_message_id).filter(Boolean) as string[];
-      if (replyIds.length > 0) {
-        const localMap = new Map<string, GroupMessage>();
-        msgs.forEach(m => localMap.set(m.id, m));
-        
-        const missingIds = replyIds.filter(id => !localMap.has(id));
-        if (missingIds.length > 0) {
+    const fetchPromise = (async (): Promise<GroupMessage[]> => {
+      try {
+        let clearedAt: string | null = null;
+        if (currentUserId && isValidUuid(currentUserId)) {
           try {
-            const { data: parentRows } = await supabase
-              .from('group_messages')
-              .select('id, message, sender_name, sender_role, title, is_deleted')
-              .in('id', missingIds);
-            (parentRows || []).forEach(p => localMap.set(p.id, p as any));
+            const { data: readState } = await supabase
+              .from('group_member_read_state')
+              .select('cleared_at')
+              .eq('group_id', groupId)
+              .eq('user_id', currentUserId)
+              .maybeSingle();
+            if (readState?.cleared_at) {
+              clearedAt = readState.cleared_at;
+            }
           } catch {}
         }
 
-        msgs = msgs.map(m => {
-          if (m.reply_to_message_id && localMap.has(m.reply_to_message_id)) {
-            const parent = localMap.get(m.reply_to_message_id)!;
-            return {
-              ...m,
-              reply_to: {
-                id: parent.id,
-                message: parent.is_deleted ? 'Message deleted' : parent.message,
-                sender_name: parent.sender_name,
-                sender_role: parent.sender_role,
-                title: parent.title,
-                is_deleted: parent.is_deleted,
-              }
-            };
-          }
-          return m;
-        });
-      }
+        let query = supabase
+          .from('group_messages')
+          .select('*')
+          .eq('group_id', groupId);
 
-      // Deterministic chronological sort: created_at ASC, id ASC
-      return msgs.sort((a, b) => {
-        const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        if (timeDiff !== 0) return timeDiff;
-        return a.id.localeCompare(b.id);
-      });
-    } catch (err) {
-      console.error('Exception in fetchGroupMessages:', err);
-      return [];
-    }
+        if (clearedAt) {
+          query = query.gt('created_at', clearedAt);
+        }
+
+        if (beforeCreatedAt) {
+          query = query.lt('created_at', beforeCreatedAt);
+        }
+
+        query = query
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching group messages:', error);
+          return [];
+        }
+
+        let msgs = ((data || []) as GroupMessage[]);
+
+        // Filter out messages deleted by this specific user
+        if (currentUserId && isValidUuid(currentUserId)) {
+          msgs = msgs.filter(m => !(m.deleted_by_users && m.deleted_by_users.includes(currentUserId)));
+        }
+
+        // Populate reply_to references if any messages reply to another message
+        const replyIds = msgs.map(m => m.reply_to_message_id).filter(isValidUuid) as string[];
+        if (replyIds.length > 0) {
+          const localMap = new Map<string, GroupMessage>();
+          msgs.forEach(m => localMap.set(m.id, m));
+          
+          const missingIds = replyIds.filter(id => !localMap.has(id));
+          if (missingIds.length > 0) {
+            try {
+              const { data: parentRows } = await supabase
+                .from('group_messages')
+                .select('id, message, sender_name, sender_role, title, is_deleted')
+                .in('id', missingIds);
+              (parentRows || []).forEach(p => localMap.set(p.id, p as any));
+            } catch {}
+          }
+
+          msgs = msgs.map(m => {
+            if (m.reply_to_message_id && localMap.has(m.reply_to_message_id)) {
+              const parent = localMap.get(m.reply_to_message_id)!;
+              return {
+                ...m,
+                reply_to: {
+                  id: parent.id,
+                  message: parent.is_deleted ? 'Message deleted' : parent.message,
+                  sender_name: parent.sender_name,
+                  sender_role: parent.sender_role,
+                  title: parent.title,
+                  is_deleted: parent.is_deleted,
+                }
+              };
+            }
+            return m;
+          });
+        }
+
+        // Deterministic chronological sort: created_at ASC, id ASC
+        return msgs.sort((a, b) => {
+          const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          if (timeDiff !== 0) return timeDiff;
+          return a.id.localeCompare(b.id);
+        });
+      } catch (err) {
+        console.error('Exception in fetchGroupMessages:', err);
+        return [];
+      } finally {
+        _inFlightGroupMessages.delete(dedupKey);
+      }
+    })();
+
+    _inFlightGroupMessages.set(dedupKey, fetchPromise);
+    return fetchPromise;
   },
 
   async sendGroupMessage(params: {

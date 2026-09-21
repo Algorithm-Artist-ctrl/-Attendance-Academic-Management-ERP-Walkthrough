@@ -1,17 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { CSVTimetableService, CSVValidationResult, CSVTimetableContext } from './csvTimetableService';
-
-// Configure worker for web environments if needed
-if (typeof window !== 'undefined' && 'Worker' in window) {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
-      import.meta.url
-    ).toString();
-  } catch (e) {
-    console.warn('PDF.js worker initialization notice:', e);
-  }
-}
 
 export interface PDFExtractedRow {
   y: number;
@@ -32,6 +19,18 @@ export class PDFTimetableService {
    * Reads a PDF File or ArrayBuffer and extracts text arranged into lines/tables
    */
   public async extractTextFromPDF(fileOrBuffer: File | ArrayBuffer | Uint8Array): Promise<string> {
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    if (typeof window !== 'undefined' && 'Worker' in window && !pdfjsLib.GlobalWorkerOptions?.workerSrc) {
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+          import.meta.url
+        ).toString();
+      } catch (e) {
+        console.warn('PDF.js worker initialization notice:', e);
+      }
+    }
+
     let data: Uint8Array;
 
     if (typeof Buffer !== 'undefined' && Buffer.isBuffer(fileOrBuffer)) {

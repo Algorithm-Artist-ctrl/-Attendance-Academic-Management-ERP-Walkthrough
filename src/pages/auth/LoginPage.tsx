@@ -76,7 +76,7 @@ export const LoginPage: React.FC = () => {
     <div className="landing-page h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-between bg-slate-50 select-none relative overflow-hidden">
       
       {/* ======================================================== */}
-      {/* 1. CAMPUS BACKGROUND PHOTO & RESPONSIVE OVERLAYS         */}
+      {/* 1. CAMPUS BACKGROUND PHOTO (Ultra-Optimized Mobile LCP)   */}
       {/* ======================================================== */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
@@ -84,6 +84,8 @@ export const LoginPage: React.FC = () => {
           alt="Vivekananda College of Technology & Management Campus"
           className="w-full h-full object-cover object-[center_top] lg:object-[center_25%]"
           loading="eager"
+          decoding="async"
+          fetchPriority="high"
         />
         {/* Desktop localized sky gradient (upper-left) */}
         <div className="hidden lg:block absolute top-0 left-0 w-[480px] max-w-[48%] h-[28%] bg-gradient-to-br from-white/85 via-white/30 to-transparent pointer-events-none" />
@@ -104,6 +106,10 @@ export const LoginPage: React.FC = () => {
               src={vctmOfficialLogo} 
               alt="VCTM Official Emblem" 
               className="w-full h-full object-contain drop-shadow-xs" 
+              width={40}
+              height={40}
+              loading="eager"
+              decoding="async"
             />
           </div>
           <div className="flex flex-col">
@@ -195,6 +201,10 @@ export const LoginPage: React.FC = () => {
                 src={vctmOfficialLogo} 
                 alt="VCTM Official Emblem" 
                 className="w-full h-full object-contain drop-shadow-xs" 
+                width={56}
+                height={56}
+                loading="eager"
+                decoding="async"
               />
             </div>
             <h1 className="font-serif-hero font-extrabold text-2xl text-slate-950 tracking-tight leading-tight drop-shadow-sm">
@@ -224,6 +234,10 @@ export const LoginPage: React.FC = () => {
                   src={vctmOfficialLogo} 
                   alt="VCTM Emblem" 
                   className="w-full h-full object-contain drop-shadow-xs" 
+                  width={48}
+                  height={48}
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
               <h3 className="font-serif-hero font-bold text-xl text-slate-900 tracking-wider">

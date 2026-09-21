@@ -38,11 +38,11 @@ async function runLoginVerificationTests() {
   assert(content.includes('GROW'), 'LoginPage renders GROW value');
   assert(content.includes('ACHIEVE'), 'LoginPage renders ACHIEVE value');
 
-  // Verify Bottom Feature Pill Bar
-  assert(content.includes('Academic Management'), 'LoginPage feature pill includes Academic Management');
-  assert(content.includes('Student Information'), 'LoginPage feature pill includes Student Information');
-  assert(content.includes('Assignments & Grading'), 'LoginPage feature pill includes Assignments & Grading');
-  assert(content.includes('Attendance & Reports'), 'LoginPage feature pill includes Attendance & Reports');
+  // Verify Bottom Feature Strip
+  assert(content.includes('ACADEMICS') || content.includes('Academic Management'), 'LoginPage feature strip includes Academics');
+  assert(content.includes('ATTENDANCE'), 'LoginPage feature strip includes Attendance');
+  assert(content.includes('TIMETABLE'), 'LoginPage feature strip includes Timetable');
+  assert(content.includes('ASSESSMENTS') || content.includes('Assignments & Grading'), 'LoginPage feature strip includes Assessments');
 
   // Verify Login Card & Role Tabs
   assert(content.includes("handleRoleTabChange('student')"), 'Role tab supports Student');

@@ -651,18 +651,22 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
   const unreadNotificationCount = notifications.filter(n => !n.is_read).length;
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    activeConversationIdRef.current = activeConversationId;
-  }, [activeConversationId]);
+  const [activeConversationId, _setActiveConversationIdState] = useState<string | null>(null);
+  const setActiveConversationId = useCallback((id: string | null) => {
+    if (activeConversationIdRef.current === id) return;
+    activeConversationIdRef.current = id;
+    _setActiveConversationIdState(id);
+  }, []);
 
   const [messageGroups, setMessageGroups] = useState<MessageGroup[]>([]);
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const activeGroupIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    activeGroupIdRef.current = activeGroupId;
-  }, [activeGroupId]);
+  const [activeGroupId, _setActiveGroupIdState] = useState<string | null>(null);
+  const setActiveGroupId = useCallback((id: string | null) => {
+    if (activeGroupIdRef.current === id) return;
+    activeGroupIdRef.current = id;
+    _setActiveGroupIdState(id);
+  }, []);
 
   const userRef = useRef(user);
   useEffect(() => {
@@ -1327,7 +1331,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [user]);
 
+  const isRefreshingMessageGroupsRef = useRef(false);
   const refreshMessageGroups = useCallback(async () => {
+    if (isRefreshingMessageGroupsRef.current) return;
+    isRefreshingMessageGroupsRef.current = true;
     try {
       const activeUser = erpStorage.getCurrentSessionUser() || user;
       if (!activeUser?.id) return;
@@ -1340,9 +1347,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         activeUser.role || '',
         { facultyId, studentSectionId, studentYearId, departmentId }
       );
-      setMessageGroups(groups);
+      setMessageGroups(prev => {
+        if (
+          prev.length === groups.length &&
+          prev.every((p, i) =>
+            p.id === groups[i]?.id &&
+            p.unread_count === groups[i]?.unread_count &&
+            p.members_count === groups[i]?.members_count &&
+            p.last_message_at === groups[i]?.last_message_at &&
+            p.last_message_preview === groups[i]?.last_message_preview
+          )
+        ) {
+          return prev;
+        }
+        return groups;
+      });
     } catch (err) {
       console.warn('Notice: Error refreshing message groups:', err);
+    } finally {
+      isRefreshingMessageGroupsRef.current = false;
     }
   }, [user]);
 
@@ -1654,11 +1677,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const rest = prev.filter(g => g.id !== newGroupMsg.group_id);
             return [updated, ...rest];
           });
-          realtimeHandlersRef.current.refreshNotifications();
         } else {
           debounceTableSync('group_messages', () => {
             realtimeHandlersRef.current.refreshMessageGroups();
-            realtimeHandlersRef.current.refreshNotifications();
           });
         }
       })
@@ -4072,12 +4093,23 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [refreshConversations]);
 
   const markConversationRead = useCallback(async (conversationId: string) => {
-    await supabaseService.markConversationRead(conversationId);
-    setConversations(prev =>
-      prev.map(c => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
-    );
-    refreshNotifications();
-  }, [refreshNotifications]);
+    if (!conversationId) return;
+    let hadUnread = false;
+    setConversations(prev => {
+      const target = prev.find(c => c.id === conversationId);
+      if (!target || !target.unread_count) return prev;
+      hadUnread = true;
+      return prev.map(c => (c.id === conversationId ? { ...c, unread_count: 0 } : c));
+    });
+
+    if (hadUnread) {
+      try {
+        await supabaseService.markConversationRead(conversationId);
+      } catch (err) {
+        console.warn('Notice: Failed to mark conversation read:', err);
+      }
+    }
+  }, []);
 
   const updateConversationStatus = useCallback(async (
     conversationId: string,
@@ -4179,12 +4211,23 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const markGroupRead = useCallback(async (groupId: string) => {
-    await supabaseService.markGroupAsRead(groupId);
-    setMessageGroups(prev =>
-      prev.map(g => (g.id === groupId ? { ...g, unread_count: 0 } : g))
-    );
-    refreshNotifications();
-  }, [refreshNotifications]);
+    if (!groupId) return;
+    let hadUnread = false;
+    setMessageGroups(prev => {
+      const target = prev.find(g => g.id === groupId);
+      if (!target || !target.unread_count) return prev;
+      hadUnread = true;
+      return prev.map(g => (g.id === groupId ? { ...g, unread_count: 0 } : g));
+    });
+
+    if (hadUnread) {
+      try {
+        await supabaseService.markGroupAsRead(groupId);
+      } catch (err) {
+        console.warn('Notice: Failed to mark group read:', err);
+      }
+    }
+  }, []);
 
   const fetchGroupMembers = useCallback(async (groupId: string) => {
     return await supabaseService.fetchGroupMembers(groupId);

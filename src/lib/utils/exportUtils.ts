@@ -1,9 +1,7 @@
-import Papa from 'papaparse';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 // Export data to CSV file download
-export function exportToCSV(data: any[], filename: string) {
+export async function exportToCSV(data: any[], filename: string) {
+  const PapaModule = await import('papaparse');
+  const Papa = PapaModule.default || PapaModule;
   const csv = Papa.unparse(data);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -16,7 +14,7 @@ export function exportToCSV(data: any[], filename: string) {
 }
 
 // Generate printable PDF report
-export function exportAttendanceReportPDF(params: {
+export async function exportAttendanceReportPDF(params: {
   title: string;
   subtitle: string;
   department: string;
@@ -26,6 +24,9 @@ export function exportAttendanceReportPDF(params: {
   tableRows: (string | number)[][];
   filename: string;
 }) {
+  const { jsPDF } = await import('jspdf');
+  const autoTableModule = await import('jspdf-autotable');
+  const autoTable = (autoTableModule.default || autoTableModule) as any;
   const doc = new jsPDF();
 
   // Header Title

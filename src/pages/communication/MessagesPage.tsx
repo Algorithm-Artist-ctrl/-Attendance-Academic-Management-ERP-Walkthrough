@@ -133,7 +133,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
   // Group selection & state
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() => {
-    return initialGroupId || activeGroupId || (typeof localStorage !== 'undefined' ? localStorage.getItem('vctm_last_group_id') : null) || null;
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('vctm_last_group_id') : null;
+    const validStored = stored && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(stored) ? stored : null;
+    return initialGroupId || validStored || null;
   });
   const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
   const [initialLoadingGroup, setInitialLoadingGroup] = useState(false);
@@ -325,6 +327,36 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     markGroupReadRef.current = markGroupRead;
   }, [markGroupRead]);
 
+  // Channel lifecycle & request sequence guards to prevent race conditions & storms
+  const activeGroupChannelRef = useRef<any>(null);
+  const activeDirectChannelRef = useRef<any>(null);
+  const groupFetchSeqRef = useRef(0);
+  const directFetchSeqRef = useRef(0);
+  const lastMarkedGroupReadRef = useRef<Map<string, number>>(new Map());
+  const lastMarkedConvReadRef = useRef<Map<string, number>>(new Map());
+
+  const safeMarkGroupRead = useCallback((groupId: string) => {
+    if (!groupId) return;
+    const now = Date.now();
+    const lastTime = lastMarkedGroupReadRef.current.get(groupId) || 0;
+    if (now - lastTime < 5000) return; // throttle 5 seconds per group
+    const grp = messageGroups.find(g => g.id === groupId);
+    if (!grp || (grp.unread_count || 0) === 0) return;
+    lastMarkedGroupReadRef.current.set(groupId, now);
+    markGroupReadRef.current(groupId);
+  }, [messageGroups]);
+
+  const safeMarkConversationRead = useCallback((convId: string) => {
+    if (!convId) return;
+    const now = Date.now();
+    const lastTime = lastMarkedConvReadRef.current.get(convId) || 0;
+    if (now - lastTime < 5000) return; // throttle 5 seconds per conversation
+    const conv = conversations.find(c => c.id === convId);
+    if (!conv || (conv.unread_count || 0) === 0) return;
+    lastMarkedConvReadRef.current.set(convId, now);
+    markConversationReadRef.current(convId);
+  }, [conversations]);
+
   // Debounce search query inputs to avoid re-computations on every keystroke
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -370,14 +402,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       setMobileThreadOpen(true);
     }
   }, [initialGroupId]);
-
-  useEffect(() => {
-    if (activeGroupId && activeGroupId !== selectedGroupId) {
-      setSelectedGroupId(activeGroupId);
-      setActiveTab('GROUPS');
-      setMobileThreadOpen(true);
-    }
-  }, [activeGroupId, selectedGroupId]);
 
   useEffect(() => {
     if (initialConversationId) {
@@ -437,6 +461,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
 
     let isMounted = true;
+    const fetchSeq = ++groupFetchSeqRef.current;
+
     const cached = getCachedGroupMessages(selectedGroupId);
     if (cached && cached.length > 0) {
       setGroupMessages(cached);
@@ -451,11 +477,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     const loadGroupMessages = async () => {
       try {
         const msgs = await supabaseService.fetchGroupMessages(selectedGroupId, 50, undefined, user?.id);
-        if (isMounted) {
+        if (isMounted && fetchSeq === groupFetchSeqRef.current) {
           setGroupMessages(msgs);
           setCachedGroupMessages(selectedGroupId, msgs);
           setHasMoreGroup(msgs.length >= 50);
-          markGroupReadRef.current(selectedGroupId);
+          safeMarkGroupRead(selectedGroupId);
 
           // Scroll to bottom on initial message load
           setTimeout(() => {
@@ -469,7 +495,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       } catch (err) {
         console.error('Error loading group messages:', err);
       } finally {
-        if (isMounted) {
+        if (isMounted && fetchSeq === groupFetchSeqRef.current) {
           setInitialLoadingGroup(false);
           setIsBackgroundSyncingGroup(false);
         }
@@ -478,10 +504,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
     loadGroupMessages();
 
+    // Clean up previous active group channel before creating a new subscription
+    if (activeGroupChannelRef.current) {
+      try {
+        supabase.removeChannel(activeGroupChannelRef.current);
+      } catch {}
+      activeGroupChannelRef.current = null;
+    }
+
     // Scoped Realtime channel for currently active group thread with status callback
     setGroupRealtimeStatus('connecting');
+    const channelName = `group_chat_${selectedGroupId}_${Date.now()}`;
     const channel = supabase
-      .channel(`group_chat_${selectedGroupId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${selectedGroupId}` },
@@ -512,7 +547,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             return updated;
           });
 
-          markGroupReadRef.current(selectedGroupId);
+          safeMarkGroupRead(selectedGroupId);
 
           if (newMsg.sender_user_id === user?.id || isAtBottomRef.current) {
             setTimeout(() => {
@@ -588,11 +623,18 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         }
       });
 
+    activeGroupChannelRef.current = channel;
+
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (activeGroupChannelRef.current === channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+        activeGroupChannelRef.current = null;
+      }
     };
-  }, [selectedGroupId, user?.id, getCachedGroupMessages, setCachedGroupMessages]);
+  }, [selectedGroupId, user?.id, getCachedGroupMessages, setCachedGroupMessages, safeMarkGroupRead]);
 
   // Load older group messages on upward pagination with scroll position retention
   const handleLoadOlderGroup = async () => {
@@ -649,6 +691,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
 
     let isMounted = true;
+    const fetchSeq = ++directFetchSeqRef.current;
+
     const cached = getCachedConversationMessages(selectedConvId);
     if (cached && cached.length > 0) {
       setDirectMessages(cached);
@@ -663,7 +707,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     const loadDirect = async () => {
       try {
         const msgs = await supabaseService.fetchConversationMessages(selectedConvId, user?.id, 50);
-        if (isMounted) {
+        if (isMounted && fetchSeq === directFetchSeqRef.current) {
           // Reconcile with any optimistic sending messages in local state
           setDirectMessages(prev => {
             const sendingMsgs = prev.filter(m => m.status === 'sending');
@@ -677,12 +721,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             return merged;
           });
           setHasMoreDirect(msgs.length >= 50);
-          markConversationReadRef.current(selectedConvId);
+          safeMarkConversationRead(selectedConvId);
         }
       } catch (err) {
         console.error('Error loading direct messages:', err);
       } finally {
-        if (isMounted) {
+        if (isMounted && fetchSeq === directFetchSeqRef.current) {
           setInitialLoadingDirect(false);
           setIsBackgroundSyncing(false);
         }
@@ -691,9 +735,18 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
     loadDirect();
 
+    // Clean up previous active direct channel before creating a new subscription
+    if (activeDirectChannelRef.current) {
+      try {
+        supabase.removeChannel(activeDirectChannelRef.current);
+      } catch {}
+      activeDirectChannelRef.current = null;
+    }
+
     // Scoped Realtime channel for currently active direct conversation thread
+    const channelName = `active_direct_${selectedConvId}_${Date.now()}`;
     const channel = supabase
-      .channel(`active_direct_${selectedConvId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConvId}` },
@@ -742,7 +795,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               setCachedConversationMessages(selectedConvId, updated);
               return updated;
             });
-            markConversationReadRef.current(selectedConvId);
+            safeMarkConversationRead(selectedConvId);
           }
         }
       )
@@ -788,11 +841,18 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       )
       .subscribe();
 
+    activeDirectChannelRef.current = channel;
+
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (activeDirectChannelRef.current === channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+        activeDirectChannelRef.current = null;
+      }
     };
-  }, [selectedConvId, user?.id, getCachedConversationMessages, setCachedConversationMessages]);
+  }, [selectedConvId, user?.id, getCachedConversationMessages, setCachedConversationMessages, safeMarkConversationRead]);
 
   // Load older direct messages on upward pagination
   const handleLoadOlderDirect = async () => {
