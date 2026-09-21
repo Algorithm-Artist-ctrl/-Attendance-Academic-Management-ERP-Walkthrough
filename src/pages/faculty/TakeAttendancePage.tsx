@@ -22,7 +22,8 @@ import {
   CheckCheck,
   Filter,
   Keyboard,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademic } from '../../context/AcademicContext';
@@ -940,11 +941,21 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                           Not Available Yet
                         </span>
                       </>
-                    ) : summary.status === 'FULLY_MARKED' ? (
+                    ) : summary.status === 'LOADING' ? (
+                      <>
+                        <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 animate-pulse">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                          <span>Verifying Attendance...</span>
+                        </div>
+                        <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-400">
+                          Checking...
+                        </span>
+                      </>
+                    ) : (summary.status === 'FULLY_MARKED' || summary.status === 'RECORDED') ? (
                       <>
                         <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>✓ Marked ({summary.total}/{summary.total})</span>
+                          <span>✓ {summary.status === 'FULLY_MARKED' ? `Marked (${summary.total}/${summary.total})` : (summary.statusLabel || 'Marked')}</span>
                         </div>
                         <Button
                           size="sm"
@@ -976,6 +987,25 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
                           className="touch-target font-bold text-amber-800 border-amber-200 hover:bg-amber-50"
                         >
                           View / Update
+                        </Button>
+                      </>
+                    ) : (summary.status === 'NETWORK_ERROR' || summary.status === 'DATA_ERROR') ? (
+                      <>
+                        <div className="text-[11px] font-bold text-rose-800 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Unable to verify</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSessionDate(sessionDate);
+                            setActiveClassId(cls.id);
+                          }}
+                          rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                          className="touch-target font-bold text-slate-800"
+                        >
+                          Check Class
                         </Button>
                       </>
                     ) : isToday ? (

@@ -16,6 +16,8 @@ import {
   Layers,
   GraduationCap,
   Loader2,
+  RefreshCw,
+  AlertTriangle,
   X,
   MessageSquare
 } from 'lucide-react';
@@ -79,7 +81,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
     getFacultyCoordinatorAssignments,
     refreshCoordinatorAssignments,
     reviewCorrectionRequest,
-    refreshData
+    refreshData,
+    refreshAttendance
   } = useAcademic();
 
   const currentFaculty = facultyList.find(
@@ -185,6 +188,22 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
   const selectedScheduleDate = useMemo(() => {
     return getDateForWeekdayInCurrentWeek(selectedScheduleDay, todayISO);
   }, [selectedScheduleDay, todayISO]);
+
+  // Pre-hydrate records for any visible session in RECORDED status so full counts load seamlessly
+  useEffect(() => {
+    displayedSchedule.forEach(entry => {
+      const summary = getAttendanceSummary({
+        timetableEntryId: entry.id,
+        sessionDate: selectedScheduleDate,
+        sectionId: entry.section_id,
+        subjectId: entry.subject_id ?? undefined,
+        startTime: entry.start_time,
+      });
+      if (summary.sessionId && summary.status === 'RECORDED') {
+        ensureSessionAttendanceLoaded(summary.sessionId);
+      }
+    });
+  }, [displayedSchedule, selectedScheduleDate, getAttendanceSummary, ensureSessionAttendanceLoaded]);
 
   // Authoritative assigned sections: distinct sections where this faculty actually teaches or is assigned
   const mySectionIds = useMemo(() => {
@@ -1032,11 +1051,40 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                         <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-300 text-[#475569]">
                           Upcoming • Attendance not available yet
                         </span>
-                      ) : summary.status === 'FULLY_MARKED' ? (
+                      ) : summary.status === 'LOADING' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 border border-slate-300 text-[#475569] flex items-center gap-1.5 animate-pulse">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                            <span>Verifying Attendance...</span>
+                          </span>
+                        </div>
+                      ) : summary.status === 'SYNCING' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 border border-blue-300 text-blue-900 flex items-center gap-1.5">
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                            <span>Syncing Attendance...</span>
+                          </span>
+                        </div>
+                      ) : (summary.status === 'NETWORK_ERROR' || summary.status === 'DATA_ERROR') ? (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 border border-rose-300 text-rose-900 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Unable to verify attendance</span>
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refreshAttendance()}
+                            className="shrink-0 text-xs font-bold text-[#0f172a] border-slate-300"
+                          >
+                            Retry
+                          </Button>
+                        </div>
+                      ) : (summary.status === 'FULLY_MARKED' || summary.status === 'RECORDED') ? (
                         <div className="flex items-center gap-2">
                           <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>✓ Marked ({summary.total}/{summary.total})</span>
+                            <span>✓ {summary.status === 'FULLY_MARKED' ? `Marked (${summary.total}/${summary.total})` : (summary.statusLabel || 'Marked')}</span>
                           </span>
                           <Button
                             variant="outline"

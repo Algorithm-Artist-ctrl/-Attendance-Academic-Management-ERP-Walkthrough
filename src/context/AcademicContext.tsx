@@ -72,7 +72,8 @@ import {
   getISTDayOfWeek, 
   isClaimWindowOpen, 
   getClaimWindowStatus,
-  isClassCompleted
+  isClassCompleted,
+  normalizeDateToIST
 } from '../lib/utils/dateUtils';
 import {
   FacultyTeachingScope,
@@ -84,6 +85,16 @@ import {
   cleanRoomNumber,
 } from '../lib/utils/facultyAssignmentResolver';
 
+export type AttendanceSummaryStatus = 
+  | 'NO_RECORDS'
+  | 'PARTIALLY_MARKED'
+  | 'FULLY_MARKED'
+  | 'RECORDED'
+  | 'LOADING'
+  | 'SYNCING'
+  | 'NETWORK_ERROR'
+  | 'DATA_ERROR';
+
 export interface AttendanceSummary {
   sessionId?: string;
   total: number;
@@ -92,7 +103,7 @@ export interface AttendanceSummary {
   unmarked: number;
   marked: number;
   progress: number;
-  status: 'NO_RECORDS' | 'PARTIALLY_MARKED' | 'FULLY_MARKED';
+  status: AttendanceSummaryStatus;
   statusLabel: string;
 }
 
@@ -636,8 +647,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [classCoordinatorAssignments, setClassCoordinatorAssignments] = useState<ClassCoordinatorAssignment[]>([]);
   const [students, setStudents] = useState<Student[]>(() => erpStorage.getStudents());
   const [timetable, setTimetable] = useState<TimetableEntry[]>(() => erpStorage.getTimetable());
-  const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>(() => erpStorage.getAttendanceSessions());
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => erpStorage.getAttendanceRecords());
+  const attendanceLoadErrorRef = useRef<string | null>(null);
   const [corrections, setCorrections] = useState<AttendanceCorrection[]>(() => erpStorage.getCorrections());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => erpStorage.getAuditLogs());
   const [courseAssignments, setCourseAssignments] = useState<Assignment[]>([]);
@@ -767,6 +779,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const task = (async () => {
       try {
         lastFullLoadRef.current = Date.now();
+        attendanceLoadErrorRef.current = null;
         const studentId = currentAuthUser?.student_id || currentAuthUser?.student?.id;
         const sectionId = currentAuthUser?.student?.section_id || (currentAuthUser as any)?.section_id;
         const facultyId = currentAuthUser?.faculty_id || currentAuthUser?.faculty?.id || currentAuthUser?.id;
@@ -984,8 +997,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           console.warn('Could not load class coordinator assignments:', coordErr);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to sync from Supabase, using local cache:', err);
+      attendanceLoadErrorRef.current = err?.message || 'Failed to sync data from Supabase';
     } finally {
       inFlightLoadDataRef.current = null;
       setIsLoading(false);
@@ -2080,6 +2094,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }): AttendanceSummary => {
     let session: AttendanceSession | undefined;
 
+    const lookupDateStr = typeof lookup !== 'string' ? normalizeDateToIST(lookup.sessionDate) : '';
+
     if (typeof lookup === 'string') {
       session = attendanceSessions.find(s => s.id === lookup);
     } else {
@@ -2087,35 +2103,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         session = attendanceSessions.find(s => s.id === lookup.sessionId);
       }
       if (!session) {
-        session = attendanceSessions.find(s => {
-          let sDate = '';
-          if (s.session_date) {
-            if ((s.session_date as any) instanceof Date) {
-              const d = s.session_date as any as Date;
-              sDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            } else {
-              const str = String(s.session_date);
-              if (str.length === 10 && str.includes('-')) {
-                sDate = str;
-              } else if (str.includes('T')) {
-                const d = new Date(str);
-                if (!isNaN(d.getTime())) {
-                  sDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                } else {
-                  sDate = str.split('T')[0];
-                }
-              } else {
-                sDate = str;
-              }
-            }
-          }
-          const matchesDate = !lookup.sessionDate || sDate === lookup.sessionDate;
+        // Find all candidates matching date and lecture criteria
+        const matchingSessions = attendanceSessions.filter(s => {
+          const sDate = normalizeDateToIST(s.session_date);
+          const matchesDate = !lookupDateStr || sDate === lookupDateStr;
           if (!matchesDate) return false;
 
+          // 1. Direct timetable entry ID match
           if (lookup.timetableEntryId && s.timetable_entry_id === lookup.timetableEntryId) {
             return true;
           }
 
+          // 2. Section + Subject + StartTime match
           if (lookup.sectionId && lookup.subjectId && s.section_id === lookup.sectionId && s.subject_id === lookup.subjectId) {
             const sStart = s.start_time?.substring(0, 5);
             const lStart = lookup.startTime?.substring(0, 5);
@@ -2123,8 +2122,47 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return true;
             }
           }
+
+          // 3. Fallback: Section + StartTime match
+          if (lookup.sectionId && lookup.startTime && s.section_id === lookup.sectionId) {
+            const sStart = s.start_time?.substring(0, 5);
+            const lStart = lookup.startTime?.substring(0, 5);
+            if (sStart && lStart && sStart === lStart) {
+              return true;
+            }
+          }
+
           return false;
         });
+
+        if (matchingSessions.length > 0) {
+          // Rank candidates:
+          // 1. Prefer exact timetable_entry_id match
+          // 2. Prefer status === 'completed' or marked_at present
+          // 3. Prefer session with records in attendanceRecords
+          // 4. Prefer latest created_at
+          matchingSessions.sort((a, b) => {
+            if (lookup.timetableEntryId) {
+              const aTt = a.timetable_entry_id === lookup.timetableEntryId ? 1 : 0;
+              const bTt = b.timetable_entry_id === lookup.timetableEntryId ? 1 : 0;
+              if (aTt !== bTt) return bTt - aTt;
+            }
+
+            const aCompleted = a.status === 'completed' || a.marked_at ? 1 : 0;
+            const bCompleted = b.status === 'completed' || b.marked_at ? 1 : 0;
+            if (aCompleted !== bCompleted) return bCompleted - aCompleted;
+
+            const aRecs = attendanceRecords.some(r => r.attendance_session_id === a.id) ? 1 : 0;
+            const bRecs = attendanceRecords.some(r => r.attendance_session_id === b.id) ? 1 : 0;
+            if (aRecs !== bRecs) return bRecs - aRecs;
+
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return bTime - aTime;
+          });
+
+          session = matchingSessions[0];
+        }
       }
     }
 
@@ -2139,6 +2177,35 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const total = uniqueStudentIds.length;
 
     if (!session) {
+      // Check if data is currently loading from server
+      if (isLoading && attendanceSessions.length === 0) {
+        return {
+          sessionId: undefined,
+          total,
+          present: 0,
+          absent: 0,
+          unmarked: total,
+          marked: 0,
+          progress: 0,
+          status: 'LOADING',
+          statusLabel: 'Verifying Attendance...',
+        };
+      }
+
+      if (attendanceLoadErrorRef.current) {
+        return {
+          sessionId: undefined,
+          total,
+          present: 0,
+          absent: 0,
+          unmarked: total,
+          marked: 0,
+          progress: 0,
+          status: 'NETWORK_ERROR',
+          statusLabel: 'Unable to verify attendance',
+        };
+      }
+
       return {
         sessionId: undefined,
         total,
@@ -2173,18 +2240,32 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const unmarked = Math.max(0, effectiveTotal - marked);
     const progress = effectiveTotal > 0 ? Math.round((marked / effectiveTotal) * 100) : 0;
 
-    let status: 'NO_RECORDS' | 'PARTIALLY_MARKED' | 'FULLY_MARKED' = 'NO_RECORDS';
+    let status: AttendanceSummaryStatus = 'NO_RECORDS';
     let statusLabel = 'Not Recorded';
 
-    if (marked === 0) {
-      status = 'NO_RECORDS';
-      statusLabel = 'Not Recorded';
-    } else if (marked < effectiveTotal) {
-      status = 'PARTIALLY_MARKED';
-      statusLabel = `Marked (${marked}/${effectiveTotal})`;
+    if (marked > 0) {
+      if (marked >= effectiveTotal) {
+        status = 'FULLY_MARKED';
+        statusLabel = `Marked (${effectiveTotal}/${effectiveTotal})`;
+      } else {
+        status = 'PARTIALLY_MARKED';
+        statusLabel = `Marked (${marked}/${effectiveTotal})`;
+      }
     } else {
-      status = 'FULLY_MARKED';
-      statusLabel = `Marked (${effectiveTotal}/${effectiveTotal})`;
+      // Marked is 0 in local state: check if session exists & was completed in database
+      const isSessionCompletedInDb = session.status === 'completed' || (session.status !== 'pending' && Boolean(session.marked_at));
+      if (isSessionCompletedInDb) {
+        status = 'RECORDED';
+        statusLabel = '✓ Marked';
+        // Auto-hydrate child records in background if not already loading
+        ensureSessionAttendanceLoaded(session.id);
+      } else if (isLoading) {
+        status = 'LOADING';
+        statusLabel = 'Verifying Attendance...';
+      } else {
+        status = 'NO_RECORDS';
+        statusLabel = 'Not Recorded';
+      }
     }
 
     return {
@@ -2198,7 +2279,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       status,
       statusLabel,
     };
-  }, [attendanceSessions, attendanceRecords, students, timetable, ensureSessionAttendanceLoaded]);
+  }, [attendanceSessions, attendanceRecords, students, timetable, isLoading, ensureSessionAttendanceLoaded]);
 
   // 2. Submit Attendance Correction / Claim Request
   const submitCorrectionRequest = async (params: {

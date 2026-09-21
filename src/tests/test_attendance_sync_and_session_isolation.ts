@@ -10,6 +10,7 @@ import {
   AttendanceRecord,
   AttendanceStatus 
 } from '../types/database.types';
+import { normalizeDateToIST } from '../lib/utils/dateUtils';
 
 let connectionString = process.env.DATABASE_URL;
 
@@ -29,6 +30,16 @@ if (!connectionString) {
   throw new Error('DATABASE_URL environment variable is required.');
 }
 
+export type AttendanceSummaryStatus = 
+  | 'NO_RECORDS'
+  | 'PARTIALLY_MARKED'
+  | 'FULLY_MARKED'
+  | 'RECORDED'
+  | 'LOADING'
+  | 'SYNCING'
+  | 'NETWORK_ERROR'
+  | 'DATA_ERROR';
+
 export interface AttendanceSummary {
   sessionId?: string;
   total: number;
@@ -37,7 +48,7 @@ export interface AttendanceSummary {
   unmarked: number;
   marked: number;
   progress: number;
-  status: 'NO_RECORDS' | 'PARTIALLY_MARKED' | 'FULLY_MARKED';
+  status: AttendanceSummaryStatus;
   statusLabel: string;
 }
 
@@ -60,6 +71,8 @@ function computeAttendanceSummary(
 ): AttendanceSummary {
   let session: AttendanceSession | undefined;
 
+  const lookupDateStr = typeof lookup !== 'string' ? normalizeDateToIST(lookup.sessionDate) : '';
+
   if (typeof lookup === 'string') {
     session = attendanceSessions.find(s => s.id === lookup);
   } else {
@@ -67,29 +80,9 @@ function computeAttendanceSummary(
       session = attendanceSessions.find(s => s.id === lookup.sessionId);
     }
     if (!session) {
-      session = attendanceSessions.find(s => {
-        let sDate = '';
-        if (s.session_date) {
-          if ((s.session_date as any) instanceof Date) {
-            const d = s.session_date as any as Date;
-            sDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          } else {
-            const str = String(s.session_date);
-            if (str.length === 10 && str.includes('-')) {
-              sDate = str;
-            } else if (str.includes('T')) {
-              const d = new Date(str);
-              if (!isNaN(d.getTime())) {
-                sDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-              } else {
-                sDate = str.split('T')[0];
-              }
-            } else {
-              sDate = str;
-            }
-          }
-        }
-        const matchesDate = !lookup.sessionDate || sDate === lookup.sessionDate;
+      const matchingSessions = attendanceSessions.filter(s => {
+        const sDate = normalizeDateToIST(s.session_date);
+        const matchesDate = !lookupDateStr || sDate === lookupDateStr;
         if (!matchesDate) return false;
 
         if (lookup.timetableEntryId && s.timetable_entry_id === lookup.timetableEntryId) {
@@ -103,8 +96,41 @@ function computeAttendanceSummary(
             return true;
           }
         }
+
+        if (lookup.sectionId && lookup.startTime && s.section_id === lookup.sectionId) {
+          const sStart = s.start_time?.substring(0, 5);
+          const lStart = lookup.startTime?.substring(0, 5);
+          if (sStart && lStart && sStart === lStart) {
+            return true;
+          }
+        }
+
         return false;
       });
+
+      if (matchingSessions.length > 0) {
+        matchingSessions.sort((a, b) => {
+          if (lookup.timetableEntryId) {
+            const aTt = a.timetable_entry_id === lookup.timetableEntryId ? 1 : 0;
+            const bTt = b.timetable_entry_id === lookup.timetableEntryId ? 1 : 0;
+            if (aTt !== bTt) return bTt - aTt;
+          }
+
+          const aCompleted = a.status === 'completed' || a.marked_at ? 1 : 0;
+          const bCompleted = b.status === 'completed' || b.marked_at ? 1 : 0;
+          if (aCompleted !== bCompleted) return bCompleted - aCompleted;
+
+          const aRecs = attendanceRecords.some(r => r.attendance_session_id === a.id) ? 1 : 0;
+          const bRecs = attendanceRecords.some(r => r.attendance_session_id === b.id) ? 1 : 0;
+          if (aRecs !== bRecs) return bRecs - aRecs;
+
+          const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bTime - aTime;
+        });
+
+        session = matchingSessions[0];
+      }
     }
   }
 
@@ -153,18 +179,26 @@ function computeAttendanceSummary(
   const unmarked = Math.max(0, effectiveTotal - marked);
   const progress = effectiveTotal > 0 ? Math.round((marked / effectiveTotal) * 100) : 0;
 
-  let status: 'NO_RECORDS' | 'PARTIALLY_MARKED' | 'FULLY_MARKED' = 'NO_RECORDS';
+  let status: AttendanceSummaryStatus = 'NO_RECORDS';
   let statusLabel = 'Not Recorded';
 
-  if (marked === 0) {
-    status = 'NO_RECORDS';
-    statusLabel = 'Not Recorded';
-  } else if (marked < effectiveTotal) {
-    status = 'PARTIALLY_MARKED';
-    statusLabel = `Marked (${marked}/${effectiveTotal})`;
+  if (marked > 0) {
+    if (marked >= effectiveTotal) {
+      status = 'FULLY_MARKED';
+      statusLabel = `Marked (${effectiveTotal}/${effectiveTotal})`;
+    } else {
+      status = 'PARTIALLY_MARKED';
+      statusLabel = `Marked (${marked}/${effectiveTotal})`;
+    }
   } else {
-    status = 'FULLY_MARKED';
-    statusLabel = `Marked (${effectiveTotal}/${effectiveTotal})`;
+    const isSessionCompletedInDb = session.status === 'completed' || (session.status !== 'pending' && Boolean(session.marked_at));
+    if (isSessionCompletedInDb) {
+      status = 'RECORDED';
+      statusLabel = '✓ Marked';
+    } else {
+      status = 'NO_RECORDS';
+      statusLabel = 'Not Recorded';
+    }
   }
 
   return {
@@ -350,10 +384,16 @@ async function runAttendanceSyncVerification() {
     assert(partialSummary10.unmarked === 43, 'Partial (10P + 0A): unmarked is 43');
     assert(partialSummary10.statusLabel === 'Marked (10/53)', 'Partial (10P + 0A): card displays Marked (10/53)');
 
-    // Case 3C: Nothing Marked / No Records
+    // Case 3C: Nothing Marked / No Records (Unrecorded slot or pending session)
+    const draftSession: AttendanceSession = {
+      ...liveSession,
+      id: 'draft-temp-id',
+      status: 'pending',
+      marked_at: undefined as any,
+    };
     const emptySummary = computeAttendanceSummary(
-      liveSession.id,
-      [liveSession],
+      draftSession.id,
+      [draftSession],
       [],
       sectionBStudents,
       [dsEntry]
@@ -363,6 +403,17 @@ async function runAttendanceSyncVerification() {
     assert(emptySummary.unmarked === 53, 'No records: unmarked is 53');
     assert(emptySummary.status === 'NO_RECORDS', 'No records: status is NO_RECORDS');
     assert(emptySummary.statusLabel === 'Not Recorded', 'No records: card displays Not Recorded');
+
+    // Case 3D: Completed session in DB before child records are hydrated (Zero Data Loss persistence)
+    const pendingHydrationSummary = computeAttendanceSummary(
+      liveSession.id,
+      [liveSession],
+      [],
+      sectionBStudents,
+      [dsEntry]
+    );
+    assert(pendingHydrationSummary.status === 'RECORDED', 'Completed session awaiting records: status is RECORDED');
+    assert(pendingHydrationSummary.statusLabel === '✓ Marked', 'Completed session awaiting records: card displays ✓ Marked');
 
     // -------------------------------------------------------------------------
     // TEST SUITE 4: Realtime Mutation (Present -> Absent Transition)

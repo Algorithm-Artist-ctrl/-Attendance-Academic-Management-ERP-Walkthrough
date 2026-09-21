@@ -548,8 +548,8 @@ export const supabaseService = {
         { data: sessionalAssessmentsList },
       ] = await Promise.all([
         supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
-        this.fetchAllAttendanceSessions(50),
-        this.fetchAllAttendanceRecords(200),
+        this.fetchAllAttendanceSessions(500),
+        this.fetchAllAttendanceRecords(5000),
         this.fetchCorrections(50),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(25),
         supabase.from('timetable_versions').select('*').order('created_at', { ascending: false }).limit(10),
@@ -814,10 +814,27 @@ export const supabaseService = {
             { data: assignmentsList },
           ] = await Promise.all([
             supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('faculty_id', params.facultyId).eq('active', true).order('period_number', { ascending: true }),
-            supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, created_at, updated_at').eq('faculty_id', params.facultyId).order('session_date', { ascending: false }).limit(100),
+            supabase.from('attendance_sessions').select('id, section_id, subject_id, faculty_id, session_date, start_time, end_time, timetable_entry_id, status, marked_at, created_at, updated_at').eq('faculty_id', params.facultyId).order('session_date', { ascending: false }).limit(100),
             this.fetchCorrections(50),
             supabase.from('assignments').select('*').eq('faculty_id', params.facultyId).order('created_at', { ascending: false }).limit(50),
           ]);
+
+          const sessionList = (sessionsRes.data as unknown as AttendanceSession[]) || [];
+          const sessionIds = sessionList.map(s => s.id).filter(Boolean);
+          let facultyAttendanceRecords: AttendanceRecord[] = [];
+          if (sessionIds.length > 0) {
+            const chunkSize = 50;
+            for (let i = 0; i < sessionIds.length; i += chunkSize) {
+              const chunk = sessionIds.slice(i, i + chunkSize);
+              const { data: recs, error: recErr } = await supabase
+                .from('attendance_records')
+                .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
+                .in('attendance_session_id', chunk);
+              if (!recErr && recs) {
+                facultyAttendanceRecords = facultyAttendanceRecords.concat(recs as unknown as AttendanceRecord[]);
+              }
+            }
+          }
 
           // Fetch students and assessments strictly for sections taught by this faculty (via timetable or FSA)
           const fsaList = (masterData.assignments || []).filter(
@@ -845,8 +862,8 @@ export const supabaseService = {
             ...masterData,
             students: (studentsRes.data as Student[]) || [],
             timetable: (timetable as unknown as TimetableEntry[]) || [],
-            attendanceSessions: (sessionsRes.data as unknown as AttendanceSession[]) || [],
-            attendanceRecords: [],
+            attendanceSessions: sessionList,
+            attendanceRecords: facultyAttendanceRecords,
             corrections: correctionsRes,
             auditLogs: [],
             timetableVersions: [],
@@ -5839,6 +5856,22 @@ export const supabaseService = {
       const rawStudents = (studentCountsRes.data || []) as any[];
       const attendanceSessions = (attendanceSessionsRes.data || []) as AttendanceSession[];
 
+      const dashboardSessionIds = attendanceSessions.map(s => s.id).filter(Boolean);
+      let dashboardAttendanceRecords: AttendanceRecord[] = [];
+      if (dashboardSessionIds.length > 0) {
+        const chunkSize = 50;
+        for (let i = 0; i < dashboardSessionIds.length; i += chunkSize) {
+          const chunk = dashboardSessionIds.slice(i, i + chunkSize);
+          const { data: recs, error: recErr } = await supabase
+            .from('attendance_records')
+            .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
+            .in('attendance_session_id', chunk);
+          if (!recErr && recs) {
+            dashboardAttendanceRecords = dashboardAttendanceRecords.concat(recs as unknown as AttendanceRecord[]);
+          }
+        }
+      }
+
       // Build section student counts map
       const studentCountMap = new Map<string, number>();
       rawStudents.forEach(s => {
@@ -5929,7 +5962,8 @@ export const supabaseService = {
           assignedSubjectsCount: allSubjects.length,
           pendingCorrectionsCount: pendingCorrections.length,
           pendingCorrections,
-          attendanceSessions
+          attendanceSessions,
+          attendanceRecords: dashboardAttendanceRecords
         };
         _facultyDashboardCache.set(facultyId, { timestamp: Date.now(), data: result });
         return result;

@@ -233,7 +233,7 @@ export interface AttendanceSession {
   session_date: string;
   start_time?: string;
   end_time?: string;
-  status: 'completed' | 'cancelled';
+  status?: 'completed' | 'cancelled' | 'pending';
   marked_at: string;
   created_at: string;
   faculty?: Faculty;
@@ -711,6 +711,7 @@ export interface FacultyDashboardPayload {
   pendingCorrectionsCount: number;
   pendingCorrections: AttendanceCorrection[];
   attendanceSessions: AttendanceSession[];
+  attendanceRecords?: AttendanceRecord[];
 }
 
 export type NotificationType =

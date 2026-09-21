@@ -277,3 +277,33 @@ export function isClassCompleted(params: {
     currentDateIST: params.currentDateIST,
   }) === 'COMPLETED';
 }
+
+/**
+ * Normalizes any date value (string, ISO string, Date object) to 'YYYY-MM-DD'
+ * strictly evaluated in the college Indian Standard Time (Asia/Kolkata) timezone.
+ */
+export function normalizeDateToIST(dateVal: any): string {
+  if (!dateVal) return '';
+  if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+    return dateVal;
+  }
+  try {
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    if (!isNaN(d.getTime())) {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: INSTITUTION_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(d);
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      if (year && month && day) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+  } catch {}
+  return String(dateVal).split('T')[0] || '';
+}
+
