@@ -19,9 +19,192 @@
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700;800&display=swap" rel="stylesheet">
     </noscript>
+    <style>
+      #vctm-shell {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background-color: #f8fafc;
+        color: #0f172a;
+        margin: 0;
+      }
+      .vctm-shell-header {
+        background: rgba(255, 255, 255, 0.92);
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+      .vctm-shell-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .vctm-shell-logo {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+      }
+      .vctm-shell-title {
+        font-family: Georgia, serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: #0f172a;
+        letter-spacing: 0.05em;
+        line-height: 1;
+        margin: 0;
+      }
+      .vctm-shell-badge {
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.25em;
+        margin-left: 6px;
+      }
+      .vctm-shell-sub {
+        font-size: 11px;
+        color: #475569;
+        margin-top: 3px;
+        display: block;
+      }
+      .vctm-shell-nav {
+        display: flex;
+        gap: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #334155;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+      .vctm-shell-main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .vctm-shell-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 24px;
+        box-shadow: 0 16px 45px -10px rgba(15, 23, 42, 0.15);
+        padding: 32px 28px;
+        width: 100%;
+        max-width: 440px;
+        text-align: center;
+        box-sizing: border-box;
+      }
+      .vctm-shell-card-logo {
+        width: 52px;
+        height: 52px;
+        margin: 0 auto 10px;
+        display: block;
+        object-fit: contain;
+      }
+      .vctm-shell-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 12px;
+        margin: 16px 0 24px;
+        border: 1px solid #e2e8f0;
+      }
+      .vctm-shell-tab {
+        padding: 8px 4px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+      }
+      .vctm-shell-tab.active {
+        background: #0f172a;
+        color: #ffffff;
+      }
+      .vctm-shell-loader {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 10px 18px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #0f172a;
+      }
+      .vctm-shell-pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #0284c7;
+        animation: vctmPulse 1.5s infinite;
+      }
+      @keyframes vctmPulse {
+        0% { transform: scale(0.9); opacity: 0.7; }
+        50% { transform: scale(1.3); opacity: 1; }
+        100% { transform: scale(0.9); opacity: 0.7; }
+      }
+      @media (max-width: 640px) {
+        .vctm-shell-nav { display: none; }
+        .vctm-shell-header { padding: 8px 16px; }
+      }
+    </style>
   </head>
   <body class="bg-slate-50 min-h-screen h-full">
-    <div id="root"></div>
+    <div id="root">
+      <div id="vctm-shell">
+        <header class="vctm-shell-header">
+          <div class="vctm-shell-brand">
+            <img src="/vctm-logo.png" alt="VCTM Logo" class="vctm-shell-logo" width="40" height="40" />
+            <div>
+              <div style="display: flex; align-items: baseline;">
+                <h1 class="vctm-shell-title">VCTM ERP</h1>
+                <span class="vctm-shell-badge">ALIGARH</span>
+              </div>
+              <span class="vctm-shell-sub">Vivekananda College of Technology & Management</span>
+            </div>
+          </div>
+          <nav class="vctm-shell-nav">
+            <span>LEARN</span>
+            <span style="color: #cbd5e1;">|</span>
+            <span>INNOVATE</span>
+            <span style="color: #cbd5e1;">|</span>
+            <span>GROW</span>
+            <span style="color: #cbd5e1;">|</span>
+            <span>ACHIEVE</span>
+          </nav>
+        </header>
+        <main class="vctm-shell-main">
+          <div class="vctm-shell-card">
+            <img src="/vctm-logo.png" alt="VCTM Emblem" class="vctm-shell-card-logo" width="52" height="52" />
+            <h2 class="vctm-shell-title" style="font-size: 22px;">VCTM ERP</h2>
+            <p style="font-size: 12px; color: #475569; margin: 4px 0 0;">Vivekananda College of Technology & Management</p>
+            <div style="font-size: 9px; font-weight: 700; color: #64748b; letter-spacing: 0.25em; margin: 6px 0 12px;">— ALIGARH —</div>
+            <div class="vctm-shell-tabs">
+              <div class="vctm-shell-tab">Student</div>
+              <div class="vctm-shell-tab active">Faculty</div>
+              <div class="vctm-shell-tab">Admin</div>
+            </div>
+            <div class="vctm-shell-loader">
+              <span class="vctm-shell-pulse"></span>
+              <span>Initializing Institutional ERP Portal...</span>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

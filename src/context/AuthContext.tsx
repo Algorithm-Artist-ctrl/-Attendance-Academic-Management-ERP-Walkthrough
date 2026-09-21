@@ -458,7 +458,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Restore authenticated session directly from Supabase Auth (Single Authority)
     const restoreSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Non-blocking bounded session restore (race with 3000ms timeout) to ensure initial render is never blocked
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null }; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null }, error: new Error('Session restore timeout') }), 3000)
+        );
+        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
+
         if (error || !session || !session.user) {
           if (isMounted) {
             erpStorage.setCurrentSessionUser(null);
@@ -475,7 +481,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        const profile = await loadHydratedProfile(session.user.id, session.user.email, session.user);
+        // Bounded profile hydration (race with 3500ms timeout)
+        const profilePromise = loadHydratedProfile(session.user.id, session.user.email, session.user);
+        const profileTimeoutPromise = new Promise<UserProfile | null>((resolve) =>
+          setTimeout(() => resolve(null), 3500)
+        );
+        const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
         if (isMounted) {
           if (profile) {
             const isInactiveStatus = profile.status && profile.status !== 'ACTIVE';
