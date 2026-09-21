@@ -1403,9 +1403,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsOnline(true);
       loadDataFromSupabase(false);
       refreshNotifications();
-      refreshConversations();
-      refreshMessageGroups();
       refreshLeaveApplications();
+      // Stagger communication tables so core ERP loads first
+      setTimeout(() => {
+        refreshConversations();
+        refreshMessageGroups();
+      }, 2000);
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -1418,7 +1421,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [loadDataFromSupabase, refreshNotifications, refreshConversations, refreshLeaveApplications]);
+  }, [loadDataFromSupabase, refreshNotifications, refreshConversations, refreshMessageGroups, refreshLeaveApplications]);
 
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
@@ -1453,12 +1456,26 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     loadDataFromSupabase(false);
     let deferTimer: NodeJS.Timeout | null = null;
+    let idleTimer: NodeJS.Timeout | null = null;
+
+    // Fast lightweight notifications and leave badge after primary load
     deferTimer = setTimeout(() => {
       refreshNotifications();
-      refreshConversations();
-      refreshMessageGroups();
       refreshLeaveApplications();
-    }, 200);
+    }, 400);
+
+    // Idle deferred communication hydration for unread count badges (zero initial render contention)
+    idleTimer = setTimeout(() => {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          refreshConversations();
+          refreshMessageGroups();
+        }, { timeout: 3000 });
+      } else {
+        refreshConversations();
+        refreshMessageGroups();
+      }
+    }, 2500);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
@@ -1468,10 +1485,8 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (deferTimer) clearTimeout(deferTimer);
         deferTimer = setTimeout(() => {
           refreshNotifications();
-          refreshConversations();
-          refreshMessageGroups();
           refreshLeaveApplications();
-        }, 200);
+        }, 400);
       } else if (event === 'SIGNED_OUT') {
         setAttendanceSessions([]);
         setAttendanceRecords([]);
@@ -1487,6 +1502,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return () => {
       if (deferTimer) clearTimeout(deferTimer);
+      if (idleTimer) clearTimeout(idleTimer);
       subscription.unsubscribe();
     };
   }, [authLoading, isAuthenticated, loadDataFromSupabase, refreshNotifications, refreshConversations, refreshMessageGroups, refreshLeaveApplications]);

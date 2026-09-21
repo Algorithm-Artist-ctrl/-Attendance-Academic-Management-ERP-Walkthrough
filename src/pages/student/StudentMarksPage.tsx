@@ -261,7 +261,7 @@ export const StudentMarksPage: React.FC = () => {
                       <p className="text-sm text-[#475569] font-medium mt-0.5">Faculty: {sub.facultyName}</p>
                     </div>
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 border border-amber-200 text-amber-800 shrink-0">
-                      Marks not published yet
+                      Pending evaluation
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#475569] font-medium flex items-center justify-between">

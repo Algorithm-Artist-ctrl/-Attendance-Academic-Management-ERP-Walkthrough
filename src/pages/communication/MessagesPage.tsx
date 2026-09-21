@@ -436,10 +436,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   }, [selectedGroupId]);
 
-  // Fetch message groups on mount if not yet populated
+  // Fetch message groups and conversations on mount
   useEffect(() => {
     refreshMessageGroups();
-  }, [refreshMessageGroups]);
+    refreshConversations();
+  }, [refreshMessageGroups, refreshConversations]);
 
   // Auto-select group if none selected or if previous selection is invalid
   useEffect(() => {

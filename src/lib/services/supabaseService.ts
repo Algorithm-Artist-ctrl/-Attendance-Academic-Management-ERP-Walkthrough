@@ -644,7 +644,7 @@ export const supabaseService = {
             resolvedSectionId
               ? supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at, updated_at').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
               : Promise.resolve({ data: [] }),
-            supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, status, graded_by, graded_at, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
+            supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, remarks, graded_by, graded_at, created_at, updated_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
             supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(200),
             resolvedSectionId
               ? supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at, updated_at').eq('section_id', resolvedSectionId).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
@@ -711,7 +711,7 @@ export const supabaseService = {
               ? supabase.from('assignment_submissions').select('id, assignment_id, student_id, marks_obtained, status, submitted_at, graded_by, graded_at').in('assignment_id', assignmentIds).limit(500)
               : Promise.resolve({ data: [] }),
             quizIds.length > 0
-              ? supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, status, graded_by, graded_at, created_at').in('quiz_id', quizIds).limit(500)
+              ? supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, remarks, graded_by, graded_at, created_at, updated_at').in('quiz_id', quizIds).limit(500)
               : Promise.resolve({ data: [] }),
           ]);
 
@@ -4892,7 +4892,7 @@ export const supabaseService = {
           } else if (kind === 'quiz') {
             const { data, error } = await supabase
               .from('quiz_results')
-              .select('id, quiz_id, student_id, marks_obtained, status, graded_by, graded_at, created_at')
+              .select('id, quiz_id, student_id, marks_obtained, remarks, graded_by, graded_at, created_at, updated_at')
               .eq('quiz_id', assessmentId)
               .order('created_at', { ascending: true });
             if (error) throw error;
