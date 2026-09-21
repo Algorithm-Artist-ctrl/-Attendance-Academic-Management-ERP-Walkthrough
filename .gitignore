@@ -38,3 +38,6 @@ credentials*.json
 secrets/
 private/
 
+
+# Confidential ERP credential/access documents — never commit
+VCTM_ERP_Login_Access_Directory*.pdf
