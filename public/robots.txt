@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://attendance-academic-management-erp.onrender.com/sitemap.xml

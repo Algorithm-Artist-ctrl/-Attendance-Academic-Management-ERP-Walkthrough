@@ -2,10 +2,11 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useAcademic } from './context/AcademicContext';
 import { LoginPage } from './pages/auth/LoginPage';
-import { ResetPasswordModal } from './components/auth/ResetPasswordModal';
-import { AppShell } from './components/layout/AppShell';
 import vctmOfficialLogo from './assets/vctm-logo.png';
 import { GraduationCap, RotateCcw, AlertTriangle } from 'lucide-react';
+
+const ResetPasswordModal = lazy(() => import('./components/auth/ResetPasswordModal').then(m => ({ default: m.ResetPasswordModal })));
+const AppShell = lazy(() => import('./components/layout/AppShell').then(m => ({ default: m.AppShell })));
 
 // Lazy Loaded Common Pages
 const ProfilePage = lazy(() => import('./pages/common/ProfilePage').then(m => ({ default: m.ProfilePage })));
@@ -151,7 +152,11 @@ export const AppContent: React.FC = () => {
     return (
       <>
         <LoginPage />
-        {isPasswordRecovery && <ResetPasswordModal isOpen={true} />}
+        {isPasswordRecovery && (
+          <Suspense fallback={null}>
+            <ResetPasswordModal isOpen={true} />
+          </Suspense>
+        )}
       </>
     );
   }
@@ -554,17 +559,23 @@ export const AppContent: React.FC = () => {
 
   return (
     <>
-      <AppShell 
-        activeTab={activeTab} 
-        onTabChange={handleNavigate}
-        isTeachingMode={role === 'hod' && isTeachingMode}
-        onToggleTeachingMode={handleToggleTeachingMode}
-      >
-        <Suspense fallback={<PageSkeletonLoader />}>
-          {renderContent()}
+      <Suspense fallback={<PageSkeletonLoader />}>
+        <AppShell 
+          activeTab={activeTab} 
+          onTabChange={handleNavigate}
+          isTeachingMode={role === 'hod' && isTeachingMode}
+          onToggleTeachingMode={handleToggleTeachingMode}
+        >
+          <Suspense fallback={<PageSkeletonLoader />}>
+            {renderContent()}
+          </Suspense>
+        </AppShell>
+      </Suspense>
+      {isPasswordRecovery && (
+        <Suspense fallback={null}>
+          <ResetPasswordModal isOpen={true} />
         </Suspense>
-      </AppShell>
-      {isPasswordRecovery && <ResetPasswordModal isOpen={true} />}
+      )}
     </>
   );
 };

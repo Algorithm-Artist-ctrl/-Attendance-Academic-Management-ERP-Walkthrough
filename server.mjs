@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 import handleAdminAuth from './api/admin-auth.js';
@@ -44,13 +45,22 @@ const prompt = `Extract the uploaded college timetable into JSON. Never invent i
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
-  '.ico': 'image/x-icon'
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+  '.pdf': 'application/pdf',
 };
 
 // In-memory SHA-256 extraction cache (TTL: 10 minutes, max 50 entries)
@@ -300,12 +310,43 @@ function serveStatic(req, res) {
   if (!requested.startsWith(dist + path.sep)) return send(res, 403, { error: 'Forbidden' });
 
   let file = requested;
-  if (!fs.existsSync(file) || !fs.statSync(file).isFile()) file = path.join(dist, 'index.html');
+  let isIndexHtml = false;
+  if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+    file = path.join(dist, 'index.html');
+    isIndexHtml = true;
+  }
   if (!fs.existsSync(file)) return send(res, 503, { error: 'Build output is missing.' });
 
   const ext = path.extname(file).toLowerCase();
-  res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
+  if (file.endsWith('index.html')) isIndexHtml = true;
+
+  const headers = {
+    'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+  };
+
+  if (isIndexHtml) {
+    headers['Cache-Control'] = 'no-cache, must-revalidate';
+  } else if (pathname.startsWith('/assets/')) {
+    headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+  } else {
+    headers['Cache-Control'] = 'public, max-age=86400, stale-while-revalidate=604800';
+  }
+
+  const compressible = ext === '.html' || ext === '.js' || ext === '.mjs' || ext === '.css' || ext === '.json' || ext === '.svg' || ext === '.txt' || ext === '.xml';
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+
+  if (compressible && acceptEncoding.includes('br')) {
+    headers['Content-Encoding'] = 'br';
+    res.writeHead(200, headers);
+    fs.createReadStream(file).pipe(zlib.createBrotliCompress()).pipe(res);
+  } else if (compressible && acceptEncoding.includes('gzip')) {
+    headers['Content-Encoding'] = 'gzip';
+    res.writeHead(200, headers);
+    fs.createReadStream(file).pipe(zlib.createGzip()).pipe(res);
+  } else {
+    res.writeHead(200, headers);
+    fs.createReadStream(file).pipe(res);
+  }
 }
 
 /**

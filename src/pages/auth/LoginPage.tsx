@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   GraduationCap, 
   Lock, 
@@ -15,10 +15,15 @@ import {
   Loader2 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ForgotPasswordModal } from '../../components/auth/ForgotPasswordModal';
 import vctmOfficialLogo from '../../assets/vctm-logo.png';
+import vctmOfficialLogoAvif from '../../assets/vctm-logo.avif';
 import vctmCampusImage from '../../assets/vctm-campus.jpg';
+import vctmCampusAvif from '../../assets/vctm-campus.avif';
+import vctmCampusMobileAvif from '../../assets/vctm-campus-mobile.avif';
+import vctmCampusMobileJpg from '../../assets/vctm-campus-mobile.jpg';
 import { clsx } from 'clsx';
+
+const ForgotPasswordModal = lazy(() => import('../../components/auth/ForgotPasswordModal').then(m => ({ default: m.ForgotPasswordModal })));
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading, error } = useAuth();
@@ -79,14 +84,21 @@ export const LoginPage: React.FC = () => {
       {/* 1. CAMPUS BACKGROUND PHOTO (Ultra-Optimized Mobile LCP)   */}
       {/* ======================================================== */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <img
-          src={vctmCampusImage}
-          alt="Vivekananda College of Technology & Management Campus"
-          className="w-full h-full object-cover object-[center_top] lg:object-[center_25%]"
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-        />
+        <picture>
+          <source srcSet={vctmCampusMobileAvif} type="image/avif" media="(max-width: 640px)" />
+          <source srcSet={vctmCampusAvif} type="image/avif" />
+          <source srcSet={vctmCampusMobileJpg} type="image/jpeg" media="(max-width: 640px)" />
+          <img
+            src={vctmCampusImage}
+            alt="Vivekananda College of Technology & Management Campus"
+            className="w-full h-full object-cover object-[center_top] lg:object-[center_25%]"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            width={1024}
+            height={570}
+          />
+        </picture>
         {/* Desktop localized sky gradient (upper-left) */}
         <div className="hidden lg:block absolute top-0 left-0 w-[480px] max-w-[48%] h-[28%] bg-gradient-to-br from-white/85 via-white/30 to-transparent pointer-events-none" />
         {/* Mobile balanced backdrop overlay for readability while keeping the building visible */}
@@ -102,15 +114,18 @@ export const LoginPage: React.FC = () => {
         {/* Left: Official College Logo & Institutional Branding */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 shrink-0 flex items-center justify-center">
-            <img 
-              src={vctmOfficialLogo} 
-              alt="VCTM Official Emblem" 
-              className="w-full h-full object-contain drop-shadow-xs" 
-              width={40}
-              height={40}
-              loading="eager"
-              decoding="async"
-            />
+            <picture>
+              <source srcSet={vctmOfficialLogoAvif} type="image/avif" />
+              <img 
+                src={vctmOfficialLogo} 
+                alt="VCTM Official Emblem" 
+                className="w-full h-full object-contain drop-shadow-xs" 
+                width={40}
+                height={40}
+                loading="eager"
+                decoding="async"
+              />
+            </picture>
           </div>
           <div className="flex flex-col">
             <div className="flex items-baseline gap-2">
@@ -197,15 +212,18 @@ export const LoginPage: React.FC = () => {
           {/* Mobile-Only Compact Brand Header */}
           <div className="lg:hidden flex flex-col items-center text-center mb-3 sm:mb-4 px-2">
             <div className="w-14 h-14 mb-1.5 flex items-center justify-center bg-white/95 rounded-2xl p-1.5 shadow-md border border-slate-200/80">
-              <img 
-                src={vctmOfficialLogo} 
-                alt="VCTM Official Emblem" 
-                className="w-full h-full object-contain drop-shadow-xs" 
-                width={56}
-                height={56}
-                loading="eager"
-                decoding="async"
-              />
+              <picture>
+                <source srcSet={vctmOfficialLogoAvif} type="image/avif" />
+                <img 
+                  src={vctmOfficialLogo} 
+                  alt="VCTM Official Emblem" 
+                  className="w-full h-full object-contain drop-shadow-xs" 
+                  width={56}
+                  height={56}
+                  loading="eager"
+                  decoding="async"
+                />
+              </picture>
             </div>
             <h1 className="font-serif-hero font-extrabold text-2xl text-slate-950 tracking-tight leading-tight drop-shadow-sm">
               VCTM ERP
@@ -230,15 +248,18 @@ export const LoginPage: React.FC = () => {
             {/* Desktop Card Header */}
             <div className="hidden lg:block text-center mb-3.5">
               <div className="w-12 h-12 mx-auto mb-1 flex items-center justify-center">
-                <img 
-                  src={vctmOfficialLogo} 
-                  alt="VCTM Emblem" 
-                  className="w-full h-full object-contain drop-shadow-xs" 
-                  width={48}
-                  height={48}
-                  loading="eager"
-                  decoding="async"
-                />
+                <picture>
+                  <source srcSet={vctmOfficialLogoAvif} type="image/avif" />
+                  <img 
+                    src={vctmOfficialLogo} 
+                    alt="VCTM Emblem" 
+                    className="w-full h-full object-contain drop-shadow-xs" 
+                    width={48}
+                    height={48}
+                    loading="eager"
+                    decoding="async"
+                  />
+                </picture>
               </div>
               <h3 className="font-serif-hero font-bold text-xl text-slate-900 tracking-wider">
                 VCTM ERP
@@ -428,12 +449,16 @@ export const LoginPage: React.FC = () => {
         </div>
       </footer>
 
-      {/* Forgot Password Modal */}
-      <ForgotPasswordModal
-        isOpen={isForgotModalOpen}
-        onClose={() => setIsForgotModalOpen(false)}
-        portalRole={activeRoleTab}
-      />
+      {/* Forgot Password Modal (Lazy Loaded on Demand) */}
+      {isForgotModalOpen && (
+        <Suspense fallback={null}>
+          <ForgotPasswordModal
+            isOpen={isForgotModalOpen}
+            onClose={() => setIsForgotModalOpen(false)}
+            portalRole={activeRoleTab}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

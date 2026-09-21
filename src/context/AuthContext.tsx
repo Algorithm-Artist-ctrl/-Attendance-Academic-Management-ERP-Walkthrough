@@ -76,11 +76,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         pendingNewEmail: null,
       };
     }
+    // Synchronously inspect localStorage for any Supabase auth token
+    let hasLikelySession = false;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        hasLikelySession = Object.keys(localStorage).some(
+          key => key.startsWith('sb-') && key.endsWith('-auth-token')
+        );
+      }
+    } catch {}
+
     return {
       user: null,
       role: null,
       isAuthenticated: false,
-      isLoading: true,
+      isLoading: hasLikelySession,
       error: null,
       isPasswordRecovery: false,
       pendingNewEmail: null,
