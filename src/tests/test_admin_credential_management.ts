@@ -1,3 +1,6 @@
+if (!process.env.DATABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
 import http from "http";
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
@@ -5,7 +8,7 @@ import handleAdminAuth from "../../api/admin-auth";
 
 const supabaseUrl = "https://obssoojzryqiudllnlkh.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co";
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.obssoojzryqiudllnlkh:Tarun%40759977@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const connectionString = process.env.DATABASE_URL || '';
 
 function createFreshClient() {
   return createClient(supabaseUrl, supabaseAnonKey, {

@@ -1,9 +1,12 @@
+if (!process.env.DATABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
 import { generateApprovedLeavePdf } from '../lib/utils/leavePdfGenerator';
 import { Client } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.obssoojzryqiudllnlkh:Tarun%40759977@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const connectionString = process.env.DATABASE_URL || '';
 
 // Polyfill localStorage for Node environment if needed
 if (typeof localStorage === 'undefined') {
@@ -155,7 +158,7 @@ async function runLeaveWorkflowE2ETests() {
       LEFT JOIN faculty f_hod ON d.hod_faculty_id = f_hod.id
       LEFT JOIN profiles p_hod ON (p_hod.faculty_id = f_hod.id OR p_hod.id = f_hod.auth_user_id)
       LEFT JOIN profiles p ON (p.student_id = s.id OR p.id = s.auth_user_id)
-      WHERE s.email = '2403400100021@vctm.in'
+      WHERE sec.class_coordinator_id IS NOT NULL AND d.hod_faculty_id IS NOT NULL
       LIMIT 1;
     `);
 
@@ -163,14 +166,13 @@ async function runLeaveWorkflowE2ETests() {
     const testStudent = studentRes.rows[0];
     console.log(`   Student: ${testStudent.full_name} (${testStudent.roll_number})`);
     console.log(`   Section: ${testStudent.section_name}, Coordinator: ${testStudent.coordinator_name}`);
-    console.log(`   Department: ${testStudent.department_name}, HOD: ${testStudent.hod_name}`);
 
     // Fetch an unauthorized faculty member (not the coordinator of section A)
     const unauthorizedFacultyRes = await client.query(`
       SELECT f.id, f.full_name, COALESCE(p.id, f.auth_user_id) as auth_user_id
       FROM faculty f
       LEFT JOIN profiles p ON (p.faculty_id = f.id OR p.id = f.auth_user_id)
-      WHERE f.id NOT IN ($1, $2)
+      WHERE ($1::uuid IS NULL OR f.id != $1) AND ($2::uuid IS NULL OR f.id != $2)
       LIMIT 1;
     `, [testStudent.class_coordinator_id, testStudent.hod_faculty_id]);
     assert(unauthorizedFacultyRes.rows.length > 0, 'Found separate faculty member for negative authorization tests');

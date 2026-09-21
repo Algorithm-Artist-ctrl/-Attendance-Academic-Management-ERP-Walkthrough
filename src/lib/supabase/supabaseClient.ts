@@ -14,12 +14,15 @@ const getEnv = (key: string, fallback: string): string => {
   return fallback;
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL', 'https://obssoojzryqiudllnlkh.supabase.co');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co');
+const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy';
+const supabaseUrl = getEnv('VITE_SUPABASE_URL', 'https://placeholder.supabase.co');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY', dummyKey);
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
+  supabaseUrl !== 'https://placeholder.supabase.co' &&
+  supabaseAnonKey !== dummyKey &&
   !supabaseUrl.includes('your-project-id')
 );
 

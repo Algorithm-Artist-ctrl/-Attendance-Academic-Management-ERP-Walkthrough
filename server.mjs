@@ -5,12 +5,91 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 import handleAdminAuth from './api/admin-auth.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
 const port = Number(process.env.PORT || 10000);
 const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+
+const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || dummyKey;
+const supabaseServer = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+};
+
+const CSP_HEADER = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onrender.com https://docs.google.com https://drive.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self';";
+
+// In-memory sliding-window rate limiter (10 requests per minute)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 10;
+
+function checkRateLimit(key) {
+  const now = Date.now();
+  const windowData = rateLimitMap.get(key) || [];
+  const recent = windowData.filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= MAX_REQUESTS_PER_WINDOW) {
+    return false;
+  }
+  recent.push(now);
+  rateLimitMap.set(key, recent);
+  if (rateLimitMap.size > 500) {
+    for (const [k, v] of rateLimitMap.entries()) {
+      if (v.every(ts => now - ts >= RATE_LIMIT_WINDOW_MS)) {
+        rateLimitMap.delete(k);
+      }
+    }
+  }
+  return true;
+}
+
+async function verifyExtractionAccess(req) {
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    return { authorized: false, status: 401, error: 'Authentication token required.' };
+  }
+
+  const { data: authUser, error: authUserErr } = await supabaseServer.auth.getUser(token);
+  if (authUserErr || !authUser?.user) {
+    return { authorized: false, status: 401, error: 'Invalid or expired session token.' };
+  }
+
+  const callerUserId = authUser.user.id;
+  const { data: callerProfile, error: profileErr } = await supabaseServer
+    .from('profiles')
+    .select('id, full_name, role, status')
+    .eq('id', callerUserId)
+    .maybeSingle();
+
+  if (profileErr || !callerProfile) {
+    return { authorized: false, status: 403, error: 'User profile not found.' };
+  }
+
+  if (callerProfile.status && callerProfile.status !== 'ACTIVE') {
+    return { authorized: false, status: 403, error: 'Account is not active.' };
+  }
+
+  const role = callerProfile.role;
+  if (role !== 'super_admin' && role !== 'hod') {
+    return { authorized: false, status: 403, error: 'Unauthorized: Only Super Administrators and HODs can extract timetables with AI.' };
+  }
+
+  return { authorized: true, user: authUser.user, profile: callerProfile };
+}
+
 
 // Gemini >= 3.6 Model Policy Enforcement
 export function getGeminiModelVersion(modelName) {
@@ -136,8 +215,13 @@ export function isTransientError(err) {
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-function send(res, status, body, type = 'application/json; charset=utf-8') {
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+function send(res, status, body, type = 'application/json; charset=utf-8', extraHeaders = {}) {
+  res.writeHead(status, {
+    'Content-Type': type,
+    'Cache-Control': 'no-store',
+    ...SECURITY_HEADERS,
+    ...extraHeaders,
+  });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
 
@@ -146,11 +230,12 @@ async function readJson(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 25 * 1024 * 1024) throw new Error('Request is too large.');
+    if (size > 10 * 1024 * 1024) throw new Error('Request payload exceeds maximum allowed size (10MB).');
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
+
 
 /**
  * Executes AI timetable extraction with controlled retry, exponential backoff, and model fallback
@@ -249,12 +334,30 @@ export async function extractWithRetryAndFallback(base64Data, customAiInstance =
 }
 
 async function handleExtract(req, res) {
+  const authCheck = await verifyExtractionAccess(req);
+  if (!authCheck.authorized) {
+    return send(res, authCheck.status || 401, {
+      code: 'UNAUTHORIZED',
+      error: authCheck.error || 'Authentication required to access timetable AI extraction.',
+    });
+  }
+
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const rateLimitKey = `${authCheck.user.id}-${clientIp}`;
+  if (!checkRateLimit(rateLimitKey)) {
+    return send(res, 429, {
+      code: 'RATE_LIMIT_EXCEEDED',
+      error: 'Rate limit exceeded for AI extraction (maximum 10 requests per minute). Please try again shortly.',
+    });
+  }
+
   let body;
   try {
     body = await readJson(req);
   } catch (err) {
-    return send(res, 400, { code: 'INVALID_BODY', error: 'Invalid JSON request payload.' });
+    return send(res, 400, { code: 'INVALID_BODY', error: err.message || 'Invalid JSON request payload.' });
   }
+
 
   if (typeof body?.data !== 'string' || !body.data.trim()) {
     return send(res, 400, { code: 'PDF_REQUIRED', error: 'PDF data is required.' });
@@ -322,10 +425,12 @@ function serveStatic(req, res) {
 
   const headers = {
     'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+    ...SECURITY_HEADERS,
   };
 
   if (isIndexHtml) {
     headers['Cache-Control'] = 'no-cache, must-revalidate';
+    headers['Content-Security-Policy'] = CSP_HEADER;
   } else if (pathname.startsWith('/assets/')) {
     headers['Cache-Control'] = 'public, max-age=31536000, immutable';
   } else {
@@ -552,11 +657,12 @@ async function handleCsvProxyGet(req, res, urlObj) {
   res.writeHead(200, {
     'Content-Type': 'text/csv; charset=utf-8',
     'Cache-Control': 'no-store',
+    ...SECURITY_HEADERS,
   });
   res.end(result.csvText);
 }
 
-export const server = http.createServer(async (req, res) => {
+export async function requestHandler(req, res) {
   try {
     const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const pathname = urlObj.pathname;
@@ -584,7 +690,10 @@ export const server = http.createServer(async (req, res) => {
     console.error('Server error:', error);
     return send(res, 500, { error: error?.message || 'Internal server error.' });
   }
-});
+}
+
+export const server = http.createServer(requestHandler);
+
 
 // Start listener only when executed directly (not when imported in tests)
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

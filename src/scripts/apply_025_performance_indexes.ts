@@ -1,8 +1,11 @@
+if (!process.env.DATABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.obssoojzryqiudllnlkh:Tarun%40759977@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const connectionString = process.env.DATABASE_URL || '';
 
 async function applyPerformanceIndexes() {
   console.log('Connecting to Supabase PostgreSQL...');

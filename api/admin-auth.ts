@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://obssoojzryqiudllnlkh.supabase.co';
+const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ic3Nvb2p6cnlxaXVkbGxubGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDU0NzUsImV4cCI6MjEwMjk4MTQ3NX0.eFCU024aroXFpTqnOaVUOpOUpONBwm3KDDdLfzlZ5co';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || dummyKey;
+
 
 // Server-side privileged client (if service role key provided)
 const supabaseAdmin = supabaseServiceKey
@@ -16,13 +18,37 @@ const supabaseRpc = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-function sendJson(res: any, status: number, data: any) {
-  res.writeHead(status, {
+function getAllowedOrigin(req: any): string {
+  const origin = req.headers?.origin || req.headers?.Origin || '';
+  if (!origin) return '';
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.onrender.com') ||
+      host.endsWith('.vctm.in')
+    ) {
+      return origin;
+    }
+  } catch {}
+  return '';
+}
+
+function sendJson(res: any, status: number, data: any, req?: any) {
+  const allowedOrigin = req ? getAllowedOrigin(req) : '';
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  });
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (allowedOrigin) {
+    headers['Access-Control-Allow-Origin'] = allowedOrigin;
+    headers['Vary'] = 'Origin';
+  }
+  res.writeHead(status, headers);
   res.end(JSON.stringify(data));
 }
 
@@ -63,13 +89,57 @@ async function readJsonBody(req: any): Promise<any> {
   });
 }
 
+/**
+ * Authoritative Super Admin Verification via Supabase Auth & profiles table
+ */
+async function verifySuperAdmin(req: any): Promise<{ authorized: boolean; user?: any; profile?: any; error?: string; status?: number }> {
+  const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    return { authorized: false, status: 401, error: 'Authentication token required.' };
+  }
+
+  const { data: authUser, error: authUserErr } = await supabaseRpc.auth.getUser(token);
+  if (authUserErr || !authUser?.user) {
+    return { authorized: false, status: 401, error: 'Invalid or expired session token.' };
+  }
+
+  const callerUserId = authUser.user.id;
+  const { data: callerProfile, error: profileErr } = await supabaseRpc
+    .from('profiles')
+    .select('id, full_name, role, status')
+    .eq('id', callerUserId)
+    .maybeSingle();
+
+  if (profileErr || !callerProfile) {
+    return { authorized: false, status: 403, error: 'User profile not found.' };
+  }
+
+  if (callerProfile.status && callerProfile.status !== 'ACTIVE') {
+    return { authorized: false, status: 403, error: 'Account is not active.' };
+  }
+
+  const isSuperAdmin = callerProfile.role === 'super_admin';
+  if (!isSuperAdmin) {
+    return { authorized: false, status: 403, error: 'Unauthorized: Only Super Administrators can perform this action.' };
+  }
+
+  return { authorized: true, user: authUser.user, profile: callerProfile };
+}
+
 export default async function handleAdminAuth(req: any, res: any) {
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+    const allowedOrigin = getAllowedOrigin(req);
+    const headers: Record<string, string> = {
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    });
+    };
+    if (allowedOrigin) {
+      headers['Access-Control-Allow-Origin'] = allowedOrigin;
+      headers['Vary'] = 'Origin';
+    }
+    res.writeHead(204, headers);
     return res.end();
   }
 
@@ -86,8 +156,13 @@ export default async function handleAdminAuth(req: any, res: any) {
   const pathname = urlObj.pathname;
 
   try {
-    // 1. Provision Student Account
+    // 1. Provision Student Account (Super Admin Only)
     if (req.method === 'POST' && pathname === '/api/auth/provision-student') {
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
+      }
+
       const body = await readJsonBody(req);
       const {
         roll_number,
@@ -98,17 +173,15 @@ export default async function handleAdminAuth(req: any, res: any) {
         password = 'student123',
         phone,
         mentor_faculty_id,
-        actor_name = 'Super Admin',
       } = body;
 
       if (!roll_number || !full_name || !section_id) {
         return sendJson(res, 400, {
           success: false,
           error: 'Roll number, full name, and section ID are required.',
-        });
+        }, req);
       }
 
-      // If Supabase Admin Auth API is available, ensure auth.users creation via admin API
       const targetEmail = email?.trim() || `${roll_number.trim().toLowerCase()}@student.vctm.in`;
 
       if (supabaseAdmin) {
@@ -140,22 +213,27 @@ export default async function handleAdminAuth(req: any, res: any) {
         p_password: password,
         p_phone: phone || null,
         p_mentor_faculty_id: mentor_faculty_id || null,
-        p_actor_name: actor_name,
+        p_actor_name: authCheck.profile?.full_name || 'Super Admin',
       });
 
       if (rpcErr) {
-        return sendJson(res, 500, { success: false, error: rpcErr.message });
+        return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
       }
 
       return sendJson(res, 200, {
         success: true,
         data: rpcData,
         message: 'Student account and Supabase Auth credentials provisioned successfully.',
-      });
+      }, req);
     }
 
-    // 2. Provision Faculty Account
+    // 2. Provision Faculty Account (Super Admin Only)
     if (req.method === 'POST' && pathname === '/api/auth/provision-faculty') {
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
+      }
+
       const body = await readJsonBody(req);
       const {
         employee_code,
@@ -167,19 +245,17 @@ export default async function handleAdminAuth(req: any, res: any) {
         password = 'faculty@123',
         phone,
         assignments = [],
-        actor_name = 'Super Admin',
       } = body;
 
       if (!employee_code || !full_name || !email || !department_id) {
         return sendJson(res, 400, {
           success: false,
           error: 'Employee code, full name, official email, and department ID are required.',
-        });
+        }, req);
       }
 
       const targetEmail = email.trim().toLowerCase();
 
-      // Optional Admin API pre-provisioning
       if (supabaseAdmin) {
         try {
           const { error: authErr } = await supabaseAdmin.auth.admin.createUser({
@@ -210,70 +286,48 @@ export default async function handleAdminAuth(req: any, res: any) {
         p_password: password,
         p_phone: phone || null,
         p_assignments: assignments,
-        p_actor_name: actor_name,
+        p_actor_name: authCheck.profile?.full_name || 'Super Admin',
       });
 
       if (rpcErr) {
-        return sendJson(res, 500, { success: false, error: rpcErr.message });
+        return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
       }
 
       return sendJson(res, 200, {
         success: true,
         data: rpcData,
         message: 'Faculty account, assignments, and Supabase Auth credentials provisioned successfully.',
-      });
+      }, req);
     }
 
-    // 3. Batch Reconcile Accounts
+    // 3. Batch Reconcile Accounts (Super Admin Only)
     if (req.method === 'POST' && pathname === '/api/auth/reconcile-accounts') {
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
+      }
+
       const { data: rpcData, error: rpcErr } = await supabaseRpc.rpc('reconcile_all_accounts');
       if (rpcErr) {
-        return sendJson(res, 500, { success: false, error: rpcErr.message });
+        return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
       }
 
       return sendJson(res, 200, {
         success: true,
         data: rpcData,
         message: 'All unlinked student and faculty accounts reconciled successfully.',
-      });
+      }, req);
     }
 
     // 4. Update Account Credentials (Super Admin Only)
     if (req.method === 'POST' && pathname === '/api/auth/update-credentials') {
-      const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
-      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-
-      if (!token) {
-        return sendJson(res, 401, {
-          success: false,
-          error: 'Authentication token required.',
-        });
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
       }
 
-      // Verify token with Supabase Auth
-      const { data: authUser, error: authUserErr } = await supabaseRpc.auth.getUser(token);
-      if (authUserErr || !authUser?.user) {
-        return sendJson(res, 401, {
-          success: false,
-          error: 'Invalid or expired session token.',
-        });
-      }
-
-      const callerUserId = authUser.user.id;
-      // Fetch caller profile to verify super_admin role
-      const { data: callerProfile } = await supabaseRpc
-        .from('profiles')
-        .select('id, full_name, role')
-        .eq('id', callerUserId)
-        .maybeSingle();
-
-      const isSuperAdmin = callerProfile?.role === 'super_admin' || authUser.user.user_metadata?.role === 'super_admin';
-      if (!isSuperAdmin) {
-        return sendJson(res, 403, {
-          success: false,
-          error: 'Unauthorized: Only Super Administrators can modify account credentials.',
-        });
-      }
+      const callerUserId = authCheck.user.id;
+      const callerProfile = authCheck.profile;
 
       const body = await readJsonBody(req);
       const {
@@ -287,14 +341,14 @@ export default async function handleAdminAuth(req: any, res: any) {
         return sendJson(res, 400, {
           success: false,
           error: 'Target user ID is required.',
-        });
+        }, req);
       }
 
       if ((!email || !email.trim()) && (!password || !password.trim())) {
         return sendJson(res, 400, {
           success: false,
           error: 'At least one of email or password must be provided.',
-        });
+        }, req);
       }
 
       const cleanEmail = email?.trim() ? email.trim().toLowerCase() : null;
@@ -304,7 +358,7 @@ export default async function handleAdminAuth(req: any, res: any) {
         return sendJson(res, 400, {
           success: false,
           error: 'Password must be at least 6 characters in length.',
-        });
+        }, req);
       }
 
       // If Supabase Admin client is available (service role), sync Auth User directly
@@ -342,46 +396,31 @@ export default async function handleAdminAuth(req: any, res: any) {
       });
 
       if (rpcErr) {
-        return sendJson(res, 500, { success: false, error: rpcErr.message });
+        return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
       }
 
       return sendJson(res, 200, {
         success: true,
         data: rpcData,
         message: 'Account credentials updated successfully and active immediately.',
-      });
+      }, req);
     }
 
     // 5. Update Account Status (Super Admin Only)
     if (req.method === 'POST' && pathname === '/api/auth/update-status') {
-      const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
-      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-
-      if (!token) {
-        return sendJson(res, 401, { success: false, error: 'Authentication token required.' });
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
       }
 
-      const { data: authUser, error: authUserErr } = await supabaseRpc.auth.getUser(token);
-      if (authUserErr || !authUser?.user) {
-        return sendJson(res, 401, { success: false, error: 'Invalid or expired session token.' });
-      }
-
-      const callerUserId = authUser.user.id;
-      const { data: callerProfile } = await supabaseRpc
-        .from('profiles')
-        .select('id, full_name, role')
-        .eq('id', callerUserId)
-        .maybeSingle();
-
-      if (callerProfile?.role !== 'super_admin' && authUser.user.user_metadata?.role !== 'super_admin') {
-        return sendJson(res, 403, { success: false, error: 'Unauthorized: Only Super Administrators can modify account status.' });
-      }
+      const callerUserId = authCheck.user.id;
+      const callerProfile = authCheck.profile;
 
       const body = await readJsonBody(req);
       const { target_user_id, status, reason } = body;
 
       if (!target_user_id || !status) {
-        return sendJson(res, 400, { success: false, error: 'Target user ID and status are required.' });
+        return sendJson(res, 400, { success: false, error: 'Target user ID and status are required.' }, req);
       }
 
       const { data: rpcData, error: rpcErr } = await supabaseRpc.rpc('update_account_status', {
@@ -394,19 +433,19 @@ export default async function handleAdminAuth(req: any, res: any) {
       });
 
       if (rpcErr) {
-        return sendJson(res, 500, { success: false, error: rpcErr.message });
+        return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
       }
 
       return sendJson(res, 200, {
         success: true,
         data: rpcData,
         message: `Account status updated to ${status}.`,
-      });
+      }, req);
     }
 
-    return sendJson(res, 404, { success: false, error: 'Auth API endpoint not found.' });
+    return sendJson(res, 404, { success: false, error: 'Auth API endpoint not found.' }, req);
   } catch (error: any) {
     console.error('Admin Auth Handler Error:', error);
-    return sendJson(res, 500, { success: false, error: error?.message || 'Internal server error' });
+    return sendJson(res, 500, { success: false, error: error?.message || 'Internal server error' }, req);
   }
 }

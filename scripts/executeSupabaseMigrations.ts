@@ -4,8 +4,13 @@ import pg from 'pg';
 
 const { Client } = pg;
 
-const projectRef = 'obssoojzryqiudllnlkh';
-const dbPassword = 'Tarun@759977';
+if (!process.env.SUPABASE_DB_PASSWORD && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
+
+const projectRef = process.env.SUPABASE_PROJECT_REF || 'obssoojzryqiudllnlkh';
+const dbPassword = process.env.SUPABASE_DB_PASSWORD || '';
+
 
 // Endpoints to try
 const configs = [

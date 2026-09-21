@@ -21,7 +21,7 @@ function normalizeSheetUrl(rawUrl: string): string {
 }
 
 /**
- * SSRF security validation
+ * SSRF security validation — strictly restricted to Google domains
  */
 function validateSafePublicUrl(urlStr: string): { valid: boolean; error?: string } {
   let parsed: URL;
@@ -36,6 +36,12 @@ function validateSafePublicUrl(urlStr: string): { valid: boolean; error?: string
   }
 
   const host = parsed.hostname.toLowerCase();
+  const isAllowedHost = host === 'docs.google.com' || host === 'drive.google.com' || host === 'spreadsheets.google.com' || host.endsWith('.google.com');
+
+  if (!isAllowedHost) {
+    return { valid: false, error: 'Only Google Sheets and Google Drive documents are permitted.' };
+  }
+
   if (
     host === 'localhost' ||
     host === '127.0.0.1' ||
@@ -48,31 +54,39 @@ function validateSafePublicUrl(urlStr: string): { valid: boolean; error?: string
     return { valid: false, error: 'Access to internal or loopback addresses is restricted.' };
   }
 
-  const ipv4Match = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (ipv4Match) {
-    const octet1 = parseInt(ipv4Match[1], 10);
-    const octet2 = parseInt(ipv4Match[2], 10);
-    if (
-      octet1 === 10 ||
-      (octet1 === 172 && octet2 >= 16 && octet2 <= 31) ||
-      (octet1 === 192 && octet2 === 168) ||
-      (octet1 === 169 && octet2 === 254)
-    ) {
-      return { valid: false, error: 'Access to private network ranges is restricted.' };
-    }
-  }
-
   return { valid: true };
+}
+
+function getAllowedOrigin(req: any): string {
+  const origin = req.headers?.origin || req.headers?.Origin || '';
+  if (!origin) return '';
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.onrender.com') ||
+      host.endsWith('.vctm.in')
+    ) {
+      return origin;
+    }
+  } catch {}
+  return '';
 }
 
 /**
  * Serverless / Node Request Handler for Google Sheet & CSV Proxy
  */
 export default async function handler(req: any, res: any) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = getAllowedOrigin(req);
+  if (allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;

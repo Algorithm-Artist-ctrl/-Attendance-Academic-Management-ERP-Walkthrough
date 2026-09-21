@@ -1,3 +1,6 @@
+if (!process.env.DATABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
 import pg from 'pg';
 import { supabase } from '../lib/supabase/supabaseClient';
 import { supabaseService } from '../lib/services/supabaseService';
@@ -29,7 +32,7 @@ function assert(condition: boolean, testName: string, details?: any) {
   }
 }
 
-const connectionString = 'postgresql://postgres.obssoojzryqiudllnlkh:Tarun%40759977@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const connectionString = process.env.DATABASE_URL || '';
 
 async function runTests() {
   console.log('================================================================================');

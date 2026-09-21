@@ -55,12 +55,21 @@ export class AITimetableService {
     onProgress?.(35, 'Extracting timetable with Gemini AI...');
     let response: Response;
     try {
+      const { supabase } = await import('../supabase/supabaseClient');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       response = await fetch('/api/timetable/extract', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers,
         body: JSON.stringify({ data }),
       });
     } catch (networkErr: any) {

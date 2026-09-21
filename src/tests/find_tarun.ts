@@ -1,6 +1,9 @@
+if (!process.env.DATABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
 import pg from 'pg';
 
-const connectionString = 'postgresql://postgres:Tarun%40759977@db.obssoojzryqiudllnlkh.supabase.co:5432/postgres';
+const connectionString = process.env.DATABASE_URL || '';
 
 async function findTarun() {
   const client = new pg.Client({ connectionString });

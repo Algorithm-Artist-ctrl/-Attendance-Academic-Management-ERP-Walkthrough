@@ -1,7 +1,10 @@
+if (!process.env.DATABASE_URL && (process as any).loadEnvFile) {
+  try { (process as any).loadEnvFile(); } catch {}
+}
 import { supabase } from '../lib/supabase/supabaseClient';
 import pg from 'pg';
 
-const connectionString = 'postgresql://postgres:Tarun%40759977@db.obssoojzryqiudllnlkh.supabase.co:5432/postgres';
+const connectionString = process.env.DATABASE_URL || '';
 
 let totalChecks = 0;
 let passedChecks = 0;
