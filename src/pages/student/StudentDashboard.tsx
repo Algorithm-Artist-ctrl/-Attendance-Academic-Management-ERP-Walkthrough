@@ -856,7 +856,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }
                         <div key={s.assessmentId || idx} className="flex justify-between items-center text-xs">
                           <span className="text-[#475569] font-medium truncate max-w-[140px]">{s.title}:</span>
                           <span className="font-mono font-bold text-[#0f172a]">
-                            {s.obtainedMarks} / {s.maxMarks}
+                            {s.attendanceStatus === 'ABSENT' ? (
+                              <span className="text-rose-600 font-bold">ABSENT</span>
+                            ) : s.attendanceStatus === 'EXEMPTED' ? (
+                              <span className="text-amber-600 font-bold">EXEMPT</span>
+                            ) : (
+                              `${s.obtainedMarks ?? '—'} / ${s.maxMarks}`
+                            )}
                           </span>
                         </div>
                       ))}

@@ -187,13 +187,23 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
       <td className="py-2.5 px-4 text-center">
         <div className="flex items-center justify-center gap-1.5">
           {status === 'ABSENT' ? (
-            <div className="w-24 text-center py-1.5 px-2 rounded-xl font-mono text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300 select-none">
+            <button
+              type="button"
+              onClick={() => onStatusChange(student.id, 'PRESENT')}
+              title="Click to switch to Present and enter marks"
+              className="w-24 text-center py-1.5 px-2 rounded-xl font-mono text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100 transition-colors select-none cursor-pointer"
+            >
               ABSENT
-            </div>
+            </button>
           ) : status === 'EXEMPTED' ? (
-            <div className="w-24 text-center py-1.5 px-2 rounded-xl font-mono text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 select-none">
+            <button
+              type="button"
+              onClick={() => onStatusChange(student.id, 'PRESENT')}
+              title="Click to switch to Present and enter marks"
+              className="w-24 text-center py-1.5 px-2 rounded-xl font-mono text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors select-none cursor-pointer"
+            >
               EXEMPTED
-            </div>
+            </button>
           ) : (
             <input
               ref={(el) => registerInputRef(student.id, el)}
@@ -255,8 +265,8 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
             Exempted
           </span>
         ) : (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Missing
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+            Not Entered
           </span>
         )}
       </td>
@@ -973,6 +983,24 @@ export const FacultyMarksManagementPage: React.FC = () => {
     if (!activeAssessment || !selectedSubjectId || !selectedSectionId) return;
 
     try {
+      if (publishMode === 'published') {
+        const unenteredPresent = sectionStudents.filter(st => {
+          const entry = marksRoster[st.id];
+          const status = entry?.status || 'NOT_ENTERED';
+          const hasMark = entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null && !isNaN(Number(entry.marks));
+          return status === 'PRESENT' && !hasMark;
+        });
+        if (unenteredPresent.length > 0) {
+          setIsSaving(false);
+          setSaveStatus('idle');
+          setNotificationToast({
+            type: 'error',
+            message: `Cannot publish: ${unenteredPresent.length} student(s) marked PRESENT have no marks entered. Please enter marks or mark them Absent/Exempt/Clear.`
+          });
+          return;
+        }
+      }
+
       setIsSaving(true);
       setSaveStatus('saving');
       const studentMarksPayload: Array<{
@@ -1013,7 +1041,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
             remarks: entry.remarks || undefined,
             oldMarks: oldMarkVal
           });
-        } else if (status === 'PRESENT' && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
+        } else if (entry.marks !== '' && entry.marks !== undefined && entry.marks !== null && !isNaN(Number(entry.marks))) {
           studentMarksPayload.push({
             studentId: st.id,
             marksObtained: Number(entry.marks),
@@ -1021,14 +1049,21 @@ export const FacultyMarksManagementPage: React.FC = () => {
             remarks: entry.remarks || undefined,
             oldMarks: oldMarkVal
           });
-        } else if (entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
-          studentMarksPayload.push({
-            studentId: st.id,
-            marksObtained: Number(entry.marks),
-            attendanceStatus: 'PRESENT',
-            remarks: entry.remarks || undefined,
-            oldMarks: oldMarkVal
-          });
+        } else {
+          // status is 'NOT_ENTERED' or (status is 'PRESENT' with no marks entered in draft mode)
+          // Persist as NOT_ENTERED with null marks if student has an existing record or explicit entry
+          const existingSm = activeAssessment.kind === 'sessional'
+            ? sessionalMarks.find(m => m.sessional_assessment_id === activeAssessment.id && m.student_id === st.id)
+            : null;
+          if (existingSm) {
+            studentMarksPayload.push({
+              studentId: st.id,
+              marksObtained: null,
+              attendanceStatus: 'NOT_ENTERED',
+              remarks: entry.remarks || undefined,
+              oldMarks: oldMarkVal
+            });
+          }
         }
       }
 
@@ -1047,12 +1082,14 @@ export const FacultyMarksManagementPage: React.FC = () => {
         await saveQuizMarks({
           quizId: activeAssessment.id,
           facultyId: currentFacultyId,
-          studentMarks: studentMarksPayload.map(p => ({
-            studentId: p.studentId,
-            marksObtained: p.marksObtained ?? 0,
-            remarks: p.remarks,
-            oldMarks: p.oldMarks ?? undefined
-          })),
+          studentMarks: studentMarksPayload
+            .filter(p => p.marksObtained !== null && p.marksObtained !== undefined)
+            .map(p => ({
+              studentId: p.studentId,
+              marksObtained: p.marksObtained ?? 0,
+              remarks: p.remarks,
+              oldMarks: p.oldMarks ?? undefined
+            })),
           isPublished: publishMode === 'published'
         });
       }
@@ -1065,9 +1102,9 @@ export const FacultyMarksManagementPage: React.FC = () => {
         }
       }
 
-      // Re-fetch assessment marks to guarantee synchronization with PostgreSQL single source of truth
+      // Re-fetch assessment marks with forceFresh: true to guarantee synchronization with PostgreSQL single source of truth
       try {
-        await fetchAssessmentMarks(activeAssessment.id, activeAssessment.kind);
+        await fetchAssessmentMarks(activeAssessment.id, activeAssessment.kind, true);
       } catch (refetchErr) {
         console.warn('fetchAssessmentMarks sync warning:', refetchErr);
       }
@@ -1113,11 +1150,18 @@ export const FacultyMarksManagementPage: React.FC = () => {
                 attendanceStatus: status,
                 remarks: entry.remarks || undefined
               });
-            } else if (entry.marks !== '' && entry.marks !== undefined) {
+            } else if (entry.marks !== '' && entry.marks !== undefined && entry.marks !== null && !isNaN(Number(entry.marks))) {
               studentMarksPayload.push({
                 studentId: st.id,
                 marksObtained: Number(entry.marks),
                 attendanceStatus: 'PRESENT',
+                remarks: entry.remarks || undefined
+              });
+            } else {
+              studentMarksPayload.push({
+                studentId: st.id,
+                marksObtained: null,
+                attendanceStatus: 'NOT_ENTERED',
                 remarks: entry.remarks || undefined
               });
             }
@@ -1476,17 +1520,19 @@ export const FacultyMarksManagementPage: React.FC = () => {
       const entry = marksRoster[st.id];
       const status = entry?.status || 'NOT_ENTERED';
       let marksVal: number | null = null;
-      let statusStr: 'Entered' | 'Missing' | 'Absent' | 'Exempted' = 'Missing';
+      let statusStr: 'Present' | 'Not Entered' | 'Absent' | 'Exempt' = 'Not Entered';
       let percentageStr = '—';
 
       if (status === 'ABSENT') {
         statusStr = 'Absent';
       } else if (status === 'EXEMPTED') {
-        statusStr = 'Exempted';
-      } else if (entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
+        statusStr = 'Exempt';
+      } else if (entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null && !isNaN(Number(entry.marks))) {
         marksVal = Number(entry.marks);
-        statusStr = 'Entered';
+        statusStr = 'Present';
         percentageStr = `${((marksVal / activeAssessment.maxMarks) * 100).toFixed(1)}%`;
+      } else {
+        statusStr = 'Not Entered';
       }
 
       return {
@@ -1519,8 +1565,16 @@ export const FacultyMarksManagementPage: React.FC = () => {
       const quizTotalObt = stQuizMarks.reduce((sum, r) => sum + (r.marks_obtained || 0), 0);
       const quizTotalMax = subQuizzes.reduce((sum, q) => sum + (q.max_marks || 20), 0);
 
-      const s1Val = s1Mark?.marks_obtained ?? '—';
-      const s2Val = s2Mark?.marks_obtained ?? '—';
+      const formatSessional = (mark: any) => {
+        if (!mark) return '—';
+        if (mark.attendance_status === 'ABSENT') return 'ABSENT';
+        if (mark.attendance_status === 'EXEMPTED') return 'EXEMPT';
+        if (mark.marks_obtained !== null && mark.marks_obtained !== undefined) return mark.marks_obtained;
+        return '—';
+      };
+
+      const s1Val = formatSessional(s1Mark);
+      const s2Val = formatSessional(s2Mark);
       const quizStr = subQuizzes.length > 0 ? `${quizTotalObt}/${quizTotalMax}` : '—';
 
       // Computed internal calculation (e.g. S1 + S2 + Quizzes)
@@ -1551,19 +1605,34 @@ export const FacultyMarksManagementPage: React.FC = () => {
       if (targetStudent) {
         const studentAssessments = assessmentOptions.map(opt => {
           let markObtained: number | null = null;
+          let attStatus = 'NOT_ENTERED';
           if (opt.kind === 'sessional') {
             const sm = sessionalMarks.find(m => m.sessional_assessment_id === opt.id && m.student_id === targetStudent.id);
             markObtained = sm?.marks_obtained ?? null;
+            attStatus = sm?.attendance_status || (markObtained !== null ? 'PRESENT' : 'NOT_ENTERED');
           } else if (opt.kind === 'quiz') {
             const qr = quizResults.find(r => r.quiz_id === opt.id && r.student_id === targetStudent.id);
             markObtained = qr?.marks_obtained ?? null;
+            attStatus = markObtained !== null ? 'PRESENT' : 'NOT_ENTERED';
           }
+
+          let displayStatus = 'Pending';
+          let percentageStr = '—';
+          if (attStatus === 'ABSENT') {
+            displayStatus = 'Absent';
+          } else if (attStatus === 'EXEMPTED') {
+            displayStatus = 'Exempt';
+          } else if (markObtained !== null) {
+            displayStatus = 'Evaluated';
+            percentageStr = `${((markObtained / opt.maxMarks) * 100).toFixed(1)}%`;
+          }
+
           return {
             title: opt.title,
             marksObtained: markObtained,
             maxMarks: opt.maxMarks,
-            percentage: markObtained !== null ? `${((markObtained / opt.maxMarks) * 100).toFixed(1)}%` : '—',
-            status: markObtained !== null ? 'Evaluated' : 'Pending'
+            percentage: percentageStr,
+            status: displayStatus
           };
         });
 

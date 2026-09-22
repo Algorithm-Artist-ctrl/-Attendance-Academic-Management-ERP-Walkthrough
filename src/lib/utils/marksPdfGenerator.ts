@@ -6,7 +6,7 @@ export interface StudentMarkRow {
   studentName: string;
   marksObtained: number | null;
   maxMarks: number;
-  status: 'Entered' | 'Missing' | 'Absent' | 'Exempted';
+  status: 'Entered' | 'Present' | 'Missing' | 'Not Entered' | 'Absent' | 'Exempted' | 'Exempt' | string;
   percentage?: string;
   remarks?: string;
 }
@@ -186,22 +186,48 @@ export async function generateMarksReportPdf(params: MarksPdfReportParams): Prom
   let startY = reportType === 'CURRENT_ASSESSMENT' || reportType === 'STUDENT_REPORT' ? 55 : 50;
 
   if (reportType === 'CURRENT_ASSESSMENT' && studentRows.length > 0) {
-    const validScores = studentRows.filter(r => r.marksObtained !== null && r.marksObtained !== undefined).map(r => Number(r.marksObtained));
+    let presentCount = 0;
+    let absentCount = 0;
+    let exemptedCount = 0;
+    let notEnteredCount = 0;
+    const validScores: number[] = [];
+
+    for (const r of studentRows) {
+      const statusUpper = (r.status || '').toUpperCase();
+      const isAbsent = statusUpper === 'ABSENT';
+      const isExempt = statusUpper === 'EXEMPTED' || statusUpper === 'EXEMPT';
+      const isPresent = (statusUpper === 'PRESENT' || statusUpper === 'ENTERED') && r.marksObtained !== null && r.marksObtained !== undefined;
+
+      if (isAbsent) {
+        absentCount++;
+      } else if (isExempt) {
+        exemptedCount++;
+      } else if (isPresent) {
+        presentCount++;
+        validScores.push(Number(r.marksObtained));
+      } else {
+        notEnteredCount++;
+      }
+    }
+
     const totalCount = studentRows.length;
-    const enteredCount = validScores.length;
-    const missingCount = totalCount - enteredCount;
-    const avgScore = enteredCount > 0 ? (validScores.reduce((a, b) => a + b, 0) / enteredCount).toFixed(1) : 'N/A';
-    const maxScore = enteredCount > 0 ? Math.max(...validScores) : 'N/A';
-    const minScore = enteredCount > 0 ? Math.min(...validScores) : 'N/A';
+    const avgScore = validScores.length > 0 ? (validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1) : 'N/A';
+    const maxScore = validScores.length > 0 ? Math.max(...validScores) : 'N/A';
+    const minScore = validScores.length > 0 ? Math.min(...validScores) : 'N/A';
 
     doc.setFillColor(245, 248, 252);
     doc.setDrawColor(210, 220, 235);
     doc.roundedRect(14, startY, pageWidth - 28, 9, 1, 1, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(30, 58, 95);
-    doc.text(`Total Students: ${totalCount}  |  Entered: ${enteredCount}  |  Missing: ${missingCount}  |  Class Average: ${avgScore}  |  Highest: ${maxScore}  |  Lowest: ${minScore}`, pageWidth / 2, startY + 6, { align: 'center' });
+    doc.text(
+      `Total: ${totalCount}  |  Present: ${presentCount}  |  Absent: ${absentCount}  |  Exempted: ${exemptedCount}  |  Not Entered: ${notEnteredCount}  |  Class Avg: ${avgScore}  |  Highest: ${maxScore}  |  Lowest: ${minScore}`,
+      pageWidth / 2,
+      startY + 6,
+      { align: 'center' }
+    );
 
     startY += 12;
   }
@@ -209,10 +235,14 @@ export async function generateMarksReportPdf(params: MarksPdfReportParams): Prom
   // Generate Table
   if (reportType === 'CURRENT_ASSESSMENT') {
     const tableBody = studentRows.map((r, i) => {
-      const isAbsent = r.status === 'Absent';
-      const isExempt = r.status === 'Exempted';
-      const marksStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPTED' : r.marksObtained !== null && r.marksObtained !== undefined ? String(r.marksObtained) : '—';
-      const pctStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPTED' : r.marksObtained !== null && r.marksObtained !== undefined ? `${Math.round((r.marksObtained / r.maxMarks) * 100)}%` : '—';
+      const statusUpper = (r.status || '').toUpperCase();
+      const isAbsent = statusUpper === 'ABSENT';
+      const isExempt = statusUpper === 'EXEMPTED' || statusUpper === 'EXEMPT';
+      const isPresent = (statusUpper === 'PRESENT' || statusUpper === 'ENTERED') && r.marksObtained !== null && r.marksObtained !== undefined;
+
+      const marksStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPT' : isPresent ? String(r.marksObtained) : '—';
+      const pctStr = isAbsent ? 'Absent' : isExempt ? 'Exempt' : isPresent ? `${Math.round((Number(r.marksObtained) / r.maxMarks) * 100)}%` : '—';
+      const statusDisplay = isAbsent ? 'Absent' : isExempt ? 'Exempt' : isPresent ? 'Present' : 'Not Entered';
       return [
         i + 1,
         r.rollNumber,
@@ -220,7 +250,7 @@ export async function generateMarksReportPdf(params: MarksPdfReportParams): Prom
         marksStr,
         r.maxMarks,
         pctStr,
-        r.status,
+        statusDisplay,
         r.remarks || '',
       ];
     });
@@ -302,14 +332,22 @@ export async function generateMarksReportPdf(params: MarksPdfReportParams): Prom
       margin: { left: 14, right: 14, bottom: 35 },
     });
   } else if (reportType === 'STUDENT_REPORT' && singleStudent) {
-    const tableBody = singleStudent.assessments.map((a, i) => [
-      i + 1,
-      a.title,
-      a.marksObtained !== null && a.marksObtained !== undefined ? a.marksObtained : 'Unmarked',
-      a.maxMarks,
-      a.percentage,
-      a.status,
-    ]);
+    const tableBody = singleStudent.assessments.map((a, i) => {
+      const statusUpper = (a.status || '').toUpperCase();
+      const isAbsent = statusUpper === 'ABSENT';
+      const isExempt = statusUpper === 'EXEMPTED' || statusUpper === 'EXEMPT';
+      const marksStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPT' : a.marksObtained !== null && a.marksObtained !== undefined ? String(a.marksObtained) : '—';
+      const pctStr = isAbsent ? 'Absent' : isExempt ? 'Exempt' : a.percentage;
+      const statusStr = isAbsent ? 'Absent' : isExempt ? 'Exempt' : a.status;
+      return [
+        i + 1,
+        a.title,
+        marksStr,
+        a.maxMarks,
+        pctStr,
+        statusStr,
+      ];
+    });
 
     autoTable(doc, {
       startY: startY + 4,
@@ -342,14 +380,22 @@ export async function generateMarksReportPdf(params: MarksPdfReportParams): Prom
     });
   } else {
     // SECTION REPORT
-    const tableBody = studentRows.map((r, i) => [
-      i + 1,
-      r.rollNumber,
-      r.studentName,
-      r.marksObtained !== null && r.marksObtained !== undefined ? r.marksObtained : '—',
-      r.maxMarks,
-      r.status,
-    ]);
+    const tableBody = studentRows.map((r, i) => {
+      const statusUpper = (r.status || '').toUpperCase();
+      const isAbsent = statusUpper === 'ABSENT';
+      const isExempt = statusUpper === 'EXEMPTED' || statusUpper === 'EXEMPT';
+      const isPresent = (statusUpper === 'PRESENT' || statusUpper === 'ENTERED') && r.marksObtained !== null && r.marksObtained !== undefined;
+      const marksStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPT' : isPresent ? String(r.marksObtained) : '—';
+      const statusDisplay = isAbsent ? 'Absent' : isExempt ? 'Exempt' : isPresent ? 'Present' : 'Not Entered';
+      return [
+        i + 1,
+        r.rollNumber,
+        r.studentName,
+        marksStr,
+        r.maxMarks,
+        statusDisplay,
+      ];
+    });
 
     autoTable(doc, {
       startY: startY + 4,

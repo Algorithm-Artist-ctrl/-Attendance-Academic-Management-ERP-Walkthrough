@@ -675,7 +675,7 @@ export const supabaseService = {
         supabase.from('assignment_submissions').select('id, assignment_id, student_id, marks_obtained, status, submitted_at, graded_at').order('submitted_at', { ascending: false }).limit(25),
         supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at').order('created_at', { ascending: false }).limit(20),
         supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, remarks, graded_at, created_at').order('created_at', { ascending: false }).limit(25),
-        supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, created_at').order('created_at', { ascending: false }).limit(50),
+        supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, attendance_status, remarks, created_at, updated_at').order('created_at', { ascending: false }).limit(50),
         supabase.from('marks_history').select('id, student_id, subject_id, old_marks, new_marks, reason, updated_at').order('updated_at', { ascending: false }).limit(10),
         supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at').order('created_at', { ascending: false }).limit(20),
       ]);
@@ -774,7 +774,7 @@ export const supabaseService = {
               ? supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at, updated_at').eq('section_id', resolvedSectionId).eq('active', true).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
               : Promise.resolve({ data: [] }),
             supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, remarks, graded_by, graded_at, created_at, updated_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(100),
-            supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(200),
+            supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, attendance_status, remarks, created_at, updated_at').eq('student_id', studentId).order('created_at', { ascending: false }).limit(200),
             resolvedSectionId
               ? supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at, updated_at').eq('section_id', resolvedSectionId).is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
               : Promise.resolve({ data: [] }),
@@ -840,7 +840,7 @@ export const supabaseService = {
             supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, max_marks, due_date, status, active, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
             supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
             supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at, updated_at').eq('faculty_id', resolvedFacId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
-            supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at').eq('faculty_id', resolvedFacId).order('created_at', { ascending: false }).limit(2000),
+            supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, attendance_status, remarks, created_at, updated_at').eq('faculty_id', resolvedFacId).order('created_at', { ascending: false }).limit(2000),
           ]);
 
           const assignmentIds = (assignmentsRes.data || []).map(a => a.id).filter(isValidUuid);
@@ -5088,7 +5088,7 @@ export const supabaseService = {
           if (kind === 'sessional') {
             const { data, error } = await supabase
               .from('sessional_marks')
-              .select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, remarks, created_at, updated_at')
+              .select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, attendance_status, remarks, created_at, updated_at')
               .eq('sessional_assessment_id', assessmentId)
               .order('created_at', { ascending: true });
             if (error) throw error;
@@ -5257,19 +5257,37 @@ export const supabaseService = {
 
     if (upsertResult.error) throw new Error(upsertResult.error.message);
 
+    // Invalidate query cache for assessment marks and faculty academic records
+    if (params.sessionalAssessmentId) {
+      queryCache.invalidate(queryKeys.assessmentMarks(params.sessionalAssessmentId, 'sessional'));
+    }
+    if (validFacultyId) {
+      queryCache.invalidate(queryKeys.facultyAcademicRecords(validFacultyId));
+    }
+
     // Record in marks_history audit table in bulk (eliminates sequential N-round-trip HTTP loops)
     const sessionalHistoryRows = params.studentMarks
-      .filter(sm => sm.oldMarks !== sm.marksObtained)
-      .map(sm => ({
-        entity_type: 'sessional',
-        entity_id: params.sessionalAssessmentId || params.subjectId,
-        student_id: sm.studentId,
-        subject_id: params.subjectId,
-        old_marks: sm.oldMarks ?? undefined,
-        new_marks: sm.marksObtained ?? 0,
-        updated_by: validFacultyId,
-        reason: `${params.sessionalType || 'Sessional'} Marks Updated`
-      }));
+      .filter(sm => sm.oldMarks !== sm.marksObtained || (sm.attendanceStatus && sm.attendanceStatus !== 'PRESENT'))
+      .map(sm => {
+        let reason = `${params.sessionalType || 'Sessional'} Marks Updated`;
+        if (sm.attendanceStatus === 'ABSENT') {
+          reason = `${params.sessionalType || 'Sessional'} Marked ABSENT`;
+        } else if (sm.attendanceStatus === 'EXEMPTED') {
+          reason = `${params.sessionalType || 'Sessional'} Marked EXEMPTED`;
+        } else if (sm.attendanceStatus === 'NOT_ENTERED') {
+          reason = `${params.sessionalType || 'Sessional'} Reset to NOT_ENTERED`;
+        }
+        return {
+          entity_type: 'sessional',
+          entity_id: params.sessionalAssessmentId || params.subjectId,
+          student_id: sm.studentId,
+          subject_id: params.subjectId,
+          old_marks: sm.oldMarks ?? undefined,
+          new_marks: sm.marksObtained ?? 0,
+          updated_by: validFacultyId,
+          reason
+        };
+      });
     if (sessionalHistoryRows.length > 0) {
       const { error: histErr } = await supabase.from('marks_history').insert(sessionalHistoryRows);
       if (histErr) console.warn('Notice: Background marks_history bulk insert:', histErr.message);
