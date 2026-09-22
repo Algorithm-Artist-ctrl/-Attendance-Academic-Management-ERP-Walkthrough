@@ -4,6 +4,12 @@ import { useAcademic } from './context/AcademicContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import vctmOfficialLogo from './assets/vctm-logo.png';
 import { GraduationCap, RotateCcw, AlertTriangle } from 'lucide-react';
+import {
+  parseCurrentRoute,
+  getCanonicalPath,
+  getStoredHODMode,
+  setStoredHODMode
+} from './lib/routing/router';
 
 const ResetPasswordModal = lazy(() => import('./components/auth/ResetPasswordModal').then(m => ({ default: m.ResetPasswordModal })));
 const AppShell = lazy(() => import('./components/layout/AppShell').then(m => ({ default: m.AppShell })));
@@ -75,19 +81,75 @@ const PageSkeletonLoader: React.FC = () => (
 export const AppContent: React.FC = () => {
   const { user, isAuthenticated, role, isLoading, logout, isPasswordRecovery } = useAuth();
   const { faculty } = useAcademic();
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [navigationParams, setNavigationParams] = useState<any>(null);
-  const [isTeachingMode, setIsTeachingMode] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && window.location.pathname.startsWith('/hod/teaching');
+  // Synchronously parse route on initial render before any hooks/effects
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const parsed = parseCurrentRoute(window.location.pathname, window.location.search, role);
+    return parsed.tab;
   });
 
+  const [navigationParams, setNavigationParams] = useState<any>(() => {
+    if (typeof window === 'undefined') return null;
+    const parsed = parseCurrentRoute(window.location.pathname, window.location.search, role);
+    return parsed.params;
+  });
+
+  const [isTeachingMode, setIsTeachingMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    if (window.location.pathname.startsWith('/hod/teaching')) return true;
+    const stored = getStoredHODMode();
+    return stored === 'teaching';
+  });
+
+  // Browser PopState (Back/Forward) listener
   useEffect(() => {
-    const handlePopState = () => {
-      setIsTeachingMode(window.location.pathname.startsWith('/hod/teaching'));
+    const handlePopState = (event: PopStateEvent) => {
+      if (typeof window === 'undefined') return;
+      const parsed = parseCurrentRoute(window.location.pathname, window.location.search, role);
+      setActiveTab(parsed.tab);
+      setIsTeachingMode(parsed.isTeachingMode);
+      setNavigationParams(parsed.params || event.state || null);
+      if (role === 'hod') {
+        setStoredHODMode(parsed.isTeachingMode ? 'teaching' : 'management');
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [role]);
+
+  // Route authorization & canonicalization effect once auth resolves
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !role) return;
+
+    if (typeof window !== 'undefined') {
+      const currentRoute = parseCurrentRoute(window.location.pathname, window.location.search, role);
+
+      // Authorization guard: if user is not authorized for this route, redirect to role home
+      if (!currentRoute.isAuthorized) {
+        const roleHome = getCanonicalPath(role, 'dashboard', false);
+        setActiveTab('dashboard');
+        setIsTeachingMode(false);
+        setNavigationParams(null);
+        window.history.replaceState(null, '', roleHome);
+        return;
+      }
+
+      if (role === 'hod') {
+        setStoredHODMode(currentRoute.isTeachingMode ? 'teaching' : 'management');
+      }
+
+      setActiveTab(currentRoute.tab);
+      setIsTeachingMode(currentRoute.isTeachingMode);
+      if (currentRoute.params) {
+        setNavigationParams(currentRoute.params);
+      }
+
+      // Canonicalize alias/root routes (e.g. '/' or '/dashboard') without triggering page reload
+      if (currentRoute.requiresRedirect || window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+        window.history.replaceState(currentRoute.params, '', currentRoute.canonicalPath);
+      }
+    }
+  }, [isLoading, isAuthenticated, role]);
 
   // Role-Based Code-Splitting Prefetching: Preload key role pages into browser cache for instant switching
   useEffect(() => {
@@ -123,12 +185,11 @@ export const AppContent: React.FC = () => {
     setIsTeachingMode(enabled);
     setActiveTab('dashboard');
     setNavigationParams(null);
+    setStoredHODMode(enabled ? 'teaching' : 'management');
+
     if (typeof window !== 'undefined') {
-      if (enabled) {
-        window.history.pushState(null, '', '/hod/teaching');
-      } else {
-        window.history.pushState(null, '', '/hod');
-      }
+      const targetUrl = enabled ? '/hod/teaching' : '/hod';
+      window.history.pushState(null, '', targetUrl);
     }
   };
 
@@ -161,9 +222,21 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  const handleNavigate = (tab: string, params?: any) => {
+  const handleNavigate = (tab: string, params?: any, replace = false) => {
     setActiveTab(tab);
     setNavigationParams(params || null);
+
+    if (typeof window !== 'undefined') {
+      const targetUrl = getCanonicalPath(role, tab, role === 'hod' && isTeachingMode, params);
+      const currentUrl = window.location.pathname + window.location.search;
+      if (targetUrl !== currentUrl) {
+        if (replace) {
+          window.history.replaceState(params || null, '', targetUrl);
+        } else {
+          window.history.pushState(params || null, '', targetUrl);
+        }
+      }
+    }
   };
 
   const renderContent = () => {
@@ -210,7 +283,7 @@ export const AppContent: React.FC = () => {
             <TakeAttendancePage
               initialTimetableEntryId={navigationParams?.timetableEntryId}
               initialSessionDate={navigationParams?.sessionDate}
-              onFinished={() => setActiveTab('dashboard')}
+              onFinished={() => handleNavigate('dashboard')}
             />
           );
         case 'timetable':
@@ -229,7 +302,7 @@ export const AppContent: React.FC = () => {
               initialSubjectId={navigationParams?.subjectId}
               initialSectionId={navigationParams?.sectionId}
               initialSubTab={navigationParams?.initialSubTab || 'overview'}
-              onBack={() => setActiveTab('dashboard')}
+              onBack={() => handleNavigate('dashboard')}
               onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
             />
           );
@@ -271,8 +344,8 @@ export const AppContent: React.FC = () => {
       // A. Dedicated Teaching / Faculty Mode for HOD
       if (isTeachingMode) {
         const currentFaculty = faculty.find(
-          f => f.id === user?.faculty_id || 
-               f.id === user?.faculty?.id || 
+          f => f.id === user?.faculty_id ||
+               f.id === user?.faculty?.id ||
                f.id === user?.id ||
                (user?.faculty?.employee_code && f.employee_code === user.faculty.employee_code) ||
                (user?.full_name && f.full_name.toLowerCase().trim() === user.full_name.toLowerCase().trim()) ||
@@ -313,7 +386,7 @@ export const AppContent: React.FC = () => {
               <TakeAttendancePage
                 initialTimetableEntryId={navigationParams?.timetableEntryId}
                 initialSessionDate={navigationParams?.sessionDate}
-                onFinished={() => setActiveTab('dashboard')}
+                onFinished={() => handleNavigate('dashboard')}
               />
             );
             break;
@@ -336,7 +409,7 @@ export const AppContent: React.FC = () => {
                 initialSubjectId={navigationParams?.subjectId}
                 initialSectionId={navigationParams?.sectionId}
                 initialSubTab={navigationParams?.initialSubTab || 'overview'}
-                onBack={() => setActiveTab('dashboard')}
+                onBack={() => handleNavigate('dashboard')}
                 onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
               />
             );
@@ -435,7 +508,7 @@ export const AppContent: React.FC = () => {
             <TakeAttendancePage
               initialTimetableEntryId={navigationParams?.timetableEntryId}
               initialSessionDate={navigationParams?.sessionDate}
-              onFinished={() => setActiveTab('dashboard')}
+              onFinished={() => handleNavigate('dashboard')}
             />
           );
         case 'timetable':
@@ -458,7 +531,7 @@ export const AppContent: React.FC = () => {
               initialSubjectId={navigationParams?.subjectId}
               initialSectionId={navigationParams?.sectionId}
               initialSubTab={navigationParams?.initialSubTab || 'overview'}
-              onBack={() => setActiveTab('dashboard')}
+              onBack={() => handleNavigate('dashboard')}
               onTakeAttendance={(ttId) => handleNavigate('take_attendance', { timetableEntryId: ttId })}
             />
           );
@@ -560,8 +633,8 @@ export const AppContent: React.FC = () => {
   return (
     <>
       <Suspense fallback={<PageSkeletonLoader />}>
-        <AppShell 
-          activeTab={activeTab} 
+        <AppShell
+          activeTab={activeTab}
           onTabChange={handleNavigate}
           isTeachingMode={role === 'hod' && isTeachingMode}
           onToggleTeachingMode={handleToggleTeachingMode}

@@ -29,9 +29,7 @@ class RootErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundar
   }
 
   handleReload = () => {
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
+    this.setState({ hasError: false, error: null });
   };
 
   render() {

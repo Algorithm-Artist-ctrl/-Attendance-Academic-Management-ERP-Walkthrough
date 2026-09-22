@@ -114,7 +114,8 @@ async function runPerformanceAndSafetyTests() {
   );
 
   // 9. Code Audit: Verify Zero Blocking refreshAssessments in saveSessionalMarks
-  const saveMarksHasBlockingRefresh = /saveSessionalMarks\s*=\s*async[\s\S]*?await refreshAssessments\(\)/.test(academicContent);
+  const saveMarksFuncMatch = academicContent.match(/const saveSessionalMarks\s*=\s*async[\s\S]*?\n  \};/);
+  const saveMarksHasBlockingRefresh = saveMarksFuncMatch ? saveMarksFuncMatch[0].includes('await refreshAssessments()') : false;
   recordTest(
     '9. Zero Blocking refreshAssessments() in saveSessionalMarks',
     !saveMarksHasBlockingRefresh,
