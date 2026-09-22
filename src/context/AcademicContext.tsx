@@ -1479,6 +1479,9 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       refreshLeaveApplications();
       // Stagger communication tables so core ERP loads first
       setTimeout(() => {
+        const activeUser = erpStorage.getCurrentSessionUser() || user;
+        const currentRole = role || activeUser?.role;
+        if (currentRole === 'super_admin') return;
         refreshConversations();
         refreshMessageGroups();
       }, 2000);
@@ -1539,6 +1542,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Idle deferred communication hydration for unread count badges (zero initial render contention)
     idleTimer = setTimeout(() => {
+      const activeUser = erpStorage.getCurrentSessionUser() || user;
+      const currentRole = role || activeUser?.role;
+      if (currentRole === 'super_admin') return;
+
       if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
         (window as any).requestIdleCallback(() => {
           refreshConversations();

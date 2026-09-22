@@ -669,14 +669,14 @@ export const supabaseService = {
         this.fetchAllAttendanceSessions(50),
         Promise.resolve([] as AttendanceRecord[]), // Lazy-loaded on demand per session via ensureSessionAttendanceLoaded
         this.fetchCorrections(30),
-        supabase.from('audit_logs').select('id, user_id, actor_name, action, entity_type, entity_id, ip_address, created_at').order('created_at', { ascending: false }).limit(20),
-        supabase.from('timetable_versions').select('id, version_number, name, change_summary, is_current, academic_year_id, created_at').order('created_at', { ascending: false }).limit(5),
+        supabase.from('audit_logs').select('id, actor_id, actor_name, actor_role, action, entity_type, entity_id, new_values, created_at').order('created_at', { ascending: false }).limit(20),
+        supabase.from('timetable_versions').select('id, department_id, section_id, version_number, effective_from, status, approved_by, approved_at, changes_summary, created_at, updated_at').order('created_at', { ascending: false }).limit(5),
         supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, max_marks, due_date, status, active, created_at').order('created_at', { ascending: false }).limit(20),
         supabase.from('assignment_submissions').select('id, assignment_id, student_id, marks_obtained, status, submitted_at, graded_at').order('submitted_at', { ascending: false }).limit(25),
         supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at').order('created_at', { ascending: false }).limit(20),
         supabase.from('quiz_results').select('id, quiz_id, student_id, marks_obtained, remarks, graded_at, created_at').order('created_at', { ascending: false }).limit(25),
         supabase.from('sessional_marks').select('id, sessional_assessment_id, student_id, subject_id, section_id, faculty_id, marks_obtained, max_marks, sessional_type, status, created_at').order('created_at', { ascending: false }).limit(50),
-        supabase.from('marks_history').select('id, sessional_mark_id, old_marks, new_marks, reason, changed_by, created_at').order('created_at', { ascending: false }).limit(10),
+        supabase.from('marks_history').select('id, student_id, subject_id, old_marks, new_marks, reason, updated_at').order('updated_at', { ascending: false }).limit(10),
         supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at').order('created_at', { ascending: false }).limit(20),
       ]);
 
@@ -996,8 +996,6 @@ export const supabaseService = {
             { data: assignmentsList },
             { data: quizzesList },
             { data: assessmentsList },
-            { data: auditLogs },
-            { data: timetableVersions },
           ] = await Promise.all([
             supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
             params.departmentId && isValidUuid(params.departmentId)
@@ -1008,8 +1006,6 @@ export const supabaseService = {
             supabase.from('assignments').select('id, title, description, subject_id, section_id, faculty_id, max_marks, due_date, status, active, created_at').order('created_at', { ascending: false }).limit(30),
             supabase.from('quizzes').select('id, title, description, subject_id, section_id, faculty_id, max_marks, quiz_date, google_form_url, status, active, created_at').order('created_at', { ascending: false }).limit(30),
             supabase.from('sessional_assessments').select('id, title, max_marks, subject_id, section_id, faculty_id, exam_date, status, created_at').order('created_at', { ascending: false }).limit(30),
-            supabase.from('audit_logs').select('id, user_id, actor_name, action, entity_type, entity_id, ip_address, created_at').order('created_at', { ascending: false }).limit(10),
-            supabase.from('timetable_versions').select('id, version_number, name, change_summary, is_current, academic_year_id, created_at').order('created_at', { ascending: false }).limit(5),
           ]);
 
           return {
@@ -1019,8 +1015,8 @@ export const supabaseService = {
             attendanceSessions: (attendanceSessions as unknown as AttendanceSession[]) || [],
             attendanceRecords: [] as AttendanceRecord[],
             corrections: (corrections as AttendanceCorrection[]) || [],
-            auditLogs: (auditLogs as AuditLog[]) || [],
-            timetableVersions: (timetableVersions as unknown as TimetableVersion[]) || [],
+            auditLogs: [] as AuditLog[],
+            timetableVersions: [] as TimetableVersion[],
             courseAssignments: (assignmentsList as Assignment[]) || [],
             assignmentSubmissions: [],
             quizzes: (quizzesList as Quiz[]) || [],
@@ -1031,17 +1027,35 @@ export const supabaseService = {
           };
         }
 
-        // Super Admin: delegate to fetchOperationalData and lean students
-        const [operationalData, allStudents] = await Promise.all([
-          this.fetchOperationalData(),
+        // Super Admin: streamlined fast slice (Master + Students + Timetable + Audit Logs + Sessions)
+        const [
+          allStudents,
+          { data: timetable },
+          { data: auditLogs },
+          attendanceSessions,
+        ] = await Promise.all([
           this.fetchStudents(true),
+          supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
+          supabase.from('audit_logs').select('id, actor_id, actor_name, actor_role, action, entity_type, entity_id, new_values, created_at').order('created_at', { ascending: false }).limit(30),
+          this.fetchAllAttendanceSessions(20),
         ]);
-        if (!operationalData) return null;
 
         return {
           ...masterData,
-          students: allStudents,
-          ...operationalData,
+          students: allStudents || [],
+          timetable: (timetable as unknown as TimetableEntry[]) || [],
+          attendanceSessions: (attendanceSessions as unknown as AttendanceSession[]) || [],
+          attendanceRecords: [] as AttendanceRecord[],
+          corrections: [] as AttendanceCorrection[],
+          auditLogs: (auditLogs as AuditLog[]) || [],
+          timetableVersions: [] as TimetableVersion[],
+          courseAssignments: [] as Assignment[],
+          assignmentSubmissions: [] as AssignmentSubmission[],
+          quizzes: [] as Quiz[],
+          quizResults: [] as QuizResult[],
+          sessionalMarks: [] as SessionalMark[],
+          marksHistory: [] as MarksHistory[],
+          sessionalAssessments: [] as SessionalAssessment[],
         };
       } catch (err) {
         console.error('Error in fetchScopedData:', err);
