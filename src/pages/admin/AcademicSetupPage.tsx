@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3, Calendar, Users } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,7 @@ import { Modal } from '../../components/common/Modal';
 import { AddSectionModal } from '../../components/academic/AddSectionModal';
 import { SectionStudentManagementModal } from '../../components/academic/SectionStudentManagementModal';
 import { Section, AcademicYear, Semester } from '../../types/database.types';
+import { supabaseService } from '../../lib/services/supabaseService';
 import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
@@ -51,6 +52,13 @@ export const AcademicSetupPage: React.FC = () => {
   const [filterSemesterId, setFilterSemesterId] = useState<string>('ALL');
   const [filterSectionName, setFilterSectionName] = useState<string>('ALL');
   const [managingStudentsSection, setManagingStudentsSection] = useState<Section | null>(null);
+  const [sectionStudentCounts, setSectionStudentCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    supabaseService.fetchSectionStudentCounts().then(counts => {
+      setSectionStudentCounts(counts);
+    });
+  }, [sections]);
 
   // New Department Modal state
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -753,8 +761,7 @@ export const AcademicSetupPage: React.FC = () => {
                     const coordinator = faculty.find(f => f.id === sec.class_coordinator_id);
                     const sem = semesters.find(s => s.id === sec.semester_id);
                     const yr = years.find(y => y.id === sem?.academic_year_id);
-                    const secStudents = students.filter(s => s.section_id === sec.id);
-                    const studentCount = secStudents.length;
+                    const studentCount = sectionStudentCounts[sec.id] ?? students.filter(s => s.section_id === sec.id).length;
 
                     return (
                       <tr key={sec.id} className="hover:bg-slate-50/80 transition-colors">

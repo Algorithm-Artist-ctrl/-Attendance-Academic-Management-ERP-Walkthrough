@@ -122,35 +122,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
 
     loadScoped();
 
-    let debounceTimer: NodeJS.Timeout | null = null;
-    const debouncedLoad = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        loadScoped();
-      }, 150);
-    };
-
-    // Subscribe to realtime updates strictly scoped for this faculty member
-    const channel = supabase
-      .channel(`faculty-dashboard-${facultyId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries', filter: `faculty_id=eq.${facultyId}` }, () => {
-        debouncedLoad();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'class_coordinator_assignments', filter: `faculty_id=eq.${facultyId}` }, () => {
-        debouncedLoad();
-        refreshCoordinatorAssignments(facultyId);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sessions', filter: `faculty_id=eq.${facultyId}` }, () => {
-        debouncedLoad();
-      })
-      .subscribe();
-
     return () => {
       isMounted = false;
-      if (debounceTimer) clearTimeout(debounceTimer);
-      supabase.removeChannel(channel);
     };
-  }, [facultyId, refreshCoordinatorAssignments]);
+  }, [facultyId]);
 
   const todayDay = getISTDayOfWeek();
   const [selectedScheduleDay, setSelectedScheduleDay] = useState<DayOfWeek>(

@@ -568,7 +568,7 @@ interface AcademicContextType {
     studentId?: string;
     dateStr: string;
   }) => TodayLectureItem[];
-  refreshStudents: () => Promise<void>;
+  refreshStudents: (sectionId?: string) => Promise<void>;
   refreshTimetable: (sectionId?: string) => Promise<void>;
   refreshAttendance: () => Promise<void>;
   refreshCorrections: () => Promise<void>;
@@ -1017,12 +1017,35 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 }, [user?.id, role]);
 
   // Granular Entity Refreshers for Targeted UI Updates Without Full-App Reload
-  const refreshStudents = useCallback(async () => {
+  const refreshStudents = useCallback(async (targetSectionId?: string) => {
     try {
-      const rawStudents = await supabaseService.fetchStudents();
       const curSections = sectionsRef.current;
       const curFaculty = facultyRef.current;
       const curDepts = departmentsRef.current;
+
+      if (targetSectionId) {
+        const rawSectionStudents = await supabaseService.fetchStudentsBySection(targetSectionId);
+        const enriched: Student[] = rawSectionStudents.map(s => {
+          const matchedSection = curSections.find(sec => sec.id === s.section_id);
+          return {
+            ...s,
+            section: matchedSection,
+            section_id: matchedSection?.id || s.section_id,
+            mentor: curFaculty.find(f => f.id === s.mentor_faculty_id),
+            department: curDepts.find(d => d.id === s.department_id),
+          };
+        });
+        setStudents(prev => {
+          const existingMap = new Map(prev.map(p => [p.id, p]));
+          enriched.forEach(e => existingMap.set(e.id, e));
+          const merged = Array.from(existingMap.values());
+          erpStorage.setStudents(merged);
+          return merged;
+        });
+        return;
+      }
+
+      const rawStudents = await supabaseService.fetchStudents();
       const enrichedStudents: Student[] = rawStudents.map(s => {
         const matchedSection = curSections.find(sec => sec.id === s.section_id);
         return {
@@ -1892,8 +1915,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, () => {
           debounceTableSync('notifications', () => realtimeHandlersRef.current.refreshNotifications());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-          debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) {
+              setStudents(prev => {
+                const next = prev.filter(s => s.id !== delId);
+                erpStorage.setStudents(next);
+                return next;
+              });
+            }
+          } else if (payload.eventType === 'UPDATE' && payload?.new?.id) {
+            setStudents(prev => {
+              const next = prev.map(s => s.id === payload.new.id ? { ...s, ...payload.new } : s);
+              erpStorage.setStudents(next);
+              return next;
+            });
+          } else {
+            debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
           debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());
@@ -1910,8 +1950,25 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } else {
       // HOD and Super Admin have oversight across academic and administrative entities
       builder = builder
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-          debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            const delId = payload?.old?.id || payload?.new?.id;
+            if (delId) {
+              setStudents(prev => {
+                const next = prev.filter(s => s.id !== delId);
+                erpStorage.setStudents(next);
+                return next;
+              });
+            }
+          } else if (payload.eventType === 'UPDATE' && payload?.new?.id) {
+            setStudents(prev => {
+              const next = prev.map(s => s.id === payload.new.id ? { ...s, ...payload.new } : s);
+              erpStorage.setStudents(next);
+              return next;
+            });
+          } else {
+            debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'timetable_entries' }, (payload: any) => {
           const secId = payload?.new?.section_id || payload?.old?.section_id;

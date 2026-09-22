@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   UserPlus,
@@ -57,6 +57,13 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
     batchImportSectionStudents,
     refreshStudents,
   } = useAcademic();
+
+  // Ensure section students are loaded on modal open
+  useEffect(() => {
+    if (section?.id) {
+      refreshStudents(section.id);
+    }
+  }, [section?.id, refreshStudents]);
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');

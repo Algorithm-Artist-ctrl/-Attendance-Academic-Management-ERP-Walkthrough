@@ -156,27 +156,35 @@ export const AppContent: React.FC = () => {
     if (!isAuthenticated || !role) return;
 
     const timer = setTimeout(() => {
-      if (role === 'faculty') {
-        import('./pages/faculty/TakeAttendancePage');
-        import('./pages/faculty/FacultyTimetablePage');
-        import('./pages/faculty/FacultyMarksManagementPage');
-        import('./pages/communication/MessagesPage');
-      } else if (role === 'student') {
-        import('./pages/student/StudentAttendancePage');
-        import('./pages/student/StudentTimetablePage');
-        import('./pages/student/StudentMarksPage');
-        import('./pages/communication/MessagesPage');
-      } else if (role === 'hod') {
-        import('./pages/admin/TimetableManagerPage');
-        import('./pages/leave/LeaveManagementPage');
-        import('./pages/faculty/FacultyTimetablePage');
-        import('./pages/communication/MessagesPage');
-      } else if (role === 'super_admin') {
-        import('./pages/admin/StudentDirectoryPage');
-        import('./pages/admin/FacultyDirectoryPage');
-        import('./pages/admin/TimetableManagerPage');
+      const runPrefetch = () => {
+        if (role === 'faculty') {
+          import('./pages/faculty/TakeAttendancePage');
+          import('./pages/faculty/FacultyTimetablePage');
+          import('./pages/faculty/FacultyMarksManagementPage');
+          import('./pages/communication/MessagesPage');
+        } else if (role === 'student') {
+          import('./pages/student/StudentAttendancePage');
+          import('./pages/student/StudentTimetablePage');
+          import('./pages/student/StudentMarksPage');
+          import('./pages/communication/MessagesPage');
+        } else if (role === 'hod') {
+          import('./pages/admin/TimetableManagerPage');
+          import('./pages/leave/LeaveManagementPage');
+          import('./pages/faculty/FacultyTimetablePage');
+          import('./pages/communication/MessagesPage');
+        } else if (role === 'super_admin') {
+          import('./pages/admin/StudentDirectoryPage');
+          import('./pages/admin/FacultyDirectoryPage');
+          import('./pages/admin/TimetableManagerPage');
+        }
+      };
+
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(runPrefetch, { timeout: 4000 });
+      } else {
+        runPrefetch();
       }
-    }, 300);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [isAuthenticated, role]);

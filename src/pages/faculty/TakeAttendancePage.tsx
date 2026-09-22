@@ -85,7 +85,8 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     deleteAttendanceSession,
     getAttendanceSummary,
     ensureSessionAttendanceLoaded,
-    getFacultyTimetable 
+    getFacultyTimetable,
+    refreshStudents
   } = useAcademic();
 
   // 1. Authorize: Only teaching faculty or HOD
@@ -171,6 +172,16 @@ export const TakeAttendancePage: React.FC<TakeAttendancePageProps> = ({
     if (!activeSection) return [];
     return students.filter(s => s.section_id === activeSection.id && s.active);
   }, [activeSection, students]);
+
+  // Ensure active section students are loaded on-demand
+  useEffect(() => {
+    if (activeSection?.id) {
+      const hasEnrolled = students.some(s => s.section_id === activeSection.id);
+      if (!hasEnrolled) {
+        refreshStudents(activeSection.id);
+      }
+    }
+  }, [activeSection?.id, students, refreshStudents]);
 
   // Find existing session in database strictly for this sessionDate and class/slot
   const existingSession = useMemo(() => {

@@ -51,8 +51,15 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
     timetable,
     addStudent,
     deleteStudent,
-    refreshData
+    refreshData,
+    refreshStudents,
   } = useAcademic();
+
+  useEffect(() => {
+    if (students.length === 0) {
+      refreshStudents();
+    }
+  }, [students.length, refreshStudents]);
 
   const isSuperAdmin = !forceFacultyScope && role === 'super_admin';
   const isHOD = !forceFacultyScope && role === 'hod';

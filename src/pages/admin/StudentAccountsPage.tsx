@@ -52,7 +52,10 @@ export const StudentAccountsPage: React.FC = () => {
     if (adminAccounts.length === 0) {
       refreshAdminAccounts();
     }
-  }, [adminAccounts.length, refreshAdminAccounts]);
+    if (students.length === 0) {
+      refreshStudents();
+    }
+  }, [adminAccounts.length, refreshAdminAccounts, students.length, refreshStudents]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState('ALL');
