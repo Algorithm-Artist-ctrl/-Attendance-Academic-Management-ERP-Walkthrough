@@ -6,7 +6,7 @@ export interface StudentMarkRow {
   studentName: string;
   marksObtained: number | null;
   maxMarks: number;
-  status: 'Entered' | 'Missing';
+  status: 'Entered' | 'Missing' | 'Absent' | 'Exempted';
   percentage?: string;
   remarks?: string;
 }
@@ -208,16 +208,22 @@ export async function generateMarksReportPdf(params: MarksPdfReportParams): Prom
 
   // Generate Table
   if (reportType === 'CURRENT_ASSESSMENT') {
-    const tableBody = studentRows.map((r, i) => [
-      i + 1,
-      r.rollNumber,
-      r.studentName,
-      r.marksObtained !== null && r.marksObtained !== undefined ? r.marksObtained : '—',
-      r.maxMarks,
-      r.marksObtained !== null && r.marksObtained !== undefined ? `${Math.round((r.marksObtained / r.maxMarks) * 100)}%` : '—',
-      r.status,
-      r.remarks || '',
-    ]);
+    const tableBody = studentRows.map((r, i) => {
+      const isAbsent = r.status === 'Absent';
+      const isExempt = r.status === 'Exempted';
+      const marksStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPTED' : r.marksObtained !== null && r.marksObtained !== undefined ? String(r.marksObtained) : '—';
+      const pctStr = isAbsent ? 'ABSENT' : isExempt ? 'EXEMPTED' : r.marksObtained !== null && r.marksObtained !== undefined ? `${Math.round((r.marksObtained / r.maxMarks) * 100)}%` : '—';
+      return [
+        i + 1,
+        r.rollNumber,
+        r.studentName,
+        marksStr,
+        r.maxMarks,
+        pctStr,
+        r.status,
+        r.remarks || '',
+      ];
+    });
 
     autoTable(doc, {
       startY,

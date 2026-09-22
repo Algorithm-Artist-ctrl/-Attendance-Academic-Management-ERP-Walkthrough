@@ -254,9 +254,9 @@ export const FacultySessionalMarksPage: React.FC = () => {
     for (const st of sectionStudents) {
       const match = existingMarks.find(m => m.student_id === st.id);
       initial[st.id] = {
-        marks: match !== undefined ? match.marks_obtained : '',
+        marks: (match && match.marks_obtained !== null && match.marks_obtained !== undefined) ? match.marks_obtained : '',
         remarks: match?.remarks || '',
-        oldMarks: match?.marks_obtained,
+        oldMarks: (match && match.marks_obtained !== null && match.marks_obtained !== undefined) ? match.marks_obtained : undefined,
         updatedAt: match?.updated_at,
       };
     }

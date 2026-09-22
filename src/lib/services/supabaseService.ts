@@ -25,6 +25,7 @@ import {
   Quiz,
   QuizResult,
   SessionalMark,
+  AssessmentAttendanceStatus,
   MarksHistory,
   SessionalType,
   SessionalAssessment,
@@ -4950,7 +4951,13 @@ export const supabaseService = {
     sessionalType?: string;
     maxMarks?: number;
     facultyId: string;
-    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+    studentMarks: Array<{
+      studentId: string;
+      marksObtained: number | null;
+      remarks?: string;
+      oldMarks?: number | null;
+      attendanceStatus?: AssessmentAttendanceStatus;
+    }>;
     isPublished?: boolean;
   }): Promise<SessionalMark[]> {
     if (params.sessionalAssessmentId && (!params.subjectId || !params.sectionId || params.maxMarks === undefined)) {
@@ -5033,9 +5040,15 @@ export const supabaseService = {
     }
 
     const rows = params.studentMarks.map(sm => {
-      if (sm.marksObtained < 0 || sm.marksObtained > params.maxMarks!) {
-        throw new Error(`Marks ${sm.marksObtained} exceeds valid range (0 - ${params.maxMarks}).`);
+      const attStatus: AssessmentAttendanceStatus = sm.attendanceStatus || (sm.marksObtained !== null && sm.marksObtained !== undefined ? 'PRESENT' : 'NOT_ENTERED');
+      const finalMarks = (attStatus === 'ABSENT' || attStatus === 'EXEMPTED' || attStatus === 'NOT_ENTERED') ? null : sm.marksObtained;
+
+      if (attStatus === 'PRESENT') {
+        if (finalMarks === null || finalMarks === undefined || isNaN(finalMarks) || finalMarks < 0 || finalMarks > params.maxMarks!) {
+          throw new Error(`Marks ${finalMarks} exceeds valid range (0 - ${params.maxMarks}) for present student.`);
+        }
       }
+
       return {
         sessional_assessment_id: params.sessionalAssessmentId || null,
         faculty_id: validFacultyId,
@@ -5044,7 +5057,8 @@ export const supabaseService = {
         student_id: sm.studentId,
         sessional_type: params.sessionalType || 'Sessional',
         max_marks: params.maxMarks,
-        marks_obtained: sm.marksObtained,
+        marks_obtained: finalMarks,
+        attendance_status: attStatus,
         remarks: sm.remarks,
         status: targetStatus,
         updated_by: authUpdaterId,
@@ -5076,8 +5090,8 @@ export const supabaseService = {
         entity_id: params.sessionalAssessmentId || params.subjectId,
         student_id: sm.studentId,
         subject_id: params.subjectId,
-        old_marks: sm.oldMarks,
-        new_marks: sm.marksObtained,
+        old_marks: sm.oldMarks ?? undefined,
+        new_marks: sm.marksObtained ?? 0,
         updated_by: validFacultyId,
         reason: `${params.sessionalType || 'Sessional'} Marks Updated`
       }));
@@ -5108,13 +5122,21 @@ export const supabaseService = {
 
         const notifRows: any[] = params.studentMarks.map(sm => {
           const isUpdate = sm.oldMarks !== undefined && sm.oldMarks !== null;
+          const markDisplay = sm.attendanceStatus === 'ABSENT'
+            ? 'ABSENT'
+            : sm.attendanceStatus === 'EXEMPTED'
+              ? 'EXEMPTED'
+              : sm.marksObtained !== null && sm.marksObtained !== undefined
+                ? `${sm.marksObtained}/${params.maxMarks}`
+                : 'Evaluated';
+
           return {
             recipient_user_id: studentMap.get(sm.studentId) || null,
             recipient_student_id: sm.studentId,
             recipient_role: 'student',
             type: (isUpdate ? 'MARKS_UPDATED' : 'MARKS_PUBLISHED') as NotificationType,
             title: isUpdate ? 'Marks Updated' : 'New Marks Published',
-            message: `${subjectName} — ${params.sessionalType || 'Sessional'}: ${sm.marksObtained}/${params.maxMarks}`,
+            message: `${subjectName} — ${params.sessionalType || 'Sessional'}: ${markDisplay}`,
             reference_type: 'sessional_mark',
             reference_id: params.sessionalAssessmentId || null,
             is_read: false,
@@ -7929,6 +7951,67 @@ export const supabaseService = {
       console.error('Error fetching faculty historical record:', err);
       return null;
     }
+  },
+
+  async fetchAccountDependencies(targetId: string, entityType: 'student' | 'faculty'): Promise<{
+    success: boolean;
+    dependencies: Record<string, number>;
+    targetDetails: {
+      id: string;
+      name: string;
+      role: string;
+      identifier: string;
+      status: string;
+      email?: string;
+      department?: string;
+    };
+  }> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+
+    const res = await fetch(`/api/auth/account-dependencies?id=${encodeURIComponent(targetId)}&role=${encodeURIComponent(entityType)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to fetch account dependencies.');
+    }
+
+    return data;
+  },
+
+  async permanentDeleteAccount(targetId: string, entityType: 'student' | 'faculty', confirmation: string): Promise<{
+    success: boolean;
+    message: string;
+    purged_records?: Record<string, number>;
+  }> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+
+    const res = await fetch('/api/auth/permanent-delete', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id: targetId,
+        role: entityType,
+        confirmation
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to permanently delete account.');
+    }
+
+    return data;
   }
 };
 

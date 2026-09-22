@@ -1,4 +1,4 @@
-import { AttendanceStatus, CorrectionStatus, DayOfWeek, LectureType } from './database.types';
+import { AttendanceStatus, CorrectionStatus, DayOfWeek, LectureType, AssessmentAttendanceStatus } from './database.types';
 
 export interface SubjectAttendanceStat {
   subjectId: string;
@@ -31,15 +31,16 @@ export interface StudentSubjectAcademicReport {
   facultyName: string;
   attendancePercentage: number | null;
   sessionalMarks: {
-    sessional1?: { obtained?: number; max: number };
-    sessional2?: { obtained?: number; max: number };
-    put?: { obtained?: number; max: number };
-    final?: { obtained?: number; max: number };
+    sessional1?: { obtained?: number; max: number; attendanceStatus?: AssessmentAttendanceStatus };
+    sessional2?: { obtained?: number; max: number; attendanceStatus?: AssessmentAttendanceStatus };
+    put?: { obtained?: number; max: number; attendanceStatus?: AssessmentAttendanceStatus };
+    final?: { obtained?: number; max: number; attendanceStatus?: AssessmentAttendanceStatus };
     otherSessionals?: Array<{
       assessmentId: string;
       title: string;
       maxMarks: number;
       obtainedMarks?: number;
+      attendanceStatus?: AssessmentAttendanceStatus;
       examDate: string;
     }>;
     sessionals: Array<{
@@ -47,6 +48,7 @@ export interface StudentSubjectAcademicReport {
       title: string;
       maxMarks: number;
       obtainedMarks?: number;
+      attendanceStatus?: AssessmentAttendanceStatus;
       examDate: string;
     }>;
   };

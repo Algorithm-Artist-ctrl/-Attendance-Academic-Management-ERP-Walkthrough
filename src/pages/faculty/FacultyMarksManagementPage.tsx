@@ -21,7 +21,10 @@ import {
   Plus,
   ArrowUpDown,
   FileSpreadsheet,
-  Check
+  Check,
+  UserCheck,
+  UserX,
+  RotateCcw
 } from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
@@ -31,6 +34,7 @@ import { supabaseService } from '../../lib/services/supabaseService';
 import type { 
   SessionalAssessment, 
   SessionalMark, 
+  AssessmentAttendanceStatus,
   Quiz, 
   QuizResult, 
   Assignment, 
@@ -65,9 +69,11 @@ interface StudentMarkRowComponentProps {
   student: Student;
   index: number;
   marks: number | '';
+  status: AssessmentAttendanceStatus;
   remarks: string;
   maxMarks: number;
   onMarkChange: (studentId: string, valueStr: string) => void;
+  onStatusChange: (studentId: string, newStatus: AssessmentAttendanceStatus) => void;
   onRemarkChange: (studentId: string, remarks: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>, index: number) => void;
   registerInputRef: (studentId: string, el: HTMLInputElement | null) => void;
@@ -77,14 +83,16 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
   student,
   index,
   marks,
+  status,
   remarks,
   maxMarks,
   onMarkChange,
+  onStatusChange,
   onRemarkChange,
   onKeyDown,
   registerInputRef,
 }) => {
-  const hasMark = marks !== '' && marks !== undefined;
+  const hasMark = marks !== '' && marks !== undefined && status === 'PRESENT';
   const percentage = hasMark ? ((Number(marks) / maxMarks) * 100).toFixed(1) : null;
   const isPassing = hasMark && Number(marks) >= (maxMarks * 0.4);
 
@@ -92,7 +100,9 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
     <tr 
       className={clsx(
         'hover:bg-slate-50/60 transition-colors',
-        !hasMark && 'bg-amber-50/30'
+        status === 'ABSENT' && 'bg-rose-50/20',
+        status === 'EXEMPTED' && 'bg-amber-50/20',
+        status === 'NOT_ENTERED' && 'bg-amber-50/30'
       )}
     >
       {/* S.No */}
@@ -111,32 +121,100 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
           <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
             {student.full_name?.charAt(0) || 'S'}
           </div>
-          <span>{student.full_name}</span>
+          <span className="truncate max-w-[180px]">{student.full_name}</span>
+        </div>
+      </td>
+
+      {/* Attendance / Evaluation Status Selector */}
+      <td className="py-2.5 px-3 text-center">
+        <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200 shadow-2xs">
+          <button
+            type="button"
+            title="Mark Present (Appeared for exam)"
+            onClick={() => onStatusChange(student.id, 'PRESENT')}
+            className={clsx(
+              'px-2 py-1 rounded-lg text-xs font-bold transition-all',
+              status === 'PRESENT'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            )}
+          >
+            Present
+          </button>
+          <button
+            type="button"
+            title="Mark Absent (Did not appear - marks set to NULL)"
+            onClick={() => onStatusChange(student.id, 'ABSENT')}
+            className={clsx(
+              'px-2 py-1 rounded-lg text-xs font-bold transition-all',
+              status === 'ABSENT'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            )}
+          >
+            Absent
+          </button>
+          <button
+            type="button"
+            title="Mark Exempted (Officially excused - marks set to NULL)"
+            onClick={() => onStatusChange(student.id, 'EXEMPTED')}
+            className={clsx(
+              'px-2 py-1 rounded-lg text-xs font-bold transition-all',
+              status === 'EXEMPTED'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            )}
+          >
+            Exempt
+          </button>
+          <button
+            type="button"
+            title="Clear status (Reset to Not Entered)"
+            onClick={() => onStatusChange(student.id, 'NOT_ENTERED')}
+            className={clsx(
+              'px-1.5 py-1 rounded-lg text-xs font-bold transition-all',
+              status === 'NOT_ENTERED'
+                ? 'bg-slate-700 text-white shadow-xs'
+                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200/60'
+            )}
+          >
+            Clear
+          </button>
         </div>
       </td>
 
       {/* Marks Input */}
       <td className="py-2.5 px-4 text-center">
         <div className="flex items-center justify-center gap-1.5">
-          <input
-            ref={(el) => registerInputRef(student.id, el)}
-            type="number"
-            step="any"
-            min="0"
-            max={maxMarks}
-            value={marks}
-            placeholder="—"
-            onChange={(e) => onMarkChange(student.id, e.target.value)}
-            onKeyDown={(e) => onKeyDown(e, index)}
-            className={clsx(
-              'w-24 text-center py-1.5 px-2 rounded-xl font-mono text-sm font-bold transition-all focus:outline-none',
-              hasMark 
-                ? isPassing
-                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 focus:border-emerald-500'
-                  : 'bg-rose-50 text-rose-900 border border-rose-300 focus:border-rose-500'
-                : 'bg-white text-slate-900 border border-slate-300 border-dashed focus:border-slate-500'
-            )}
-          />
+          {status === 'ABSENT' ? (
+            <div className="w-24 text-center py-1.5 px-2 rounded-xl font-mono text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300 select-none">
+              ABSENT
+            </div>
+          ) : status === 'EXEMPTED' ? (
+            <div className="w-24 text-center py-1.5 px-2 rounded-xl font-mono text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 select-none">
+              EXEMPTED
+            </div>
+          ) : (
+            <input
+              ref={(el) => registerInputRef(student.id, el)}
+              type="number"
+              step="any"
+              min="0"
+              max={maxMarks}
+              value={marks}
+              placeholder="—"
+              onChange={(e) => onMarkChange(student.id, e.target.value)}
+              onKeyDown={(e) => onKeyDown(e, index)}
+              className={clsx(
+                'w-24 text-center py-1.5 px-2 rounded-xl font-mono text-sm font-bold transition-all focus:outline-none',
+                hasMark
+                  ? isPassing
+                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 focus:border-emerald-500'
+                    : 'bg-rose-50 text-rose-900 border border-rose-300 focus:border-rose-500'
+                  : 'bg-white text-slate-900 border border-slate-300 border-dashed focus:border-slate-500'
+              )}
+            />
+          )}
           <span className="text-[11px] text-slate-500 font-mono">
             /{maxMarks}
           </span>
@@ -145,7 +223,11 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
 
       {/* Percentage */}
       <td className="py-3 px-4 text-center font-mono font-semibold">
-        {percentage !== null ? (
+        {status === 'ABSENT' ? (
+          <span className="text-rose-600 font-semibold text-xs">Absent</span>
+        ) : status === 'EXEMPTED' ? (
+          <span className="text-amber-700 font-semibold text-xs">Exempt</span>
+        ) : percentage !== null ? (
           <span className={clsx(isPassing ? 'text-slate-800' : 'text-rose-700')}>
             {percentage}%
           </span>
@@ -154,11 +236,23 @@ const MemoizedStudentMarkRow = React.memo<StudentMarkRowComponentProps>(({
         )}
       </td>
 
-      {/* Status */}
+      {/* Status Badge */}
       <td className="py-3 px-4 text-center">
-        {hasMark ? (
+        {status === 'PRESENT' && hasMark ? (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
             Entered
+          </span>
+        ) : status === 'PRESENT' ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+            Present (No Mark)
+          </span>
+        ) : status === 'ABSENT' ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+            Absent
+          </span>
+        ) : status === 'EXEMPTED' ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+            Exempted
           </span>
         ) : (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
@@ -451,7 +545,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
   }, [selectedSectionId, allContextStudents]);
 
   // 8. Roster Marks State
-  const [marksRoster, setMarksRoster] = useState<Record<string, { marks: number | ''; remarks: string }>>({});
+  const [marksRoster, setMarksRoster] = useState<Record<string, { marks: number | ''; status: AssessmentAttendanceStatus; remarks: string }>>({});
   const [isDirty, setIsDirty] = useState(false);
   const isDirtyRef = useRef(false);
   isDirtyRef.current = isDirty;
@@ -483,14 +577,30 @@ export const FacultyMarksManagementPage: React.FC = () => {
       return;
     }
 
-    const roster: Record<string, { marks: number | ''; remarks: string }> = {};
+    const roster: Record<string, { marks: number | ''; status: AssessmentAttendanceStatus; remarks: string }> = {};
 
     if (activeAssessment.kind === 'sessional') {
       const marksForAssessment = sessionalMarks.filter(sm => sm.sessional_assessment_id === activeAssessment.id);
       for (const st of sectionStudents) {
         const sm = marksForAssessment.find(m => m.student_id === st.id);
+        let status: AssessmentAttendanceStatus = 'NOT_ENTERED';
+        let marksVal: number | '' = '';
+
+        if (sm) {
+          if (sm.attendance_status) {
+            status = sm.attendance_status;
+          } else if (sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
+            status = 'PRESENT';
+          }
+
+          if (status === 'PRESENT' && sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
+            marksVal = sm.marks_obtained;
+          }
+        }
+
         roster[st.id] = {
-          marks: sm && sm.marks_obtained !== undefined && sm.marks_obtained !== null ? sm.marks_obtained : '',
+          marks: marksVal,
+          status,
           remarks: sm?.remarks || ''
         };
       }
@@ -498,8 +608,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
       const resultsForQuiz = quizResults.filter(qr => qr.quiz_id === activeAssessment.id);
       for (const st of sectionStudents) {
         const qr = resultsForQuiz.find(r => r.student_id === st.id);
+        const hasScore = qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null;
         roster[st.id] = {
-          marks: qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null ? qr.marks_obtained : '',
+          marks: hasScore ? qr.marks_obtained : '',
+          status: hasScore ? 'PRESENT' : 'NOT_ENTERED',
           remarks: qr?.remarks || ''
         };
       }
@@ -507,8 +619,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
       const subs = assignmentSubmissions.filter(sub => sub.assignment_id === activeAssessment.id);
       for (const st of sectionStudents) {
         const sub = subs.find(s => s.student_id === st.id);
+        const hasScore = sub && sub.marks_obtained !== undefined && sub.marks_obtained !== null;
         roster[st.id] = {
-          marks: sub && sub.marks_obtained !== undefined && sub.marks_obtained !== null ? sub.marks_obtained : '',
+          marks: hasScore ? (sub.marks_obtained ?? '') : '',
+          status: hasScore ? 'PRESENT' : 'NOT_ENTERED',
           remarks: sub?.feedback || ''
         };
       }
@@ -534,9 +648,12 @@ export const FacultyMarksManagementPage: React.FC = () => {
             if (activeAssessment.kind === 'sessional') {
               for (const st of sectionStudents) {
                 const sm = (records as SessionalMark[]).find(m => m.student_id === st.id);
-                if (sm && sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
+                if (sm) {
+                  let status: AssessmentAttendanceStatus = sm.attendance_status || (sm.marks_obtained !== null && sm.marks_obtained !== undefined ? 'PRESENT' : 'NOT_ENTERED');
+                  let marksVal: number | '' = (status === 'PRESENT' && sm.marks_obtained !== null && sm.marks_obtained !== undefined) ? sm.marks_obtained : '';
                   next[st.id] = {
-                    marks: sm.marks_obtained,
+                    marks: marksVal,
+                    status,
                     remarks: sm.remarks || ''
                   };
                 }
@@ -547,6 +664,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
                 if (qr && qr.marks_obtained !== undefined && qr.marks_obtained !== null) {
                   next[st.id] = {
                     marks: qr.marks_obtained,
+                    status: 'PRESENT',
                     remarks: qr.remarks || ''
                   };
                 }
@@ -587,7 +705,11 @@ export const FacultyMarksManagementPage: React.FC = () => {
     if (valueStr.trim() === '') {
       setMarksRoster(prev => ({
         ...prev,
-        [studentId]: { ...prev[studentId], marks: '' }
+        [studentId]: {
+          ...(prev[studentId] || { remarks: '' }),
+          marks: '',
+          status: prev[studentId]?.status === 'PRESENT' ? 'PRESENT' : (prev[studentId]?.status || 'NOT_ENTERED')
+        }
       }));
       setIsDirty(true);
       return;
@@ -608,15 +730,138 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     setMarksRoster(prev => ({
       ...prev,
-      [studentId]: { ...prev[studentId], marks: num }
+      [studentId]: {
+        ...(prev[studentId] || { remarks: '' }),
+        marks: num,
+        status: 'PRESENT'
+      }
     }));
     setIsDirty(true);
   }, [maxAllowedMarks]);
 
+  const [confirmStatusModal, setConfirmStatusModal] = useState<{
+    studentId: string;
+    studentName: string;
+    currentMarks: number | string;
+    targetStatus: AssessmentAttendanceStatus;
+  } | null>(null);
+
+  const handleStatusChange = useCallback((studentId: string, newStatus: AssessmentAttendanceStatus) => {
+    const entry = marksRoster[studentId];
+    const hasMarks = entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null;
+
+    if (hasMarks && (newStatus === 'ABSENT' || newStatus === 'EXEMPTED' || newStatus === 'NOT_ENTERED')) {
+      const student = sectionStudents.find(s => s.id === studentId);
+      setConfirmStatusModal({
+        studentId,
+        studentName: student?.full_name || 'Student',
+        currentMarks: entry.marks,
+        targetStatus: newStatus
+      });
+      return;
+    }
+
+    setMarksRoster(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || { remarks: '' }),
+        status: newStatus,
+        marks: (newStatus === 'ABSENT' || newStatus === 'EXEMPTED' || newStatus === 'NOT_ENTERED') ? '' : (prev[studentId]?.marks ?? '')
+      }
+    }));
+    setIsDirty(true);
+  }, [marksRoster, sectionStudents]);
+
+  const handleConfirmStatusChange = () => {
+    if (!confirmStatusModal) return;
+    const { studentId, targetStatus } = confirmStatusModal;
+    setMarksRoster(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || { remarks: '' }),
+        status: targetStatus,
+        marks: ''
+      }
+    }));
+    setIsDirty(true);
+    setConfirmStatusModal(null);
+  };
+
+  const handleMarkRemainingAbsent = useCallback(() => {
+    let count = 0;
+    setMarksRoster(prev => {
+      const next = { ...prev };
+      for (const st of sectionStudents) {
+        const entry = next[st.id];
+        const isUnentered = !entry || entry.status === 'NOT_ENTERED' || (entry.status === 'PRESENT' && (entry.marks === '' || entry.marks === null || entry.marks === undefined));
+        if (isUnentered && entry?.status !== 'EXEMPTED') {
+          next[st.id] = {
+            marks: '',
+            status: 'ABSENT',
+            remarks: entry?.remarks || ''
+          };
+          count++;
+        }
+      }
+      return next;
+    });
+    if (count > 0) {
+      setIsDirty(true);
+      setNotificationToast({
+        type: 'success',
+        message: `Marked ${count} remaining student(s) as Absent.`
+      });
+    } else {
+      setNotificationToast({
+        type: 'success',
+        message: 'No remaining students to mark as Absent.'
+      });
+    }
+  }, [sectionStudents]);
+
+  const handleMarkAllPresent = useCallback(() => {
+    setMarksRoster(prev => {
+      const next = { ...prev };
+      for (const st of sectionStudents) {
+        const entry = next[st.id];
+        next[st.id] = {
+          marks: entry?.marks ?? '',
+          status: 'PRESENT',
+          remarks: entry?.remarks || ''
+        };
+      }
+      return next;
+    });
+    setIsDirty(true);
+    setNotificationToast({
+      type: 'success',
+      message: `Set status to Present for all ${sectionStudents.length} students.`
+    });
+  }, [sectionStudents]);
+
+  const handleClearAllStatuses = useCallback(() => {
+    setMarksRoster(prev => {
+      const next = { ...prev };
+      for (const st of sectionStudents) {
+        next[st.id] = {
+          marks: '',
+          status: 'NOT_ENTERED',
+          remarks: next[st.id]?.remarks || ''
+        };
+      }
+      return next;
+    });
+    setIsDirty(true);
+    setNotificationToast({
+      type: 'success',
+      message: 'Reset all student evaluation statuses to Not Entered.'
+    });
+  }, [sectionStudents]);
+
   const handleRemarkChange = useCallback((studentId: string, remarks: string) => {
     setMarksRoster(prev => ({
       ...prev,
-      [studentId]: { ...prev[studentId], remarks }
+      [studentId]: { ...(prev[studentId] || { marks: '', status: 'NOT_ENTERED' }), remarks }
     }));
     setIsDirty(true);
   }, []);
@@ -640,7 +885,10 @@ export const FacultyMarksManagementPage: React.FC = () => {
   // 9. Summary Metrics & Statistics
   const stats = useMemo(() => {
     const totalStudents = sectionStudents.length;
-    let enteredCount = 0;
+    let presentCount = 0;
+    let absentCount = 0;
+    let exemptedCount = 0;
+    let missingCount = 0;
     let sumMarks = 0;
     let highest = -Infinity;
     let lowest = Infinity;
@@ -650,34 +898,45 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     for (const st of sectionStudents) {
       const entry = marksRoster[st.id];
-      if (entry && entry.marks !== '' && entry.marks !== undefined) {
+      const status = entry?.status || 'NOT_ENTERED';
+
+      if (status === 'ABSENT') {
+        absentCount++;
+      } else if (status === 'EXEMPTED') {
+        exemptedCount++;
+      } else if (status === 'PRESENT' && entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
+        presentCount++;
         const val = Number(entry.marks);
-        enteredCount++;
         sumMarks += val;
         if (val > highest) highest = val;
         if (val < lowest) lowest = val;
         if (val >= passThreshold) passCount++;
+      } else {
+        missingCount++;
       }
     }
 
-    const missingCount = totalStudents - enteredCount;
-    const avgMarks = enteredCount > 0 ? (sumMarks / enteredCount).toFixed(1) : '—';
-    const passPercentage = enteredCount > 0 ? ((passCount / enteredCount) * 100).toFixed(0) : '0';
+    const avgMarks = presentCount > 0 ? (sumMarks / presentCount).toFixed(1) : '—';
+    const passPercentage = presentCount > 0 ? ((passCount / presentCount) * 100).toFixed(0) : '0';
 
     return {
       totalStudents,
-      enteredCount,
+      enteredCount: presentCount,
+      presentCount,
+      absentCount,
+      exemptedCount,
       missingCount,
       avgMarks,
-      highest: enteredCount > 0 ? highest : '—',
-      lowest: enteredCount > 0 ? lowest : '—',
+      highest: presentCount > 0 ? highest : '—',
+      lowest: presentCount > 0 ? lowest : '—',
       passPercentage
     };
   }, [sectionStudents, marksRoster, activeAssessment]);
 
   // 10. Table Filtering & Search
+  type StatusFilter = 'ALL' | 'PRESENT' | 'ABSENT' | 'EXEMPTED' | 'MISSING';
   const [searchTerm, setSearchTerm] = useState('');
-  const [showMissingOnly, setShowMissingOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
   const displayedStudents = useMemo(() => {
     return sectionStudents.filter(st => {
@@ -688,16 +947,26 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
       if (!matchesSearch) return false;
 
-      if (showMissingOnly) {
-        const entry = marksRoster[st.id];
-        const isMissing = entry === undefined || entry.marks === '' || entry.marks === null;
-        return isMissing;
+      const entry = marksRoster[st.id];
+      const status = entry?.status || 'NOT_ENTERED';
+      const hasMark = entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null;
+
+      if (statusFilter === 'PRESENT') {
+        return status === 'PRESENT' && hasMark;
+      }
+      if (statusFilter === 'ABSENT') {
+        return status === 'ABSENT';
+      }
+      if (statusFilter === 'EXEMPTED') {
+        return status === 'EXEMPTED';
+      }
+      if (statusFilter === 'MISSING') {
+        return status === 'NOT_ENTERED' || (status === 'PRESENT' && !hasMark);
       }
 
       return true;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionStudents, searchTerm, showMissingOnly, showMissingOnly ? marksRoster : null]);
+  }, [sectionStudents, searchTerm, statusFilter, marksRoster]);
 
   // 11. Save Draft & Publish Marks Actions
   const handleSaveMarks = async (publishMode: 'draft' | 'published') => {
@@ -708,25 +977,55 @@ export const FacultyMarksManagementPage: React.FC = () => {
       setSaveStatus('saving');
       const studentMarksPayload: Array<{
         studentId: string;
-        marksObtained: number;
+        marksObtained: number | null;
+        attendanceStatus?: AssessmentAttendanceStatus;
         remarks?: string;
-        oldMarks?: number;
+        oldMarks?: number | null;
       }> = [];
 
       for (const st of sectionStudents) {
         const entry = marksRoster[st.id];
-        if (entry && entry.marks !== '' && entry.marks !== undefined) {
-          let oldMarkVal: number | undefined = undefined;
-          if (activeAssessment.kind === 'sessional') {
-            const existingSm = sessionalMarks.find(
-              m => m.sessional_assessment_id === activeAssessment.id && m.student_id === st.id
-            );
-            oldMarkVal = existingSm?.marks_obtained;
-          }
+        if (!entry) continue;
 
+        let oldMarkVal: number | null | undefined = undefined;
+        if (activeAssessment.kind === 'sessional') {
+          const existingSm = sessionalMarks.find(
+            m => m.sessional_assessment_id === activeAssessment.id && m.student_id === st.id
+          );
+          oldMarkVal = existingSm?.marks_obtained;
+        }
+
+        const status = entry.status || 'NOT_ENTERED';
+
+        if (status === 'ABSENT') {
+          studentMarksPayload.push({
+            studentId: st.id,
+            marksObtained: null,
+            attendanceStatus: 'ABSENT',
+            remarks: entry.remarks || undefined,
+            oldMarks: oldMarkVal
+          });
+        } else if (status === 'EXEMPTED') {
+          studentMarksPayload.push({
+            studentId: st.id,
+            marksObtained: null,
+            attendanceStatus: 'EXEMPTED',
+            remarks: entry.remarks || undefined,
+            oldMarks: oldMarkVal
+          });
+        } else if (status === 'PRESENT' && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
           studentMarksPayload.push({
             studentId: st.id,
             marksObtained: Number(entry.marks),
+            attendanceStatus: 'PRESENT',
+            remarks: entry.remarks || undefined,
+            oldMarks: oldMarkVal
+          });
+        } else if (entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
+          studentMarksPayload.push({
+            studentId: st.id,
+            marksObtained: Number(entry.marks),
+            attendanceStatus: 'PRESENT',
             remarks: entry.remarks || undefined,
             oldMarks: oldMarkVal
           });
@@ -748,7 +1047,12 @@ export const FacultyMarksManagementPage: React.FC = () => {
         await saveQuizMarks({
           quizId: activeAssessment.id,
           facultyId: currentFacultyId,
-          studentMarks: studentMarksPayload,
+          studentMarks: studentMarksPayload.map(p => ({
+            studentId: p.studentId,
+            marksObtained: p.marksObtained ?? 0,
+            remarks: p.remarks,
+            oldMarks: p.oldMarks ?? undefined
+          })),
           isPublished: publishMode === 'published'
         });
       }
@@ -792,18 +1096,29 @@ export const FacultyMarksManagementPage: React.FC = () => {
           const idempotencyKey = `marks_${activeAssessment.id}_${publishMode}_${Date.now()}`;
           const studentMarksPayload: Array<{
             studentId: string;
-            marksObtained: number;
+            marksObtained?: number | null;
+            attendanceStatus?: AssessmentAttendanceStatus;
             remarks?: string;
-            oldMarks?: number;
+            oldMarks?: number | null;
           }> = [];
 
           for (const st of sectionStudents) {
             const entry = marksRoster[st.id];
-            if (entry && entry.marks !== '' && entry.marks !== undefined) {
+            if (!entry) continue;
+            const status = entry.status || 'NOT_ENTERED';
+            if (status === 'ABSENT' || status === 'EXEMPTED') {
+              studentMarksPayload.push({
+                studentId: st.id,
+                marksObtained: null,
+                attendanceStatus: status,
+                remarks: entry.remarks || undefined
+              });
+            } else if (entry.marks !== '' && entry.marks !== undefined) {
               studentMarksPayload.push({
                 studentId: st.id,
                 marksObtained: Number(entry.marks),
-                remarks: entry.remarks || undefined,
+                attendanceStatus: 'PRESENT',
+                remarks: entry.remarks || undefined
               });
             }
           }
@@ -987,8 +1302,25 @@ export const FacultyMarksManagementPage: React.FC = () => {
 
     const data = sectionStudents.map((st, idx) => {
       const entry = marksRoster[st.id];
-      const marksVal = entry && entry.marks !== '' && entry.marks !== undefined ? entry.marks : '';
-      const percentage = marksVal !== '' ? `${((Number(marksVal) / activeAssessment.maxMarks) * 100).toFixed(1)}%` : '';
+      const status = entry?.status || 'NOT_ENTERED';
+      let marksVal: string = '';
+      let percentage: string = '';
+      let statusStr: string = 'Missing';
+
+      if (status === 'ABSENT') {
+        marksVal = 'ABSENT';
+        percentage = '—';
+        statusStr = 'Absent';
+      } else if (status === 'EXEMPTED') {
+        marksVal = 'EXEMPTED';
+        percentage = '—';
+        statusStr = 'Exempted';
+      } else if (entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
+        marksVal = String(entry.marks);
+        percentage = `${((Number(entry.marks) / activeAssessment.maxMarks) * 100).toFixed(1)}%`;
+        statusStr = 'Entered';
+      }
+
       return {
         'S.No': idx + 1,
         'Roll Number': st.roll_number,
@@ -997,10 +1329,11 @@ export const FacultyMarksManagementPage: React.FC = () => {
         'Subject Code': currentSub?.subject_code || '',
         'Section': currentSec?.name || '',
         'Assessment': activeAssessment.title,
+        'Attendance Status': status,
         'Marks Obtained': marksVal,
         'Max Marks': activeAssessment.maxMarks,
         'Percentage': percentage,
-        'Status': marksVal !== '' ? 'Entered' : 'Missing',
+        'Status': statusStr,
         'Remarks': entry?.remarks || ''
       };
     });
@@ -1110,6 +1443,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
       for (const row of importPreview.validRows) {
         updated[row.studentId] = {
           marks: row.marks,
+          status: 'PRESENT',
           remarks: row.remarks || prev[row.studentId]?.remarks || ''
         };
       }
@@ -1140,15 +1474,29 @@ export const FacultyMarksManagementPage: React.FC = () => {
     // Prepare StudentMarkRow list
     const studentRows: StudentMarkRow[] = sectionStudents.map((st, idx) => {
       const entry = marksRoster[st.id];
-      const marksVal = entry && entry.marks !== '' && entry.marks !== undefined ? Number(entry.marks) : null;
+      const status = entry?.status || 'NOT_ENTERED';
+      let marksVal: number | null = null;
+      let statusStr: 'Entered' | 'Missing' | 'Absent' | 'Exempted' = 'Missing';
+      let percentageStr = '—';
+
+      if (status === 'ABSENT') {
+        statusStr = 'Absent';
+      } else if (status === 'EXEMPTED') {
+        statusStr = 'Exempted';
+      } else if (entry && entry.marks !== '' && entry.marks !== undefined && entry.marks !== null) {
+        marksVal = Number(entry.marks);
+        statusStr = 'Entered';
+        percentageStr = `${((marksVal / activeAssessment.maxMarks) * 100).toFixed(1)}%`;
+      }
+
       return {
         sNo: idx + 1,
         rollNumber: st.roll_number,
         studentName: st.full_name,
         marksObtained: marksVal,
         maxMarks: activeAssessment.maxMarks,
-        status: marksVal !== null ? 'Entered' : 'Missing',
-        percentage: marksVal !== null ? `${((marksVal / activeAssessment.maxMarks) * 100).toFixed(1)}%` : '—',
+        status: statusStr,
+        percentage: percentageStr,
         remarks: entry?.remarks || ''
       };
     });
@@ -1504,6 +1852,7 @@ export const FacultyMarksManagementPage: React.FC = () => {
       </div>
 
       {/* Summary Statistics & KPI Ribbon */}
+      {/* Summary Statistics & KPI Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total Students */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
@@ -1517,79 +1866,69 @@ export const FacultyMarksManagementPage: React.FC = () => {
           <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Enrolled in Section</span>
         </div>
 
-        {/* Marks Entered */}
+        {/* Present / Marks Entered */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <span className="text-xs sm:text-[13px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-            Entered
+            Present
           </span>
           <div className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1 font-sans tracking-tight">
-            {stats.enteredCount}
+            {stats.presentCount}
           </div>
           <span className="text-xs sm:text-[13px] font-medium text-emerald-800 mt-0.5">
-            {stats.totalStudents > 0 ? `${((stats.enteredCount / stats.totalStudents) * 100).toFixed(0)}% Completed` : '0%'}
+            {stats.totalStudents > 0 ? `${((stats.presentCount / stats.totalStudents) * 100).toFixed(0)}% Appeared` : '0%'}
           </span>
         </div>
 
-        {/* Marks Missing */}
+        {/* Absent */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-xs sm:text-[13px] font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
+            <UserX className="w-4 h-4 text-rose-600" />
+            Absent
+          </span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-rose-800 mt-1 font-sans tracking-tight">
+            {stats.absentCount}
+          </div>
+          <span className="text-xs sm:text-[13px] font-medium text-rose-700 mt-0.5">Marks = NULL</span>
+        </div>
+
+        {/* Exempted */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <span className="text-xs sm:text-[13px] font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
             <AlertCircle className="w-4 h-4 text-amber-700" />
-            Missing
+            Exempted
           </span>
           <div className="text-2xl sm:text-3xl font-extrabold text-amber-900 mt-1 font-sans tracking-tight">
+            {stats.exemptedCount}
+          </div>
+          <span className="text-xs sm:text-[13px] font-medium text-amber-800 mt-0.5">Excused</span>
+        </div>
+
+        {/* Missing / Pending */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-xs sm:text-[13px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 text-slate-500" />
+            Missing
+          </span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-700 mt-1 font-sans tracking-tight">
             {stats.missingCount}
           </div>
-          <span className="text-xs sm:text-[13px] font-medium text-amber-800 mt-0.5">Pending input</span>
+          <span className="text-xs sm:text-[13px] font-medium text-slate-500 mt-0.5">Not Entered</span>
         </div>
 
-        {/* Publication Status */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
-            <Eye className="w-4 h-4 text-[#475569]" />
-            Status
-          </span>
-          <div className="mt-1">
-            {activeAssessment?.status === 'published' ? (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-950 border border-emerald-300">
-                Published
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-950 border border-amber-300">
-                Draft Only
-              </span>
-            )}
-          </div>
-          <span className="text-xs sm:text-[13px] font-medium text-[#475569] mt-0.5">
-            {activeAssessment?.status === 'published' ? 'Live to Students' : 'Hidden from Students'}
-          </span>
-        </div>
-
-        {/* Class Average */}
+        {/* Class Average (Calculated Strictly From Present Students) */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-[#475569]" />
-            Class Average
+            Class Avg
           </span>
           <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] mt-1 font-sans tracking-tight">
             {stats.avgMarks} <span className="text-xs font-semibold text-[#475569]">/ {activeAssessment?.maxMarks || 20}</span>
           </div>
-          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Mean Performance</span>
+          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Present Only</span>
         </div>
 
-        {/* Highest Mark */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-[#475569]" />
-            Highest Mark
-          </span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] mt-1 font-sans tracking-tight">
-            {stats.highest} <span className="text-xs font-semibold text-[#475569]">/ {activeAssessment?.maxMarks || 20}</span>
-          </div>
-          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Top Score</span>
-        </div>
-
-        {/* Lowest & Pass Rate */}
+        {/* Pass Rate */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <span className="text-xs sm:text-[13px] font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
             <Percent className="w-4 h-4 text-[#475569]" />
@@ -1598,88 +1937,203 @@ export const FacultyMarksManagementPage: React.FC = () => {
           <div className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1 font-sans tracking-tight">
             {stats.passPercentage}%
           </div>
-          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Min: {stats.lowest}</span>
+          <span className="text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5">Max: {stats.highest}</span>
         </div>
       </div>
 
       {/* Roster Controls & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-        {/* Left: Search & Filter Toggles */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search roll number or name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
-            />
+      <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Left: Search & Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-56">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search roll or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+              />
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={clsx(
+                  'px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5',
+                  statusFilter === 'ALL'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                All
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-700 font-bold">
+                  {stats.totalStudents}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PRESENT')}
+                className={clsx(
+                  'px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5',
+                  statusFilter === 'PRESENT'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Present
+                <span className={clsx(
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                  statusFilter === 'PRESENT' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
+                )}>
+                  {stats.presentCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ABSENT')}
+                className={clsx(
+                  'px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5',
+                  statusFilter === 'ABSENT'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Absent
+                <span className={clsx(
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                  statusFilter === 'ABSENT' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'
+                )}>
+                  {stats.absentCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('EXEMPTED')}
+                className={clsx(
+                  'px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5',
+                  statusFilter === 'EXEMPTED'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Exempted
+                <span className={clsx(
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                  statusFilter === 'EXEMPTED' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-900'
+                )}>
+                  {stats.exemptedCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('MISSING')}
+                className={clsx(
+                  'px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5',
+                  statusFilter === 'MISSING'
+                    ? 'bg-amber-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Missing
+                <span className={clsx(
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                  statusFilter === 'MISSING' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900'
+                )}>
+                  {stats.missingCount}
+                </span>
+              </button>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowMissingOnly(prev => !prev)}
-            className={clsx(
-              'px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors',
-              showMissingOnly
-                ? 'bg-amber-50 text-amber-800 border-amber-300'
-                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-            )}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            {showMissingOnly ? 'Showing Missing Only' : 'Show Missing Only'}
-            {stats.missingCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
-                {stats.missingCount}
+          {/* Right: Primary Save & Publish Buttons */}
+          <div className="flex items-center gap-2.5">
+            {isDirty && (
+              <span className="text-xs text-amber-800 font-medium flex items-center gap-1 mr-1">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                Unsaved Changes
               </span>
             )}
-          </button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSaveMarks('draft')}
+              disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
+              className={clsx(
+                "rounded-xl font-bold shadow-xs transition-all",
+                saveStatus === 'saved' && "border-emerald-300 bg-emerald-50 text-emerald-800",
+                saveStatus === 'error' && "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
+                saveStatus !== 'saved' && saveStatus !== 'error' && "border-slate-300 hover:bg-slate-50 text-slate-700"
+              )}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin text-slate-600" />
+              ) : saveStatus === 'saved' ? (
+                <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
+              ) : saveStatus === 'error' ? (
+                <AlertCircle className="w-4 h-4 mr-1.5 text-rose-600" />
+              ) : (
+                <Save className="w-4 h-4 mr-1.5 text-slate-600" />
+              )}
+              {saveStatus === 'saved' ? 'Draft Saved' : saveStatus === 'error' ? 'Save Failed — Retry' : 'Save Draft'}
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsPublishModalOpen(true)}
+              disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
+              className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl shadow-xs"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />
+              Publish Marks
+            </Button>
+          </div>
         </div>
 
-        {/* Right: Primary Save & Publish Buttons */}
-        <div className="flex items-center gap-2.5">
-          {isDirty && (
-            <span className="text-xs text-amber-800 font-medium flex items-center gap-1 mr-1">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-              Unsaved Changes
-            </span>
-          )}
+        {/* Bulk Action Quick Buttons */}
+        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 text-xs gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 text-slate-500 font-medium">
+            <span className="font-semibold text-slate-700">Bulk Actions:</span>
+            <button
+              type="button"
+              onClick={handleMarkRemainingAbsent}
+              disabled={!activeAssessment || sectionStudents.length === 0}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 font-semibold transition-colors disabled:opacity-50"
+              title="Set all unentered students to Absent (marks will be NULL)"
+            >
+              <UserX className="w-3.5 h-3.5" />
+              Mark Remaining Absent
+            </button>
+            <button
+              type="button"
+              onClick={handleMarkAllPresent}
+              disabled={!activeAssessment || sectionStudents.length === 0}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-semibold transition-colors disabled:opacity-50"
+              title="Set attendance status to Present for all students"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              Mark All Present
+            </button>
+            <button
+              type="button"
+              onClick={handleClearAllStatuses}
+              disabled={!activeAssessment || sectionStudents.length === 0}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 font-semibold transition-colors disabled:opacity-50"
+              title="Reset all statuses and marks back to Not Entered"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Clear All Statuses
+            </button>
+          </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleSaveMarks('draft')}
-            disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
-            className={clsx(
-              "rounded-xl font-bold shadow-xs transition-all",
-              saveStatus === 'saved' && "border-emerald-300 bg-emerald-50 text-emerald-800",
-              saveStatus === 'error' && "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
-              saveStatus !== 'saved' && saveStatus !== 'error' && "border-slate-300 hover:bg-slate-50 text-slate-700"
-            )}
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin text-slate-600" />
-            ) : saveStatus === 'saved' ? (
-              <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
-            ) : saveStatus === 'error' ? (
-              <AlertCircle className="w-4 h-4 mr-1.5 text-rose-600" />
-            ) : (
-              <Save className="w-4 h-4 mr-1.5 text-slate-600" />
-            )}
-            {saveStatus === 'saved' ? 'Draft Saved' : saveStatus === 'error' ? 'Save Failed — Retry' : 'Save Draft'}
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsPublishModalOpen(true)}
-            disabled={isSaving || !activeAssessment || sectionStudents.length === 0}
-            className="bg-[#0f172a] hover:bg-black text-white font-bold rounded-xl shadow-xs"
-          >
-            <CheckCircle2 className="w-4 h-4 mr-1.5" />
-            Publish Marks
-          </Button>
+          <span className="text-[11px] text-slate-400">
+            Showing {displayedStudents.length} of {sectionStudents.length} students
+          </span>
         </div>
       </div>
 
@@ -1744,8 +2198,8 @@ export const FacultyMarksManagementPage: React.FC = () => {
             <Users className="w-10 h-10 mx-auto text-slate-400 mb-3" />
             <h3 className="text-base font-bold text-slate-800 mb-1">No Students Match Selection</h3>
             <p className="text-xs text-slate-500">
-              {showMissingOnly 
-                ? 'All students in this section have marks entered! Great job.' 
+              {statusFilter !== 'ALL'
+                ? `No students currently match the "${statusFilter}" filter.`
                 : 'No active students found in this section.'}
             </p>
           </div>
@@ -1755,28 +2209,31 @@ export const FacultyMarksManagementPage: React.FC = () => {
               <thead>
                 <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
                   <th className="py-3.5 px-4 w-12 text-center">#</th>
-                  <th className="py-3.5 px-4 w-44">Roll Number</th>
+                  <th className="py-3.5 px-4 w-36">Roll Number</th>
                   <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4 w-44 text-center">
+                  <th className="py-3.5 px-3 w-52 text-center">Attendance / Status</th>
+                  <th className="py-3.5 px-4 w-36 text-center">
                     Marks ({activeAssessment?.maxMarks || 30})
                   </th>
-                  <th className="py-3.5 px-4 w-28 text-center">% Score</th>
+                  <th className="py-3.5 px-4 w-20 text-center">% Score</th>
                   <th className="py-3.5 px-4 w-28 text-center">Status</th>
-                  <th className="py-3.5 px-4 w-60">Remarks (Optional)</th>
+                  <th className="py-3.5 px-4 w-52">Remarks (Optional)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {displayedStudents.map((st, index) => {
-                  const entry = marksRoster[st.id] || { marks: '', remarks: '' };
+                  const entry = marksRoster[st.id] || { marks: '', status: 'NOT_ENTERED', remarks: '' };
                   return (
                     <MemoizedStudentMarkRow
                       key={st.id}
                       student={st}
                       index={index}
                       marks={entry.marks}
+                      status={entry.status || 'NOT_ENTERED'}
                       remarks={entry.remarks || ''}
                       maxMarks={activeAssessment?.maxMarks || 30}
                       onMarkChange={handleMarkChange}
+                      onStatusChange={handleStatusChange}
                       onRemarkChange={handleRemarkChange}
                       onKeyDown={handleKeyDown}
                       registerInputRef={registerInputRef}
@@ -1788,6 +2245,48 @@ export const FacultyMarksManagementPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* MODAL 0: Confirm Status Change / Clearing Marks Modal */}
+      <Modal
+        isOpen={!!confirmStatusModal}
+        onClose={() => setConfirmStatusModal(null)}
+        title={
+          <div className="flex items-center gap-2 text-amber-700">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <span>Confirm Status Change</span>
+          </div>
+        }
+        description="Changing attendance status will clear existing score"
+      >
+        <div className="space-y-4 pt-2">
+          <p className="text-sm text-slate-700">
+            Student <strong className="text-slate-900">{confirmStatusModal?.studentName}</strong> currently has a recorded score of{' '}
+            <strong className="text-slate-900 font-mono">{confirmStatusModal?.currentMarks}</strong> marks.
+          </p>
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+            Changing status to <strong className="uppercase">{confirmStatusModal?.targetStatus}</strong> will clear their marks and store them as{' '}
+            <strong className="font-mono">NULL</strong> in the database (not 0).
+          </div>
+          <div className="flex justify-end gap-2.5 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmStatusModal(null)}
+              className="rounded-xl text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmStatusChange}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs"
+            >
+              Confirm &amp; Clear Marks
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* MODAL 1: Publish Confirmation Modal */}
       <Modal

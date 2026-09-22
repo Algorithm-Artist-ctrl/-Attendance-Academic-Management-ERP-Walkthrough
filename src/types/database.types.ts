@@ -648,6 +648,8 @@ export interface QuizResult {
   grader?: Faculty;
 }
 
+export type AssessmentAttendanceStatus = 'NOT_ENTERED' | 'PRESENT' | 'ABSENT' | 'EXEMPTED';
+
 export interface SessionalMark {
   id: string;
   sessional_assessment_id?: string;
@@ -658,9 +660,10 @@ export interface SessionalMark {
   academic_session_id?: string;
   sessional_type?: SessionalType;
   max_marks?: number;
-  marks_obtained: number;
+  marks_obtained: number | null;
   remarks?: string;
   status?: 'draft' | 'published';
+  attendance_status?: AssessmentAttendanceStatus;
   updated_by?: string;
   created_at: string;
   updated_at: string;

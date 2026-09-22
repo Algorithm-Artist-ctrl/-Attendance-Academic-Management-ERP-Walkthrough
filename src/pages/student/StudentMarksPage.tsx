@@ -182,9 +182,29 @@ export const StudentMarksPage: React.FC = () => {
                       item.sessionalMarks.sessionals.map((s, idx) => (
                         <div key={s.assessmentId || idx} className="flex justify-between items-center py-1.5 border-b border-slate-200">
                           <span className="text-[#334155] font-semibold truncate max-w-[160px]">{s.title}:</span>
-                          <span className="font-mono font-bold text-[#0f172a]">
-                            {s.obtainedMarks !== undefined ? `${s.obtainedMarks} / ${s.maxMarks}` : 'Pending'}
-                          </span>
+                          <div className="text-right">
+                            {s.attendanceStatus === 'ABSENT' ? (
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span className="px-2 py-0.5 rounded-md text-xs font-bold font-mono bg-rose-50 text-rose-700 border border-rose-200">
+                                  ABSENT
+                                </span>
+                                <span className="text-xs text-slate-400 font-mono">Marks: —</span>
+                              </div>
+                            ) : s.attendanceStatus === 'EXEMPTED' ? (
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span className="px-2 py-0.5 rounded-md text-xs font-bold font-mono bg-amber-50 text-amber-700 border border-amber-200">
+                                  EXEMPTED
+                                </span>
+                                <span className="text-xs text-slate-400 font-mono">Marks: —</span>
+                              </div>
+                            ) : s.obtainedMarks !== undefined ? (
+                              <span className="font-mono font-bold text-[#0f172a]">
+                                {s.obtainedMarks} / {s.maxMarks}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400 font-medium italic">Pending</span>
+                            )}
+                          </div>
                         </div>
                       ))
                     )}

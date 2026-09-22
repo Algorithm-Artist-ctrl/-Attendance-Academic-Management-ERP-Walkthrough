@@ -25,6 +25,7 @@ import {
   Quiz,
   QuizResult,
   SessionalMark,
+  AssessmentAttendanceStatus,
   MarksHistory,
   SessionalType,
   SessionalAssessment,
@@ -323,7 +324,13 @@ interface AcademicContextType {
     sectionId: string;
     sessionalType?: string;
     maxMarks: number;
-    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+    studentMarks: Array<{
+      studentId: string;
+      marksObtained: number | null;
+      remarks?: string;
+      oldMarks?: number | null;
+      attendanceStatus?: AssessmentAttendanceStatus;
+    }>;
     isPublished?: boolean;
   }) => Promise<SessionalMark[]>;
   publishAssessment: (assessmentId: string, facultyId?: string) => Promise<any>;
@@ -3783,7 +3790,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     sectionId: string;
     sessionalType?: string;
     maxMarks: number;
-    studentMarks: Array<{ studentId: string; marksObtained: number; remarks?: string; oldMarks?: number }>;
+    studentMarks: Array<{
+      studentId: string;
+      marksObtained: number | null;
+      remarks?: string;
+      oldMarks?: number | null;
+      attendanceStatus?: AssessmentAttendanceStatus;
+    }>;
     isPublished?: boolean;
   }) => {
     const res = await supabaseService.saveSessionalMarks(params);
@@ -3847,12 +3860,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const sm = sessionalMarks.find(m => m.sessional_assessment_id === sa.id && m.student_id === studentId);
         // Only include marks if explicitly published (or when assessment is published and status not explicitly draft)
         const isMarkPublished = sm?.status === 'published' || (sm?.status === undefined && (sa.status === 'published' || sa.status === 'completed'));
-        const hasScore = sm !== undefined && isMarkPublished && sm.status !== 'draft' && sm.marks_obtained !== undefined && sm.marks_obtained !== null;
+        const attStatus: AssessmentAttendanceStatus = sm?.attendance_status || (sm?.marks_obtained !== null && sm?.marks_obtained !== undefined ? 'PRESENT' : 'NOT_ENTERED');
+        const hasScore = sm !== undefined && isMarkPublished && sm.status !== 'draft' && sm.marks_obtained !== undefined && sm.marks_obtained !== null && attStatus === 'PRESENT';
         return {
           assessmentId: sa.id,
           title: sa.title,
           maxMarks: sa.max_marks,
           obtainedMarks: hasScore ? Number(sm.marks_obtained) : undefined,
+          attendanceStatus: isMarkPublished && sm ? attStatus : undefined,
           examDate: sa.exam_date || '',
         };
       });
@@ -3865,21 +3880,24 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const alreadyInDynamic = dynamicSessionals.some(
           ds => ds.title.toLowerCase() === sm.sessional_type?.toLowerCase()
         );
-        if (!alreadyInDynamic && sm.marks_obtained !== undefined && sm.marks_obtained !== null) {
+        const legacyAttStatus: AssessmentAttendanceStatus = sm.attendance_status || (sm.marks_obtained !== null && sm.marks_obtained !== undefined ? 'PRESENT' : 'NOT_ENTERED');
+        if (!alreadyInDynamic && ((sm.marks_obtained !== undefined && sm.marks_obtained !== null) || legacyAttStatus === 'ABSENT' || legacyAttStatus === 'EXEMPTED')) {
           dynamicSessionals.push({
             assessmentId: sm.id,
             title: sm.sessional_type || 'Sessional Assessment',
             maxMarks: sm.max_marks || 30,
-            obtainedMarks: Number(sm.marks_obtained),
+            obtainedMarks: sm.marks_obtained !== null && sm.marks_obtained !== undefined && legacyAttStatus === 'PRESENT' ? Number(sm.marks_obtained) : undefined,
+            attendanceStatus: legacyAttStatus,
             examDate: sm.created_at || '',
           });
         }
       }
 
-      // CRITICAL MARKS RULE: Visible sessionals MUST have actual published/entered marks for this student
+      // CRITICAL MARKS RULE: Visible sessionals MUST have actual published/entered marks OR published evaluation status (ABSENT / EXEMPTED)
       // Genuine 0 marks (marks_obtained === 0) are valid published marks and are strictly preserved!
       const visibleSessionals = dynamicSessionals.filter(s => 
-        s.obtainedMarks !== undefined && s.obtainedMarks !== null
+        (s.obtainedMarks !== undefined && s.obtainedMarks !== null) ||
+        (s.attendanceStatus === 'ABSENT' || s.attendanceStatus === 'EXEMPTED')
       );
 
       const s1Dyn = visibleSessionals.find(s => s.title.toLowerCase() === 'sessional 1' || s.title.toLowerCase().startsWith('sessional 1'));
@@ -3896,17 +3914,23 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const put = subSessional.find(s => s.sessional_type === 'Pre-University Test');
       const fin = subSessional.find(s => s.sessional_type === 'Final Sessional');
 
-      const sessional1Val = (s1Dyn && s1Dyn.obtainedMarks !== undefined) 
-        ? { obtained: s1Dyn.obtainedMarks, max: s1Dyn.maxMarks }
-        : (s1 && s1.marks_obtained !== undefined && s1.marks_obtained !== null ? { obtained: Number(s1.marks_obtained), max: s1.max_marks || 30 } : undefined);
+      const sessional1Val = (s1Dyn && (s1Dyn.obtainedMarks !== undefined || s1Dyn.attendanceStatus === 'ABSENT' || s1Dyn.attendanceStatus === 'EXEMPTED'))
+        ? { obtained: s1Dyn.obtainedMarks, max: s1Dyn.maxMarks, attendanceStatus: s1Dyn.attendanceStatus }
+        : (s1 && ((s1.marks_obtained !== undefined && s1.marks_obtained !== null) || s1.attendance_status === 'ABSENT' || s1.attendance_status === 'EXEMPTED')
+          ? { obtained: s1.marks_obtained !== null && s1.marks_obtained !== undefined ? Number(s1.marks_obtained) : undefined, max: s1.max_marks || 30, attendanceStatus: s1.attendance_status }
+          : undefined);
 
-      const sessional2Val = (s2Dyn && s2Dyn.obtainedMarks !== undefined) 
-        ? { obtained: s2Dyn.obtainedMarks, max: s2Dyn.maxMarks }
-        : (s2 && s2.marks_obtained !== undefined && s2.marks_obtained !== null ? { obtained: Number(s2.marks_obtained), max: s2.max_marks || 30 } : undefined);
+      const sessional2Val = (s2Dyn && (s2Dyn.obtainedMarks !== undefined || s2Dyn.attendanceStatus === 'ABSENT' || s2Dyn.attendanceStatus === 'EXEMPTED'))
+        ? { obtained: s2Dyn.obtainedMarks, max: s2Dyn.maxMarks, attendanceStatus: s2Dyn.attendanceStatus }
+        : (s2 && ((s2.marks_obtained !== undefined && s2.marks_obtained !== null) || s2.attendance_status === 'ABSENT' || s2.attendance_status === 'EXEMPTED')
+          ? { obtained: s2.marks_obtained !== null && s2.marks_obtained !== undefined ? Number(s2.marks_obtained) : undefined, max: s2.max_marks || 30, attendanceStatus: s2.attendance_status }
+          : undefined);
 
-      const putVal = (putDyn && putDyn.obtainedMarks !== undefined) 
-        ? { obtained: putDyn.obtainedMarks, max: putDyn.maxMarks }
-        : (put && put.marks_obtained !== undefined && put.marks_obtained !== null ? { obtained: Number(put.marks_obtained), max: put.max_marks || 100 } : undefined);
+      const putVal = (putDyn && (putDyn.obtainedMarks !== undefined || putDyn.attendanceStatus === 'ABSENT' || putDyn.attendanceStatus === 'EXEMPTED'))
+        ? { obtained: putDyn.obtainedMarks, max: putDyn.maxMarks, attendanceStatus: putDyn.attendanceStatus }
+        : (put && ((put.marks_obtained !== undefined && put.marks_obtained !== null) || put.attendance_status === 'ABSENT' || put.attendance_status === 'EXEMPTED')
+          ? { obtained: put.marks_obtained !== null && put.marks_obtained !== undefined ? Number(put.marks_obtained) : undefined, max: put.max_marks || 100, attendanceStatus: put.attendance_status }
+          : undefined);
 
       const otherSessionals = visibleSessionals.filter(s => 
         s !== s1Dyn && s !== s2Dyn && s !== putDyn
@@ -3972,10 +3996,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let totalScore = 0;
       let maxScore = 0;
 
-      // Add scores ONLY from assessments that have actual entered marks (supporting genuine 0 marks)
+      // Add scores ONLY from assessments that have actual entered marks (supporting genuine 0 marks) or ABSENT evaluation
       for (const ds of visibleSessionals) {
         if (ds.obtainedMarks !== undefined && ds.obtainedMarks !== null) {
           totalScore += ds.obtainedMarks;
+          maxScore += ds.maxMarks;
+        } else if (ds.attendanceStatus === 'ABSENT') {
           maxScore += ds.maxMarks;
         }
       }

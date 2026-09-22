@@ -291,7 +291,7 @@ export const FacultySectionWorkspacePage: React.FC<FacultySectionWorkspacePagePr
           m => m.sessional_assessment_id === selectedSessionalId && m.student_id === stud.id
         );
         roster[stud.id] = {
-          marks: sm ? sm.marks_obtained : '',
+          marks: (sm && sm.marks_obtained !== null && sm.marks_obtained !== undefined) ? sm.marks_obtained : '',
           remarks: sm?.remarks || ''
         };
       }

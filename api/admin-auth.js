@@ -106,7 +106,12 @@ async function verifySuperAdmin(req) {
   }
 
   const callerUserId = authUser.user.id;
-  const { data: callerProfile, error: profileErr } = await supabaseRpc
+  const dbClient = supabaseAdmin || createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: callerProfile, error: profileErr } = await dbClient
     .from('profiles')
     .select('id, full_name, role, status')
     .eq('id', callerUserId)
@@ -125,7 +130,7 @@ async function verifySuperAdmin(req) {
     return { authorized: false, status: 403, error: 'Unauthorized: Only Super Administrators can perform this action.' };
   }
 
-  return { authorized: true, user: authUser.user, profile: callerProfile };
+  return { authorized: true, user: authUser.user, profile: callerProfile, dbClient };
 }
 
 export default async function handleAdminAuth(req, res) {
@@ -440,6 +445,193 @@ export default async function handleAdminAuth(req, res) {
         success: true,
         data: rpcData,
         message: `Account status updated to ${status}.`,
+      }, req);
+    }
+
+    // 6. Fetch Account Dependencies (Super Admin Only)
+    if (req.method === 'GET' && pathname === '/api/auth/account-dependencies') {
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
+      }
+
+      const dbClient = authCheck.dbClient || supabaseAdmin || supabaseRpc;
+      const targetId = urlObj.searchParams.get('id') || urlObj.searchParams.get('target_id');
+      const role = (urlObj.searchParams.get('role') || urlObj.searchParams.get('entity_type') || '').toLowerCase();
+
+      if (!targetId || !role) {
+        return sendJson(res, 400, { success: false, error: 'Target ID and role (student/faculty) are required.' }, req);
+      }
+
+      if (role === 'student') {
+        const { data: student, error: stErr } = await dbClient
+          .from('students')
+          .select('id, full_name, roll_number, status, active, email, auth_user_id')
+          .eq('id', targetId)
+          .maybeSingle();
+
+        if (stErr || !student) {
+          return sendJson(res, 404, { success: false, error: 'Student record not found.' }, req);
+        }
+
+        const [
+          { count: attCount },
+          { count: marksCount },
+          { count: quizCount },
+          { count: subCount },
+          { count: leaveCount },
+          { count: notifCount },
+          { count: msgCount },
+        ] = await Promise.all([
+          dbClient.from('attendance_records').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
+          dbClient.from('sessional_marks').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
+          dbClient.from('quiz_results').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
+          dbClient.from('assignment_submissions').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
+          dbClient.from('leave_applications').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
+          dbClient.from('notifications').select('*', { count: 'exact', head: true }).or(`recipient_student_id.eq.${targetId}${student.auth_user_id ? `,recipient_user_id.eq.${student.auth_user_id}` : ''}`),
+          student.auth_user_id
+            ? dbClient.from('messages').select('*', { count: 'exact', head: true }).or(`sender_id.eq.${student.auth_user_id},recipient_id.eq.${student.auth_user_id}`)
+            : Promise.resolve({ count: 0 }),
+        ]);
+
+        const dependencies = {
+          'Attendance Records': attCount || 0,
+          'Assessment & Sessional Marks': marksCount || 0,
+          'Quiz Results': quizCount || 0,
+          'Assignment Submissions': subCount || 0,
+          'Leave Applications': leaveCount || 0,
+          'Notifications': notifCount || 0,
+          'Direct Messages': msgCount || 0,
+        };
+
+        return sendJson(res, 200, {
+          success: true,
+          dependencies,
+          targetDetails: {
+            id: student.id,
+            name: student.full_name,
+            role: 'student',
+            identifier: student.roll_number,
+            status: student.status || (student.active ? 'ACTIVE' : 'ARCHIVED'),
+            email: student.email || `${student.roll_number.toLowerCase()}@student.vctm.in`,
+          },
+        }, req);
+      } else if (role === 'faculty') {
+        const { data: fac, error: facErr } = await dbClient
+          .from('faculty')
+          .select('id, full_name, employee_code, status, active, email, auth_user_id')
+          .eq('id', targetId)
+          .maybeSingle();
+
+        if (facErr || !fac) {
+          return sendJson(res, 404, { success: false, error: 'Faculty record not found.' }, req);
+        }
+
+        const [
+          { count: sessCount },
+          { count: assessCount },
+          { count: quizCount },
+          { count: assignCount },
+          { count: facAssignCount },
+          { count: leaveCount },
+          { count: notifCount },
+          { count: msgCount },
+        ] = await Promise.all([
+          dbClient.from('attendance_sessions').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
+          dbClient.from('sessional_assessments').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
+          dbClient.from('quizzes').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
+          dbClient.from('assignments').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
+          dbClient.from('faculty_subject_assignments').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
+          dbClient.from('leave_applications').select('*', { count: 'exact', head: true }).or(`coordinator_id.eq.${targetId},hod_id.eq.${targetId}`),
+          fac.auth_user_id
+            ? dbClient.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_user_id', fac.auth_user_id)
+            : Promise.resolve({ count: 0 }),
+          fac.auth_user_id
+            ? dbClient.from('messages').select('*', { count: 'exact', head: true }).or(`sender_id.eq.${fac.auth_user_id},recipient_id.eq.${fac.auth_user_id}`)
+            : Promise.resolve({ count: 0 }),
+        ]);
+
+        const dependencies = {
+          'Attendance Sessions Taken': sessCount || 0,
+          'Sessional Assessments Created': assessCount || 0,
+          'Quizzes Created': quizCount || 0,
+          'Course Assignments': assignCount || 0,
+          'Subject Teaching Assignments': facAssignCount || 0,
+          'Leave Requests': leaveCount || 0,
+          'Notifications': notifCount || 0,
+          'Direct Messages': msgCount || 0,
+        };
+
+        return sendJson(res, 200, {
+          success: true,
+          dependencies,
+          targetDetails: {
+            id: fac.id,
+            name: fac.full_name,
+            role: 'faculty',
+            identifier: fac.employee_code,
+            status: fac.status || (fac.active ? 'ACTIVE' : 'ARCHIVED'),
+            email: fac.email,
+          },
+        }, req);
+      } else {
+        return sendJson(res, 400, { success: false, error: 'Invalid role. Must be student or faculty.' }, req);
+      }
+    }
+
+    // 7. Permanent Delete Archived Account (Super Admin Only)
+    if (req.method === 'POST' && pathname === '/api/auth/permanent-delete') {
+      const authCheck = await verifySuperAdmin(req);
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status || 401, { success: false, error: authCheck.error }, req);
+      }
+
+      const dbClient = authCheck.dbClient || supabaseAdmin || supabaseRpc;
+      const callerUserId = authCheck.user.id;
+      const body = await readJsonBody(req);
+      const targetId = body.id || body.target_id;
+      const role = (body.role || body.entity_type || '').toLowerCase();
+      const confirmation = body.confirmation;
+
+      if (!targetId || !role) {
+        return sendJson(res, 400, { success: false, error: 'Target ID and role (student/faculty) are required.' }, req);
+      }
+
+      if (confirmation !== 'DELETE') {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Safety verification failed: You must type DELETE to confirm permanent deletion.',
+        }, req);
+      }
+
+      // Execute authoritative PostgreSQL atomic cascade deletion RPC
+      const { data: rpcData, error: rpcErr } = await dbClient.rpc('permanent_delete_archived_account', {
+        p_target_id: targetId,
+        p_entity_type: role,
+        p_actor_id: callerUserId,
+      });
+
+      if (rpcErr) {
+        return sendJson(res, 400, { success: false, error: rpcErr.message }, req);
+      }
+
+      // Purge Supabase Auth user if targetAuthUserId is returned and supabaseAdmin is available
+      const targetAuthUserId = rpcData?.target_auth_user_id;
+      if (targetAuthUserId && supabaseAdmin) {
+        try {
+          const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(targetAuthUserId);
+          if (delAuthErr) {
+            console.warn('Supabase Admin deleteUser notice:', delAuthErr.message);
+          }
+        } catch (adminErr) {
+          console.warn('Supabase Admin deleteUser call exception:', adminErr?.message);
+        }
+      }
+
+      return sendJson(res, 200, {
+        success: true,
+        message: rpcData?.message || 'Account and all associated records permanently purged.',
+        purged_records: rpcData?.purged_records || {},
       }, req);
     }
 
