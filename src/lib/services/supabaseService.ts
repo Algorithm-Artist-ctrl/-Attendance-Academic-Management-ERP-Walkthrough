@@ -120,7 +120,7 @@ const _inFlightEnsureQuizzes = new Map<string, Promise<Quiz[]>>();
 const _inFlightEnsureSessionals = new Map<string, Promise<SessionalAssessment[]>>();
 const _inFlightFacultyDashboard = new Map<string, Promise<FacultyDashboardPayload | null>>();
 const _facultyDashboardCache = new Map<string, { timestamp: number; data: FacultyDashboardPayload }>();
-const FACULTY_DASHBOARD_CACHE_TTL_MS = 20 * 1000; // 20-second cache for dashboard payload
+const FACULTY_DASHBOARD_CACHE_TTL_MS = 60 * 1000; // 60-second cache for dashboard payload
 
 export const isValidUuid = (val?: string | null): boolean => {
   return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val.trim());
@@ -215,9 +215,9 @@ export const supabaseService = {
             supabase.from('institutions').select('id, name, code, active, address, website, logo_url, created_at'),
             supabase.from('departments').select('id, name, code, active, hod_faculty_id, institution_id, created_at, updated_at'),
             supabase.from('programs').select('id, name, code, active, department_id, duration_years, created_at, updated_at'),
-            supabase.from('academic_sessions').select('id, name, start_date, end_date, active, is_current, created_at, updated_at'),
-            supabase.from('academic_years').select('id, name, year_number, active, program_id, session_id, created_at, updated_at').eq('active', true).order('year_number'),
-            supabase.from('semesters').select('id, name, semester_number, active, academic_year_id, created_at, updated_at').eq('active', true).order('semester_number'),
+            supabase.from('academic_sessions').select('id, name, start_date, end_date, active, is_current, created_at'),
+            supabase.from('academic_years').select('id, name, year_number, active, program_id, created_at').eq('active', true).order('year_number'),
+            supabase.from('semesters').select('id, name, semester_number, active, academic_year_id, created_at').eq('active', true).order('semester_number'),
           ]);
 
           const staticResult = {
@@ -278,8 +278,8 @@ export const supabaseService = {
             clsRes,
           ] = await Promise.all([
             supabase.from('sections').select('id, name, semester_id, room_number, active, class_coordinator_id, created_at, updated_at').eq('active', true).order('name', { ascending: true }),
-            supabase.from('subjects').select('id, name, code, subject_code, subject_name, semester_id, department_id, program_id, lecture_type, credits, active, created_at, updated_at').eq('active', true).order('subject_code', { ascending: true }),
-            supabase.from('faculty').select('id, full_name, email, phone, employee_code, faculty_code, department_id, designation, is_hod, active, status, auth_user_id, created_at, updated_at').order('full_name', { ascending: true }),
+            supabase.from('subjects').select('id, subject_code, subject_name, semester_id, department_id, program_id, lecture_type, credits, active, created_at, updated_at').eq('active', true).order('subject_code', { ascending: true }),
+            supabase.from('faculty').select('id, full_name, email, phone, employee_code, faculty_code, department_id, designation, active, auth_user_id, created_at, updated_at').order('full_name', { ascending: true }),
             supabase.from('faculty_subject_assignments').select('id, faculty_id, subject_id, section_id, semester_id, academic_year_id, active, created_at').eq('active', true),
             supabase.from('classrooms').select('id, room_number, building, room_type, capacity, active, created_at, updated_at').eq('active', true).order('room_number', { ascending: true }),
           ]);
@@ -290,9 +290,15 @@ export const supabaseService = {
           if (asgRes.error) console.error('Error fetching assignments in fetchAcademicEntities:', asgRes.error.message);
           if (clsRes.error) console.error('Error fetching classrooms in fetchAcademicEntities:', clsRes.error.message);
 
+          const normalizedSubjects = ((subRes.data as any[]) || []).map(s => ({
+            ...s,
+            name: s.subject_name || s.name,
+            code: s.subject_code || s.code,
+          })) as Subject[];
+
           return {
             sections: (secRes.data as Section[]) || [],
-            subjects: (subRes.data as Subject[]) || [],
+            subjects: normalizedSubjects,
             faculty: (facRes.data as Faculty[]) || [],
             assignments: (asgRes.data as FacultySubjectAssignment[]) || [],
             students: [] as Student[],
@@ -384,10 +390,10 @@ export const supabaseService = {
   async fetchStudents(activeOnly = false): Promise<Student[]> {
     let q = supabase
       .from('students')
-      .select('id, roll_number, full_name, email, phone, semester_id, section_id, batch_year, academic_year, active, status, attendance_percentage, auth_user_id, department_id, mentor_faculty_id, admission_type, enrollment_number, institution_id, program_id, academic_session_id, academic_year_id, created_at, updated_at')
+      .select('id, roll_number, full_name, email, phone, semester_id, section_id, active, auth_user_id, department_id, mentor_faculty_id, admission_type, enrollment_number, institution_id, program_id, academic_session_id, academic_year_id, created_at, updated_at')
       .order('roll_number', { ascending: true });
     if (activeOnly) {
-      q = q.eq('active', true).or('status.is.null,status.eq.ACTIVE');
+      q = q.eq('active', true);
     }
     const { data, error } = await q;
     if (error) {
@@ -401,8 +407,7 @@ export const supabaseService = {
     const { data, error } = await supabase
       .from('students')
       .select('section_id')
-      .eq('active', true)
-      .or('status.is.null,status.eq.ACTIVE');
+      .eq('active', true);
     if (error) {
       console.error('Error fetching section student counts:', error.message);
       return {};
@@ -417,9 +422,12 @@ export const supabaseService = {
   },
 
   async fetchFaculty(activeOnly = false): Promise<Faculty[]> {
-    let q = supabase.from('faculty').select('*').order('full_name', { ascending: true });
+    let q = supabase
+      .from('faculty')
+      .select('id, full_name, email, phone, employee_code, faculty_code, department_id, designation, active, auth_user_id, created_at, updated_at')
+      .order('full_name', { ascending: true });
     if (activeOnly) {
-      q = q.eq('active', true).or('status.is.null,status.eq.ACTIVE');
+      q = q.eq('active', true);
     }
     const { data, error } = await q;
     if (error) {
@@ -799,7 +807,18 @@ export const supabaseService = {
   // 1F-2. Scoped Faculty Academic Records (Only faculty's assignments, submissions, quizzes, marks)
   async fetchFacultyAcademicRecords(facultyId: string, forceFresh = false) {
     let resolvedFacId = facultyId;
-    if (resolvedFacId) {
+    if (!resolvedFacId || !isValidUuid(resolvedFacId)) {
+      return {
+        courseAssignments: [],
+        assignmentSubmissions: [],
+        quizzes: [],
+        quizResults: [],
+        sessionalMarks: [],
+        sessionalAssessments: [],
+      };
+    }
+
+    if (resolvedFacId && isValidUuid(resolvedFacId)) {
       const { data: fac } = await supabase
         .from('faculty')
         .select('id')
@@ -884,15 +903,15 @@ export const supabaseService = {
         if (!masterData) return null;
 
         // 2. Role-Scoped Operational Slice
-        if (params.role === 'student' && params.studentId) {
+        if (params.role === 'student' && params.studentId && isValidUuid(params.studentId)) {
           const [studentAtt, studentAcad, { data: timetable }, correctionsRes, { data: studentRecord }] = await Promise.all([
             this.fetchStudentAttendance(params.studentId, params.sectionId),
             this.fetchStudentAcademicRecords(params.studentId, params.sectionId),
-            params.sectionId
+            params.sectionId && isValidUuid(params.sectionId)
               ? supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('section_id', params.sectionId).eq('active', true).order('period_number', { ascending: true })
               : supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
             supabase.from('attendance_corrections').select('id, attendance_record_id, student_id, requested_status, reason, status, review_remarks, reviewed_at, created_at').eq('student_id', params.studentId).order('created_at', { ascending: false }).limit(20),
-            supabase.from('students').select('id, roll_number, full_name, email, phone, semester_id, section_id, batch_year, academic_year, active, status, attendance_percentage, auth_user_id, department_id, mentor_faculty_id, admission_type, enrollment_number, institution_id, program_id, academic_session_id, academic_year_id, created_at, updated_at').eq('id', params.studentId),
+            supabase.from('students').select('id, roll_number, full_name, email, phone, semester_id, section_id, active, auth_user_id, department_id, mentor_faculty_id, admission_type, enrollment_number, institution_id, program_id, academic_session_id, academic_year_id, created_at, updated_at').eq('id', params.studentId),
           ]);
 
           return {
@@ -914,7 +933,7 @@ export const supabaseService = {
           };
         }
 
-        if (params.role === 'faculty' && params.facultyId) {
+        if (params.role === 'faculty' && params.facultyId && isValidUuid(params.facultyId)) {
           const [
             { data: timetable },
             sessionsRes,
@@ -981,8 +1000,8 @@ export const supabaseService = {
             { data: timetableVersions },
           ] = await Promise.all([
             supabase.from('timetable_entries').select('id, section_id, subject_id, faculty_id, day_of_week, period_number, start_time, end_time, room_number, lecture_type, active, created_at, updated_at').eq('active', true).order('period_number', { ascending: true }),
-            params.departmentId
-              ? supabase.from('students').select('id, roll_number, full_name, email, phone, semester_id, section_id, batch_year, academic_year, active, status, attendance_percentage, auth_user_id, department_id, mentor_faculty_id, admission_type, enrollment_number, institution_id, program_id, academic_session_id, academic_year_id, created_at, updated_at').eq('department_id', params.departmentId).eq('active', true).order('roll_number', { ascending: true }).then(r => (r.data as unknown as Student[]) || [])
+            params.departmentId && isValidUuid(params.departmentId)
+              ? supabase.from('students').select('id, roll_number, full_name, email, phone, semester_id, section_id, active, auth_user_id, department_id, mentor_faculty_id, admission_type, enrollment_number, institution_id, program_id, academic_session_id, academic_year_id, created_at, updated_at').eq('department_id', params.departmentId).eq('active', true).order('roll_number', { ascending: true }).then(r => (r.data as unknown as Student[]) || [])
               : this.fetchStudents(true),
             this.fetchAllAttendanceSessions(50),
             this.fetchCorrections(40),
@@ -5389,69 +5408,75 @@ export const supabaseService = {
   },
 
   // 12. Super Admin Account Directory & Management
-  async fetchAdminAccounts(): Promise<AdminAccountDirectoryEntry[]> {
-    try {
-      const currentUser = erpStorage.getCurrentSessionUser();
-      // Strictly restrict RPC to super_admin to prevent 400 Bad Request / permission errors for non-admins
-      if (!currentUser || currentUser.role !== 'super_admin') {
-        return [];
-      }
-
-      const { data, error } = await supabase.rpc('get_admin_account_directory');
-      if (error) {
-        console.warn('RPC get_admin_account_directory failed, falling back to manual join:', error.message);
-        const [profilesRes, facultyRes, studentsRes, deptsRes, sectionsRes, yearsRes] = await Promise.all([
-          supabase.from('profiles').select('*').order('full_name', { ascending: true }),
-          supabase.from('faculty').select('*'),
-          supabase.from('students').select('*'),
-          supabase.from('departments').select('*'),
-          supabase.from('sections').select('*'),
-          supabase.from('academic_years').select('*'),
-        ]);
-
-        const facultyMap = new Map((facultyRes.data || []).map(f => [f.auth_user_id || f.id, f]));
-        const studentMap = new Map((studentsRes.data || []).map(s => [s.auth_user_id || s.id, s]));
-        const deptMap = new Map((deptsRes.data || []).map(d => [d.id, d]));
-        const sectionMap = new Map((sectionsRes.data || []).map(s => [s.id, s]));
-        const yearMap = new Map((yearsRes.data || []).map(y => [y.id, y]));
-
-        return (profilesRes.data || []).map(p => {
-          const fac = facultyMap.get(p.id) || (p.faculty_id ? (facultyRes.data || []).find(f => f.id === p.faculty_id) : undefined);
-          const stu = studentMap.get(p.id) || (p.student_id ? (studentsRes.data || []).find(s => s.id === p.student_id) : undefined);
-          const dept = fac?.department_id ? deptMap.get(fac.department_id) : (stu?.department_id ? deptMap.get(stu.department_id) : undefined);
-          const sec = stu?.section_id ? sectionMap.get(stu.section_id) : undefined;
-          const yr = stu?.academic_year_id ? yearMap.get(stu.academic_year_id) : undefined;
-
-          return {
-            user_id: p.id,
-            email: p.email,
-            role: p.role,
-            full_name: p.full_name,
-            status: (p.status || 'ACTIVE') as AccountStatus,
-            last_sign_in_at: p.last_sign_in_at || null,
-            department_id: dept?.id || null,
-            department_name: dept?.name || null,
-            department_code: dept?.code || null,
-            employee_code: fac?.employee_code || fac?.faculty_code || null,
-            designation: fac?.designation || null,
-            roll_number: stu?.roll_number || null,
-            year_number: yr?.year_number || null,
-            academic_year_name: yr?.name || null,
-            section_name: sec?.name || null,
-            section_id: sec?.id || null,
-            created_at: p.created_at || new Date().toISOString(),
-          };
-        });
-      }
-
-      return ((data as any[]) || []).map(r => ({
-        ...r,
-        user_id: r.auth_user_id || r.id,
-      })) as AdminAccountDirectoryEntry[];
-    } catch (err) {
-      console.error('Error in fetchAdminAccounts:', err);
+  async fetchAdminAccounts(forceFresh = false): Promise<AdminAccountDirectoryEntry[]> {
+    const currentUser = erpStorage.getCurrentSessionUser();
+    // Strictly restrict RPC to super_admin to prevent 400 Bad Request / permission errors for non-admins
+    if (!currentUser || currentUser.role !== 'super_admin') {
       return [];
     }
+
+    return queryCache.fetchWithCache(
+      queryKeys.adminAccounts(),
+      async () => {
+        try {
+          const { data, error } = await supabase.rpc('get_admin_account_directory');
+          if (error) {
+            console.warn('RPC get_admin_account_directory failed, falling back to manual join:', error.message);
+            const [profilesRes, facultyRes, studentsRes, deptsRes, sectionsRes, yearsRes] = await Promise.all([
+              supabase.from('profiles').select('*').order('full_name', { ascending: true }),
+              supabase.from('faculty').select('*'),
+              supabase.from('students').select('*'),
+              supabase.from('departments').select('*'),
+              supabase.from('sections').select('*'),
+              supabase.from('academic_years').select('*'),
+            ]);
+
+            const facultyMap = new Map((facultyRes.data || []).map(f => [f.auth_user_id || f.id, f]));
+            const studentMap = new Map((studentsRes.data || []).map(s => [s.auth_user_id || s.id, s]));
+            const deptMap = new Map((deptsRes.data || []).map(d => [d.id, d]));
+            const sectionMap = new Map((sectionsRes.data || []).map(s => [s.id, s]));
+            const yearMap = new Map((yearsRes.data || []).map(y => [y.id, y]));
+
+            return (profilesRes.data || []).map(p => {
+              const fac = facultyMap.get(p.id) || (p.faculty_id ? (facultyRes.data || []).find(f => f.id === p.faculty_id) : undefined);
+              const stu = studentMap.get(p.id) || (p.student_id ? (studentsRes.data || []).find(s => s.id === p.student_id) : undefined);
+              const dept = fac?.department_id ? deptMap.get(fac.department_id) : (stu?.department_id ? deptMap.get(stu.department_id) : undefined);
+              const sec = stu?.section_id ? sectionMap.get(stu.section_id) : undefined;
+              const yr = stu?.academic_year_id ? yearMap.get(stu.academic_year_id) : undefined;
+
+              return {
+                user_id: p.id,
+                email: p.email,
+                role: p.role,
+                full_name: p.full_name,
+                status: (p.status || 'ACTIVE') as AccountStatus,
+                last_sign_in_at: p.last_sign_in_at || null,
+                department_id: dept?.id || null,
+                department_name: dept?.name || null,
+                department_code: dept?.code || null,
+                employee_code: fac?.employee_code || fac?.faculty_code || null,
+                designation: fac?.designation || null,
+                roll_number: stu?.roll_number || null,
+                year_number: yr?.year_number || null,
+                academic_year_name: yr?.name || null,
+                section_name: sec?.name || null,
+                section_id: sec?.id || null,
+                created_at: p.created_at || new Date().toISOString(),
+              };
+            });
+          }
+
+          return ((data as any[]) || []).map(r => ({
+            ...r,
+            user_id: r.auth_user_id || r.id,
+          })) as AdminAccountDirectoryEntry[];
+        } catch (err) {
+          console.error('Error in fetchAdminAccounts:', err);
+          return [];
+        }
+      },
+      { ttlMs: 10 * 60 * 1000, staleTimeMs: 2 * 60 * 1000, forceFresh }
+    );
   },
 
   async updateAccountStatus(
@@ -5494,6 +5519,7 @@ export const supabaseService = {
         }]);
       }
 
+      queryCache.invalidate(queryKeys.adminAccounts());
       return { success: true };
     } catch (err: any) {
       console.error('Error updating account status:', err);
@@ -5685,6 +5711,10 @@ export const supabaseService = {
   // 13. Class Coordinator Relational Management (Migration 017 & 038)
   async fetchClassCoordinatorAssignments(facultyId?: string): Promise<ClassCoordinatorAssignment[]> {
     try {
+      if (facultyId && !isValidUuid(facultyId)) {
+        return [];
+      }
+
       let q = supabase
         .from('class_coordinator_assignments')
         .select(`
@@ -5893,7 +5923,7 @@ export const supabaseService = {
 
   // 14. Scoped Fast Faculty Dashboard Query (Parallel, <100ms, Single Source of Truth)
   async fetchFacultyDashboardData(facultyId: string, forceFresh = false): Promise<FacultyDashboardPayload | null> {
-    if (!facultyId) return null;
+    if (!facultyId || !isValidUuid(facultyId)) return null;
     const now = Date.now();
     if (!forceFresh) {
       const cached = _facultyDashboardCache.get(facultyId);
@@ -6013,26 +6043,22 @@ export const supabaseService = {
           .select('*')
           .eq('faculty_id', facultyId)
           .order('session_date', { ascending: false })
-          .limit(100)
+          .limit(30)
       ]);
 
       const rawSections = (sectionsRes.data || []) as any[];
       const rawStudents = (studentCountsRes.data || []) as any[];
       const attendanceSessions = (attendanceSessionsRes.data || []) as AttendanceSession[];
 
-      const dashboardSessionIds = attendanceSessions.map(s => s.id).filter(Boolean);
+      const dashboardSessionIds = attendanceSessions.slice(0, 15).map(s => s.id).filter(Boolean);
       let dashboardAttendanceRecords: AttendanceRecord[] = [];
       if (dashboardSessionIds.length > 0) {
-        const chunkSize = 50;
-        for (let i = 0; i < dashboardSessionIds.length; i += chunkSize) {
-          const chunk = dashboardSessionIds.slice(i, i + chunkSize);
-          const { data: recs, error: recErr } = await supabase
-            .from('attendance_records')
-            .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
-            .in('attendance_session_id', chunk);
-          if (!recErr && recs) {
-            dashboardAttendanceRecords = dashboardAttendanceRecords.concat(recs as unknown as AttendanceRecord[]);
-          }
+        const { data: recs, error: recErr } = await supabase
+          .from('attendance_records')
+          .select('id, attendance_session_id, student_id, status, remarks, created_at, updated_at')
+          .in('attendance_session_id', dashboardSessionIds);
+        if (!recErr && recs) {
+          dashboardAttendanceRecords = recs as unknown as AttendanceRecord[];
         }
       }
 
@@ -7325,8 +7351,7 @@ export const supabaseService = {
             .from('students')
             .select('id, section_id, academic_year_id')
             .in('section_id', relevantSectionIds)
-            .eq('active', true)
-            .or('status.eq.ACTIVE,status.is.null');
+            .eq('active', true);
 
           const seenStudents = new Set<string>();
           (studentCounts || []).forEach(s => {
@@ -7774,12 +7799,12 @@ export const supabaseService = {
         supabase
           .from('students')
           .select('*')
-          .or('status.neq.ACTIVE,active.eq.false')
+          .eq('active', false)
           .order('roll_number', { ascending: true }),
         supabase
           .from('faculty')
           .select('*')
-          .or('status.neq.ACTIVE,active.eq.false')
+          .eq('active', false)
           .order('full_name', { ascending: true }),
         supabase.from('profiles').select('id, full_name, email, last_sign_in_at'),
         supabase.from('departments').select('id, name, code'),

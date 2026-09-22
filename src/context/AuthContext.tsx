@@ -310,12 +310,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             if (facRecord) {
+              let isHod = false;
+              if (facRecord.id) {
+                const { data: dept } = await supabase.from('departments').select('id').eq('hod_faculty_id', facRecord.id).maybeSingle();
+                if (dept) isHod = true;
+              }
               const targetEmail = authUserEmail || facRecord.email || `${facRecord.faculty_code?.toLowerCase()}@faculty.vctm.in`;
               const healedProfile = {
                 id: authUserId,
                 email: targetEmail.toLowerCase().trim(),
                 full_name: facRecord.full_name,
-                role: (facRecord.is_hod ? 'hod' : 'faculty') as UserRole,
+                role: (isHod ? 'hod' : 'faculty') as UserRole,
                 department_id: facRecord.department_id,
                 faculty_id: facRecord.id,
                 phone: facRecord.phone,

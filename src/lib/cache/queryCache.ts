@@ -319,4 +319,5 @@ export const queryKeys = {
   sections: () => `sections:active`,
   subjects: () => `subjects:active`,
   faculty: () => `faculty:all`,
+  adminAccounts: () => `admin:accounts`,
 };
