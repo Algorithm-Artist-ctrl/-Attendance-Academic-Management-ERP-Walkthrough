@@ -6386,12 +6386,14 @@ export const supabaseService = {
           .in('conversation_id', convIds)
           .eq('user_id', userId);
 
-        const settingsMap: Record<string, { marked_unread: boolean; cleared_at?: string | null }> = {};
+        const settingsMap: Record<string, { marked_unread: boolean; cleared_at?: string | null; is_hidden?: boolean; hidden_at?: string | null }> = {};
         if (userSettings) {
           userSettings.forEach((s: any) => {
             settingsMap[s.conversation_id] = {
               marked_unread: Boolean(s.marked_unread),
               cleared_at: s.cleared_at || null,
+              is_hidden: Boolean(s.is_hidden),
+              hidden_at: s.hidden_at || null,
             };
           });
         }
@@ -6403,12 +6405,23 @@ export const supabaseService = {
           });
         }
 
-        conversations.forEach(c => {
+        const visibleConversations = conversations.filter(c => {
+          const setting = settingsMap[c.id];
+          if (!setting?.is_hidden) return true;
+          if (setting.hidden_at && c.last_message_at) {
+            return new Date(c.last_message_at).getTime() > new Date(setting.hidden_at).getTime();
+          }
+          return false;
+        });
+
+        visibleConversations.forEach(c => {
           const setting = settingsMap[c.id];
           const unreadCount = counts[c.id] || 0;
           c.marked_unread = setting?.marked_unread || false;
           c.unread_count = c.marked_unread ? Math.max(unreadCount, 1) : unreadCount;
         });
+
+        return visibleConversations;
       }
 
       return conversations;
@@ -6705,6 +6718,24 @@ export const supabaseService = {
       return { success: true };
     } catch (err: any) {
       console.error('Exception in clearConversationForMe:', err);
+      return { success: false, error: err };
+    }
+  },
+
+  async deleteConversation(conversationId: string): Promise<{ success: boolean; data?: any; error?: any }> {
+    try {
+      const { data, error } = await supabase.rpc('delete_conversation_for_me', {
+        p_conversation_id: conversationId,
+      });
+
+      if (error) {
+        console.error('Error in deleteConversation:', error);
+        return { success: false, error };
+      }
+
+      return { success: true, data };
+    } catch (err: any) {
+      console.error('Exception in deleteConversation:', err);
       return { success: false, error: err };
     }
   },
@@ -7670,6 +7701,22 @@ export const supabaseService = {
       return { success: true, data };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to clear group chat' };
+    }
+  },
+
+  async deleteMessageGroup(
+    groupId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('delete_message_group', {
+        p_group_id: groupId,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to delete message group' };
     }
   },
 

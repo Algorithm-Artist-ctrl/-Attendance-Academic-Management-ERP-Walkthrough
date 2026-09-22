@@ -201,6 +201,7 @@ interface AcademicContextType {
   editGroupMessage: (messageId: string, newContent: string, newTitle?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   deleteGroupMessage: (messageId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   clearGroupChatForMe: (groupId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+  deleteMessageGroup: (groupId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   deleteGroupMessageForMe: (messageId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   markGroupRead: (groupId: string) => Promise<void>;
   fetchGroupMembers: (groupId: string) => Promise<GroupMember[]>;
@@ -218,6 +219,7 @@ interface AcademicContextType {
   unsendDirectMessage: (messageId: string) => Promise<{ data: Message | null; error: any }>;
   deleteMessageForMe: (messageId: string) => Promise<{ success: boolean; error?: any }>;
   clearConversationForMe: (conversationId: string) => Promise<{ success: boolean; error?: any }>;
+  deleteConversation: (conversationId: string) => Promise<{ success: boolean; data?: any; error?: any }>;
   markConversationUnread: (conversationId: string) => Promise<{ success: boolean; error?: any }>;
   getOrCreateConversation: (params: {
     facultyId?: string;
@@ -1722,7 +1724,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setNotifications(prev => prev.map(n => n.id === updated.id ? { ...n, ...updated } : n));
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload: any) => {
+        if (payload?.eventType === 'DELETE' && payload?.old?.id) {
+          const deletedId = payload.old.id;
+          setConversations(prev => prev.filter(c => c.id !== deletedId));
+          return;
+        }
         debounceTableSync('conversations', () => realtimeHandlersRef.current.refreshConversations());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
@@ -1781,7 +1788,13 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           });
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_groups' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_groups' }, (payload: any) => {
+        if (payload?.eventType === 'DELETE' && payload?.old?.id) {
+          const deletedId = payload.old.id;
+          setMessageGroups(prev => prev.filter(g => g.id !== deletedId));
+          groupMessagesCacheRef.current.delete(deletedId);
+          return;
+        }
         debounceTableSync('message_groups', () => realtimeHandlersRef.current.refreshMessageGroups());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_applications' }, () => {
@@ -4304,6 +4317,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res;
   }, [refreshConversations, refreshNotifications]);
 
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    setConversations(prev => prev.filter(c => c.id !== conversationId));
+    const res = await supabaseService.deleteConversation(conversationId);
+    if (!res.success) {
+      await refreshConversations();
+    }
+    return res;
+  }, [refreshConversations]);
+
   const markConversationUnread = useCallback(async (conversationId: string) => {
     const res = await supabaseService.markConversationUnread(conversationId);
     if (res.success) {
@@ -4441,6 +4463,16 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     return res;
   }, []);
+
+  const deleteMessageGroup = useCallback(async (groupId: string) => {
+    setMessageGroups(prev => prev.filter(g => g.id !== groupId));
+    groupMessagesCacheRef.current.delete(groupId);
+    const res = await supabaseService.deleteMessageGroup(groupId);
+    if (!res.success) {
+      await refreshMessageGroups();
+    }
+    return res;
+  }, [refreshMessageGroups]);
 
   const deleteGroupMessageForMe = useCallback(async (messageId: string) => {
     return await supabaseService.deleteGroupMessageForMe(messageId);
@@ -4626,6 +4658,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     editGroupMessage,
     deleteGroupMessage,
     clearGroupChatForMe,
+    deleteMessageGroup,
     deleteGroupMessageForMe,
     markGroupRead,
     fetchGroupMembers,
@@ -4635,6 +4668,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     unsendDirectMessage,
     deleteMessageForMe,
     clearConversationForMe,
+    deleteConversation,
     markConversationUnread,
     getOrCreateConversation,
     markConversationRead,
@@ -4926,6 +4960,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     editGroupMessage,
     deleteGroupMessage,
     clearGroupChatForMe,
+    deleteMessageGroup,
     deleteGroupMessageForMe,
     markGroupRead,
     fetchGroupMembers,
@@ -4935,6 +4970,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     unsendDirectMessage,
     deleteMessageForMe,
     clearConversationForMe,
+    deleteConversation,
     markConversationUnread,
     getOrCreateConversation,
     markConversationRead,

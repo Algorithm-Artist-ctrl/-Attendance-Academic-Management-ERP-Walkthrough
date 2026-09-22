@@ -104,12 +104,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     editGroupMessage,
     deleteGroupMessage,
     clearGroupChatForMe,
+    deleteMessageGroup,
     deleteGroupMessageForMe,
     markGroupRead,
     editDirectMessage,
     unsendDirectMessage,
     deleteMessageForMe,
     clearConversationForMe,
+    deleteConversation,
     markConversationUnread,
     students,
     faculty,
@@ -133,6 +135,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const [isNewDirectModalOpen, setIsNewDirectModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isDeleteConvModalOpen, setIsDeleteConvModalOpen] = useState(false);
+  const [isDeletingConv, setIsDeletingConv] = useState(false);
+  const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
 
   // Group selection & state
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(() => {
@@ -901,6 +907,24 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     return messageGroups.find(g => g.id === selectedGroupId) || null;
   }, [messageGroups, selectedGroupId]);
 
+  // Can delete group: Super Admin, Department HOD, or Faculty Creator/Instructor (Students never)
+  const canDeleteGroup = useMemo(() => {
+    if (!selectedGroup) return false;
+    if (role === 'super_admin') return true;
+    if (role === 'hod') {
+      return !selectedGroup.department_id || selectedGroup.department_id === user?.department_id;
+    }
+    if (role === 'faculty') {
+      const userFacultyId = user?.faculty_id || user?.id;
+      return Boolean(
+        (selectedGroup.created_by_faculty_id && selectedGroup.created_by_faculty_id === userFacultyId) ||
+        (selectedGroup.faculty?.id && selectedGroup.faculty.id === userFacultyId) ||
+        (user?.faculty_id && selectedGroup.created_by_faculty_id === user.faculty_id)
+      );
+    }
+    return false;
+  }, [selectedGroup, role, user]);
+
   // Matching message IDs for In-Conversation Direct Search
   const matchingDirectMsgIds = useMemo(() => {
     if (!convSearchQuery.trim()) return [];
@@ -1493,6 +1517,35 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
+  // Handle Confirm Delete Group
+  const handleConfirmDeleteGroup = async () => {
+    if (!selectedGroupId || isDeletingGroup) return;
+    const groupIdToDelete = selectedGroupId;
+    setIsDeletingGroup(true);
+    try {
+      setSelectedGroupId(null);
+      setGroupMessages([]);
+      setIsDeleteGroupModalOpen(false);
+      setIsGroupHeaderMenuOpen(false);
+      try {
+        localStorage.removeItem('vctm_last_group_id');
+      } catch {}
+
+      showToast('Group deleted successfully');
+
+      const res = await deleteMessageGroup(groupIdToDelete);
+      if (!res.success) {
+        showToast(res.error || 'Failed to delete group');
+        setSelectedGroupId(groupIdToDelete);
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to delete group');
+      setSelectedGroupId(groupIdToDelete);
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  };
+
   // Handle Send Direct Message with Optimistic UI, Submission Lock & Retry
   const handleSendDirectMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1773,6 +1826,35 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       showToast('Failed to clear conversation');
     } finally {
       setIsClearingConv(false);
+    }
+  };
+
+  // Handle Confirm Delete Conversation For Me
+  const handleConfirmDeleteConversation = async () => {
+    if (!selectedConvId || isDeletingConv) return;
+    const convIdToDelete = selectedConvId;
+    setIsDeletingConv(true);
+    try {
+      setSelectedConvId(null);
+      setDirectMessages([]);
+      setIsDeleteConvModalOpen(false);
+      setHeaderMenuOpen(false);
+      try {
+        localStorage.removeItem('vctm_last_conv_id');
+      } catch {}
+
+      showToast('Conversation deleted');
+
+      const res = await deleteConversation(convIdToDelete);
+      if (!res.success) {
+        showToast('Failed to delete conversation');
+        setSelectedConvId(convIdToDelete);
+      }
+    } catch (err) {
+      showToast('Failed to delete conversation');
+      setSelectedConvId(convIdToDelete);
+    } finally {
+      setIsDeletingConv(false);
     }
   };
 
@@ -2142,14 +2224,16 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         </div>
 
                         <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                            conv.status === 'OPEN' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                            conv.status === 'IN_PROGRESS' ? 'bg-blue-50 border-blue-200 text-blue-800' :
-                            conv.status === 'RESOLVED' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-                            'bg-slate-100 border-slate-200 text-slate-600'
-                          }`}>
-                            {conv.status}
-                          </span>
+                          {conv.category && conv.category !== 'General' && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                              conv.status === 'OPEN' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                              conv.status === 'IN_PROGRESS' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                              conv.status === 'RESOLVED' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                              'bg-slate-100 border-slate-200 text-slate-600'
+                            }`}>
+                              {conv.status}
+                            </span>
+                          )}
 
                           {hasUnread && (
                             <span className="px-1.5 py-0.2 text-[10px] font-bold bg-[#0f172a] text-white rounded-full shadow-xs">
@@ -2324,6 +2408,19 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                             <Eraser className="w-3.5 h-3.5 text-rose-500" />
                             Clear chat for me
                           </button>
+                          {canDeleteGroup && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsGroupHeaderMenuOpen(false);
+                                setIsDeleteGroupModalOpen(true);
+                              }}
+                              className="w-full px-3.5 py-2 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors border-t border-slate-100"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              Delete group
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -3058,15 +3155,17 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       <Search className="w-4 h-4" />
                     </button>
 
-                    {/* Status badge */}
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
-                      selectedConversation.status === 'OPEN' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                      selectedConversation.status === 'IN_PROGRESS' ? 'bg-blue-50 border-blue-200 text-blue-800' :
-                      selectedConversation.status === 'RESOLVED' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-                      'bg-slate-100 border-slate-200 text-slate-600'
-                    }`}>
-                      {selectedConversation.status}
-                    </span>
+                    {/* Status badge - Only show for ticket / grievance / workflow categories */}
+                    {selectedConversation.category && selectedConversation.category !== 'General' && (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
+                        selectedConversation.status === 'OPEN' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                        selectedConversation.status === 'IN_PROGRESS' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                        selectedConversation.status === 'RESOLVED' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                        'bg-slate-100 border-slate-200 text-slate-600'
+                      }`}>
+                        {selectedConversation.status}
+                      </span>
+                    )}
 
                     {/* Header three-dot menu */}
                     <div className="relative">
@@ -3105,6 +3204,17 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                           >
                             <Eraser className="w-3.5 h-3.5 text-rose-500" />
                             Clear conversation
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHeaderMenuOpen(false);
+                              setIsDeleteConvModalOpen(true);
+                            }}
+                            className="w-full px-3.5 py-2 text-left font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors border-t border-slate-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            Delete conversation
                           </button>
                         </div>
                       )}
@@ -3846,6 +3956,40 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         </div>
       )}
 
+      {/* Delete Conversation Confirmation Modal */}
+      {isDeleteConvModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Delete conversation?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              This will remove this conversation from your conversation list.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isDeletingConv}
+                onClick={() => setIsDeleteConvModalOpen(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingConv}
+                onClick={handleConfirmDeleteConversation}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isDeletingConv ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Group Message For Everyone Confirmation Modal */}
       {deleteGroupModalMsg && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
@@ -3942,6 +4086,40 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               >
                 {isClearingGroupChat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 Clear Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Group Confirmation Modal */}
+      {isDeleteGroupModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-bold text-slate-900">Delete this group?</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              This will remove the group from the communication center and stop future group messages.
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={isDeletingGroup}
+                onClick={() => setIsDeleteGroupModalOpen(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingGroup}
+                onClick={handleConfirmDeleteGroup}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {isDeletingGroup ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Delete Group
               </button>
             </div>
           </div>
