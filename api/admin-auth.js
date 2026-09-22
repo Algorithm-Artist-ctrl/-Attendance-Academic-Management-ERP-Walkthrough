@@ -490,8 +490,8 @@ export default async function handleAdminAuth(req, res) {
           dbClient.from('leave_applications').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
           dbClient.from('notifications').select('*', { count: 'exact', head: true }).or(`recipient_student_id.eq.${targetId}${student.auth_user_id ? `,recipient_user_id.eq.${student.auth_user_id}` : ''}`),
           student.auth_user_id
-            ? dbClient.from('messages').select('*', { count: 'exact', head: true }).or(`sender_id.eq.${student.auth_user_id},recipient_id.eq.${student.auth_user_id}`)
-            : Promise.resolve({ count: 0 }),
+            ? dbClient.from('messages').select('*', { count: 'exact', head: true }).or(`sender_user_id.eq.${student.auth_user_id},receiver_user_id.eq.${student.auth_user_id},student_id.eq.${targetId}`)
+            : dbClient.from('messages').select('*', { count: 'exact', head: true }).eq('student_id', targetId),
         ]);
 
         const dependencies = {
@@ -544,11 +544,11 @@ export default async function handleAdminAuth(req, res) {
           dbClient.from('faculty_subject_assignments').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
           dbClient.from('leave_applications').select('*', { count: 'exact', head: true }).or(`coordinator_id.eq.${targetId},hod_id.eq.${targetId}`),
           fac.auth_user_id
-            ? dbClient.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_user_id', fac.auth_user_id)
-            : Promise.resolve({ count: 0 }),
+            ? dbClient.from('notifications').select('*', { count: 'exact', head: true }).or(`recipient_user_id.eq.${fac.auth_user_id},recipient_faculty_id.eq.${targetId}`)
+            : dbClient.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_faculty_id', targetId),
           fac.auth_user_id
-            ? dbClient.from('messages').select('*', { count: 'exact', head: true }).or(`sender_id.eq.${fac.auth_user_id},recipient_id.eq.${fac.auth_user_id}`)
-            : Promise.resolve({ count: 0 }),
+            ? dbClient.from('messages').select('*', { count: 'exact', head: true }).or(`sender_user_id.eq.${fac.auth_user_id},receiver_user_id.eq.${fac.auth_user_id},faculty_id.eq.${targetId}`)
+            : dbClient.from('messages').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
         ]);
 
         const dependencies = {
@@ -616,7 +616,7 @@ export default async function handleAdminAuth(req, res) {
       }
 
       // Purge Supabase Auth user if targetAuthUserId is returned and supabaseAdmin is available
-      const targetAuthUserId = rpcData?.target_auth_user_id;
+      const targetAuthUserId = rpcData?.target_auth_user_id || rpcData?.auth_user_id;
       if (targetAuthUserId && supabaseAdmin) {
         try {
           const { error: delAuthErr } = await supabaseAdmin.auth.admin.deleteUser(targetAuthUserId);

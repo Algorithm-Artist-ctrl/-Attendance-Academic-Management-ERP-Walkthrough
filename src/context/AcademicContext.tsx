@@ -805,7 +805,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const loadedDepts = data.departments || [];
         const loadedProgs = data.programs || [];
         const loadedSessions = data.sessions || [];
-        const loadedYears = (data.years || []).filter(y => y.active && y.year_number !== 1);
+        const loadedYears = (data.years || []).filter(y => y.active);
         const loadedSemesters = (data.semesters || []).filter(s => s.active && loadedYears.some(y => y.id === s.academic_year_id));
         const loadedSections = (data.sections || []).filter(sec => sec.active && loadedSemesters.some(sem => sem.id === sec.semester_id));
         const loadedClassrooms = ((data as any).classrooms || []).filter((c: any) => c.active !== false);
@@ -1168,6 +1168,29 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       erpStorage.setSubjects(loadedSubjects);
     } catch (err) {
       console.error('Failed to refresh subjects:', err);
+    }
+  }, []);
+
+  const refreshAcademicStructure = useCallback(async () => {
+    try {
+      const staticSetup = await supabaseService.fetchStaticSetup();
+      if (staticSetup) {
+        if (staticSetup.departments) setDepartments(staticSetup.departments);
+        if (staticSetup.programs) setPrograms(staticSetup.programs);
+        if (staticSetup.sessions) setSessions(staticSetup.sessions);
+        if (staticSetup.years) {
+          const loadedYears = (staticSetup.years || []).filter(y => y.active);
+          setYears(loadedYears);
+          erpStorage.setYears(loadedYears);
+        }
+        if (staticSetup.semesters) {
+          const loadedSemesters = (staticSetup.semesters || []).filter(s => s.active);
+          setSemesters(loadedSemesters);
+          erpStorage.setSemesters(loadedSemesters);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh academic structure:', err);
     }
   }, []);
 
@@ -1543,6 +1566,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshFaculty,
     refreshSections,
     refreshSubjects,
+    refreshAcademicStructure,
     refreshAssignments,
     refreshAssessments,
     refreshCoordinatorAssignments,
@@ -1561,6 +1585,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       refreshFaculty,
       refreshSections,
       refreshSubjects,
+      refreshAcademicStructure,
       refreshAssignments,
       refreshAssessments,
       refreshCoordinatorAssignments,
@@ -1869,6 +1894,18 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
           debounceTableSync('students', () => realtimeHandlersRef.current.refreshStudents());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
+          debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => {
+          debounceTableSync('sections', () => realtimeHandlersRef.current.refreshSections());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'academic_years' }, () => {
+          debounceTableSync('academic_years', () => realtimeHandlersRef.current.refreshAcademicStructure());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'semesters' }, () => {
+          debounceTableSync('semesters', () => realtimeHandlersRef.current.refreshAcademicStructure());
         });
     } else {
       // HOD and Super Admin have oversight across academic and administrative entities
@@ -1910,6 +1947,12 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
           debounceTableSync('subjects', () => realtimeHandlersRef.current.refreshSubjects());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'academic_years' }, () => {
+          debounceTableSync('academic_years', () => realtimeHandlersRef.current.refreshAcademicStructure());
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'semesters' }, () => {
+          debounceTableSync('semesters', () => realtimeHandlersRef.current.refreshAcademicStructure());
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_subject_assignments' }, () => {
           debounceTableSync('faculty_subject_assignments', () => realtimeHandlersRef.current.refreshAssignments());

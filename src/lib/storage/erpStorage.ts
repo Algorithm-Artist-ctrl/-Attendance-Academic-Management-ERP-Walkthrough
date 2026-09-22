@@ -171,6 +171,14 @@ class ERPStorageService {
     saveToStorage(STORAGE_KEYS.SECTIONS, sections);
   }
 
+  public setYears(years: AcademicYear[]) {
+    saveToStorage(STORAGE_KEYS.YEARS, years);
+  }
+
+  public setSemesters(semesters: Semester[]) {
+    saveToStorage(STORAGE_KEYS.SEMESTERS, semesters);
+  }
+
   public setSubjects(subjects: Subject[]) {
     saveToStorage(STORAGE_KEYS.SUBJECTS, subjects);
   }

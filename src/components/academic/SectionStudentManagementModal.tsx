@@ -73,6 +73,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editFullName, setEditFullName] = useState('');
   const [editRollNumber, setEditRollNumber] = useState('');
+  const [editEnrollmentNumber, setEditEnrollmentNumber] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editAdmissionType, setEditAdmissionType] = useState<AdmissionType>('Regular');
@@ -83,6 +84,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
   // Add Student form state
   const [addFullName, setAddFullName] = useState('');
   const [addRollNumber, setAddRollNumber] = useState('');
+  const [addEnrollmentNumber, setAddEnrollmentNumber] = useState('');
   const [addEmail, setAddEmail] = useState('');
   const [addPhone, setAddPhone] = useState('');
   const [addAdmissionType, setAddAdmissionType] = useState<AdmissionType>('Regular');
@@ -185,6 +187,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
     setEditingStudent(student);
     setEditFullName(student.full_name);
     setEditRollNumber(student.roll_number);
+    setEditEnrollmentNumber(student.enrollment_number || '');
     setEditEmail(student.email || '');
     setEditPhone(student.phone || '');
     setEditAdmissionType(student.admission_type || 'Regular');
@@ -209,12 +212,24 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       return;
     }
 
+    // Check enrollment number uniqueness if changed
+    if (editEnrollmentNumber.trim()) {
+      const dupEnroll = students.find(
+        s => s.id !== editingStudent.id && s.enrollment_number && s.enrollment_number.toLowerCase().trim() === editEnrollmentNumber.toLowerCase().trim()
+      );
+      if (dupEnroll) {
+        setEditError(`Enrollment number "${editEnrollmentNumber}" is already assigned to ${dupEnroll.full_name}.`);
+        return;
+      }
+    }
+
     setIsSavingEdit(true);
     setEditError(null);
     try {
       await updateStudent(editingStudent.id, {
         full_name: editFullName.trim(),
         roll_number: editRollNumber.trim(),
+        enrollment_number: editEnrollmentNumber.trim() || undefined,
         email: editEmail.trim() || `${editRollNumber.trim()}@vctm.in`,
         phone: editPhone.trim() || undefined,
         admission_type: editAdmissionType,
@@ -282,6 +297,17 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       return;
     }
 
+    // Check duplicate enrollment number if provided
+    if (addEnrollmentNumber.trim()) {
+      const dupEnroll = students.find(
+        s => s.enrollment_number && s.enrollment_number.toLowerCase().trim() === addEnrollmentNumber.toLowerCase().trim()
+      );
+      if (dupEnroll) {
+        setAddError(`Enrollment number "${addEnrollmentNumber}" already exists for student "${dupEnroll.full_name}".`);
+        return;
+      }
+    }
+
     setIsAdding(true);
     setAddError(null);
     try {
@@ -299,6 +325,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
         semester_id: sectionSemester.id,
         section_id: section.id,
         roll_number: addRollNumber.trim(),
+        enrollment_number: addEnrollmentNumber.trim() || undefined,
         full_name: addFullName.trim(),
         admission_type: addAdmissionType,
         email: addEmail.trim() || `${addRollNumber.trim()}@vctm.in`,
@@ -310,6 +337,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
       await refreshStudents();
       setAddFullName('');
       setAddRollNumber('');
+      setAddEnrollmentNumber('');
       setAddEmail('');
       setAddPhone('');
       setAddAdmissionType('Regular');
@@ -715,7 +743,10 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
                       </td>
 
                       <td className="px-4 py-3 font-mono font-bold text-slate-900">
-                        {stud.roll_number}
+                        <div>{stud.roll_number}</div>
+                        {stud.enrollment_number && (
+                          <div className="text-[10px] text-slate-500 font-normal">{stud.enrollment_number}</div>
+                        )}
                       </td>
 
                       <td className="px-4 py-3 font-bold text-slate-900">
@@ -815,16 +846,28 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">University Roll Number *</label>
-            <input
-              type="text"
-              required
-              value={addRollNumber}
-              onChange={(e) => setAddRollNumber(e.target.value)}
-              placeholder="e.g. 2503400100054"
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">University Roll Number *</label>
+              <input
+                type="text"
+                required
+                value={addRollNumber}
+                onChange={(e) => setAddRollNumber(e.target.value)}
+                placeholder="e.g. 2503400100054"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Enrollment Number</label>
+              <input
+                type="text"
+                value={addEnrollmentNumber}
+                onChange={(e) => setAddEnrollmentNumber(e.target.value)}
+                placeholder="e.g. EN2503400100054"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              />
+            </div>
           </div>
 
           <div>
@@ -1204,15 +1247,27 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">University Roll Number *</label>
-            <input
-              type="text"
-              required
-              value={editRollNumber}
-              onChange={(e) => setEditRollNumber(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">University Roll Number *</label>
+              <input
+                type="text"
+                required
+                value={editRollNumber}
+                onChange={(e) => setEditRollNumber(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Enrollment Number</label>
+              <input
+                type="text"
+                value={editEnrollmentNumber}
+                onChange={(e) => setEditEnrollmentNumber(e.target.value)}
+                placeholder="e.g. EN2503400100054"
+                className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              />
+            </div>
           </div>
 
           <div>

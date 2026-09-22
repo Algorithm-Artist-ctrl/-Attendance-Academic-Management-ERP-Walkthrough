@@ -192,7 +192,7 @@ export const supabaseService = {
         supabase.from('departments').select('*'),
         supabase.from('programs').select('*'),
         supabase.from('academic_sessions').select('*'),
-        supabase.from('academic_years').select('*').eq('active', true).neq('year_number', 1).order('year_number'),
+        supabase.from('academic_years').select('*').eq('active', true).order('year_number'),
         supabase.from('semesters').select('*').eq('active', true).order('semester_number'),
       ]);
 
@@ -201,7 +201,7 @@ export const supabaseService = {
         departments: (departments as Department[]) || [],
         programs: (programs as Program[]) || [],
         sessions: (sessions as AcademicSession[]) || [],
-        years: ((years as AcademicYear[]) || []).filter(y => y.active && y.year_number !== 1),
+        years: ((years as AcademicYear[]) || []).filter(y => y.active),
         semesters: ((semesters as Semester[]) || []).filter(s => s.active),
       };
 
@@ -1706,6 +1706,17 @@ export const supabaseService = {
     });
 
     if (!rpcErr && rpcRes?.student_id) {
+      if (student.enrollment_number) {
+        try {
+          await supabase
+            .from('students')
+            .update({ enrollment_number: student.enrollment_number.trim() })
+            .eq('id', rpcRes.student_id);
+        } catch (updateErr) {
+          console.warn('Failed to set enrollment_number on student:', updateErr);
+        }
+      }
+
       const { data: createdStudent } = await supabase
         .from('students')
         .select('*')
@@ -1717,6 +1728,7 @@ export const supabaseService = {
         id: rpcRes.student_id,
         auth_user_id: rpcRes.auth_user_id,
         roll_number: cleanRoll,
+        enrollment_number: student.enrollment_number?.trim() || undefined,
         full_name: student.full_name,
         section_id: sec.id,
         email: targetEmail,
@@ -1728,6 +1740,7 @@ export const supabaseService = {
     const payload = {
       ...student,
       roll_number: cleanRoll,
+      enrollment_number: student.enrollment_number?.trim() || null,
       email: targetEmail,
       institution_id: instId,
       academic_session_id: sessionId,

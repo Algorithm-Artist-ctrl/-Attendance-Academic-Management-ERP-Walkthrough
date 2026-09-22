@@ -185,6 +185,7 @@ export interface Student {
   semester_id: string;
   section_id: string;
   roll_number: string;
+  enrollment_number?: string;
   admission_number?: string;
   full_name: string;
   admission_type: AdmissionType;

@@ -206,6 +206,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   // Add Student modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newRoll, setNewRoll] = useState('');
+  const [newEnrollmentNo, setNewEnrollmentNo] = useState('');
   const [newName, setNewName] = useState('');
   const [newAdmissionType, setNewAdmissionType] = useState<AdmissionType>('Regular');
   const [newStudentYearId, setNewStudentYearId] = useState<string>('');
@@ -228,6 +229,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   const handleOpenAddModal = () => {
     setModalError(null);
     setNewRoll('');
+    setNewEnrollmentNo('');
     setNewName('');
     setNewEmail('');
     setNewPhone('');
@@ -260,7 +262,8 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
   const filteredStudents = accessibleStudents.filter(s => {
     const matchesSearch = 
       s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
+      s.roll_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.enrollment_number && s.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesYear = yearFilter === 'ALL' || s.academic_year_id === yearFilter;
     const matchesSection = sectionFilter === 'ALL' || s.section_id === sectionFilter;
     const matchesAdmission = admissionFilter === 'ALL' || s.admission_type === admissionFilter;
@@ -340,6 +343,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
         semester_id: secSemester.id,
         section_id: selectedSec.id,
         roll_number: newRoll.trim(),
+        enrollment_number: newEnrollmentNo.trim() || undefined,
         full_name: newName.trim().toUpperCase(),
         admission_type: newAdmissionType,
         mentor_faculty_id: newMentorId || undefined,
@@ -350,6 +354,7 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
 
       setIsAddModalOpen(false);
       setNewRoll('');
+      setNewEnrollmentNo('');
       setNewName('');
       setNewEmail('');
       setNewPhone('');
@@ -605,6 +610,11 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-slate-500">#{(currentPage - 1) * pageSize + idx + 1}</span>
                         <span className="font-mono text-xs font-bold text-slate-900 group-hover:underline">{stud.roll_number}</span>
+                        {stud.enrollment_number && (
+                          <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            {stud.enrollment_number}
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-sm font-bold text-slate-900 mt-0.5 group-hover:text-slate-700 transition-colors flex items-center gap-1.5">
                         {stud.full_name}
@@ -683,7 +693,10 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
                         >
                           <td className="px-5 py-3.5 font-mono text-slate-500">{(currentPage - 1) * pageSize + idx + 1}</td>
                           <td className="px-5 py-3.5 font-mono font-bold text-slate-900 text-sm group-hover:underline">
-                            {stud.roll_number}
+                            <div>{stud.roll_number}</div>
+                            {stud.enrollment_number && (
+                              <div className="text-[10px] text-slate-500 font-normal">{stud.enrollment_number}</div>
+                            )}
                           </td>
                           <td className="px-5 py-3.5 font-bold text-slate-900 text-sm group-hover:text-slate-700 transition-colors">
                             <div className="flex items-center gap-2">
@@ -784,18 +797,32 @@ export const StudentDirectoryPage: React.FC<StudentDirectoryPageProps> = ({ forc
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Roll Number <span className="text-rose-400">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={newRoll}
-              onChange={(e) => setNewRoll(e.target.value)}
-              placeholder="e.g. 2503400100099"
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Roll Number <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={newRoll}
+                onChange={(e) => setNewRoll(e.target.value)}
+                placeholder="e.g. 2503400100099"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Enrollment Number
+              </label>
+              <input
+                type="text"
+                value={newEnrollmentNo}
+                onChange={(e) => setNewEnrollmentNo(e.target.value)}
+                placeholder="e.g. EN2503400100099"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-xs"
+              />
+            </div>
           </div>
 
           <div>

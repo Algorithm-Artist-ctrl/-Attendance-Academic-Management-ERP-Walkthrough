@@ -672,13 +672,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ onNavigate }
                 secStudentsCount,
                 weeklyLecturesCount,
               };
-            }).filter(item => item.yrNumber !== 1) // Strictly exclude 1st year
+            })
           : sections
               .filter(sec => sec.class_coordinator_id === facultyId && sec.active)
               .map(sec => {
                 const coordSem = semesters.find(s => s.id === sec.semester_id);
                 const coordYear = years.find(y => y.id === coordSem?.academic_year_id);
-                if (coordYear?.year_number === 1) return null;
                 const coordYearName = coordYear?.name || 'Academic Year';
                 const secStudents = students.filter(s => s.section_id === sec.id && s.active);
                 const secTotalLectures = getPublishedTimetable({ sectionId: sec.id });

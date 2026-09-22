@@ -7,7 +7,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AddSectionModal } from '../../components/academic/AddSectionModal';
 import { SectionStudentManagementModal } from '../../components/academic/SectionStudentManagementModal';
-import { Section } from '../../types/database.types';
+import { Section, AcademicYear, Semester } from '../../types/database.types';
 import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
@@ -29,7 +29,10 @@ export const AcademicSetupPage: React.FC = () => {
     updateSection,
     deleteSection,
     addAcademicYear,
+    updateAcademicYear,
+    deleteAcademicYear,
     addSemester,
+    deleteSemester,
     claimWindowDays,
     setClaimWindowDays
   } = useAcademic();
@@ -37,7 +40,7 @@ export const AcademicSetupPage: React.FC = () => {
   const isSuperAdmin = role === 'super_admin' || user?.role === 'super_admin';
   const isHod = role === 'hod' || user?.role === 'hod';
 
-  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sections' | 'policy'>(
+  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'years' | 'sections' | 'policy'>(
     isHod ? 'sections' : 'departments'
   );
   const [tempClaimDays, setTempClaimDays] = useState(claimWindowDays);
@@ -67,6 +70,12 @@ export const AcademicSetupPage: React.FC = () => {
   const [newYearProgId, setNewYearProgId] = useState(programs[0]?.id || '');
   const [newYearNumber, setNewYearNumber] = useState(1);
   const [newYearName, setNewYearName] = useState('');
+
+  // New Semester Modal state
+  const [isSemModalOpen, setIsSemModalOpen] = useState(false);
+  const [newSemYearId, setNewSemYearId] = useState('');
+  const [newSemNumber, setNewSemNumber] = useState(1);
+  const [newSemName, setNewSemName] = useState('');
 
   // New Section Modal state
   const [isSecModalOpen, setIsSecModalOpen] = useState(false);
@@ -150,6 +159,74 @@ export const AcademicSetupPage: React.FC = () => {
       setIsProgModalOpen(false);
     } catch (err) {
       console.error('Failed to add program:', err);
+    }
+  };
+
+  const handleCreateYear = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newYearProgId || !newYearNumber) return;
+
+    try {
+      await addAcademicYear({
+        program_id: newYearProgId,
+        year_number: Number(newYearNumber),
+        name: newYearName.trim() || `${newYearNumber}${newYearNumber === 1 ? 'st' : newYearNumber === 2 ? 'nd' : newYearNumber === 3 ? 'rd' : 'th'} Year`,
+        active: true,
+      });
+
+      setNewYearName('');
+      setNewYearNumber(1);
+      setIsYearModalOpen(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add academic year');
+    }
+  };
+
+  const handleToggleYearActive = async (year: AcademicYear) => {
+    try {
+      await updateAcademicYear(year.id, { active: !year.active });
+    } catch (err: any) {
+      alert(err.message || 'Failed to update academic year');
+    }
+  };
+
+  const handleDeleteYear = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete academic year "${name}"? This action cannot be undone.`)) {
+      try {
+        await deleteAcademicYear(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete academic year');
+      }
+    }
+  };
+
+  const handleCreateSemester = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSemYearId || !newSemNumber) return;
+
+    try {
+      await addSemester({
+        academic_year_id: newSemYearId,
+        semester_number: Number(newSemNumber),
+        name: newSemName.trim() || `Semester ${newSemNumber}`,
+        active: true,
+      });
+
+      setNewSemName('');
+      setNewSemNumber(1);
+      setIsSemModalOpen(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add semester');
+    }
+  };
+
+  const handleDeleteSem = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete semester "${name}"?`)) {
+      try {
+        await deleteSemester(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete semester');
+      }
     }
   };
 
@@ -259,6 +336,17 @@ export const AcademicSetupPage: React.FC = () => {
               )}
             >
               Programs ({programs.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('years')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all',
+                activeTab === 'years'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Academic Years ({years.length})
             </button>
             <button
               onClick={() => setActiveTab('sections')}
@@ -431,6 +519,134 @@ export const AcademicSetupPage: React.FC = () => {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Academic Years Tab */}
+      {activeTab === 'years' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+            <div>
+              <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">Academic Cohorts & Years</h3>
+              <p className="text-xs text-slate-400">Configure 1st, 2nd, 3rd, and 4th year tiers and associated semesters</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={<Plus className="w-4 h-4 text-slate-700" />}
+                onClick={() => {
+                  if (!newSemYearId && years.length > 0) setNewSemYearId(years[0].id);
+                  setIsSemModalOpen(true);
+                }}
+              >
+                Add Semester
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<Plus className="w-4 h-4 text-white" />}
+                onClick={() => {
+                  if (!newYearProgId && programs.length > 0) setNewYearProgId(programs[0].id);
+                  setIsYearModalOpen(true);
+                }}
+              >
+                Add Academic Year
+              </Button>
+            </div>
+          </div>
+
+          {years.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="font-semibold text-slate-300">No academic years configured</p>
+              <p className="text-xs text-slate-500 mt-1">Create academic cohorts using the "Add Academic Year" button</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                  <tr>
+                    <th className="px-5 py-3.5">Cohort</th>
+                    <th className="px-5 py-3.5">Degree Program</th>
+                    <th className="px-5 py-3.5 text-center">Year Level</th>
+                    <th className="px-5 py-3.5">Semesters</th>
+                    <th className="px-5 py-3.5 text-center">Status</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {years.slice().sort((a, b) => a.year_number - b.year_number).map((yr) => {
+                    const prog = programs.find(p => p.id === yr.program_id);
+                    const yearSems = semesters.filter(s => s.academic_year_id === yr.id).sort((a, b) => a.semester_number - b.semester_number);
+                    return (
+                      <tr key={yr.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-5 py-4 font-bold text-slate-900 text-sm">{yr.name}</td>
+                        <td className="px-5 py-4 text-slate-600 font-medium">
+                          {prog ? `${prog.name} (${prog.code})` : 'Universal'}
+                        </td>
+                        <td className="px-5 py-4 text-center font-mono font-bold text-slate-900">
+                          Year {yr.year_number}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {yearSems.length === 0 ? (
+                              <span className="text-slate-400 italic text-[11px]">No semesters</span>
+                            ) : (
+                              yearSems.map(sem => (
+                                <span
+                                  key={sem.id}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold"
+                                >
+                                  {sem.name}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSem(sem.id, sem.name)}
+                                    className="text-slate-400 hover:text-rose-500 ml-0.5"
+                                    title={`Delete ${sem.name}`}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={clsx(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                            yr.active 
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-100 border-slate-300 text-slate-500"
+                          )}>
+                            {yr.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleToggleYearActive(yr)}
+                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors"
+                              title={yr.active ? 'Deactivate cohort' : 'Activate cohort'}
+                            >
+                              {yr.active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteYear(yr.id, yr.name)}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Delete Academic Year"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -747,6 +963,123 @@ export const AcademicSetupPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsProgModalOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary" size="sm">Save Program</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Academic Year Modal */}
+      <Modal
+        isOpen={isYearModalOpen}
+        onClose={() => setIsYearModalOpen(false)}
+        title="Add Academic Year Cohort"
+        maxWidth="md"
+      >
+        <form onSubmit={handleCreateYear} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Degree Program</label>
+            <select
+              value={newYearProgId}
+              onChange={(e) => setNewYearProgId(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              {programs.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Year Level</label>
+            <select
+              value={newYearNumber}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setNewYearNumber(val);
+                setNewYearName(`${val}${val === 1 ? 'st' : val === 2 ? 'nd' : val === 3 ? 'rd' : 'th'} Year`);
+              }}
+              required
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              <option value={1}>1st Year</option>
+              <option value={2}>2nd Year</option>
+              <option value={3}>3rd Year</option>
+              <option value={4}>4th Year</option>
+              <option value={5}>5th Year</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Display Name</label>
+            <input
+              type="text"
+              required
+              value={newYearName}
+              onChange={(e) => setNewYearName(e.target.value)}
+              placeholder="e.g. 1st Year"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsYearModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm">Save Academic Year</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Semester Modal */}
+      <Modal
+        isOpen={isSemModalOpen}
+        onClose={() => setIsSemModalOpen(false)}
+        title="Add Semester to Academic Year"
+        maxWidth="md"
+      >
+        <form onSubmit={handleCreateSemester} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Parent Academic Year</label>
+            <select
+              value={newSemYearId}
+              onChange={(e) => setNewSemYearId(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              <option value="" disabled>Select an Academic Year</option>
+              {years.map(y => {
+                const p = programs.find(pr => pr.id === y.program_id);
+                return (
+                  <option key={y.id} value={y.id}>{p ? `${p.code} - ` : ''}{y.name}</option>
+                );
+              })}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Semester Number</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              required
+              value={newSemNumber}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setNewSemNumber(val);
+                setNewSemName(`Semester ${val}`);
+              }}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Display Name</label>
+            <input
+              type="text"
+              required
+              value={newSemName}
+              onChange={(e) => setNewSemName(e.target.value)}
+              placeholder="e.g. Semester 1"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsSemModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm">Save Semester</Button>
           </div>
         </form>
       </Modal>

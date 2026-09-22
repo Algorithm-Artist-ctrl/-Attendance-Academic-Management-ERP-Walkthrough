@@ -105,9 +105,9 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
       .catch(() => {});
   }, [dept?.id]);
 
-  // Supported academic years (2nd, 3rd, 4th strictly — NO 1st Year)
+  // Supported academic years
   const supportedYears = useMemo(() => {
-    return years.filter(y => y.active && y.year_number !== 1);
+    return years.filter(y => y.active);
   }, [years]);
 
   // Dynamic sections for drill-down based on drillDownYearId
@@ -301,7 +301,6 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         if (s.department_id !== dept?.id || !s.active) return false;
         const sem = semesters.find(sm => sm.id === s.semester_id);
         const yr = years.find(y => y.id === s.academic_year_id || y.id === sem?.academic_year_id);
-        if (yr && yr.year_number === 1) return false;
 
         if (selectedYearFilter !== 'ALL' && s.academic_year_id !== selectedYearFilter && sem?.academic_year_id !== selectedYearFilter) {
           return false;
@@ -456,7 +455,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
               className="bg-transparent text-xs font-bold text-[#0f172a] focus:outline-none cursor-pointer"
             >
               <option value="ALL" className="bg-white text-[#0f172a]">All Years</option>
-              {years.filter(y => y.active && y.year_number !== 1).map(y => (
+              {years.filter(y => y.active).map(y => (
                 <option key={y.id} value={y.id} className="bg-white text-[#0f172a]">{y.name}</option>
               ))}
             </select>

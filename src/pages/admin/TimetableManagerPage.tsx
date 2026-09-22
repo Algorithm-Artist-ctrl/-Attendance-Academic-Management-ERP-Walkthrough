@@ -114,14 +114,13 @@ export const TimetableManagerPage: React.FC = () => {
 
   const [selectedDeptId, setSelectedDeptId] = useState<string>(() => isHOD ? currentDeptId : 'ALL');
 
-  // Active academic years strictly excluding archived 1st Year
+  // Active academic years across all cohorts
   const activeYears = useMemo(() => {
-    return years.filter(y => y.active && y.year_number !== 1);
+    return years.filter(y => y.active);
   }, [years]);
 
   const [selectedYearId, setSelectedYearId] = useState<string>(() => {
-    const y2 = activeYears.find(y => y.year_number === 2);
-    return y2 ? y2.id : (activeYears[0]?.id || 'ALL');
+    return activeYears[0]?.id || 'ALL';
   });
 
   // Dynamic sections filtered strictly by department and selected academic year
@@ -153,8 +152,7 @@ export const TimetableManagerPage: React.FC = () => {
 
   useEffect(() => {
     if (activeYears.length > 0 && (selectedYearId === 'ALL' || !activeYears.some(y => y.id === selectedYearId))) {
-      const y2 = activeYears.find(y => y.year_number === 2);
-      setSelectedYearId(y2 ? y2.id : activeYears[0].id);
+      setSelectedYearId(activeYears[0].id);
     }
   }, [activeYears, selectedYearId]);
 

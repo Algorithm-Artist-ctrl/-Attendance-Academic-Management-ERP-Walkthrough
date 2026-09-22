@@ -83,22 +83,26 @@ export class TimetableResolver {
       progClean.includes(p.name.toLowerCase())
     ) || programs[0];
 
-    // 3. Resolve Academic Year (Active: 2nd, 3rd, 4th Year)
+    // 3. Resolve Academic Year (Active: 1st, 2nd, 3rd, 4th Year)
     const yearClean = (doc.academic_year || '').toLowerCase();
-    const activeYears = years.filter(y => y.active !== false && y.year_number !== 1);
+    const activeYears = years.filter(y => y.active !== false);
     const academicYear = activeYears.find(y => 
       yearClean.includes(y.name.toLowerCase()) ||
+      (yearClean.includes('1') && y.year_number === 1) ||
+      (yearClean.includes('first') && y.year_number === 1) ||
       (yearClean.includes('2') && y.year_number === 2) ||
       (yearClean.includes('second') && y.year_number === 2) ||
       (yearClean.includes('3') && y.year_number === 3) ||
       (yearClean.includes('third') && y.year_number === 3) ||
       (yearClean.includes('4') && y.year_number === 4)
-    ) || activeYears.find(y => y.year_number === 2) || activeYears[0];
+    ) || activeYears[0];
 
     // 4. Resolve Semester
     const semClean = (doc.semester || '').toLowerCase();
     const semester = semesters.find(s => 
       semClean.includes(s.name.toLowerCase()) ||
+      (semClean.includes('1') && s.semester_number === 1) ||
+      (semClean.includes('first') && s.semester_number === 1) ||
       (semClean.includes('3') && s.semester_number === 3) ||
       (semClean.includes('third') && s.semester_number === 3) ||
       (semClean.includes('odd') && s.semester_number % 2 !== 0)

@@ -142,9 +142,9 @@ export const FacultyDirectoryPage: React.FC = () => {
     return Array.from(coordMap.values());
   };
 
-  // Active academic years strictly excluding 1st Year (year_number === 1)
+  // Active academic years across all cohorts
   const activeCohorts = useMemo(() => {
-    return years.filter(y => y.active && y.year_number !== 1);
+    return years.filter(y => y.active);
   }, [years]);
 
   // ==========================================
@@ -762,7 +762,7 @@ export const FacultyDirectoryPage: React.FC = () => {
               const yr = years.find(y => y.id === (a.academic_year_id || sem?.academic_year_id));
               const yrName = yr?.name || a.academic_year?.name || '';
               const secName = (sec?.name || a.section?.name || '').replace(/^section\s*/i, '').trim();
-              if (secName && yr?.year_number !== 1) {
+              if (secName) {
                 sectionYearSet.add(yrName ? `${yrName} • Sec ${secName}` : `Sec ${secName}`);
               }
             });
@@ -772,7 +772,7 @@ export const FacultyDirectoryPage: React.FC = () => {
               const yr = years.find(y => y.id === sem?.academic_year_id);
               const yrName = yr?.name || '';
               const secName = (sec?.name || '').replace(/^section\s*/i, '').trim();
-              if (secName && yr?.year_number !== 1) {
+              if (secName) {
                 sectionYearSet.add(yrName ? `${yrName} • Sec ${secName}` : `Sec ${secName}`);
               }
             });
