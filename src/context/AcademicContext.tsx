@@ -4403,14 +4403,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     if (res.success) {
-      await Promise.all([
-        refreshAdminAccounts(),
-        supabaseService.fetchStudents(false).then(s => setStudents(s)),
-        supabaseService.fetchFaculty(false).then(f => setFaculty(f)),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50).then(resp => {
-          if (resp.data) setAuditLogs(resp.data as AuditLog[]);
-        }),
-      ]);
+      if (options.email) {
+        const clean = options.email.trim().toLowerCase();
+        setFaculty(prev => prev.map(f => 
+          (f.auth_user_id === targetUserId || f.id === targetUserId) 
+            ? { ...f, email: clean } 
+            : f
+        ));
+        setStudents(prev => prev.map(s => 
+          (s.auth_user_id === targetUserId || s.id === targetUserId) 
+            ? { ...s, email: clean } 
+            : s
+        ));
+      }
+      await refreshAdminAccounts();
     }
     return res;
   }, [refreshAdminAccounts]);

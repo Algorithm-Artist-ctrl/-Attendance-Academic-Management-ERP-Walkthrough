@@ -5835,7 +5835,8 @@ export const supabaseService = {
       let apiSuccess = false;
       let apiResult: any = null;
 
-      if (token) {
+      const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined';
+      if (isBrowser && token) {
         try {
           const response = await fetch('/api/auth/update-credentials', {
             method: 'POST',
@@ -5859,9 +5860,18 @@ export const supabaseService = {
             } else {
               return { success: false, error: json.error || 'Failed to update credentials via API.' };
             }
+          } else {
+            try {
+              const errJson = await response.json();
+              if (errJson && errJson.error) {
+                return { success: false, error: errJson.error };
+              }
+            } catch {
+              // fallback to direct RPC if non-JSON error
+            }
           }
         } catch (apiFetchErr) {
-          // If fetch fails (e.g. non-browser test runner or network error), fallback to direct RPC
+          // If fetch fails (e.g. network error), fallback to direct RPC
           console.warn('Endpoint /api/auth/update-credentials not reachable, falling back to direct RPC:', apiFetchErr);
         }
       }

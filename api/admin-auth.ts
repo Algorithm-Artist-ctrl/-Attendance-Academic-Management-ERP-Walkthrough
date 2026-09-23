@@ -366,29 +366,6 @@ export default async function handleAdminAuth(req: any, res: any) {
         }, req);
       }
 
-      // If Supabase Admin client is available (service role), sync Auth User directly
-      if (supabaseAdmin) {
-        try {
-          const updatePayload: any = {};
-          if (cleanEmail) {
-            updatePayload.email = cleanEmail;
-            updatePayload.email_confirm = true;
-          }
-          if (cleanPassword) {
-            updatePayload.password = cleanPassword;
-          }
-          const { error: adminAuthErr } = await supabaseAdmin.auth.admin.updateUserById(
-            target_user_id,
-            updatePayload
-          );
-          if (adminAuthErr) {
-            console.warn('Supabase Admin updateUserById notice:', adminAuthErr.message);
-          }
-        } catch (adminErr: any) {
-          console.warn('Supabase Admin API call notice:', adminErr.message);
-        }
-      }
-
       // Authoritative database update via SECURITY DEFINER RPC
       const { data: rpcData, error: rpcErr } = await supabaseRpc.rpc('admin_update_account_credentials', {
         p_target_user_id: target_user_id,
@@ -402,6 +379,30 @@ export default async function handleAdminAuth(req: any, res: any) {
 
       if (rpcErr) {
         return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
+      }
+
+      // If Supabase Admin client is available (service role), sync Auth User directly following RPC
+      if (supabaseAdmin) {
+        try {
+          const updatePayload: any = {};
+          if (cleanEmail) {
+            updatePayload.email = cleanEmail;
+            updatePayload.email_confirm = true;
+          }
+          if (cleanPassword) {
+            updatePayload.password = cleanPassword;
+          }
+          const authUserId = rpcData?.user_id || target_user_id;
+          const { error: adminAuthErr } = await supabaseAdmin.auth.admin.updateUserById(
+            authUserId,
+            updatePayload
+          );
+          if (adminAuthErr) {
+            console.warn('Supabase Admin updateUserById notice:', adminAuthErr.message);
+          }
+        } catch (adminErr: any) {
+          console.warn('Supabase Admin API call notice:', adminErr.message);
+        }
       }
 
       return sendJson(res, 200, {

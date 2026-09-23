@@ -183,7 +183,8 @@ export const FacultyAccountsPage: React.FC = () => {
     setIsUpdatingEmail(true);
     setActionMessage(null);
     try {
-      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+      const targetId = selectedAccount.auth_user_id || selectedAccount.id;
+      const res = await updateAccountCredentials(targetId, {
         email: clean,
       });
 
@@ -223,7 +224,8 @@ export const FacultyAccountsPage: React.FC = () => {
     setIsUpdatingPassword(true);
     setActionMessage(null);
     try {
-      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+      const targetId = selectedAccount.auth_user_id || selectedAccount.id;
+      const res = await updateAccountCredentials(targetId, {
         password: cleanPass,
         isDefaultPassword: false,
       });
@@ -256,7 +258,8 @@ export const FacultyAccountsPage: React.FC = () => {
     setIsSettingDefaultPass(true);
     setActionMessage(null);
     try {
-      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+      const targetId = selectedAccount.auth_user_id || selectedAccount.id;
+      const res = await updateAccountCredentials(targetId, {
         password: 'faculty@123',
         isDefaultPassword: true,
       });
@@ -265,18 +268,18 @@ export const FacultyAccountsPage: React.FC = () => {
         setEditPassword('');
         setActionMessage({
           type: 'success',
-          text: 'Institution default password ("faculty@123") set in Supabase Auth. Faculty can log in immediately.'
+          text: 'Institutional password reset applied in Supabase Auth. Faculty can log in immediately.'
         });
       } else {
         setActionMessage({
           type: 'error',
-          text: res.error || 'Failed to apply default password.'
+          text: res.error || 'Failed to apply password reset.'
         });
       }
     } catch (err: any) {
       setActionMessage({
         type: 'error',
-        text: err?.message || 'An error occurred while setting default password.'
+        text: err?.message || 'An error occurred while resetting password.'
       });
     } finally {
       setIsSettingDefaultPass(false);
@@ -784,7 +787,7 @@ export const FacultyAccountsPage: React.FC = () => {
                       <span>Confirm Password Reset</span>
                     </div>
                     <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                      Are you sure you want to reset the password for <strong className="text-[#0f172a] font-bold">{selectedAccount.full_name}</strong> to institutional default (<code className="text-amber-900 font-mono font-bold">faculty@123</code>)?
+                      Are you sure you want to reset the password for <strong className="text-[#0f172a] font-bold">{selectedAccount.full_name}</strong> to the institutional default password? The faculty member can log in immediately.
                     </p>
                     <div className="flex items-center justify-end gap-2 pt-1">
                       <Button
@@ -805,7 +808,7 @@ export const FacultyAccountsPage: React.FC = () => {
                         isLoading={isSettingDefaultPass}
                         className="text-xs border-amber-300 text-amber-900 hover:bg-amber-100 font-semibold"
                       >
-                        Confirm Reset to Default
+                        Confirm Reset Password
                       </Button>
                     </div>
                   </div>
@@ -818,7 +821,7 @@ export const FacultyAccountsPage: React.FC = () => {
                       className="text-xs border-slate-200 text-[#0f172a] hover:bg-slate-50 font-semibold"
                       leftIcon={<Sparkles className="w-3.5 h-3.5 text-blue-600" />}
                     >
-                      Reset to Default ("faculty@123")
+                      Reset Password
                     </Button>
 
                     <Button
