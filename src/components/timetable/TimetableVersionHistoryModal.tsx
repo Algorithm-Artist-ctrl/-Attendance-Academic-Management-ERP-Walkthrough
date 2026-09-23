@@ -124,7 +124,7 @@ export const TimetableVersionHistoryModal: React.FC<TimetableVersionHistoryModal
 
         {isLoading ? (
           <div className="p-8 text-center text-xs text-slate-500 font-bold">
-            Loading version logs from Supabase Cloud...
+            Loading version logs from cloud server...
           </div>
         ) : versions.length === 0 ? (
           <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-xs text-slate-500 space-y-1">

@@ -1211,7 +1211,7 @@ export const SectionStudentManagementModal: React.FC<SectionStudentManagementMod
               Data Integrity Guarantee
             </p>
             <p className="text-[11px] text-slate-600 leading-relaxed">
-              100% of attendance records, date stamps, internal test marks, assignment submissions, and Supabase login credentials remain completely intact and linked to the student.
+              100% of attendance records, date stamps, internal test marks, assignment submissions, and ERP login credentials remain completely intact and linked to the student.
             </p>
           </div>
 

@@ -125,7 +125,7 @@ export const ClaimAttendanceModal: React.FC<ClaimAttendanceModalProps> = ({
         onClose();
       }, 500);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to submit attendance claim to Supabase.');
+      setErrorMessage(err.message || 'Failed to submit attendance claim to server.');
       setIsSubmitting(false);
     }
   };

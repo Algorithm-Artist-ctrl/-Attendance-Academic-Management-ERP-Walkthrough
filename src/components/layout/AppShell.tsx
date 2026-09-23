@@ -1084,7 +1084,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Desktop/Tablet Footer */}
         <footer className="hidden md:block border-t border-slate-200/80 bg-white py-4 px-6 text-center text-xs text-[#475569] font-medium">
-          © 2026 <strong className="text-[#0f172a]">{institution.name} (VCTM)</strong> • Code: 340 • Powered by Supabase Backend
+          © 2026 <strong className="text-[#0f172a]">{institution.name} (VCTM)</strong> • Vivekananda College of Technology & Management, Aligarh • Code: 340
         </footer>
 
         {/* Realtime Floating Non-Blocking Live Toast Banner */}

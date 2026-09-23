@@ -1,5 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Building2, BookOpen, Layers, Plus, CheckCircle2, ShieldCheck, Trash2, Edit3, Calendar, Users } from 'lucide-react';
+import { 
+  Building2, 
+  BookOpen, 
+  Layers, 
+  Plus, 
+  CheckCircle2, 
+  ShieldCheck, 
+  Trash2, 
+  Edit3, 
+  Calendar, 
+  Users, 
+  Clock, 
+  AlertTriangle
+} from 'lucide-react';
 import { useAcademic } from '../../context/AcademicContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card } from '../../components/common/Card';
@@ -7,8 +20,15 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { AddSectionModal } from '../../components/academic/AddSectionModal';
 import { SectionStudentManagementModal } from '../../components/academic/SectionStudentManagementModal';
-import { Section, AcademicYear, Semester } from '../../types/database.types';
+import { Section, AcademicYear, Semester, Department, Program } from '../../types/database.types';
 import { supabaseService } from '../../lib/services/supabaseService';
+import { 
+  suggestAcademicTerm, 
+  getTermType, 
+  getYearForSemester, 
+  getYearName, 
+  getSemestersForTerm 
+} from '../../lib/utils/academicYearMapping';
 import { clsx } from 'clsx';
 
 export const AcademicSetupPage: React.FC = () => {
@@ -17,14 +37,22 @@ export const AcademicSetupPage: React.FC = () => {
     institution, 
     departments, 
     programs, 
+    sessions,
     years,
     semesters, 
     sections, 
     students,
     faculty, 
     addDepartment,
-    deleteDepartment, 
+    updateDepartment,
+    deleteDepartment,
+    checkDepartmentReferences,
+    changeDepartmentHod,
+    removeDepartmentHod,
+    setCurrentAcademicTerm,
+    updateSemesterDates,
     addProgram,
+    updateProgram,
     deleteProgram, 
     addSection,
     updateSection,
@@ -41,7 +69,7 @@ export const AcademicSetupPage: React.FC = () => {
   const isSuperAdmin = role === 'super_admin' || user?.role === 'super_admin';
   const isHod = role === 'hod' || user?.role === 'hod';
 
-  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'years' | 'sections' | 'policy'>(
+  const [activeTab, setActiveTab] = useState<'departments' | 'programs' | 'sessions' | 'semesters' | 'years' | 'sections' | 'policy'>(
     isHod ? 'sections' : 'departments'
   );
   const [tempClaimDays, setTempClaimDays] = useState(claimWindowDays);
@@ -60,48 +88,244 @@ export const AcademicSetupPage: React.FC = () => {
     });
   }, [sections]);
 
-  // New Department Modal state
+  // Department Management states
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
   const [newDeptCode, setNewDeptCode] = useState('');
   const [newDeptHodId, setNewDeptHodId] = useState('');
 
-  // New Program Modal state
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [editDeptName, setEditDeptName] = useState('');
+  const [editDeptCode, setEditDeptCode] = useState('');
+
+  const [hodModalDept, setHodModalDept] = useState<Department | null>(null);
+  const [selectedHodFacultyId, setSelectedHodFacultyId] = useState('');
+  const [isSubmittingHod, setIsSubmittingHod] = useState(false);
+
+  const [deptDepModal, setDeptDepModal] = useState<{
+    dept: Department;
+    check: {
+      can_hard_delete: boolean;
+      reason?: string;
+      references: {
+        programs: number;
+        faculty: number;
+        students: number;
+        subjects: number;
+        sections: number;
+        timetables: number;
+      };
+    };
+  } | null>(null);
+
+  // Program Management states
   const [isProgModalOpen, setIsProgModalOpen] = useState(false);
   const [newProgName, setNewProgName] = useState('');
   const [newProgCode, setNewProgCode] = useState('');
   const [newProgDeptId, setNewProgDeptId] = useState(departments[0]?.id || '');
   const [newProgDuration, setNewProgDuration] = useState(4);
 
-  // New Year Modal state
+  const [editingProg, setEditingProg] = useState<Program | null>(null);
+  const [editProgName, setEditProgName] = useState('');
+  const [editProgCode, setEditProgCode] = useState('');
+  const [editProgDuration, setEditProgDuration] = useState(4);
+
+  // Year Modal state
   const [isYearModalOpen, setIsYearModalOpen] = useState(false);
   const [newYearProgId, setNewYearProgId] = useState(programs[0]?.id || '');
   const [newYearNumber, setNewYearNumber] = useState(1);
   const [newYearName, setNewYearName] = useState('');
 
-  // New Semester Modal state
+  // Semester Modal state
   const [isSemModalOpen, setIsSemModalOpen] = useState(false);
   const [newSemYearId, setNewSemYearId] = useState('');
   const [newSemNumber, setNewSemNumber] = useState(1);
   const [newSemName, setNewSemName] = useState('');
 
-  // New Section Modal state
-  const [isSecModalOpen, setIsSecModalOpen] = useState(false);
+  // Term / Semester Controls State
+  const [isTermModalOpen, setIsTermModalOpen] = useState(false);
+  const [selectedTermSessionId, setSelectedTermSessionId] = useState('');
+  const [selectedTermType, setSelectedTermType] = useState<'ODD' | 'EVEN'>('ODD');
+  const [selectedTermSemNumber, setSelectedTermSemNumber] = useState<number | ''>('');
+  const [isSubmittingTerm, setIsSubmittingTerm] = useState(false);
 
-  // Edit Section Modal state
+  // Semester Dates Modal state
+  const [editingSemesterDates, setEditingSemesterDates] = useState<Semester | null>(null);
+  const [semStartDate, setSemStartDate] = useState('');
+  const [semEndDate, setSemEndDate] = useState('');
+  const [isSubmittingSemDates, setIsSubmittingSemDates] = useState(false);
+
+  // Section Modal states
+  const [isSecModalOpen, setIsSecModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [editSecSemesterId, setEditSecSemesterId] = useState('');
   const [editSecName, setEditSecName] = useState('');
   const [editSecRoom, setEditSecRoom] = useState('');
   const [editSecCoordinatorId, setEditSecCoordinatorId] = useState('');
 
-  const handleDeleteDept = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete department "${name}"?`)) {
+  // Derived helpers
+  const currentSession = useMemo(() => {
+    return sessions.find(s => s.is_current) || sessions[0] || null;
+  }, [sessions]);
+
+  const termAdvisory = useMemo(() => {
+    return suggestAcademicTerm();
+  }, []);
+
+  const eligibleFacultyForDept = useMemo(() => {
+    if (!hodModalDept) return [];
+    const deptFac = faculty.filter(f => f.department_id === hodModalDept.id && f.active);
+    return deptFac.length > 0 ? deptFac : faculty.filter(f => f.active);
+  }, [hodModalDept, faculty]);
+
+  // Department Handlers
+  const handleOpenEditDept = (dept: Department) => {
+    setEditingDept(dept);
+    setEditDeptName(dept.name);
+    setEditDeptCode(dept.code);
+  };
+
+  const handleSaveEditDept = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDept || !editDeptName.trim() || !editDeptCode.trim()) return;
+    try {
+      await updateDepartment(editingDept.id, {
+        name: editDeptName.trim(),
+        code: editDeptCode.trim().toUpperCase(),
+      });
+      setEditingDept(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update department');
+    }
+  };
+
+  const handleOpenHodModal = (dept: Department) => {
+    setHodModalDept(dept);
+    setSelectedHodFacultyId(dept.hod_faculty_id || '');
+  };
+
+  const handleAssignHod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hodModalDept || !selectedHodFacultyId) return;
+    setIsSubmittingHod(true);
+    try {
+      await changeDepartmentHod(hodModalDept.id, selectedHodFacultyId);
+      setHodModalDept(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to assign HOD');
+    } finally {
+      setIsSubmittingHod(false);
+    }
+  };
+
+  const handleRemoveHod = async (dept: Department) => {
+    const curHod = faculty.find(f => f.id === dept.hod_faculty_id);
+    const hodName = curHod ? curHod.full_name : 'the appointed faculty member';
+    if (window.confirm(`Are you sure you want to remove ${hodName} as Head of Department for "${dept.name}"?\n\nThe faculty member will remain active as regular faculty, but will no longer have HOD administrative privileges.`)) {
       try {
-        await deleteDepartment(id);
+        await removeDepartmentHod(dept.id);
       } catch (err: any) {
-        alert(err.message || 'Failed to delete department');
+        alert(err.message || 'Failed to remove HOD');
       }
+    }
+  };
+
+  const handleToggleDeptActive = async (dept: Department) => {
+    try {
+      await updateDepartment(dept.id, { active: !dept.active });
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle department active state');
+    }
+  };
+
+  const handleDeleteDeptWithCheck = async (dept: Department) => {
+    try {
+      const check = await checkDepartmentReferences(dept.id);
+      if (!check.can_hard_delete) {
+        setDeptDepModal({ dept, check });
+        return;
+      }
+      if (window.confirm(`Are you sure you want to permanently delete department "${dept.name}"? It has no dependent records.`)) {
+        await deleteDepartment(dept.id);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to check department dependencies');
+    }
+  };
+
+  // Term and Semester Handlers
+  const handleSetCurrentTerm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTermSessionId) return;
+    setIsSubmittingTerm(true);
+    try {
+      await setCurrentAcademicTerm(
+        selectedTermSessionId,
+        selectedTermType,
+        selectedTermSemNumber ? Number(selectedTermSemNumber) : undefined
+      );
+      setIsTermModalOpen(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to set academic term');
+    } finally {
+      setIsSubmittingTerm(false);
+    }
+  };
+
+  const handleOpenEditSemDates = (sem: Semester) => {
+    setEditingSemesterDates(sem);
+    setSemStartDate(sem.start_date ? sem.start_date.split('T')[0] : '');
+    setSemEndDate(sem.end_date ? sem.end_date.split('T')[0] : '');
+  };
+
+  const handleSaveSemesterDates = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSemesterDates) return;
+    setIsSubmittingSemDates(true);
+    try {
+      await updateSemesterDates(
+        editingSemesterDates.id,
+        semStartDate || null,
+        semEndDate || null
+      );
+      setEditingSemesterDates(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update semester dates');
+    } finally {
+      setIsSubmittingSemDates(false);
+    }
+  };
+
+  const handleSetSingleSemesterCurrent = async (sem: Semester) => {
+    const sId = sem.academic_session_id || currentSession?.id || (sessions[0]?.id ?? '');
+    const tType = (sem.term_type as 'ODD' | 'EVEN') || (getTermType(sem.semester_number));
+    try {
+      await setCurrentAcademicTerm(sId, tType, sem.semester_number);
+    } catch (err: any) {
+      alert(err.message || 'Failed to set semester as current');
+    }
+  };
+
+  // Program Handlers
+  const handleOpenEditProg = (prog: Program) => {
+    setEditingProg(prog);
+    setEditProgName(prog.name);
+    setEditProgCode(prog.code);
+    setEditProgDuration(prog.duration_years || 4);
+  };
+
+  const handleSaveEditProg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProg || !editProgName.trim() || !editProgCode.trim()) return;
+    try {
+      await updateProgram(editingProg.id, {
+        name: editProgName.trim(),
+        code: editProgCode.trim().toUpperCase(),
+        duration_years: Number(editProgDuration),
+      });
+      setEditingProg(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update program');
     }
   };
 
@@ -322,11 +546,11 @@ export const AcademicSetupPage: React.FC = () => {
 
         {/* Tab switcher pills */}
         {isSuperAdmin ? (
-          <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold">
+          <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold gap-1">
             <button
               onClick={() => setActiveTab('departments')}
               className={clsx(
-                'px-3.5 py-1.5 rounded-xl transition-all',
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
                 activeTab === 'departments'
                   ? 'bg-[#0f172a] text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -337,7 +561,7 @@ export const AcademicSetupPage: React.FC = () => {
             <button
               onClick={() => setActiveTab('programs')}
               className={clsx(
-                'px-3.5 py-1.5 rounded-xl transition-all',
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
                 activeTab === 'programs'
                   ? 'bg-[#0f172a] text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -346,20 +570,42 @@ export const AcademicSetupPage: React.FC = () => {
               Programs ({programs.length})
             </button>
             <button
+              onClick={() => setActiveTab('sessions')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
+                activeTab === 'sessions'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Academic Sessions ({sessions.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('semesters')}
+              className={clsx(
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
+                activeTab === 'semesters'
+                  ? 'bg-[#0f172a] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Semesters / Terms ({semesters.length})
+            </button>
+            <button
               onClick={() => setActiveTab('years')}
               className={clsx(
-                'px-3.5 py-1.5 rounded-xl transition-all',
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
                 activeTab === 'years'
                   ? 'bg-[#0f172a] text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              Academic Years ({years.length})
+              Cohorts & Years ({years.length})
             </button>
             <button
               onClick={() => setActiveTab('sections')}
               className={clsx(
-                'px-3.5 py-1.5 rounded-xl transition-all',
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
                 activeTab === 'sections'
                   ? 'bg-[#0f172a] text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -370,7 +616,7 @@ export const AcademicSetupPage: React.FC = () => {
             <button
               onClick={() => setActiveTab('policy')}
               className={clsx(
-                'px-3.5 py-1.5 rounded-xl transition-all',
+                'px-3.5 py-1.5 rounded-xl transition-all cursor-pointer',
                 activeTab === 'policy'
                   ? 'bg-[#0f172a] text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -399,7 +645,7 @@ export const AcademicSetupPage: React.FC = () => {
           <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div>
               <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">College Departments</h3>
-              <p className="text-xs text-slate-400">Engineering and management branches</p>
+              <p className="text-xs text-slate-400">Engineering and management branches, HOD assignments, and status</p>
             </div>
             <Button
               size="sm"
@@ -438,25 +684,71 @@ export const AcademicSetupPage: React.FC = () => {
                         <td className="px-5 py-4 font-bold text-slate-900 text-sm">{dept.name}</td>
                         <td className="px-5 py-4 text-slate-600 font-medium">
                           {hod ? (
-                            <span className="text-slate-900 font-semibold flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-slate-400" />
-                              {hod.full_name} ({hod.faculty_code || 'HOD'})
-                            </span>
-                          ) : 'Not Appointed'}
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <span className="text-slate-900 font-bold">{hod.full_name}</span>
+                              <span className="text-slate-500 text-[11px]">({hod.faculty_code || hod.employee_code || 'HOD'})</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">Not Appointed</span>
+                          )}
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
-                            Active
+                          <span className={clsx(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                            dept.active
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-100 border-slate-300 text-slate-500"
+                          )}>
+                            {dept.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteDept(dept.id, dept.name)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            title="Delete Department"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditDept(dept)}
+                              className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200 shadow-xs"
+                              title="Edit Department"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenHodModal(dept)}
+                              className="px-2 py-1 text-[11px] font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                              title="Assign or Change Head of Department"
+                            >
+                              <Users className="w-3 h-3" />
+                              <span>{dept.hod_faculty_id ? 'Change HOD' : 'Assign HOD'}</span>
+                            </button>
+                            {dept.hod_faculty_id && (
+                              <button
+                                onClick={() => handleRemoveHod(dept)}
+                                className="px-2 py-1 text-[11px] font-semibold rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer shadow-xs"
+                                title="Remove HOD Assignment"
+                              >
+                                Remove HOD
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleToggleDeptActive(dept)}
+                              className={clsx(
+                                "px-2 py-1 text-[11px] font-semibold rounded-lg border transition-colors cursor-pointer shadow-xs",
+                                dept.active
+                                  ? "border-slate-200 text-slate-600 hover:bg-slate-100"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                              )}
+                              title={dept.active ? 'Deactivate Department' : 'Reactivate Department'}
+                            >
+                              {dept.active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDeptWithCheck(dept)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 rounded-lg hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer shadow-xs"
+                              title="Delete Department"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -474,7 +766,7 @@ export const AcademicSetupPage: React.FC = () => {
           <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div>
               <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">Degree Programs</h3>
-              <p className="text-xs text-slate-400">Undergraduate & postgraduate courses</p>
+              <p className="text-xs text-slate-400">Undergraduate & postgraduate courses with dynamic duration</p>
             </div>
             <Button
               size="sm"
@@ -513,20 +805,38 @@ export const AcademicSetupPage: React.FC = () => {
                         <td className="px-5 py-4 font-mono font-bold text-slate-900 text-sm">{prog.code}</td>
                         <td className="px-5 py-4 font-bold text-slate-900 text-sm">{prog.name}</td>
                         <td className="px-5 py-4 text-slate-600 font-medium">{dept?.name || 'CSE'}</td>
-                        <td className="px-5 py-4 text-center font-bold text-slate-900">{prog.duration_years} Years</td>
                         <td className="px-5 py-4 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-800">
-                            Active
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 font-bold font-mono text-xs">
+                            {prog.duration_years || 4} Years
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={clsx(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                            prog.active
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                              : "bg-slate-100 border-slate-300 text-slate-500"
+                          )}>
+                            {prog.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteProg(prog.id, prog.name)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            title="Delete Program"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditProg(prog)}
+                              className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200 shadow-xs"
+                              title="Edit Program"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProg(prog.id, prog.name)}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Delete Program"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -535,6 +845,222 @@ export const AcademicSetupPage: React.FC = () => {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Academic Sessions Tab */}
+      {activeTab === 'sessions' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+            <div>
+              <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">Academic Sessions</h3>
+              <p className="text-xs text-slate-400">Institutional academic calendar years and session boundaries</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                <tr>
+                  <th className="px-5 py-3.5">Session Name</th>
+                  <th className="px-5 py-3.5">Start Date</th>
+                  <th className="px-5 py-3.5">End Date</th>
+                  <th className="px-5 py-3.5 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {sessions.map((sess) => (
+                  <tr key={sess.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-5 py-4 font-mono font-bold text-slate-900 text-sm">
+                      {sess.name}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-slate-600">
+                      {sess.start_date ? new Date(sess.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-slate-600">
+                      {sess.end_date ? new Date(sess.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      {sess.is_current ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1.5 shadow-xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Current Active Session
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 border border-slate-300 text-slate-600">
+                          {sess.active ? 'Active' : 'Closed'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Semesters / Terms Tab */}
+      {activeTab === 'semesters' && (
+        <div className="space-y-6">
+          {/* Dynamic Calendar Advisory Banner */}
+          <div className="p-5 rounded-3xl bg-indigo-50/70 border border-indigo-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shrink-0 mt-0.5 shadow-xs">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-indigo-950 text-sm">Calendar Term Advisory</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-200/70 text-indigo-900 uppercase tracking-wide">
+                    Suggested: {termAdvisory.termType} Term
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-900/80 mt-1 leading-relaxed max-w-2xl font-medium">
+                  {termAdvisory.reason} Standard active cohort: {termAdvisory.activeSemesters.map(s => `Semester ${s}`).join(', ')}.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="primary"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                onClick={() => {
+                  setSelectedTermSessionId(currentSession?.id || sessions[0]?.id || '');
+                  setSelectedTermType(termAdvisory.termType);
+                  setSelectedTermSemNumber('');
+                  setIsTermModalOpen(true);
+                }}
+              >
+                Set Current Term
+              </Button>
+            </div>
+          </div>
+
+          {/* 8 Semesters List Grouped by Year */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50">
+              <div>
+                <h3 className="text-sm font-bold font-serif-institutional text-slate-900 tracking-wide">Academic Semesters & Term Configuration</h3>
+                <p className="text-xs text-slate-400">8 standard semesters mapped to 4 academic years with ODD/EVEN term lifecycle</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  leftIcon={<Clock className="w-4 h-4 text-slate-700" />}
+                  onClick={() => {
+                    setSelectedTermSessionId(currentSession?.id || sessions[0]?.id || '');
+                    setSelectedTermType('ODD');
+                    setSelectedTermSemNumber('');
+                    setIsTermModalOpen(true);
+                  }}
+                >
+                  Configure Term Cycle
+                </Button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                  <tr>
+                    <th className="px-5 py-3.5">Semester</th>
+                    <th className="px-5 py-3.5">Academic Cohort</th>
+                    <th className="px-5 py-3.5 text-center">Term Type</th>
+                    <th className="px-5 py-3.5">Term Dates Window</th>
+                    <th className="px-5 py-3.5 text-center">Status</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {semesters.slice().sort((a, b) => a.semester_number - b.semester_number).map((sem) => {
+                    const yrNum = getYearForSemester(sem.semester_number);
+                    const yrName = getYearName(yrNum);
+                    const termType = sem.term_type || getTermType(sem.semester_number);
+                    const isActive = sem.status === 'ACTIVE' || sem.is_current;
+
+                    return (
+                      <tr key={sem.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">
+                              {sem.name || `Semester ${sem.semester_number}`}
+                            </span>
+                            {sem.is_current && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                                Current
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 font-semibold text-slate-800">
+                          {yrName}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={clsx(
+                            "px-2.5 py-1 rounded-lg text-[10.5px] font-black border",
+                            termType === 'ODD'
+                              ? "bg-amber-50 border-amber-300 text-amber-900"
+                              : "bg-blue-50 border-blue-300 text-blue-900"
+                          )}>
+                            {termType} TERM
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-[11px] text-slate-700 font-medium">
+                          {sem.start_date && sem.end_date ? (
+                            <span>
+                              {new Date(sem.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {' — '}
+                              {new Date(sem.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic font-sans text-xs">Dates not set</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={clsx(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                            isActive
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                              : sem.status === 'CLOSED'
+                              ? "bg-slate-100 border-slate-300 text-slate-500"
+                              : "bg-amber-50 border-amber-200 text-amber-800"
+                          )}>
+                            {sem.status || (isActive ? 'ACTIVE' : 'UPCOMING')}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditSemDates(sem)}
+                              className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                              title="Edit Term Dates"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Dates</span>
+                            </button>
+                            {!sem.is_current && (
+                              <button
+                                onClick={() => handleSetSingleSemesterCurrent(sem)}
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                                title="Set as Current Active Semester"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Set Current</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1172,6 +1698,339 @@ export const AcademicSetupPage: React.FC = () => {
         isOpen={!!managingStudentsSection}
         onClose={() => setManagingStudentsSection(null)}
       />
+
+      {/* Edit Department Modal */}
+      <Modal
+        isOpen={!!editingDept}
+        onClose={() => setEditingDept(null)}
+        title="Edit Department"
+        description="Update department code and institutional name"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveEditDept} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department Code</label>
+            <input
+              type="text"
+              required
+              value={editDeptCode}
+              onChange={(e) => setEditDeptCode(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono uppercase shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department Full Name</label>
+            <input
+              type="text"
+              required
+              value={editDeptName}
+              onChange={(e) => setEditDeptName(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditingDept(null)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm">Save Changes</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Assign / Change HOD Modal */}
+      <Modal
+        isOpen={!!hodModalDept}
+        onClose={() => setHodModalDept(null)}
+        title={`Head of Department (HOD) — ${hodModalDept?.name}`}
+        description="Select an active faculty member to appoint as the official Head of Department"
+        maxWidth="md"
+      >
+        <form onSubmit={handleAssignHod} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+            <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 font-mono">
+              {hodModalDept?.code} — {hodModalDept?.name}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Select Faculty Member</label>
+            <select
+              value={selectedHodFacultyId}
+              onChange={(e) => setSelectedHodFacultyId(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              <option value="" disabled>Select faculty member</option>
+              {eligibleFacultyForDept.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.full_name} ({f.designation || 'Faculty'} • {f.faculty_code || f.employee_code || f.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 space-y-1">
+            <span className="font-bold block">Role Synchronization Notice:</span>
+            <p className="text-blue-800 leading-relaxed font-medium">
+              Assigning this faculty member as HOD immediately grants them administrative HOD privileges in the ERP portal for this department.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setHodModalDept(null)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isSubmittingHod}>Confirm Assignment</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Department Dependency Safeguard Modal */}
+      <Modal
+        isOpen={!!deptDepModal}
+        onClose={() => setDeptDepModal(null)}
+        title="Cannot Delete Department"
+        description="This department is linked to institutional academic records and cannot be permanently deleted."
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-950">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Active Relationship Safeguard</span>
+            </div>
+            <p className="leading-relaxed">
+              Department <strong className="font-bold text-amber-950">{deptDepModal?.dept.name}</strong> ({deptDepModal?.dept.code}) has the following associated records in the ERP database:
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+              <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                <span className="text-slate-500 block">Degree Programs:</span>
+                <span className="font-bold text-slate-900">{deptDepModal?.check.references.programs}</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                <span className="text-slate-500 block">Faculty Members:</span>
+                <span className="font-bold text-slate-900">{deptDepModal?.check.references.faculty}</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                <span className="text-slate-500 block">Enrolled Students:</span>
+                <span className="font-bold text-slate-900">{deptDepModal?.check.references.students}</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                <span className="text-slate-500 block">Subjects / Courses:</span>
+                <span className="font-bold text-slate-900">{deptDepModal?.check.references.subjects}</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                <span className="text-slate-500 block">Class Sections:</span>
+                <span className="font-bold text-slate-900">{deptDepModal?.check.references.sections}</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-amber-200">
+                <span className="text-slate-500 block">Timetable Slots:</span>
+                <span className="font-bold text-slate-900">{deptDepModal?.check.references.timetables}</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            To preserve historical student transcripts, marks, and attendance data, you can safely <strong>Deactivate</strong> this department instead. Deactivated departments are hidden from active enrollment and scheduling flows without data loss.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setDeptDepModal(null)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={async () => {
+                if (deptDepModal) {
+                  await updateDepartment(deptDepModal.dept.id, { active: false });
+                  setDeptDepModal(null);
+                }
+              }}
+            >
+              Deactivate Department Instead
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Set Current Academic Term Modal */}
+      <Modal
+        isOpen={isTermModalOpen}
+        onClose={() => setIsTermModalOpen(false)}
+        title="Set Current Academic Term"
+        description="Switch the institutional term cycle between ODD (Semesters 1, 3, 5, 7) and EVEN (Semesters 2, 4, 6, 8)"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSetCurrentTerm} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Session</label>
+            <select
+              value={selectedTermSessionId}
+              onChange={(e) => setSelectedTermSessionId(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              {sessions.map(s => (
+                <option key={s.id} value={s.id}>
+                  Session {s.name} {s.is_current ? '(Current Active Session)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Academic Term Cycle</label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={clsx(
+                "p-3 rounded-2xl border text-xs font-bold flex flex-col gap-1 cursor-pointer transition-all",
+                selectedTermType === 'ODD'
+                  ? "bg-amber-50 border-amber-400 text-amber-950 shadow-xs"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+              )}>
+                <input
+                  type="radio"
+                  name="termType"
+                  value="ODD"
+                  checked={selectedTermType === 'ODD'}
+                  onChange={() => setSelectedTermType('ODD')}
+                  className="sr-only"
+                />
+                <span className="text-sm font-black">ODD Term</span>
+                <span className="text-[11px] font-normal text-amber-800">
+                  Semesters 1, 3, 5, 7 (July–Dec)
+                </span>
+              </label>
+
+              <label className={clsx(
+                "p-3 rounded-2xl border text-xs font-bold flex flex-col gap-1 cursor-pointer transition-all",
+                selectedTermType === 'EVEN'
+                  ? "bg-blue-50 border-blue-400 text-blue-950 shadow-xs"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+              )}>
+                <input
+                  type="radio"
+                  name="termType"
+                  value="EVEN"
+                  checked={selectedTermType === 'EVEN'}
+                  onChange={() => setSelectedTermType('EVEN')}
+                  className="sr-only"
+                />
+                <span className="text-sm font-black">EVEN Term</span>
+                <span className="text-[11px] font-normal text-blue-800">
+                  Semesters 2, 4, 6, 8 (Jan–June)
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Optional Specific Semester Focus</label>
+            <select
+              value={selectedTermSemNumber}
+              onChange={(e) => setSelectedTermSemNumber(e.target.value ? Number(e.target.value) : '')}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              <option value="">All {selectedTermType} Semesters (Standard Full-Term Activation)</option>
+              {getSemestersForTerm(selectedTermType).map(s => (
+                <option key={s} value={s}>
+                  Semester {s} ({getYearName(getYearForSemester(s))}) Only
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1 font-medium leading-relaxed">
+            <span className="font-bold text-slate-900 block">Term Lifecycle Effect:</span>
+            Applying this change sets the selected semesters as ACTIVE and CURRENT in the database, automatically updating all faculty marking, timetable filters, and student portals.
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsTermModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isSubmittingTerm}>Apply Term Change</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Semester Dates Modal */}
+      <Modal
+        isOpen={!!editingSemesterDates}
+        onClose={() => setEditingSemesterDates(null)}
+        title={`Edit Dates — ${editingSemesterDates?.name}`}
+        description="Set official start and end dates for this academic term semester"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveSemesterDates} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={semStartDate}
+              onChange={(e) => setSemStartDate(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={semEndDate}
+              onChange={(e) => setSemEndDate(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditingSemesterDates(null)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isSubmittingSemDates}>Save Dates</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Degree Program Modal */}
+      <Modal
+        isOpen={!!editingProg}
+        onClose={() => setEditingProg(null)}
+        title={`Edit Program — ${editingProg?.code}`}
+        description="Update program name, code, and degree duration (e.g. MCA = 2 Years, B.Tech = 4 Years)"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveEditProg} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Program Code</label>
+            <input
+              type="text"
+              required
+              value={editProgCode}
+              onChange={(e) => setEditProgCode(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono uppercase shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Degree Program Name</label>
+            <input
+              type="text"
+              required
+              value={editProgName}
+              onChange={(e) => setEditProgName(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Duration (Years)</label>
+            <select
+              value={editProgDuration}
+              onChange={(e) => setEditProgDuration(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 shadow-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
+            >
+              <option value={1}>1 Year</option>
+              <option value={2}>2 Years (e.g. MCA / MBA / M.Tech)</option>
+              <option value={3}>3 Years (e.g. BCA / BBA / Diploma)</option>
+              <option value={4}>4 Years (e.g. B.Tech)</option>
+              <option value={5}>5 Years</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditingProg(null)}>Cancel</Button>
+            <Button type="submit" variant="primary" size="sm">Save Program</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

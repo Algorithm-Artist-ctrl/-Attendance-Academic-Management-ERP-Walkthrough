@@ -121,7 +121,7 @@ export const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
               WARNING: This operation is permanent and cannot be undone!
             </span>
             <p className="text-rose-800 leading-relaxed">
-              Permanently deleting this account will purge the user from Supabase Authentication and cascade-delete all linked database records across attendance, marks, quizzes, submissions, messages, and audit dossiers.
+              Permanently deleting this account will purge the user from ERP Authentication and cascade-delete all linked database records across attendance, marks, quizzes, submissions, messages, and audit dossiers.
             </p>
           </div>
         </div>

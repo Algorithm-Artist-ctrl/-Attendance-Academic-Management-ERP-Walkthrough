@@ -68,8 +68,24 @@ import {
 } from '../../types/database.types';
 import { NoticeItem } from '../../types/academic.types';
 import { getCollegeToday, getISTTodayDate, getISTDayOfWeek } from '../utils/dateUtils';
+import { suggestAcademicTerm } from '../utils/academicYearMapping';
 import { erpStorage } from '../storage/erpStorage';
 import { queryCache, queryKeys } from '../cache/queryCache';
+
+export interface CurrentAcademicContext {
+  currentSession: AcademicSession | null;
+  activeSemesters: Semester[];
+  currentTermType: 'ODD' | 'EVEN';
+  allSemesters: Semester[];
+  departments: Department[];
+  programs: Program[];
+}
+
+let _cachedAcademicContext: {
+  timestamp: number;
+  data: CurrentAcademicContext;
+} | null = null;
+const ACADEMIC_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface StaticSetupCache {
   timestamp: number;
@@ -161,6 +177,7 @@ export const supabaseService = {
   invalidateMasterCache() {
     _staticCache = null;
     _masterCache = null;
+    _cachedAcademicContext = null;
     _inFlightFetchAll = null;
     _inFlightScopedData.clear();
     _inFlightEnsureQuizzes.clear();
@@ -186,7 +203,8 @@ export const supabaseService = {
       const storedSemesters = erpStorage.getSemesters();
       const storedSessions = erpStorage.getSessions();
       const storedPrograms = erpStorage.getPrograms();
-      if (storedDepts.length > 0 && storedYears.length > 0 && storedSemesters.length > 0) {
+      const hasValidSemesters = storedSemesters.length >= 8 && storedSemesters.every(s => s.term_type);
+      if (storedDepts.length > 0 && storedYears.length > 0 && hasValidSemesters) {
         const storedResult = {
           institutions: [erpStorage.getInstitution()],
           departments: storedDepts,
@@ -217,7 +235,7 @@ export const supabaseService = {
             supabase.from('programs').select('id, name, code, active, department_id, duration_years, created_at, updated_at'),
             supabase.from('academic_sessions').select('id, name, start_date, end_date, active, is_current, created_at'),
             supabase.from('academic_years').select('id, name, year_number, active, program_id, created_at').eq('active', true).order('year_number'),
-            supabase.from('semesters').select('id, name, semester_number, active, academic_year_id, created_at').eq('active', true).order('semester_number'),
+            supabase.from('semesters').select('id, name, semester_number, active, academic_year_id, academic_session_id, term_type, start_date, end_date, status, is_current, created_at').order('semester_number'),
           ]);
 
           const staticResult = {
@@ -228,6 +246,13 @@ export const supabaseService = {
             years: ((years as AcademicYear[]) || []).filter(y => y.active),
             semesters: ((semesters as Semester[]) || []).filter(s => s.active),
           };
+
+          // Synchronize in-memory/local storage
+          if (staticResult.departments.length > 0) erpStorage.setDepartments(staticResult.departments);
+          if (staticResult.programs.length > 0) erpStorage.setPrograms(staticResult.programs);
+          if (staticResult.sessions.length > 0) erpStorage.setSessions(staticResult.sessions);
+          if (staticResult.years.length > 0) erpStorage.setYears(staticResult.years);
+          if (staticResult.semesters.length > 0) erpStorage.setSemesters(staticResult.semesters);
 
           _staticCache = {
             timestamp: Date.now(),
@@ -243,6 +268,44 @@ export const supabaseService = {
       },
       { ttlMs: 30 * 60 * 1000, staleTimeMs: 5 * 60 * 1000, forceFresh: forceRefresh }
     );
+  },
+
+  // 1B. Centralized Academic Context Service (Single Authority, Memory-Cached)
+  async getCurrentAcademicContext(userRole?: string, userId?: string, forceRefresh = false): Promise<CurrentAcademicContext> {
+    const now = Date.now();
+    if (!forceRefresh && _cachedAcademicContext && (now - _cachedAcademicContext.timestamp) < ACADEMIC_CONTEXT_CACHE_TTL_MS) {
+      return _cachedAcademicContext.data;
+    }
+
+    const staticData = await this.fetchStaticSetup(forceRefresh);
+    const sessions = staticData?.sessions || [];
+    const currentSession = sessions.find(s => s.is_current) || sessions[0] || null;
+    const allSemesters = (staticData?.semesters || []).slice().sort((a, b) => a.semester_number - b.semester_number);
+    const activeSemesters = allSemesters.filter(s => s.status === 'ACTIVE' || s.is_current);
+
+    let currentTermType: 'ODD' | 'EVEN' = 'ODD';
+    if (activeSemesters.length > 0 && activeSemesters[0].term_type) {
+      currentTermType = activeSemesters[0].term_type as 'ODD' | 'EVEN';
+    } else {
+      const suggestion = suggestAcademicTerm();
+      currentTermType = suggestion.termType;
+    }
+
+    const contextData: CurrentAcademicContext = {
+      currentSession,
+      activeSemesters,
+      currentTermType,
+      allSemesters,
+      departments: staticData?.departments || [],
+      programs: staticData?.programs || [],
+    };
+
+    _cachedAcademicContext = {
+      timestamp: now,
+      data: contextData,
+    };
+
+    return contextData;
   },
 
   // 1B. Fetch Dynamic Structural Academic Entities (Sections, Subjects, Faculty, Assignments, Classrooms) - FAST & LIGHTWEIGHT
@@ -2976,11 +3039,83 @@ export const supabaseService = {
     return data as Department;
   },
 
-  async deleteDepartment(id: string) {
+  async checkDepartmentReferences(deptId: string): Promise<{
+    can_hard_delete: boolean;
+    total_references: number;
+    reason?: string;
+    references: {
+      programs: number;
+      faculty: number;
+      students: number;
+      subjects: number;
+      sections: number;
+      timetables: number;
+    };
+  }> {
+    const { data, error } = await supabase.rpc('check_department_dependencies', { p_department_id: deptId });
+    if (error) {
+      console.error('Error checking department dependencies:', error);
+      throw new Error(error.message);
+    }
+    const res = data as any;
+    return {
+      can_hard_delete: Boolean(res?.can_hard_delete),
+      total_references: Number(res?.total_references || 0),
+      reason: res?.reason,
+      references: {
+        programs: Number(res?.program_count || 0),
+        faculty: Number(res?.faculty_count || 0),
+        students: Number(res?.student_count || 0),
+        subjects: Number(res?.subject_count || 0),
+        sections: Number(res?.section_count || 0),
+        timetables: Number(res?.timetable_count || 0),
+      },
+    };
+  },
+
+  async changeDepartmentHod(deptId: string, newFacultyId: string): Promise<Department> {
+    const { data, error } = await supabase.rpc('assign_department_hod', {
+      p_department_id: deptId,
+      p_faculty_id: newFacultyId,
+    });
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Department;
+  },
+
+  async removeDepartmentHod(deptId: string): Promise<Department> {
+    const { data, error } = await supabase.rpc('remove_department_hod', {
+      p_department_id: deptId,
+    });
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Department;
+  },
+
+  async deleteDepartment(id: string): Promise<{ deleted: boolean; deactivated: boolean; message: string }> {
+    const check = await this.checkDepartmentReferences(id);
+    if (!check.can_hard_delete) {
+      const { error } = await supabase
+        .from('departments')
+        .update({ active: false })
+        .eq('id', id);
+      if (error) throw new Error(error.message);
+      this.invalidateMasterCache();
+      return {
+        deleted: false,
+        deactivated: true,
+        message: check.reason || 'Department has existing relationships and was safely deactivated instead of deleted.',
+      };
+    }
+
     const { error } = await supabase.from('departments').delete().eq('id', id);
     if (error) throw new Error(error.message);
     this.invalidateMasterCache();
-    return true;
+    return {
+      deleted: true,
+      deactivated: false,
+      message: 'Department deleted successfully.',
+    };
   },
 
   async addProgram(prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) {
@@ -3217,6 +3352,39 @@ export const supabaseService = {
     if (error) throw new Error(error.message);
     this.invalidateMasterCache();
     return true;
+  },
+
+  // ── Semester / Term Controls ──
+  async setCurrentAcademicTerm(sessionId: string, termType: 'ODD' | 'EVEN', semesterNumber?: number): Promise<{
+    success: boolean;
+    session_id: string;
+    term_type: string;
+    activated_semesters: number[];
+    all_semesters_active: boolean;
+  }> {
+    const { data, error } = await supabase.rpc('set_current_academic_term', {
+      p_session_id: sessionId,
+      p_term_type: termType,
+      p_semester_number: semesterNumber || null,
+    });
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data;
+  },
+
+  async updateSemesterDates(semesterId: string, startDate?: string | null, endDate?: string | null): Promise<Semester> {
+    const { data, error } = await supabase
+      .from('semesters')
+      .update({
+        start_date: startDate || null,
+        end_date: endDate || null,
+      })
+      .eq('id', semesterId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    this.invalidateMasterCache();
+    return data as Semester;
   },
 
   // ── Dynamic Session Resolver ──

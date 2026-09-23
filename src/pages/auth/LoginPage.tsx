@@ -12,9 +12,13 @@ import {
   FileText, 
   TrendingUp, 
   Calendar,
-  Loader2 
+  Loader2,
+  ExternalLink,
+  Sparkles,
+  Trophy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { Modal } from '../../components/common/Modal';
 import vctmOfficialLogo from '../../assets/vctm-logo.png';
 import vctmOfficialLogoAvif from '../../assets/vctm-logo.avif';
 import vctmCampusImage from '../../assets/vctm-campus.jpg';
@@ -25,6 +29,127 @@ import { clsx } from 'clsx';
 
 const ForgotPasswordModal = lazy(() => import('../../components/auth/ForgotPasswordModal').then(m => ({ default: m.ForgotPasswordModal })));
 
+interface InfoModalData {
+  title: string;
+  subtitle: string;
+  badge?: string;
+  icon: React.ReactNode;
+  content: string[];
+  externalUrl?: string;
+  externalLabel?: string;
+  loginRole?: 'student' | 'faculty' | 'admin';
+  loginActionLabel?: string;
+}
+
+const INFO_DATA: Record<string, InfoModalData> = {
+  learn: {
+    title: 'Academic Excellence & Learning',
+    subtitle: 'Vivekananda College of Technology & Management',
+    badge: 'Institution Core Value',
+    icon: <GraduationCap className="w-5 h-5 text-blue-600" />,
+    content: [
+      'VCTM fosters an intellectually stimulating academic environment with outcome-based engineering education and computer science curricula.',
+      'Affiliated with Dr. A.P.J. Abdul Kalam Technical University (AKTU) and Board of Technical Education Uttar Pradesh (BTEUP), providing accredited B.Tech, MCA, and Diploma programs.',
+      'Equipped with advanced computing labs, high-speed campus internet, well-stocked central library with digital e-journals, and hands-on laboratory pedagogy.',
+    ],
+    externalUrl: 'https://vctm.in/',
+    externalLabel: 'Visit Official College Website (vctm.in)',
+  },
+  innovate: {
+    title: 'Research & Technological Innovation',
+    subtitle: 'Empowering Next-Generation Creators',
+    badge: 'Research & Labs',
+    icon: <Sparkles className="w-5 h-5 text-amber-500" />,
+    content: [
+      'VCTM encourages student-led innovation, technical hackathons, coding workshops, and industry 4.0 laboratory experiments.',
+      'Active student chapters and technical clubs focusing on Artificial Intelligence, Web Engineering, Embedded Systems, and Robotics.',
+      'Dedicated mentorship for student entrepreneurship, prototyping, research paper publications, and live capstone projects.',
+    ],
+    externalUrl: 'https://vctm.in/',
+    externalLabel: 'Explore VCTM Innovation & Facilities',
+  },
+  grow: {
+    title: 'Holistic Campus Life & Development',
+    subtitle: 'Nurturing Leaders for Tomorrow',
+    badge: 'Student Development',
+    icon: <Users className="w-5 h-5 text-emerald-600" />,
+    content: [
+      'Comprehensive development combining rigorous academics with technical symposiums, cultural festivals, sports meets, and community engagement.',
+      'Active Training & Placement (T&P) cell providing regular aptitude training, soft-skills development, and industry mock interviews.',
+      'Lush green campus infrastructure designed for focused learning, collaboration, and student well-being.',
+    ],
+    externalUrl: 'https://vctm.in/',
+    externalLabel: 'Discover Campus Life at VCTM',
+  },
+  achieve: {
+    title: 'Career Outcomes & Placements',
+    subtitle: 'Excellence in Placements and University Merit',
+    badge: 'Proven Track Record',
+    icon: <Trophy className="w-5 h-5 text-amber-600" />,
+    content: [
+      'VCTM students consistently secure rewarding positions in top technology corporations, multinational consulting firms, and public sector organizations.',
+      'Consistently recognized for stellar academic performance in AKTU university examinations and state-level engineering competitions.',
+      'A thriving alumni network holding key technical leadership roles in engineering firms worldwide.',
+    ],
+    externalUrl: 'https://vctm.in/',
+    externalLabel: 'View Placement Records at vctm.in',
+  },
+  academics: {
+    title: 'Academic Structure & Curriculum',
+    subtitle: 'Comprehensive Degree & Diploma Programs',
+    badge: 'Academics Portal',
+    icon: <GraduationCap className="w-5 h-5 text-blue-600" />,
+    content: [
+      'Structured 4-Year B.Tech (CSE, AI, ME, CE, EE) and 2-Year MCA degree programs with structured 8-semester / 4-semester university curriculums.',
+      'Dynamic semester lifecycle management with continuous sessional evaluations, midterm exams, and laboratory coursework.',
+      'Real-time academic notice distribution, syllabus tracking, and direct faculty-student academic communication.',
+    ],
+    externalUrl: 'https://vctm.in/',
+    externalLabel: 'Explore Academic Offerings on vctm.in',
+    loginRole: 'student',
+    loginActionLabel: 'Sign In to Student Portal',
+  },
+  attendance: {
+    title: 'Digital & Biometric Attendance',
+    subtitle: 'Real-Time Classroom & Lab Verification',
+    badge: 'Attendance Module',
+    icon: <TrendingUp className="w-5 h-5 text-emerald-600" />,
+    content: [
+      'Faculty record lecture attendance securely with instant sync across institutional databases.',
+      'Students and parents track subject-wise attendance percentages in real time against the mandatory 75% university eligibility requirement.',
+      'Automated medical leave & official event duty attendance claim workflow with faculty verification.',
+    ],
+    loginRole: 'student',
+    loginActionLabel: 'Sign In to Check Attendance',
+  },
+  timetable: {
+    title: 'Smart Timetable & Lecture Scheduling',
+    subtitle: 'Conflict-Free Academic Scheduling',
+    badge: 'Timetable Module',
+    icon: <Calendar className="w-5 h-5 text-indigo-600" />,
+    content: [
+      'Comprehensive schedule for all years, branches, and sections with lecture hall, laboratory, and faculty mappings.',
+      'Instant substitute faculty assignment and automated schedule notification on lecture adjustments.',
+      'Weekly view designed for students and faculty with color-coded period blocks and room numbers.',
+    ],
+    loginRole: 'student',
+    loginActionLabel: 'Sign In to View Timetable',
+  },
+  assessments: {
+    title: 'Continuous Internal Evaluation & Marks',
+    subtitle: 'Sessional Tests & Practical Performance',
+    badge: 'Assessments Module',
+    icon: <FileText className="w-5 h-5 text-purple-600" />,
+    content: [
+      'Transparent recording of Class Test 1, Class Test 2, PUT (Pre-University Test), and practical sessional marks.',
+      'Formula-based internal assessment calculations adhering to university guidelines.',
+      'Performance analytics and progress tracking for students and faculty mentors.',
+    ],
+    loginRole: 'student',
+    loginActionLabel: 'Sign In to View Assessments',
+  },
+};
+
 export const LoginPage: React.FC = () => {
   const { login, isLoading, error } = useAuth();
   const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'faculty' | 'admin'>('faculty');
@@ -33,6 +158,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [activeInfoModal, setActiveInfoModal] = useState<string | null>(null);
 
   // Enforce zero-scroll on desktop html & body while landing page is mounted
   useEffect(() => {
@@ -78,7 +204,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="landing-page h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-between bg-slate-50 select-none relative overflow-hidden">
+    <div className="landing-page min-h-[100dvh] lg:h-[100dvh] lg:max-h-[100dvh] w-full flex flex-col justify-between bg-slate-50 select-none relative overflow-y-auto lg:overflow-hidden">
       
       {/* ======================================================== */}
       {/* 1. CAMPUS BACKGROUND PHOTO (Ultra-Optimized Mobile LCP)   */}
@@ -143,14 +269,38 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Right: Institutional Values Navigation */}
-        <nav className="flex items-center gap-3 text-xs font-semibold text-slate-700 tracking-[0.25em] uppercase">
-          <span>LEARN</span>
+        <nav className="hidden sm:flex items-center gap-1.5 lg:gap-3 text-xs font-semibold text-slate-700 tracking-[0.18em] lg:tracking-[0.25em] uppercase">
+          <button
+            type="button"
+            onClick={() => setActiveInfoModal('learn')}
+            className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
+          >
+            LEARN
+          </button>
           <span className="text-slate-300 font-normal">|</span>
-          <span>INNOVATE</span>
+          <button
+            type="button"
+            onClick={() => setActiveInfoModal('innovate')}
+            className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
+          >
+            INNOVATE
+          </button>
           <span className="text-slate-300 font-normal">|</span>
-          <span>GROW</span>
+          <button
+            type="button"
+            onClick={() => setActiveInfoModal('grow')}
+            className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
+          >
+            GROW
+          </button>
           <span className="text-slate-300 font-normal">|</span>
-          <span>ACHIEVE</span>
+          <button
+            type="button"
+            onClick={() => setActiveInfoModal('achieve')}
+            className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
+          >
+            ACHIEVE
+          </button>
         </nav>
       </header>
 
@@ -176,32 +326,48 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* Compact Single Horizontal Feature Strip (Anchored to bottom-left over green lawn) */}
-          <div className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-xl py-2.5 px-4 shadow-xl border border-slate-700/60 mt-auto mb-1">
-            <div className="flex items-center justify-between divide-x divide-slate-700/60 text-xs font-semibold tracking-wide">
-              <div className="flex items-center gap-2 pr-3">
+          <div className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-xl py-2 px-3 shadow-xl border border-slate-700/60 mt-auto mb-1">
+            <div className="grid grid-cols-4 divide-x divide-slate-700/60 text-xs font-semibold tracking-wide">
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('academics')}
+                className="flex items-center gap-2 pr-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+              >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <GraduationCap className="w-3.5 h-3.5" />
                 </div>
-                <span>ACADEMICS</span>
-              </div>
-              <div className="flex items-center gap-2 px-3">
+                <span className="text-[11px] xl:text-xs">ACADEMICS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('attendance')}
+                className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+              >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <span>ATTENDANCE</span>
-              </div>
-              <div className="flex items-center gap-2 px-3">
+                <span className="text-[11px] xl:text-xs">ATTENDANCE</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('timetable')}
+                className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+              >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <Calendar className="w-3.5 h-3.5" />
                 </div>
-                <span>TIMETABLE</span>
-              </div>
-              <div className="flex items-center gap-2 pl-3">
+                <span className="text-[11px] xl:text-xs">TIMETABLE</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('assessments')}
+                className="flex items-center gap-2 pl-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+              >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <FileText className="w-3.5 h-3.5" />
                 </div>
-                <span>ASSESSMENTS</span>
-              </div>
+                <span className="text-[11px] xl:text-xs">ASSESSMENTS</span>
+              </button>
             </div>
           </div>
         </div>
@@ -239,6 +405,16 @@ export const LoginPage: React.FC = () => {
               <span className="inline-flex items-center text-[11px] font-semibold text-slate-700 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
                 Smart Campus. One ERP.
               </span>
+            </div>
+            {/* Mobile Institutional Values Row */}
+            <div className="flex items-center justify-center flex-wrap gap-x-2 gap-y-1 mt-2 text-[10px] font-bold text-slate-800 uppercase tracking-widest bg-white/85 backdrop-blur-xs px-3 py-1 rounded-full border border-slate-200/80 shadow-2xs">
+              <button type="button" onClick={() => setActiveInfoModal('learn')} className="hover:text-blue-900 cursor-pointer">LEARN</button>
+              <span className="text-slate-300">•</span>
+              <button type="button" onClick={() => setActiveInfoModal('innovate')} className="hover:text-blue-900 cursor-pointer">INNOVATE</button>
+              <span className="text-slate-300">•</span>
+              <button type="button" onClick={() => setActiveInfoModal('grow')} className="hover:text-blue-900 cursor-pointer">GROW</button>
+              <span className="text-slate-300">•</span>
+              <button type="button" onClick={() => setActiveInfoModal('achieve')} className="hover:text-blue-900 cursor-pointer">ACHIEVE</button>
             </div>
           </div>
 
@@ -343,6 +519,7 @@ export const LoginPage: React.FC = () => {
                     <User className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-identifier-input"
                     type="text"
                     required
                     value={identifier}
@@ -429,6 +606,52 @@ export const LoginPage: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {/* Mobile-Only Feature Grid (Compact 2x2 grid below card) */}
+          <div className="lg:hidden w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[440px] mt-3 mb-1 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-2 shadow-lg border border-slate-700/60">
+            <div className="grid grid-cols-2 gap-1.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('academics')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/15 transition-all text-left cursor-pointer active:scale-98"
+              >
+                <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] font-bold tracking-wider">ACADEMICS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('attendance')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/15 transition-all text-left cursor-pointer active:scale-98"
+              >
+                <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] font-bold tracking-wider">ATTENDANCE</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('timetable')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/15 transition-all text-left cursor-pointer active:scale-98"
+              >
+                <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <Calendar className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] font-bold tracking-wider">TIMETABLE</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal('assessments')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/15 transition-all text-left cursor-pointer active:scale-98"
+              >
+                <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+                  <FileText className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] font-bold tracking-wider">ASSESSMENTS</span>
+              </button>
+            </div>
+          </div>
         </div>
 
       </main>
@@ -458,6 +681,92 @@ export const LoginPage: React.FC = () => {
             portalRole={activeRoleTab}
           />
         </Suspense>
+      )}
+
+      {/* Institutional & Feature Information Modal */}
+      {activeInfoModal && INFO_DATA[activeInfoModal] && (
+        <Modal
+          isOpen={!!activeInfoModal}
+          onClose={() => setActiveInfoModal(null)}
+          title={
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 shrink-0">
+                {INFO_DATA[activeInfoModal].icon}
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                  {INFO_DATA[activeInfoModal].title}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  {INFO_DATA[activeInfoModal].subtitle}
+                </p>
+              </div>
+            </div>
+          }
+          maxWidth="md"
+          footer={
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+              {INFO_DATA[activeInfoModal].externalUrl ? (
+                <a
+                  href={INFO_DATA[activeInfoModal].externalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm transition-colors shadow-xs"
+                >
+                  <span>{INFO_DATA[activeInfoModal].externalLabel || 'Visit Official VCTM Site'}</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              ) : (
+                <div />
+              )}
+              {INFO_DATA[activeInfoModal].loginActionLabel ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const data = INFO_DATA[activeInfoModal];
+                    setActiveInfoModal(null);
+                    if (data.loginRole) {
+                      setActiveRoleTab(data.loginRole);
+                    }
+                    setTimeout(() => {
+                      const input = document.getElementById('login-identifier-input') as HTMLInputElement | null;
+                      input?.focus();
+                      input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0f172a] hover:bg-black text-white font-semibold text-xs sm:text-sm transition-colors shadow-xs cursor-pointer"
+                >
+                  <span>{INFO_DATA[activeInfoModal].loginActionLabel}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveInfoModal(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          }
+        >
+          <div className="space-y-3 py-1">
+            {INFO_DATA[activeInfoModal].badge && (
+              <span className="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                {INFO_DATA[activeInfoModal].badge}
+              </span>
+            )}
+            <div className="space-y-2.5">
+              {INFO_DATA[activeInfoModal].content.map((point, idx) => (
+                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-2 shrink-0" />
+                  <p>{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

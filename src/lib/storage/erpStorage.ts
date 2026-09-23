@@ -159,6 +159,18 @@ class ERPStorageService {
     saveToStorage(STORAGE_KEYS.STUDENTS, students);
   }
 
+  public setDepartments(departments: Department[]) {
+    saveToStorage(STORAGE_KEYS.DEPARTMENTS, departments);
+  }
+
+  public setPrograms(programs: Program[]) {
+    saveToStorage(STORAGE_KEYS.PROGRAMS, programs);
+  }
+
+  public setSessions(sessions: AcademicSession[]) {
+    saveToStorage(STORAGE_KEYS.SESSIONS, sessions);
+  }
+
   public setTimetable(timetable: TimetableEntry[]) {
     saveToStorage(STORAGE_KEYS.TIMETABLE, timetable);
   }

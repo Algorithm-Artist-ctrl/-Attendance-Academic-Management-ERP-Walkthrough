@@ -81,6 +81,12 @@ export interface Semester {
   semester_number: number;
   name: string;
   active: boolean;
+  academic_session_id?: string | null;
+  term_type?: 'ODD' | 'EVEN' | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  status?: 'ACTIVE' | 'UPCOMING' | 'CLOSED' | null;
+  is_current?: boolean | null;
 }
 
 export interface Classroom {

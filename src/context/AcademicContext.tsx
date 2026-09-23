@@ -343,7 +343,29 @@ interface AcademicContextType {
   getStudentAcademicScorecard: (studentId: string) => StudentSubjectAcademicReport[];
   addDepartment: (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => Promise<Department>;
   updateDepartment: (id: string, updates: Partial<Department>) => Promise<Department>;
-  deleteDepartment: (id: string) => Promise<boolean>;
+  deleteDepartment: (id: string) => Promise<{ deleted: boolean; deactivated: boolean; message: string } | boolean>;
+  checkDepartmentReferences: (deptId: string) => Promise<{
+    can_hard_delete: boolean;
+    reason?: string;
+    references: {
+      programs: number;
+      faculty: number;
+      students: number;
+      subjects: number;
+      sections: number;
+      timetables: number;
+    };
+  }>;
+  changeDepartmentHod: (deptId: string, newFacultyId: string) => Promise<Department>;
+  removeDepartmentHod: (deptId: string) => Promise<Department>;
+  setCurrentAcademicTerm: (sessionId: string, termType: 'ODD' | 'EVEN', semesterNumber?: number) => Promise<{
+    success: boolean;
+    session_id: string;
+    term_type: string;
+    activated_semesters: number[];
+    all_semesters_active: boolean;
+  }>;
+  updateSemesterDates: (semesterId: string, startDate?: string | null, endDate?: string | null) => Promise<Semester>;
   addProgram: (prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) => Promise<Program>;
   updateProgram: (id: string, updates: Partial<Program>) => Promise<Program>;
   deleteProgram: (id: string) => Promise<boolean>;
@@ -1802,6 +1824,23 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           realtimeHandlersRef.current.refreshLeaveApplications();
           realtimeHandlersRef.current.refreshNotifications();
         });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, (payload: any) => {
+        if (payload?.eventType === 'INSERT' && payload?.new?.id) {
+          const newDept = payload.new as Department;
+          setDepartments(prev => prev.some(d => d.id === newDept.id) ? prev : [...prev, newDept]);
+        } else if (payload?.eventType === 'UPDATE' && payload?.new?.id) {
+          const updDept = payload.new as Department;
+          setDepartments(prev => prev.map(d => d.id === updDept.id ? updDept : d));
+        } else if (payload?.eventType === 'DELETE' && payload?.old?.id) {
+          setDepartments(prev => prev.filter(d => d.id !== payload.old.id));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'semesters' }, (payload: any) => {
+        if (payload?.eventType === 'UPDATE' && payload?.new?.id) {
+          const updSem = payload.new as Semester;
+          setSemesters(prev => prev.map(s => s.id === updSem.id ? { ...s, ...updSem } : s));
+        }
       });
 
     // Role-specific granular table subscriptions
@@ -2694,45 +2733,91 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // 5. Admin Master Data Operations
+  const checkDepartmentReferences = async (deptId: string) => {
+    return await supabaseService.checkDepartmentReferences(deptId);
+  };
+
+  const changeDepartmentHod = async (deptId: string, newFacultyId: string) => {
+    const res = await supabaseService.changeDepartmentHod(deptId, newFacultyId);
+    setDepartments(prev => prev.map(d => d.id === deptId ? { ...d, hod_faculty_id: newFacultyId } : d));
+    erpStorage.updateDepartment(deptId, { hod_faculty_id: newFacultyId });
+    return res;
+  };
+
+  const removeDepartmentHod = async (deptId: string) => {
+    const res = await supabaseService.removeDepartmentHod(deptId);
+    setDepartments(prev => prev.map(d => d.id === deptId ? { ...d, hod_faculty_id: undefined } : d));
+    erpStorage.updateDepartment(deptId, { hod_faculty_id: undefined });
+    return res;
+  };
+
   const addDepartment = async (dept: Omit<Department, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addDepartment(dept);
-    erpStorage.addDepartment(dept);
-    await refreshData();
+    setDepartments(prev => [...prev.filter(d => d.id !== res.id), res]);
+    erpStorage.addDepartment(res);
     return res;
   };
 
   const updateDepartment = async (id: string, updates: Partial<Department>) => {
     const res = await supabaseService.updateDepartment(id, updates);
+    setDepartments(prev => prev.map(d => d.id === id ? { ...d, ...res } : d));
     erpStorage.updateDepartment(id, updates);
-    await refreshData();
     return res;
   };
 
   const deleteDepartment = async (id: string) => {
     const res = await supabaseService.deleteDepartment(id);
-    erpStorage.deleteDepartment(id);
-    await refreshData();
+    if (res.deleted) {
+      setDepartments(prev => prev.filter(d => d.id !== id));
+      erpStorage.deleteDepartment(id);
+    } else if (res.deactivated) {
+      setDepartments(prev => prev.map(d => d.id === id ? { ...d, active: false } : d));
+      erpStorage.updateDepartment(id, { active: false });
+    }
     return res;
   };
 
   const addProgram = async (prog: Omit<Program, 'id' | 'created_at' | 'updated_at'>) => {
     const res = await supabaseService.addProgram(prog);
-    erpStorage.addProgram(prog);
-    await refreshData();
+    setPrograms(prev => [...prev.filter(p => p.id !== res.id), res]);
+    erpStorage.addProgram(res);
     return res;
   };
 
   const updateProgram = async (id: string, updates: Partial<Program>) => {
     const res = await supabaseService.updateProgram(id, updates);
+    setPrograms(prev => prev.map(p => p.id === id ? { ...p, ...res } : p));
     erpStorage.updateProgram(id, updates);
-    await refreshData();
     return res;
   };
 
   const deleteProgram = async (id: string) => {
     const res = await supabaseService.deleteProgram(id);
+    setPrograms(prev => prev.filter(p => p.id !== id));
     erpStorage.deleteProgram(id);
-    await refreshData();
+    return res;
+  };
+
+  const setCurrentAcademicTerm = async (sessionId: string, termType: 'ODD' | 'EVEN', semesterNumber?: number) => {
+    const res = await supabaseService.setCurrentAcademicTerm(sessionId, termType, semesterNumber);
+    if (res.activated_semesters) {
+      setSemesters(prev => prev.map(s => {
+        const isActive = res.all_semesters_active
+          ? (semesterNumber ? s.semester_number === semesterNumber : s.term_type === termType)
+          : res.activated_semesters.includes(s.semester_number);
+        return {
+          ...s,
+          status: isActive ? 'ACTIVE' : 'UPCOMING',
+          is_current: isActive,
+        };
+      }));
+    }
+    return res;
+  };
+
+  const updateSemesterDates = async (semesterId: string, startDate?: string | null, endDate?: string | null) => {
+    const res = await supabaseService.updateSemesterDates(semesterId, startDate, endDate);
+    setSemesters(prev => prev.map(s => s.id === semesterId ? { ...s, ...res } : s));
     return res;
   };
 
@@ -4827,6 +4912,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addDepartment,
     updateDepartment,
     deleteDepartment,
+    checkDepartmentReferences,
+    changeDepartmentHod,
+    removeDepartmentHod,
+    setCurrentAcademicTerm,
+    updateSemesterDates,
     addProgram,
     updateProgram,
     deleteProgram,
@@ -4985,6 +5075,11 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addDepartment,
     updateDepartment,
     deleteDepartment,
+    checkDepartmentReferences,
+    changeDepartmentHod,
+    removeDepartmentHod,
+    setCurrentAcademicTerm,
+    updateSemesterDates,
     addProgram,
     updateProgram,
     deleteProgram,

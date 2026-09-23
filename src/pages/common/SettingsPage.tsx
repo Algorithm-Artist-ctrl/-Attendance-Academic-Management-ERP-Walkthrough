@@ -57,7 +57,7 @@ export const SettingsPage: React.FC = () => {
     try {
       const res = await changePassword(currentPassword, newPassword);
       if (res.success) {
-        setPasswordMsg({ text: 'Password successfully updated in Supabase Auth!', type: 'success' });
+        setPasswordMsg({ text: 'Password successfully updated!', type: 'success' });
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -306,7 +306,7 @@ export const SettingsPage: React.FC = () => {
                   <span className="font-bold text-slate-900 block font-mono text-[11.5px] truncate max-w-[180px]">
                     {user?.email || 'user@vctm.in'}
                   </span>
-                  <span className="text-slate-500 text-[11px]">Official Supabase Auth Email</span>
+                  <span className="text-slate-500 text-[11px]">Official Authentication Email</span>
                 </div>
               </div>
 

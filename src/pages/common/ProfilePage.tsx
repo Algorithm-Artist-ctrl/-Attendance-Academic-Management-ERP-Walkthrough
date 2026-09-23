@@ -222,7 +222,7 @@ export const ProfilePage: React.FC = () => {
         }
         await refreshStudents();
         setIsEditing(false);
-        setSuccessBannerText('Student Profile & Academic Credentials Successfully Updated in Supabase!');
+        setSuccessBannerText('Student Profile & Academic Credentials Successfully Updated!');
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3500);
       } else {
@@ -276,7 +276,7 @@ export const ProfilePage: React.FC = () => {
       setCurrentPassInput('');
       setNewPassInput('');
       setConfirmPassInput('');
-      setSuccessBannerText('Authentication Password Updated Successfully in Supabase Auth!');
+      setSuccessBannerText('Authentication Password Updated Successfully!');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err: any) {
@@ -306,7 +306,7 @@ export const ProfilePage: React.FC = () => {
       setSuccessBannerText(
         res.pendingVerification
           ? `Confirmation link sent to your new email address (${newEmailInput.trim()}). Please verify to complete the change.`
-          : 'Authentication Email Synchronized with Supabase Cloud!'
+          : 'Authentication Email Synchronized Successfully!'
       );
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 5000);
@@ -788,7 +788,7 @@ export const ProfilePage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 2. ACCOUNT SECURITY & SUPABASE AUTH CREDENTIALS */}
+      {/* 2. ACCOUNT SECURITY & LOGIN CREDENTIALS */}
       {/* ======================================================== */}
       {role !== 'student' && (
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5 relative overflow-hidden">
@@ -796,7 +796,7 @@ export const ProfilePage: React.FC = () => {
           <div>
             <h3 className="text-lg font-black text-[#0f172a] tracking-tight flex items-center gap-2">
               <Lock className="w-5 h-5 text-[#0f172a]" />
-              Account Security & Supabase Credentials
+              Account Security & Login Credentials
             </h3>
             <p className="text-sm text-[#475569] mt-0.5 font-medium">
               Manage your real authentication email and login password for VCTM ERP
@@ -853,7 +853,7 @@ export const ProfilePage: React.FC = () => {
                     <div>
                       <span className="font-bold block text-amber-900 text-[11.5px]">Email Change Awaiting Confirmation</span>
                       <span className="text-xs text-[#475569] font-medium">
-                        Supabase sent a confirmation link to <strong className="text-[#0f172a] font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
+                        A confirmation link was sent to <strong className="text-[#0f172a] font-mono">{user?.new_email || pendingNewEmail}</strong>. Click the link in your inbox to complete the change.
                       </span>
                     </div>
                   </div>
@@ -910,7 +910,7 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <p className="text-sm text-[#475569] font-medium">
-                Encrypted password managed via Supabase Auth. Never stored in plaintext.
+                Encrypted password managed via secure institutional authentication. Never stored in plaintext.
               </p>
 
               <div className="pt-2">
@@ -1060,9 +1060,9 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-              <p className="font-bold text-emerald-800">Official Supabase Verification Notice:</p>
+              <p className="font-bold text-emerald-800">Official Verification Notice:</p>
               <p className="text-[#475569] font-medium leading-relaxed">
-                Supabase Auth will dispatch a confirmation email with a secure verification link to your new address. Your login credentials and database records will automatically update once you click the confirmation link.
+                A confirmation email with a secure verification link will be dispatched to your new address. Your login credentials and institutional records will automatically update once you click the confirmation link.
               </p>
             </div>
 
