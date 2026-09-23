@@ -533,11 +533,15 @@ export const supabaseService = {
     return (data as FacultySubjectAssignment[]) || [];
   },
 
-  async fetchTimetable(sectionId?: string): Promise<TimetableEntry[]> {
+  async fetchTimetable(sectionId?: string, signal?: AbortSignal): Promise<TimetableEntry[]> {
     let q = supabase.from('timetable_entries').select('*').eq('active', true).order('period_number', { ascending: true });
     if (sectionId) q = q.eq('section_id', sectionId);
+    if (signal) q = (q as any).abortSignal(signal);
     const { data, error } = await q;
     if (error) {
+      if ((error as any).name === 'AbortError') {
+        return [];
+      }
       console.error('Error fetching timetable:', error.message);
       return [];
     }
@@ -552,6 +556,7 @@ export const supabaseService = {
     dayOfWeek?: DayOfWeek;
     subjectId?: string;
     activeOnly?: boolean;
+    signal?: AbortSignal;
   }): Promise<TimetableEntry[]> {
     let q = supabase.from('timetable_entries').select('*');
     if (filter?.activeOnly !== false) {
@@ -569,10 +574,16 @@ export const supabaseService = {
     if (filter?.subjectId) {
       q = q.eq('subject_id', filter.subjectId);
     }
+    if (filter?.signal) {
+      q = (q as any).abortSignal(filter.signal);
+    }
     q = q.order('period_number', { ascending: true });
 
     const { data, error } = await q;
     if (error) {
+      if ((error as any).name === 'AbortError') {
+        return [];
+      }
       console.error('Error in getPublishedTimetable:', error.message);
       return [];
     }

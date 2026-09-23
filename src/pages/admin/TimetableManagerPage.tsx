@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -39,6 +39,7 @@ import { TimetableConflict } from '../../types/academic.types';
 import { csvTimetableService, CSVValidationResult } from '../../lib/services/csvTimetableService';
 import { pdfTimetableService } from '../../lib/services/pdfTimetableService';
 import { supabaseService } from '../../lib/services/supabaseService';
+import { supabase } from '../../lib/supabase/supabaseClient';
 import { DEFAULT_INSTITUTIONAL_PERIODS, ACADEMIC_DAYS, CANONICAL_PERIOD_NUMBERS } from '../../config/academicConfig';
 import { TimetableVersionHistoryModal } from '../../components/timetable/TimetableVersionHistoryModal';
 import { TimetableConflictEngine, TimetableConflictItem } from '../../lib/services/timetableConflictEngine';
@@ -69,6 +70,19 @@ interface DraftSlot {
   original_period_number?: number;
 }
 
+function getInitialUrlParams(): { yearId: string | null; sectionId: string | null } {
+  if (typeof window === 'undefined') return { yearId: null, sectionId: null };
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    return {
+      yearId: searchParams.get('year'),
+      sectionId: searchParams.get('section'),
+    };
+  } catch {
+    return { yearId: null, sectionId: null };
+  }
+}
+
 export const TimetableManagerPage: React.FC = () => {
   const { user } = useAuth();
   const { 
@@ -82,6 +96,7 @@ export const TimetableManagerPage: React.FC = () => {
     years, 
     semesters, 
     assignments,
+    sessions,
     saveSectionTimetable, 
     deleteSectionTimetable,
     findOrCreateFaculty,
@@ -120,14 +135,20 @@ export const TimetableManagerPage: React.FC = () => {
   }, [years]);
 
   const [selectedYearId, setSelectedYearId] = useState<string>(() => {
+    const fromUrl = getInitialUrlParams().yearId;
+    if (fromUrl && (fromUrl === 'ALL' || activeYears.some(y => y.id === fromUrl))) {
+      return fromUrl;
+    }
     return activeYears[0]?.id || 'ALL';
   });
+
+  const targetDeptId = isHOD ? currentDeptId : (selectedDeptId !== 'ALL' ? selectedDeptId : null);
 
   // Dynamic sections filtered strictly by department and selected academic year
   const filteredSections = useMemo(() => {
     let secs = sections.filter(s => s.active);
-    if (isHOD && currentDeptId) {
-      const deptProgs = new Set(programs.filter(p => p.department_id === currentDeptId).map(p => p.id));
+    if (targetDeptId) {
+      const deptProgs = new Set(programs.filter(p => p.department_id === targetDeptId).map(p => p.id));
       const deptYears = new Set(years.filter(y => deptProgs.has(y.program_id)).map(y => y.id));
       const deptSems = new Set(semesters.filter(s => deptYears.has(s.academic_year_id)).map(s => s.id));
       secs = secs.filter(s => deptSems.has(s.semester_id));
@@ -137,24 +158,52 @@ export const TimetableManagerPage: React.FC = () => {
       secs = secs.filter(s => matchingSemIds.includes(s.semester_id));
     }
     return secs;
-  }, [sections, semesters, years, programs, selectedYearId, isHOD, currentDeptId]);
+  }, [sections, semesters, years, programs, selectedYearId, targetDeptId]);
 
   const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
-    return filteredSections[0]?.id || sections[0]?.id || '';
+    const fromUrl = getInitialUrlParams().sectionId;
+    if (fromUrl && filteredSections.some(s => s.id === fromUrl)) {
+      return fromUrl;
+    }
+    return filteredSections[0]?.id || '';
   });
 
-  // Ensure selectedSectionId updates whenever filteredSections change
+  // Strict Cascading Reset: Ensure selectedSectionId updates whenever filteredSections change
   useEffect(() => {
-    if (filteredSections.length > 0 && !filteredSections.some(s => s.id === selectedSectionId)) {
+    if (filteredSections.length === 0) {
+      if (selectedSectionId !== '') {
+        setSelectedSectionId('');
+      }
+    } else if (!filteredSections.some(s => s.id === selectedSectionId)) {
       setSelectedSectionId(filteredSections[0].id);
     }
   }, [filteredSections, selectedSectionId]);
 
+  // Keep active year valid if years list updates
   useEffect(() => {
-    if (activeYears.length > 0 && (selectedYearId === 'ALL' || !activeYears.some(y => y.id === selectedYearId))) {
+    if (activeYears.length > 0 && selectedYearId !== 'ALL' && !activeYears.some(y => y.id === selectedYearId)) {
       setSelectedYearId(activeYears[0].id);
     }
   }, [activeYears, selectedYearId]);
+
+  // Sync URL search params whenever selectedYearId or selectedSectionId changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      if (selectedYearId && selectedYearId !== 'ALL') {
+        url.searchParams.set('year', selectedYearId);
+      } else {
+        url.searchParams.delete('year');
+      }
+      if (selectedSectionId) {
+        url.searchParams.set('section', selectedSectionId);
+      } else {
+        url.searchParams.delete('section');
+      }
+      window.history.replaceState(null, '', url.pathname + url.search);
+    } catch {}
+  }, [selectedYearId, selectedSectionId]);
 
   // Reset all editor, modal, and transient conflict states whenever selectedSectionId changes
   useEffect(() => {
@@ -180,15 +229,26 @@ export const TimetableManagerPage: React.FC = () => {
     setPublishError(null);
   }, [selectedSectionId]);
 
-  // Current Section strictly matching selectedSectionId (NO cross-section fallback)
+  // Current Section strictly matching selectedSectionId AND filteredSections (NO cross-section/stale fallback)
   const currentSection = useMemo(() => {
-    return sections.find(s => s.id === selectedSectionId) || null;
-  }, [sections, selectedSectionId]);
+    if (!selectedSectionId) return null;
+    return filteredSections.find(s => s.id === selectedSectionId) || null;
+  }, [filteredSections, selectedSectionId]);
 
   const currentYear = useMemo(() => {
-    const sem = semesters.find(s => s.id === currentSection?.semester_id);
-    return activeYears.find(y => y.id === sem?.academic_year_id) || activeYears.find(y => y.id === selectedYearId);
-  }, [activeYears, currentSection, semesters, selectedYearId]);
+    if (selectedYearId !== 'ALL') {
+      return activeYears.find(y => y.id === selectedYearId) || null;
+    }
+    if (currentSection) {
+      const sem = semesters.find(s => s.id === currentSection.semester_id);
+      return activeYears.find(y => y.id === sem?.academic_year_id) || null;
+    }
+    return null;
+  }, [activeYears, selectedYearId, currentSection, semesters]);
+
+  const currentSession = useMemo(() => {
+    return sessions?.find(s => s.is_current) || sessions?.[0] || null;
+  }, [sessions]);
 
   // Authoritative subjects scoped ONLY to current section's semester (NO cross-year leakage)
   const scopedSubjects = useMemo(() => {
@@ -272,10 +332,77 @@ export const TimetableManagerPage: React.FC = () => {
     SUN: 'Sunday',
   };
 
-  // Live Database Timetable strictly for selected section
-  const sectionTimetable = useMemo(() => {
-    return timetable.filter(t => t.section_id === selectedSectionId && t.active);
-  }, [timetable, selectedSectionId]);
+  // Local authoritative timetable for the selected section (cleared immediately on context change)
+  const [localSectionTimetable, setLocalSectionTimetable] = useState<TimetableEntry[]>([]);
+  const [isSectionTimetableLoading, setIsSectionTimetableLoading] = useState(false);
+  const fetchRequestIdRef = useRef(0);
+
+  // Authoritative, race-guarded timetable fetcher
+  const loadSectionTimetable = useCallback(async (secId: string) => {
+    if (!secId) {
+      setLocalSectionTimetable([]);
+      setIsSectionTimetableLoading(false);
+      return;
+    }
+
+    // Immediately clear to eliminate ghost slots from previous section
+    setLocalSectionTimetable([]);
+    setIsSectionTimetableLoading(true);
+    const reqId = ++fetchRequestIdRef.current;
+
+    try {
+      const entries = await supabaseService.fetchTimetable(secId);
+      // Discard stale out-of-order response if user changed section in the meantime
+      if (fetchRequestIdRef.current !== reqId) return;
+      setLocalSectionTimetable(entries);
+    } catch (err) {
+      if (fetchRequestIdRef.current !== reqId) return;
+      console.error('Failed to load section timetable:', err);
+      setLocalSectionTimetable([]);
+    } finally {
+      if (fetchRequestIdRef.current === reqId) {
+        setIsSectionTimetableLoading(false);
+      }
+    }
+  }, []);
+
+  // Fetch when currentSection changes
+  useEffect(() => {
+    if (currentSection?.id) {
+      loadSectionTimetable(currentSection.id);
+    } else {
+      setLocalSectionTimetable([]);
+      setIsSectionTimetableLoading(false);
+    }
+  }, [currentSection?.id, loadSectionTimetable]);
+
+  // Context-Scoped Realtime Subscription: listens ONLY for changes to current section
+  useEffect(() => {
+    if (!currentSection?.id) return;
+    const secId = currentSection.id;
+
+    const channel = supabase
+      .channel(`timetable-section-${secId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'timetable_entries',
+          filter: `section_id=eq.${secId}`,
+        },
+        () => {
+          loadSectionTimetable(secId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentSection?.id, loadSectionTimetable]);
+
+  const sectionTimetable = localSectionTimetable;
 
   // Institutional standard period schedule (Periods 1 to 8, including Period 5 Lunch)
   const periods = useMemo(() => {
@@ -601,6 +728,7 @@ export const TimetableManagerPage: React.FC = () => {
       const successMsg = `Slot for ${editingSlot.day_of_week} Period ${editingSlot.period_number} saved to live database successfully.`;
       setPublishSuccessMsg(successMsg);
       setEditingSlot(null);
+      await loadSectionTimetable(currentSection.id);
       await refreshTimetable(currentSection.id);
       setPublishSuccessMsg(successMsg);
     } catch (err: any) {
@@ -660,7 +788,8 @@ export const TimetableManagerPage: React.FC = () => {
     try {
       const ok = await deleteSectionTimetable(selectedSectionId, user?.full_name || 'HOD');
       if (ok) {
-        setPublishSuccessMsg(`Section ${currentSection?.name} timetable deleted successfully. All periods cleared.`);
+        setPublishSuccessMsg(`Section ${currentSection?.name || ''} timetable deleted successfully. All periods cleared.`);
+        setLocalSectionTimetable([]);
         setDraftSlots(new Map());
         setIsEditMode(false);
         setShowDeleteConfirm(false);
@@ -734,9 +863,10 @@ export const TimetableManagerPage: React.FC = () => {
         publishedBy: user?.full_name || 'HOD / Super Administrator',
       });
 
-      setPublishSuccessMsg(`Section ${currentSection?.name} Timetable published successfully to Supabase! (${result.count} active periods verified)`);
+      setPublishSuccessMsg(`Section ${currentSection?.name || ''} Timetable published successfully to Supabase! (${result.count} active periods verified)`);
       setIsEditMode(false);
       setDetectedConflicts([]);
+      await loadSectionTimetable(selectedSectionId);
       await refreshTimetable(selectedSectionId);
     } catch (err: any) {
       console.error('Publish error:', err);
@@ -994,7 +1124,8 @@ export const TimetableManagerPage: React.FC = () => {
       setSelectedFileName(null);
       setDetectedConflicts([]);
       setIsEditMode(false);
-      await refreshData(true);
+      await loadSectionTimetable(selectedSectionId);
+      await refreshTimetable(selectedSectionId);
     } catch (err: any) {
       setCsvError(err.message || 'Sync failed — existing timetable was not changed.');
     } finally {
@@ -1037,7 +1168,7 @@ export const TimetableManagerPage: React.FC = () => {
             Department Timetable Workspace
           </h1>
           <p className="text-xs text-slate-600 font-medium">
-            Academic Session: <strong className="text-slate-900">2026–2027</strong> • Department: <strong className="text-slate-900">{currentDept?.name || 'Department'}</strong> • {currentYear?.name ? `${currentYear.name} • ` : ''}Section <strong className="text-slate-900">{currentSection?.name || 'Assigned'}</strong>
+            Academic Session: <strong className="text-slate-900">{currentSession?.name || '2026–2027'}</strong> • Department: <strong className="text-slate-900">{currentDept?.name || 'Department'}</strong> • {currentYear?.name ? `${currentYear.name} • ` : ''}Section <strong className="text-slate-900">{currentSection?.name || 'None Selected'}</strong>
           </p>
         </div>
 
@@ -1045,7 +1176,12 @@ export const TimetableManagerPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refreshData(true)}
+            onClick={async () => {
+              if (currentSection?.id) {
+                await loadSectionTimetable(currentSection.id);
+                await refreshTimetable(currentSection.id);
+              }
+            }}
             leftIcon={<RotateCw className="w-3.5 h-3.5 text-slate-600" />}
             className="text-xs font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs"
             title="Refresh from Database"
@@ -1068,9 +1204,10 @@ export const TimetableManagerPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setShowDeleteConfirm(true)}
+              disabled={!currentSection || sectionTimetable.length === 0}
               leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-600" />}
-              className="text-xs font-semibold border-rose-200 text-rose-700 hover:bg-rose-50 shadow-2xs"
-              title={`Delete all timetable entries for Section ${currentSection?.name}`}
+              className="text-xs font-semibold border-rose-200 text-rose-700 hover:bg-rose-50 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+              title={currentSection ? `Delete all timetable entries for Section ${currentSection.name}` : 'No section selected'}
             >
               Clear Schedule
             </Button>
@@ -1083,28 +1220,33 @@ export const TimetableManagerPage: React.FC = () => {
         <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Active Section</span>
           <span className="text-base font-bold text-slate-900 mt-0.5 block truncate font-serif-institutional">
-            Section {currentSection?.name || 'A'}
+            {currentSection ? `Section ${currentSection.name}` : 'None Selected'}
           </span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Classroom Venue</span>
           <span className="text-base font-bold text-slate-900 mt-0.5 block truncate font-mono">
-            {currentSection?.room_number || 'Room A007'}
+            {currentSection ? (currentSection.room_number || '—') : '—'}
           </span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Scheduled Classes</span>
           <span className="text-base font-bold text-slate-900 mt-0.5 block font-mono">
-            {scheduledCount} Periods
+            {currentSection ? `${scheduledCount} Periods` : '0 Periods'}
           </span>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Published Status</span>
           <div className="mt-1 flex items-center gap-1.5">
-            {sectionTimetable.length > 0 ? (
+            {!currentSection ? (
+              <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-slate-300" />
+                Not Configured
+              </span>
+            ) : sectionTimetable.length > 0 ? (
               <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 Published & Active
@@ -1121,7 +1263,7 @@ export const TimetableManagerPage: React.FC = () => {
         <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Academic Session</span>
           <span className="text-base font-bold text-slate-900 mt-0.5 block font-mono">
-            2026–2027
+            {currentSession?.name || '2026–2027'}
           </span>
         </div>
       </div>
@@ -1136,7 +1278,17 @@ export const TimetableManagerPage: React.FC = () => {
               <span className="text-xs text-slate-500 font-bold hidden sm:inline">Dept:</span>
               <select
                 value={selectedDeptId}
-                onChange={(e) => setSelectedDeptId(e.target.value)}
+                onChange={(e) => {
+                  const newDept = e.target.value;
+                  setSelectedDeptId(newDept);
+                  setIsEditMode(false);
+                  setEditingSlot(null);
+                  setCsvPreview(null);
+                  setCsvError(null);
+                  setPublishSuccessMsg(null);
+                  setPublishError(null);
+                  setDetectedConflicts([]);
+                }}
                 className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 touch-target cursor-pointer shadow-2xs"
               >
                 <option value="ALL">All Departments</option>
@@ -1158,12 +1310,26 @@ export const TimetableManagerPage: React.FC = () => {
                 const matchingSemIds = yr === 'ALL'
                   ? []
                   : semesters.filter(s => s.academic_year_id === yr).map(s => s.id);
-                const nextSecs = yr === 'ALL'
-                  ? sections
-                  : sections.filter(s => matchingSemIds.includes(s.semester_id));
-                if (nextSecs.length > 0 && !nextSecs.some(s => s.id === selectedSectionId)) {
-                  setSelectedSectionId(nextSecs[0].id);
+                
+                let nextSecs = sections.filter(s => s.active);
+                if (targetDeptId) {
+                  const deptProgs = new Set(programs.filter(p => p.department_id === targetDeptId).map(p => p.id));
+                  const deptYears = new Set(years.filter(y => deptProgs.has(y.program_id)).map(y => y.id));
+                  const deptSems = new Set(semesters.filter(s => deptYears.has(s.academic_year_id)).map(s => s.id));
+                  nextSecs = nextSecs.filter(s => deptSems.has(s.semester_id));
                 }
+                if (yr !== 'ALL') {
+                  nextSecs = nextSecs.filter(s => matchingSemIds.includes(s.semester_id));
+                }
+
+                if (nextSecs.length > 0) {
+                  if (!nextSecs.some(s => s.id === selectedSectionId)) {
+                    setSelectedSectionId(nextSecs[0].id);
+                  }
+                } else {
+                  setSelectedSectionId('');
+                }
+
                 setIsEditMode(false);
                 setEditingSlot(null);
                 setCsvPreview(null);
@@ -1196,17 +1362,22 @@ export const TimetableManagerPage: React.FC = () => {
                 setPublishError(null);
                 setDetectedConflicts([]);
               }}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 touch-target cursor-pointer shadow-2xs"
+              disabled={filteredSections.length === 0}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:border-slate-400 touch-target cursor-pointer shadow-2xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
             >
-              {filteredSections.map(s => {
-                const sem = semesters.find(sm => sm.id === s.semester_id);
-                const yr = years.find(y => y.id === sem?.academic_year_id);
-                return (
-                  <option key={s.id} value={s.id}>
-                    {yr ? `${yr.name} • ` : ''}Section {s.name} ({s.room_number || 'Room'})
-                  </option>
-                );
-              })}
+              {filteredSections.length === 0 ? (
+                <option value="" disabled>No sections available</option>
+              ) : (
+                filteredSections.map(s => {
+                  const sem = semesters.find(sm => sm.id === s.semester_id);
+                  const yr = years.find(y => y.id === sem?.academic_year_id);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {yr ? `${yr.name} • ` : ''}Section {s.name} ({s.room_number || 'Room'})
+                    </option>
+                  );
+                })
+              )}
             </select>
           </div>
         </div>
@@ -1220,8 +1391,9 @@ export const TimetableManagerPage: React.FC = () => {
                 variant={isImportPanelOpen ? "navy" : "outline"}
                 size="sm"
                 onClick={() => setIsImportPanelOpen(prev => !prev)}
+                disabled={!currentSection}
                 leftIcon={<FileSpreadsheet className="w-4 h-4 text-slate-700" />}
-                className="text-xs font-bold border-slate-200 shadow-2xs"
+                className="text-xs font-bold border-slate-200 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isImportPanelOpen ? 'Close Import' : 'Import Schedule'}
               </Button>
@@ -1231,8 +1403,9 @@ export const TimetableManagerPage: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => handleOpenSlotEditor(selectedMobileDay || 'MON', 1)}
+                disabled={!currentSection}
                 leftIcon={<Plus className="w-4 h-4 text-slate-700" />}
-                className="text-xs font-bold border-slate-200 shadow-2xs hover:bg-slate-50"
+                className="text-xs font-bold border-slate-200 shadow-2xs hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add Class
               </Button>
@@ -1243,8 +1416,9 @@ export const TimetableManagerPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEditMode(true)}
+                  disabled={!currentSection}
                   leftIcon={<Edit3 className="w-4 h-4 text-slate-700" />}
-                  className="text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs"
+                  className="text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Edit Matrix
                 </Button>
@@ -1265,9 +1439,10 @@ export const TimetableManagerPage: React.FC = () => {
                 variant="primary"
                 size="sm"
                 onClick={handlePublishTimetable}
+                disabled={!currentSection || draftSlots.size === 0}
                 isLoading={isPublishing}
                 leftIcon={<CheckCircle2 className="w-4 h-4 text-white" />}
-                className="text-xs font-black shadow-xs bg-[#0F172A] hover:bg-black text-white"
+                className="text-xs font-black shadow-xs bg-[#0F172A] hover:bg-black text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Publish Timetable
               </Button>
@@ -1443,11 +1618,11 @@ export const TimetableManagerPage: React.FC = () => {
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[9px] uppercase text-slate-500 font-bold block">Classroom</span>
-                  <span className="text-xs font-black text-slate-900">{csvPreview.metadata?.roomNumber || currentSection?.room_number || 'A006'}</span>
+                  <span className="text-xs font-black text-slate-900">{csvPreview.metadata?.roomNumber || currentSection?.room_number || 'Unassigned'}</span>
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[9px] uppercase text-slate-500 font-bold block">Effective Date</span>
-                  <span className="text-xs font-black text-slate-900">{csvPreview.metadata?.effectiveDate || '20-08-2026'}</span>
+                  <span className="text-xs font-black text-slate-900">{csvPreview.metadata?.effectiveDate || new Date().toISOString().slice(0, 10)}</span>
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[9px] uppercase text-slate-500 font-bold block">Days & Periods</span>
@@ -1513,7 +1688,7 @@ export const TimetableManagerPage: React.FC = () => {
                                 {entry.lecture_type}
                               </span>
                             </td>
-                            <td className="py-2 px-2 text-slate-500">{entry.room_number || 'A006'}</td>
+                            <td className="py-2 px-2 text-slate-500">{entry.room_number || '—'}</td>
                           </tr>
                         );
                       })}
@@ -1727,10 +1902,33 @@ export const TimetableManagerPage: React.FC = () => {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 5. MOBILE VIEW: Day Selector Tab Bar & Vertical Cards     */}
-      {/* ======================================================== */}
-      <div className="block lg:hidden space-y-4">
+      {/* 4. Main Matrix: Loading State, Empty State, or Schedule Grid */}
+      {isSectionTimetableLoading ? (
+        <div className="bg-white rounded-3xl p-16 border border-slate-200/90 text-center space-y-3 shadow-xs">
+          <Loader2 className="w-8 h-8 text-slate-600 animate-spin mx-auto" />
+          <p className="text-sm font-bold text-slate-800">Loading Section Timetable...</p>
+          <p className="text-xs text-slate-500 font-mono">Fetching active slots for {currentSection ? `Section ${currentSection.name}` : 'selected context'}</p>
+        </div>
+      ) : !currentSection ? (
+        <div className="bg-white rounded-3xl p-12 border border-slate-200/90 text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+            <Calendar className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800">
+            {filteredSections.length === 0 ? 'No Sections Configured' : 'No Section Selected'}
+          </h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            {filteredSections.length === 0
+              ? `There are currently no active sections configured for ${currentYear?.name || 'this academic year'}. Please configure sections in Academic Setup.`
+              : 'Please select a section from the dropdown above to view, edit, or manage the timetable schedule.'}
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* ======================================================== */}
+          {/* 5. MOBILE VIEW: Day Selector Tab Bar & Vertical Cards     */}
+          {/* ======================================================== */}
+          <div className="block lg:hidden space-y-4">
         {/* Day Selector Pills */}
         <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs overflow-x-auto no-scrollbar">
           {days.map(d => {
@@ -2068,7 +2266,7 @@ export const TimetableManagerPage: React.FC = () => {
                             <div className="text-[12px] font-semibold text-slate-700 flex items-center gap-1.5">
                               <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>
-                                {currentYear?.name ? `${currentYear.name} • ` : ''}Section {currentSection?.name || 'A'}
+                                {currentYear?.name ? `${currentYear.name} • ` : ''}Section {currentSection?.name || ''}
                               </span>
                             </div>
                           </div>
@@ -2103,6 +2301,8 @@ export const TimetableManagerPage: React.FC = () => {
           </table>
         </div>
       </div>
+    </>
+  )}
 
       {/* Interactive Slot Editor Modal */}
       {editingSlot && (
