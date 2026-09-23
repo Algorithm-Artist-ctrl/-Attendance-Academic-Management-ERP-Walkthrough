@@ -48,12 +48,11 @@ const INFO_DATA: Record<string, InfoModalData> = {
     badge: 'Institution Core Value',
     icon: <GraduationCap className="w-5 h-5 text-blue-600" />,
     content: [
-      'VCTM fosters an intellectually stimulating academic environment with outcome-based engineering education and computer science curricula.',
-      'Affiliated with Dr. A.P.J. Abdul Kalam Technical University (AKTU) and Board of Technical Education Uttar Pradesh (BTEUP), providing accredited B.Tech, MCA, and Diploma programs.',
-      'Equipped with advanced computing labs, high-speed campus internet, well-stocked central library with digital e-journals, and hands-on laboratory pedagogy.',
+      'This section provides information related to VCTM College, its academics, courses, and learning activities.',
+      'For more information, visit the official college website.',
     ],
     externalUrl: 'https://vctm.in/',
-    externalLabel: 'Visit Official College Website (vctm.in)',
+    externalLabel: 'Visit Official College Website',
   },
   innovate: {
     title: 'Research & Technological Innovation',
@@ -61,12 +60,11 @@ const INFO_DATA: Record<string, InfoModalData> = {
     badge: 'Research & Labs',
     icon: <Sparkles className="w-5 h-5 text-amber-500" />,
     content: [
-      'VCTM encourages student-led innovation, technical hackathons, coding workshops, and industry 4.0 laboratory experiments.',
-      'Active student chapters and technical clubs focusing on Artificial Intelligence, Web Engineering, Embedded Systems, and Robotics.',
-      'Dedicated mentorship for student entrepreneurship, prototyping, research paper publications, and live capstone projects.',
+      'This section provides information about VCTM College, including technology, innovation, labs, and student activities.',
+      'For more information, visit the official college website.',
     ],
     externalUrl: 'https://vctm.in/',
-    externalLabel: 'Explore VCTM Innovation & Facilities',
+    externalLabel: 'Visit Official College Website',
   },
   grow: {
     title: 'Holistic Campus Life & Development',
@@ -74,12 +72,11 @@ const INFO_DATA: Record<string, InfoModalData> = {
     badge: 'Student Development',
     icon: <Users className="w-5 h-5 text-emerald-600" />,
     content: [
-      'Comprehensive development combining rigorous academics with technical symposiums, cultural festivals, sports meets, and community engagement.',
-      'Active Training & Placement (T&P) cell providing regular aptitude training, soft-skills development, and industry mock interviews.',
-      'Lush green campus infrastructure designed for focused learning, collaboration, and student well-being.',
+      'This section provides information about student life, activities, campus facilities, and development at VCTM College.',
+      'For more information, visit the official college website.',
     ],
     externalUrl: 'https://vctm.in/',
-    externalLabel: 'Discover Campus Life at VCTM',
+    externalLabel: 'Visit Official College Website',
   },
   achieve: {
     title: 'Career Outcomes & Placements',
@@ -87,12 +84,11 @@ const INFO_DATA: Record<string, InfoModalData> = {
     badge: 'Proven Track Record',
     icon: <Trophy className="w-5 h-5 text-amber-600" />,
     content: [
-      'VCTM students consistently secure rewarding positions in top technology corporations, multinational consulting firms, and public sector organizations.',
-      'Consistently recognized for stellar academic performance in AKTU university examinations and state-level engineering competitions.',
-      'A thriving alumni network holding key technical leadership roles in engineering firms worldwide.',
+      'This section provides information about VCTM College, including placements, career opportunities, and student achievements.',
+      'For more information, visit the official college website.',
     ],
     externalUrl: 'https://vctm.in/',
-    externalLabel: 'View Placement Records at vctm.in',
+    externalLabel: 'Visit Official College Website',
   },
   academics: {
     title: 'Academic Structure & Curriculum',

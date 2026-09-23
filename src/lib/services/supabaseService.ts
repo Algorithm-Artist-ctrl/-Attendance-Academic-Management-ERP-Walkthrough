@@ -8073,6 +8073,7 @@ export const supabaseService = {
           .from('faculty')
           .select('*')
           .eq('active', false)
+          .neq('employee_code', 'ARCHIVED-SYSTEM')
           .order('full_name', { ascending: true }),
         supabase.from('profiles').select('id, full_name, email, last_sign_in_at'),
         supabase.from('departments').select('id, name, code'),

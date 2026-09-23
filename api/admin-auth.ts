@@ -496,13 +496,12 @@ export default async function handleAdminAuth(req: any, res: any) {
         ]);
 
         const dependencies = {
-          'Attendance Records': attCount || 0,
-          'Assessment & Sessional Marks': marksCount || 0,
-          'Quiz Results': quizCount || 0,
-          'Assignment Submissions': subCount || 0,
-          'Leave Applications': leaveCount || 0,
-          'Notifications': notifCount || 0,
-          'Direct Messages': msgCount || 0,
+          'Attendance Records (Purged)': attCount || 0,
+          'Assessment & Sessional Marks (Purged)': marksCount || 0,
+          'Quiz Results & Submissions (Purged)': (quizCount || 0) + (subCount || 0),
+          'Leave Applications (Purged)': leaveCount || 0,
+          'Direct Messages (Purged)': msgCount || 0,
+          'Notifications (Purged)': notifCount || 0,
         };
 
         return sendJson(res, 200, {
@@ -529,6 +528,7 @@ export default async function handleAdminAuth(req: any, res: any) {
         }
 
         const [
+          { count: attRecCount },
           { count: sessCount },
           { count: assessCount },
           { count: quizCount },
@@ -538,6 +538,7 @@ export default async function handleAdminAuth(req: any, res: any) {
           { count: notifCount },
           { count: msgCount },
         ] = await Promise.all([
+          dbClient.from('attendance_records').select('*', { count: 'exact', head: true }).eq('marked_by', targetId),
           dbClient.from('attendance_sessions').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
           dbClient.from('sessional_assessments').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
           dbClient.from('quizzes').select('*', { count: 'exact', head: true }).eq('faculty_id', targetId),
@@ -553,14 +554,14 @@ export default async function handleAdminAuth(req: any, res: any) {
         ]);
 
         const dependencies = {
-          'Attendance Sessions Taken': sessCount || 0,
-          'Sessional Assessments Created': assessCount || 0,
-          'Quizzes Created': quizCount || 0,
-          'Course Assignments': assignCount || 0,
-          'Subject Teaching Assignments': facAssignCount || 0,
-          'Leave Requests': leaveCount || 0,
-          'Notifications': notifCount || 0,
-          'Direct Messages': msgCount || 0,
+          'Attendance Records (Preserved)': attRecCount || 0,
+          'Attendance Sessions (Preserved)': sessCount || 0,
+          'Sessional Assessments (Preserved)': assessCount || 0,
+          'Quizzes & Assignments (Preserved)': (quizCount || 0) + (assignCount || 0),
+          'Subject Teaching Assignments (Purged)': facAssignCount || 0,
+          'Direct Messages (Purged)': msgCount || 0,
+          'Notifications (Purged)': notifCount || 0,
+          'Leave Requests (Disassociated)': leaveCount || 0,
         };
 
         return sendJson(res, 200, {

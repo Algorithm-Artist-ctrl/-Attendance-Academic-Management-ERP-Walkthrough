@@ -755,7 +755,20 @@ export const RecordsArchivePage: React.FC = () => {
           setPermanentDeleteTarget(null);
         }}
         target={permanentDeleteTarget}
-        onSuccess={() => loadData(true)}
+        onSuccess={() => {
+          if (permanentDeleteTarget) {
+            const targetId = permanentDeleteTarget.id;
+            const targetRole = permanentDeleteTarget.role;
+            setRecords(prev => prev.filter(r => r.id !== targetId));
+            setStats(prev => ({
+              ...prev,
+              total_archived: Math.max(0, prev.total_archived - 1),
+              former_faculty: targetRole === 'faculty' ? Math.max(0, prev.former_faculty - 1) : prev.former_faculty,
+              former_students: targetRole === 'student' ? Math.max(0, prev.former_students - 1) : prev.former_students,
+            }));
+          }
+          loadData(true);
+        }}
       />
     </div>
   );

@@ -77,6 +77,7 @@ export const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
 
   const handleDelete = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDeleting) return;
     if (!isConfirmed) {
       setError('You must type "DELETE" exactly to confirm permanent deletion.');
       return;
@@ -121,7 +122,7 @@ export const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
               WARNING: This operation is permanent and cannot be undone!
             </span>
             <p className="text-rose-800 leading-relaxed">
-              Permanently deleting this account will purge the user from ERP Authentication and cascade-delete all linked database records across attendance, marks, quizzes, submissions, messages, and audit dossiers.
+              Permanently deleting this account will remove login credentials and purge personal communications. In accordance with institutional retention policies, student attendance and examination records are safely preserved under the Institutional Archive.
             </p>
           </div>
         </div>
@@ -161,7 +162,7 @@ export const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Database className="w-3.5 h-3.5 text-slate-500" />
-              Dependent Records Scheduled for Purge
+              Linked Database Records Analysis
             </span>
             {loadingDependencies ? (
               <span className="flex items-center gap-1 text-[11px] text-slate-400">
@@ -177,14 +178,21 @@ export const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
 
           {dependencies && Object.keys(dependencies).length > 0 ? (
             <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
-              {Object.entries(dependencies).map(([label, count]) => (
-                <div key={label} className="flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
-                  <span className="text-slate-600 text-[11px] truncate max-w-[140px]" title={label}>{label}</span>
-                  <span className={`font-mono font-bold text-[11px] ${count > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                    {count}
-                  </span>
-                </div>
-              ))}
+              {Object.entries(dependencies).map(([label, count]) => {
+                const isPreserved = label.includes('(Preserved)');
+                return (
+                  <div key={label} className="flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                    <span className="text-slate-600 text-[11px] truncate max-w-[145px]" title={label}>{label}</span>
+                    <span className={`font-mono font-bold text-[11px] ${
+                      count > 0 
+                        ? (isPreserved ? 'text-emerald-700' : 'text-rose-600') 
+                        : 'text-slate-400'
+                    }`}>
+                      {count}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           ) : !loadingDependencies ? (
             <p className="text-[11px] text-slate-400 italic">No active dependencies found.</p>
