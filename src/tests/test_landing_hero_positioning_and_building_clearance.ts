@@ -35,34 +35,27 @@ function verifyHeroPositioningAndClearance() {
     'Hero container has generous breathing space below header without pushing into the building'
   );
 
-  // 2. Eyebrow Tag Spacing & Single Occurrence
-  console.log('\n▶ [PHASE 2] Checking Eyebrow Tag Positioning & Single Occurrence...');
-  check(
-    code.includes('Empowering with Technology') && code.includes('h-[2px] w-5 sm:w-6 bg-blue-600'),
-    'Eyebrow tag "— Empowering with Technology" rendered with blue accent line'
-  );
-  check(
-    code.includes('mb-1.5 sm:mb-2') || code.includes('mb-2'),
-    'Eyebrow tag has comfortable bottom spacing before the main heading'
-  );
-
-  // Exact single occurrence of "Empowering with Technology"
+  // 2. Complete Removal of "Empowering with Technology"
+  console.log('\n▶ [PHASE 2] Checking Complete Removal of Eyebrow Text...');
   const matches = (code.match(/Empowering with Technology/gi) || []).length;
   check(
-    matches === 1,
-    `"Empowering with Technology" appears exactly 1 time in the component code (found: ${matches})`
+    matches === 0,
+    `"Empowering with Technology" is completely removed from component code (found: ${matches})`
+  );
+  check(
+    !code.includes('Empowering with Technology'),
+    'Eyebrow text does not exist anywhere in LoginPage.tsx'
   );
 
-  // 3. Main Heading & Subtitle Order and Sizing
+  // 3. Main Heading & Subtitle Order and Sizing (Moved Up to Top)
   console.log('\n▶ [PHASE 3] Checking Headline Typography & Subtitle Clearance...');
   check(
     code.includes('clamp(24px, 2.2vw, 36px)') && code.includes('leading-[1.05]'),
     'Main heading uses refined responsive clamp and compact line height to prevent roof collision'
   );
   check(
-    code.includes('<div className="block">\n                <TextEffect per="word" preset="slide" delay={0.12}>\n                  Empowering\n                </TextEffect>\n              </div>') ||
-    (code.includes('Empowering') && code.includes('Education') && code.includes('with Technology')),
-    'Main heading cleanly breaks into Line 1 "Empowering" and Line 2 "Education with Technology"'
+    code.includes('delay={0.08}') && (code.includes('Empowering') && code.includes('Education') && code.includes('with Technology')),
+    'Main heading moved up to top with smooth initial entrance delay (0.08s)'
   );
   check(
     code.includes('A Smarter Campus for a Brighter Tomorrow') && 

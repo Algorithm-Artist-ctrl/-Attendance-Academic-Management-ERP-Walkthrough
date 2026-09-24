@@ -81,7 +81,7 @@ function runMotionPrimitivesAudit() {
 
   // Hero text reveal
   check(loginContent.includes('<TextEffect per="word" preset="slide"'), 'Hero headline uses staggered word slide reveal');
-  check(loginContent.includes('Empowering with Technology'), 'Tagline "Empowering with Technology" is present');
+  check(!loginContent.includes('Empowering with Technology'), 'Eyebrow "Empowering with Technology" is completely removed from the landing page');
 
   // Role tab indicator transition
   check(loginContent.includes('data-id="student"') && loginContent.includes('data-id="faculty"') && loginContent.includes('data-id="admin"'), 'AnimatedBackground wraps all 3 role tabs with data-id');

@@ -325,51 +325,38 @@ export const LoginPage: React.FC = () => {
         
         {/* Left Column (Desktop Only): Hero Text in Sky & Feature Strip over Lawn */}
         <div className="hidden lg:flex flex-1 flex-col justify-between min-w-0 pr-6 h-full">
-          {/* Hero Headlines with Motion Primitives TextEffect Reveal — Controlled Upper-Left Placement */}
+          {/* Hero Headlines with Motion Primitives TextEffect Reveal — Upper-Left Sky Placement */}
           <div className="w-full max-w-[460px] xl:max-w-[500px] pt-2 sm:pt-3 lg:pt-3.5 xl:pt-4 flex flex-col items-start">
-            {/* 1. Eyebrow Tag (Exactly 1 visible instance, zero DOM duplication) */}
-            <motion.div 
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="flex items-center gap-2 mb-1.5 sm:mb-2"
-            >
-              <span className="h-[2px] w-5 sm:w-6 bg-blue-600 rounded-full shrink-0" />
-              <span className="text-xs sm:text-[13px] font-bold tracking-[0.14em] text-slate-800 uppercase">
-                Empowering with Technology
-              </span>
-            </motion.div>
-
-            {/* 2. Main Heading: "Empowering / Education with Technology" */}
+            {/* Main Heading: "Empowering / Education with Technology" (Moved up to top of hero) */}
             <h2 
               className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.05] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
               style={{ fontSize: 'clamp(24px, 2.2vw, 36px)' }}
             >
               <div className="block">
-                <TextEffect per="word" preset="slide" delay={0.12}>
+                <TextEffect per="word" preset="slide" delay={0.08}>
                   Empowering
                 </TextEffect>
               </div>
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="text-blue-600 font-serif-hero">
-                  <TextEffect per="word" preset="slide" delay={0.22}>
+                  <TextEffect per="word" preset="slide" delay={0.18}>
                     Education
                   </TextEffect>
                 </span>
                 <span className="font-serif-hero font-normal text-slate-900">
-                  <TextEffect per="word" preset="slide" delay={0.32}>
+                  <TextEffect per="word" preset="slide" delay={0.26}>
                     with Technology
                   </TextEffect>
                 </span>
               </div>
             </h2>
 
-            {/* 3. Subtitle: "A Smarter Campus for a Brighter Tomorrow" */}
+            {/* Subtitle: "A Smarter Campus for a Brighter Tomorrow" (Directly below heading in clear sky) */}
             <TextEffect 
               per="line" 
               preset="fade" 
-              delay={0.42} 
-              className="text-xs sm:text-[13px] lg:text-sm text-slate-700 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.95)] mt-1.5 sm:mt-2 max-w-sm sm:max-w-md"
+              delay={0.36} 
+              className="text-xs sm:text-[13px] lg:text-sm text-slate-700 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.95)] mt-2 sm:mt-2.5 max-w-sm sm:max-w-md"
             >
               A Smarter Campus for a Brighter Tomorrow
             </TextEffect>
