@@ -17,8 +17,12 @@ import {
   Sparkles,
   Trophy
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
+import { TextEffect } from '../../components/core/text-effect';
+import { AnimatedBackground } from '../../components/core/animated-background';
+import { AnimatedGroup } from '../../components/core/animated-group';
 import vctmOfficialLogo from '../../assets/vctm-logo.png';
 import vctmOfficialLogoAvif from '../../assets/vctm-logo.avif';
 import vctmCampusImage from '../../assets/vctm-campus.jpg';
@@ -146,6 +150,12 @@ const INFO_DATA: Record<string, InfoModalData> = {
   },
 };
 
+const ROLE_TABS = [
+  { id: 'student' as const, label: 'Student', icon: GraduationCap },
+  { id: 'faculty' as const, label: 'Faculty / HOD', icon: Users },
+  { id: 'admin' as const, label: 'Admin', icon: ShieldCheck },
+];
+
 export const LoginPage: React.FC = () => {
   const { login, isLoading, error } = useAuth();
   const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'faculty' | 'admin'>('faculty');
@@ -230,7 +240,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* 2. INSTITUTIONAL HEADER BAR (Exact First Screenshot)     */}
+      {/* 2. INSTITUTIONAL HEADER BAR                              */}
       {/* ======================================================== */}
       <header className="relative z-20 w-full px-6 sm:px-8 lg:px-12 py-2.5 shrink-0 bg-white/90 backdrop-blur-md border-b border-slate-200/70 flex items-center justify-between shadow-xs">
         {/* Left: Official College Logo & Institutional Branding */}
@@ -266,37 +276,45 @@ export const LoginPage: React.FC = () => {
 
         {/* Right: Institutional Values Navigation */}
         <nav className="hidden sm:flex items-center gap-1.5 lg:gap-3 text-xs font-semibold text-slate-700 tracking-[0.18em] lg:tracking-[0.25em] uppercase">
-          <button
+          <motion.button
             type="button"
             onClick={() => setActiveInfoModal('learn')}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
           >
             LEARN
-          </button>
+          </motion.button>
           <span className="text-slate-300 font-normal">|</span>
-          <button
+          <motion.button
             type="button"
             onClick={() => setActiveInfoModal('innovate')}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
           >
             INNOVATE
-          </button>
+          </motion.button>
           <span className="text-slate-300 font-normal">|</span>
-          <button
+          <motion.button
             type="button"
             onClick={() => setActiveInfoModal('grow')}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
           >
             GROW
-          </button>
+          </motion.button>
           <span className="text-slate-300 font-normal">|</span>
-          <button
+          <motion.button
             type="button"
             onClick={() => setActiveInfoModal('achieve')}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             className="hover:text-blue-900 transition-colors cursor-pointer py-1 px-1.5 rounded hover:bg-slate-100/70"
           >
             ACHIEVE
-          </button>
+          </motion.button>
         </nav>
       </header>
 
@@ -307,65 +325,117 @@ export const LoginPage: React.FC = () => {
         
         {/* Left Column (Desktop Only): Hero Text in Sky & Feature Strip over Lawn */}
         <div className="hidden lg:flex flex-1 flex-col justify-between min-w-0 pr-6 h-full">
-          {/* Hero Headlines (Positioned in upper sky, matching First Screenshot) */}
+          {/* Hero Headlines with Motion Primitives TextEffect Reveal */}
           <div className="max-w-lg pt-3 sm:pt-4 lg:pt-4">
+            {/* Subtle Pill Tag: "— Empowering with Technology" */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="h-0.5 w-6 bg-blue-600 rounded-full" />
+              <span className="text-xs font-bold tracking-wider text-slate-800 uppercase">
+                <TextEffect per="char" preset="fade" delay={0.05}>
+                  Empowering with Technology
+                </TextEffect>
+              </span>
+            </div>
+
             <h2 
-              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.04] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
-              style={{ fontSize: 'clamp(36px, 3.3vw, 52px)' }}
+              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.06] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
+              style={{ fontSize: 'clamp(36px, 3.4vw, 54px)' }}
             >
-              Empowering <br />
-              Education <span className="font-normal font-serif-hero text-slate-900">with Technology</span>
+              <TextEffect per="word" preset="slide" delay={0.12}>
+                Empowering
+              </TextEffect>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-blue-600 font-serif-hero">
+                  <TextEffect per="word" preset="slide" delay={0.22}>
+                    Education
+                  </TextEffect>
+                </span>
+                <span className="font-serif-hero font-normal text-slate-900">
+                  <TextEffect per="word" preset="slide" delay={0.32}>
+                    with Technology
+                  </TextEffect>
+                </span>
+              </div>
             </h2>
-            <p className="text-sm lg:text-[15px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-2 max-w-md">
+
+            <TextEffect 
+              per="line" 
+              preset="fade" 
+              delay={0.42} 
+              className="text-sm lg:text-[15px] text-slate-800 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] mt-2.5 max-w-md"
+            >
               A Smarter Campus for a Brighter Tomorrow
-            </p>
+            </TextEffect>
           </div>
 
           {/* Compact Single Horizontal Feature Strip (Anchored to bottom-left over green lawn) */}
-          <div className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-xl py-2 px-3 shadow-xl border border-slate-700/60 mt-auto mb-1">
-            <div className="grid grid-cols-4 divide-x divide-slate-700/60 text-xs font-semibold tracking-wide">
+          <motion.div 
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-xl xl:max-w-2xl bg-[#0f172a]/95 backdrop-blur-md text-white rounded-xl py-2 px-3 shadow-xl border border-slate-700/60 mt-auto mb-1"
+          >
+            <AnimatedGroup
+              preset="fade"
+              className="grid grid-cols-4 divide-x divide-slate-700/60 text-xs font-semibold tracking-wide"
+            >
               <button
                 type="button"
                 onClick={() => setActiveInfoModal('academics')}
-                className="flex items-center gap-2 pr-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2 pr-2.5 py-1 hover:bg-white/10 active:scale-98 rounded-lg transition-all cursor-pointer text-left"
               >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <GraduationCap className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] xl:text-xs">ACADEMICS</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] xl:text-xs font-bold leading-tight">ACADEMICS</span>
+                  <span className="text-[9px] text-slate-400 font-normal leading-tight hidden xl:inline truncate">Courses & Syllabus</span>
+                </div>
               </button>
+
               <button
                 type="button"
                 onClick={() => setActiveInfoModal('attendance')}
-                className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/10 active:scale-98 rounded-lg transition-all cursor-pointer text-left"
               >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] xl:text-xs">ATTENDANCE</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] xl:text-xs font-bold leading-tight">ATTENDANCE</span>
+                  <span className="text-[9px] text-slate-400 font-normal leading-tight hidden xl:inline truncate">Track & Manage</span>
+                </div>
               </button>
+
               <button
                 type="button"
                 onClick={() => setActiveInfoModal('timetable')}
-                className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2 px-2.5 py-1 hover:bg-white/10 active:scale-98 rounded-lg transition-all cursor-pointer text-left"
               >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <Calendar className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] xl:text-xs">TIMETABLE</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] xl:text-xs font-bold leading-tight">TIMETABLE</span>
+                  <span className="text-[9px] text-slate-400 font-normal leading-tight hidden xl:inline truncate">View Schedules</span>
+                </div>
               </button>
+
               <button
                 type="button"
                 onClick={() => setActiveInfoModal('assessments')}
-                className="flex items-center gap-2 pl-2.5 py-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2 pl-2.5 py-1 hover:bg-white/10 active:scale-98 rounded-lg transition-all cursor-pointer text-left"
               >
                 <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-white shrink-0">
                   <FileText className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] xl:text-xs">ASSESSMENTS</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] xl:text-xs font-bold leading-tight">ASSESSMENTS</span>
+                  <span className="text-[9px] text-slate-400 font-normal leading-tight hidden xl:inline truncate">Marks & Evaluation</span>
+                </div>
               </button>
-            </div>
-          </div>
+            </AnimatedGroup>
+          </motion.div>
         </div>
 
         {/* Right Side / Mobile Center: Login Card Container (Vertically Centered) */}
@@ -414,9 +484,13 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Premium Login Card (Exact First Screenshot Proportions & Styling) */}
-          <div className="w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[440px] xl:max-w-[460px] bg-white rounded-[24px] p-5 sm:p-6 lg:p-6 shadow-[0_16px_45px_-10px_rgba(15,23,42,0.22)] border border-slate-200/90 relative overflow-hidden transition-all duration-300">
-            
+          {/* Premium Login Card with Subtle Spring Entrance */}
+          <motion.div 
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
+            className="w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[440px] xl:max-w-[460px] bg-white rounded-[22px] sm:rounded-[24px] p-5 sm:p-6 lg:p-6 shadow-[0_16px_45px_-10px_rgba(15,23,42,0.22)] border border-slate-200/90 relative overflow-hidden"
+          >
             {/* Desktop Card Header */}
             <div className="hidden lg:block text-center mb-3.5">
               <div className="w-12 h-12 mx-auto mb-1 flex items-center justify-center">
@@ -446,58 +520,79 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Role Selection Tabs (Student / Faculty-HOD / Admin) */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-100/90 p-1 rounded-xl mb-3.5 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => handleRoleTabChange('student')}
-                className={clsx(
-                  'min-h-[40px] sm:min-h-[42px] py-1 px-1.5 sm:px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5',
-                  activeRoleTab === 'student'
-                    ? 'bg-[#0f172a] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
-                )}
+            {/* Role Selection Tabs with Motion Primitives AnimatedBackground */}
+            <div className="grid grid-cols-3 gap-1 bg-slate-100/90 p-1 rounded-xl mb-3.5 border border-slate-200 relative">
+              <AnimatedBackground
+                defaultValue={activeRoleTab}
+                className="rounded-lg bg-[#0f172a] shadow-xs"
+                transition={{
+                  type: 'spring',
+                  bounce: 0.12,
+                  duration: 0.32,
+                }}
               >
-                <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>Student</span>
-              </button>
+                <button
+                  data-id="student"
+                  type="button"
+                  onClick={() => handleRoleTabChange('student')}
+                  className={clsx(
+                    'h-11 min-h-[44px] py-1 px-1.5 sm:px-2 rounded-lg transition-colors duration-150 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5 font-semibold z-10',
+                    activeRoleTab === 'student'
+                      ? 'text-white font-bold'
+                      : 'text-slate-700 hover:text-slate-950 font-semibold'
+                  )}
+                >
+                  <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span>Student</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleRoleTabChange('faculty')}
-                className={clsx(
-                  'min-h-[40px] sm:min-h-[42px] py-1 px-1 sm:px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5',
-                  activeRoleTab === 'faculty'
-                    ? 'bg-[#0f172a] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
-                )}
-              >
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="text-[11px] sm:text-xs leading-tight text-center whitespace-nowrap">Faculty / HOD</span>
-              </button>
+                <button
+                  data-id="faculty"
+                  type="button"
+                  onClick={() => handleRoleTabChange('faculty')}
+                  className={clsx(
+                    'h-11 min-h-[44px] py-1 px-1 sm:px-2 rounded-lg transition-colors duration-150 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5 font-semibold z-10',
+                    activeRoleTab === 'faculty'
+                      ? 'text-white font-bold'
+                      : 'text-slate-700 hover:text-slate-950 font-semibold'
+                  )}
+                >
+                  <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="text-[11px] sm:text-xs leading-tight text-center whitespace-nowrap">Faculty / HOD</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleRoleTabChange('admin')}
-                className={clsx(
-                  'min-h-[40px] sm:min-h-[42px] py-1 px-1.5 sm:px-2 rounded-lg transition-all duration-200 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5',
-                  activeRoleTab === 'admin'
-                    ? 'bg-[#0f172a] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200/70 hover:bg-slate-50 font-semibold'
-                )}
-              >
-                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>Admin</span>
-              </button>
+                <button
+                  data-id="admin"
+                  type="button"
+                  onClick={() => handleRoleTabChange('admin')}
+                  className={clsx(
+                    'h-11 min-h-[44px] py-1 px-1.5 sm:px-2 rounded-lg transition-colors duration-150 cursor-pointer select-none text-xs flex items-center justify-center gap-1 sm:gap-1.5 font-semibold z-10',
+                    activeRoleTab === 'admin'
+                      ? 'text-white font-bold'
+                      : 'text-slate-700 hover:text-slate-950 font-semibold'
+                  )}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span>Admin</span>
+                </button>
+              </AnimatedBackground>
             </div>
 
-            {/* Error Message Alert */}
-            {(localError || error) && (
-              <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-2.5 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                <span className="font-semibold">{localError || error}</span>
-              </div>
-            )}
+            {/* Error Message Alert with AnimatePresence */}
+            <AnimatePresence>
+              {(localError || error) && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-2.5"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                  <span className="font-semibold">{localError || error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -527,7 +622,7 @@ export const LoginPage: React.FC = () => {
                         ? 'Enter college ID / faculty email' 
                         : 'Enter admin ID / email'
                     }
-                    className="w-full h-[48px] pl-10 pr-3.5 text-sm bg-white border border-[#e2e8f0] rounded-xl text-[#0f172a] font-semibold placeholder:text-[#64748b] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full h-[52px] pl-10 pr-3.5 text-sm bg-white border border-[#e2e8f0] rounded-xl text-[#0f172a] font-semibold placeholder:text-[#64748b] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -556,7 +651,7 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full h-[48px] pl-10 pr-12 text-sm bg-white border border-[#e2e8f0] rounded-xl text-[#0f172a] font-semibold placeholder:text-[#64748b] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
+                    className="w-full h-[52px] pl-10 pr-12 text-sm bg-white border border-[#e2e8f0] rounded-xl text-[#0f172a] font-semibold placeholder:text-[#64748b] placeholder:font-normal focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all shadow-xs"
                   />
                   <button
                     type="button"
@@ -569,12 +664,15 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit Button with Motion Tap/Hover Feedback */}
               <div className="pt-1">
-                <button
+                <motion.button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-[48px] px-4 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-sm sm:text-base transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                  whileHover={!isLoading ? { scale: 1.01 } : undefined}
+                  whileTap={!isLoading ? { scale: 0.98 } : undefined}
+                  transition={{ duration: 0.15 }}
+                  className="w-full h-[52px] px-4 rounded-xl bg-[#0f172a] hover:bg-black text-white font-bold text-sm sm:text-base transition-shadow shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -587,24 +685,38 @@ export const LoginPage: React.FC = () => {
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
             </form>
 
-            {/* Helper Note inside Card */}
-            <div className="mt-3.5 pt-2.5 border-t border-slate-100 text-center">
-              <p className="text-[11px] text-[#334155] font-medium leading-relaxed max-w-xs mx-auto">
-                {activeRoleTab === 'student' 
-                  ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
-                  : activeRoleTab === 'faculty' 
-                  ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
-                  : 'Access institutional administration, department oversight, and academic records.'}
-              </p>
+            {/* Helper Note inside Card with AnimatePresence */}
+            <div className="mt-3.5 pt-2.5 border-t border-slate-100 text-center min-h-[36px] flex items-center justify-center">
+              <AnimatePresence mode="wait">
+                <motion.p 
+                  key={activeRoleTab}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-[11px] text-[#334155] font-medium leading-relaxed max-w-xs mx-auto"
+                >
+                  {activeRoleTab === 'student' 
+                    ? 'Access your attendance, sessional marks, timetable and academic notices with ease.' 
+                    : activeRoleTab === 'faculty' 
+                    ? 'Access your academic tools and manage your teaching responsibilities with ease.' 
+                    : 'Access institutional administration, department oversight, and academic records.'}
+                </motion.p>
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
 
           {/* Mobile-Only Feature Grid (Compact 2x2 grid below card) */}
-          <div className="lg:hidden w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[440px] mt-3 mb-1 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-2 shadow-lg border border-slate-700/60">
+          <motion.div 
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:hidden w-[calc(100%-16px)] sm:w-[calc(100%-32px)] max-w-[440px] mt-3 mb-1 bg-[#0f172a]/95 backdrop-blur-md text-white rounded-2xl p-2 shadow-lg border border-slate-700/60"
+          >
             <div className="grid grid-cols-2 gap-1.5 text-xs font-semibold">
               <button
                 type="button"
@@ -614,7 +726,10 @@ export const LoginPage: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
                   <GraduationCap className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold tracking-wider">ACADEMICS</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold tracking-wider">ACADEMICS</span>
+                  <span className="text-[9px] text-slate-400 font-normal truncate">Courses & Syllabus</span>
+                </div>
               </button>
               <button
                 type="button"
@@ -624,7 +739,10 @@ export const LoginPage: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold tracking-wider">ATTENDANCE</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold tracking-wider">ATTENDANCE</span>
+                  <span className="text-[9px] text-slate-400 font-normal truncate">Track & Manage</span>
+                </div>
               </button>
               <button
                 type="button"
@@ -634,7 +752,10 @@ export const LoginPage: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
                   <Calendar className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold tracking-wider">TIMETABLE</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold tracking-wider">TIMETABLE</span>
+                  <span className="text-[9px] text-slate-400 font-normal truncate">View Schedules</span>
+                </div>
               </button>
               <button
                 type="button"
@@ -644,16 +765,19 @@ export const LoginPage: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
                   <FileText className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-bold tracking-wider">ASSESSMENTS</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold tracking-wider">ASSESSMENTS</span>
+                  <span className="text-[9px] text-slate-400 font-normal truncate">Marks & Evaluation</span>
+                </div>
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
 
       </main>
 
       {/* ======================================================== */}
-      {/* 4. COMPACT INSTITUTIONAL FOOTER (Exact First Screenshot) */}
+      {/* 4. COMPACT INSTITUTIONAL FOOTER                          */}
       {/* ======================================================== */}
       <footer className="relative z-20 w-full px-4 sm:px-8 lg:px-12 py-2.5 sm:py-3 shrink-0 border-t border-slate-200/80 bg-white/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-1.5 text-xs text-slate-600">
         <p className="text-center sm:text-left font-medium">

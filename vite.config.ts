@@ -35,6 +35,9 @@ export default defineConfig({
             if (id.includes('@supabase/')) {
               return 'supabase-vendor';
             }
+            if (id.includes('motion/')) {
+              return 'motion-vendor';
+            }
           }
         }
       }
