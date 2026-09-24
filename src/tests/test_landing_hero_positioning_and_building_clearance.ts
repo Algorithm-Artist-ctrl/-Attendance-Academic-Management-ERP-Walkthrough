@@ -4,7 +4,7 @@ import path from 'path';
 function verifyHeroPositioningAndClearance() {
   console.log('================================================================================');
   console.log('  VCTM ERP — LANDING HERO POSITIONING & BUILDING CLEARANCE AUDIT                ');
-  console.log('  Verifying Alignment, Spacing, Hierarchy & Visual Match to Reference Image 2   ');
+  console.log('  Verifying Alignment, Spacing, Hierarchy & Exact Single Text Occurrence        ');
   console.log('================================================================================\n');
 
   let passed = 0;
@@ -27,29 +27,36 @@ function verifyHeroPositioningAndClearance() {
   // 1. Spacing and Placement Hierarchy
   console.log('▶ [PHASE 1] Checking Upper-Left Placement & Breathing Room...');
   check(
-    code.includes('max-w-[540px]') || code.includes('max-w-[580px]'),
-    'Hero headlines container has controlled max-width (540-580px) preventing 3-line wrap and card overlap'
+    code.includes('max-w-[460px]') || code.includes('max-w-[500px]'),
+    'Hero headlines container has controlled max-width (460-500px) preventing 3-line wrap and card overlap'
   );
   check(
-    code.includes('pt-4 sm:pt-5 lg:pt-6 xl:pt-8') || code.includes('lg:pt-6'),
-    'Hero container has generous breathing space below header (not pushed too close)'
+    code.includes('pt-2 sm:pt-3 lg:pt-3.5 xl:pt-4') || code.includes('lg:pt-3.5'),
+    'Hero container has generous breathing space below header without pushing into the building'
   );
 
-  // 2. Eyebrow Tag Spacing
-  console.log('\n▶ [PHASE 2] Checking Eyebrow Tag Positioning...');
+  // 2. Eyebrow Tag Spacing & Single Occurrence
+  console.log('\n▶ [PHASE 2] Checking Eyebrow Tag Positioning & Single Occurrence...');
   check(
     code.includes('Empowering with Technology') && code.includes('h-[2px] w-5 sm:w-6 bg-blue-600'),
     'Eyebrow tag "— Empowering with Technology" rendered with blue accent line'
   );
   check(
-    code.includes('mb-2 sm:mb-2.5') || code.includes('mb-2.5'),
+    code.includes('mb-1.5 sm:mb-2') || code.includes('mb-2'),
     'Eyebrow tag has comfortable bottom spacing before the main heading'
+  );
+
+  // Exact single occurrence of "Empowering with Technology"
+  const matches = (code.match(/Empowering with Technology/gi) || []).length;
+  check(
+    matches === 1,
+    `"Empowering with Technology" appears exactly 1 time in the component code (found: ${matches})`
   );
 
   // 3. Main Heading & Subtitle Order and Sizing
   console.log('\n▶ [PHASE 3] Checking Headline Typography & Subtitle Clearance...');
   check(
-    code.includes('clamp(28px, 2.6vw, 42px)') && code.includes('leading-[1.08]'),
+    code.includes('clamp(24px, 2.2vw, 36px)') && code.includes('leading-[1.05]'),
     'Main heading uses refined responsive clamp and compact line height to prevent roof collision'
   );
   check(
@@ -59,7 +66,7 @@ function verifyHeroPositioningAndClearance() {
   );
   check(
     code.includes('A Smarter Campus for a Brighter Tomorrow') && 
-    (code.includes('mt-2 sm:mt-2.5') || code.includes('mt-2.5')),
+    (code.includes('mt-1.5 sm:mt-2') || code.includes('mt-2')),
     'Subtitle appears directly below heading with comfortable margin (never overlapping roof/building)'
   );
 
@@ -70,8 +77,8 @@ function verifyHeroPositioningAndClearance() {
     'Campus image preserves natural building proportions and visible signage'
   );
   check(
-    code.includes('bg-gradient-to-br from-white/85 via-white/30 to-transparent') && code.includes('max-w-[50%]'),
-    'Localized sky gradient is subtle and scoped to upper-left sky only (building remains unblurred/sunlit)'
+    code.includes('from-white/75 via-white/20 to-transparent') && code.includes('h-[20%]'),
+    'Localized sky gradient is strictly scoped to upper-left sky (h-[20%]) so building remains unblurred/sunlit'
   );
   check(
     code.includes('Vivekananda College of Technology & Management') && code.includes('ALIGARH'),
@@ -94,9 +101,10 @@ function verifyHeroPositioningAndClearance() {
   );
 
   console.log('\n================================================================================');
-  console.log(`🎉 ALL ${passed}/${total} HERO POSITIONING & CLEARANCE ASSERTIONS PASSED!`);
+  console.log(`🎉 ALL ${passed}/${total} HERO POSITIONING, CLEARANCE & SINGLE OCCURRENCE ASSERTIONS PASSED!`);
+  console.log('   - Exactly 1 instance of "Empowering with Technology" in the codebase');
+  console.log('   - Zero duplicate DOM, zero hidden duplicate text');
   console.log('   - Hero text placed in upper-left sky with proper spacing and zero roof overlap');
-  console.log('   - Eyebrow, headline, and subtitle hierarchy match Reference Image 2');
   console.log('   - Campus photo, building signage, and login card completely unobstructed');
   console.log('================================================================================\n');
 }

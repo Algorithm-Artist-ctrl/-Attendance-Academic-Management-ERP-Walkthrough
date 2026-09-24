@@ -232,7 +232,7 @@ export const LoginPage: React.FC = () => {
           />
         </picture>
         {/* Desktop localized sky gradient (upper-left) */}
-        <div className="hidden lg:block absolute top-0 left-0 w-[540px] xl:w-[600px] max-w-[50%] h-[34%] bg-gradient-to-br from-white/85 via-white/30 to-transparent pointer-events-none" />
+        <div className="hidden lg:block absolute top-0 left-0 w-[460px] xl:w-[500px] max-w-[40%] h-[20%] bg-gradient-to-br from-white/75 via-white/20 to-transparent pointer-events-none" />
         {/* Mobile balanced backdrop overlay for readability while keeping the building visible */}
         <div className="absolute inset-0 bg-slate-900/25 lg:hidden pointer-events-none" />
         {/* Desktop subtle right-side contrast shadow */}
@@ -326,21 +326,24 @@ export const LoginPage: React.FC = () => {
         {/* Left Column (Desktop Only): Hero Text in Sky & Feature Strip over Lawn */}
         <div className="hidden lg:flex flex-1 flex-col justify-between min-w-0 pr-6 h-full">
           {/* Hero Headlines with Motion Primitives TextEffect Reveal — Controlled Upper-Left Placement */}
-          <div className="w-full max-w-[540px] xl:max-w-[580px] pt-4 sm:pt-5 lg:pt-6 xl:pt-8 flex flex-col items-start">
-            {/* 1. Eyebrow Tag: "— Empowering with Technology" */}
-            <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
+          <div className="w-full max-w-[460px] xl:max-w-[500px] pt-2 sm:pt-3 lg:pt-3.5 xl:pt-4 flex flex-col items-start">
+            {/* 1. Eyebrow Tag (Exactly 1 visible instance, zero DOM duplication) */}
+            <motion.div 
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="flex items-center gap-2 mb-1.5 sm:mb-2"
+            >
               <span className="h-[2px] w-5 sm:w-6 bg-blue-600 rounded-full shrink-0" />
               <span className="text-xs sm:text-[13px] font-bold tracking-[0.14em] text-slate-800 uppercase">
-                <TextEffect per="char" preset="fade" delay={0.05}>
-                  Empowering with Technology
-                </TextEffect>
+                Empowering with Technology
               </span>
-            </div>
+            </motion.div>
 
             {/* 2. Main Heading: "Empowering / Education with Technology" */}
             <h2 
-              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.08] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
-              style={{ fontSize: 'clamp(28px, 2.6vw, 42px)' }}
+              className="font-serif-hero font-bold text-slate-950 tracking-tight leading-[1.05] drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]"
+              style={{ fontSize: 'clamp(24px, 2.2vw, 36px)' }}
             >
               <div className="block">
                 <TextEffect per="word" preset="slide" delay={0.12}>
@@ -366,7 +369,7 @@ export const LoginPage: React.FC = () => {
               per="line" 
               preset="fade" 
               delay={0.42} 
-              className="text-xs sm:text-sm lg:text-[15px] text-slate-700 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.95)] mt-2 sm:mt-2.5 max-w-md"
+              className="text-xs sm:text-[13px] lg:text-sm text-slate-700 font-sans font-medium tracking-normal drop-shadow-[0_1px_1px_rgba(255,255,255,0.95)] mt-1.5 sm:mt-2 max-w-sm sm:max-w-md"
             >
               A Smarter Campus for a Brighter Tomorrow
             </TextEffect>
