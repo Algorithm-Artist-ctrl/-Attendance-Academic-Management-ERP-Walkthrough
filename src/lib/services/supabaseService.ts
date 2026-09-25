@@ -359,10 +359,21 @@ export const supabaseService = {
             code: s.subject_code || s.code,
           })) as Subject[];
 
+          const freshSections = (secRes.data as Section[]) || [];
+          const freshFaculty = (facRes.data as Faculty[]) || [];
+          try {
+            if (freshSections.length > 0) {
+              erpStorage.setSections(freshSections);
+            }
+            if (freshFaculty.length > 0) {
+              erpStorage.setFaculty(freshFaculty);
+            }
+          } catch {}
+
           return {
-            sections: (secRes.data as Section[]) || [],
+            sections: freshSections,
             subjects: normalizedSubjects,
-            faculty: (facRes.data as Faculty[]) || [],
+            faculty: freshFaculty,
             assignments: (asgRes.data as FacultySubjectAssignment[]) || [],
             students: [] as Student[],
             profiles: [] as UserProfile[],
@@ -2696,12 +2707,40 @@ export const supabaseService = {
     // 4. Reconcile class coordinator assignments if provided
     if (coordinatorAssignments !== undefined) {
       const existingCoords = await this.fetchClassCoordinatorAssignments(facultyId);
+
+      // Also query sections where class_coordinator_id is directly set to this faculty
+      let directSectionIds: string[] = [];
+      try {
+        const { data: directSecs } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('class_coordinator_id', facultyId);
+        if (directSecs) {
+          directSectionIds = directSecs.map((s: any) => s.id);
+        }
+      } catch (err) {
+        console.warn('Error querying direct sections for coordinator reconciliation:', err);
+      }
+
+      // Check local erpStorage for any section pointing to this faculty
+      try {
+        const localSecs = erpStorage.getSections().filter(s => s.class_coordinator_id === facultyId);
+        for (const ls of localSecs) {
+          if (!directSectionIds.includes(ls.id)) directSectionIds.push(ls.id);
+        }
+      } catch {}
+
+      const allExistingSecIds = new Set([
+        ...existingCoords.map(c => c.section_id),
+        ...directSectionIds,
+      ]);
+
       const newSecIds = new Set(coordinatorAssignments.map(c => c.section_id));
 
       // Remove coordinator assignments no longer present
-      for (const ex of existingCoords) {
-        if (!newSecIds.has(ex.section_id)) {
-          await this.removeClassCoordinator(facultyId, ex.section_id);
+      for (const exSecId of allExistingSecIds) {
+        if (!newSecIds.has(exSecId)) {
+          await this.removeClassCoordinator(facultyId, exSecId);
         }
       }
 
@@ -3206,6 +3245,26 @@ export const supabaseService = {
   async updateSection(id: string, updates: Partial<Section>) {
     const { data, error } = await supabase.from('sections').update(updates).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+
+    // Sync coordinator assignments if class_coordinator_id was modified
+    if (updates.class_coordinator_id !== undefined) {
+      if (!updates.class_coordinator_id) {
+        // Coordinator cleared
+        await supabase
+          .from('class_coordinator_assignments')
+          .update({ active: false, updated_at: new Date().toISOString() })
+          .eq('section_id', id)
+          .eq('active', true);
+      } else {
+        // Coordinator assigned
+        await this.assignClassCoordinator(updates.class_coordinator_id, id);
+      }
+    }
+
+    try {
+      erpStorage.updateSection(id, updates);
+    } catch {}
+
     this.invalidateMasterCache();
     return data as Section;
   },
@@ -6049,7 +6108,82 @@ export const supabaseService = {
         }));
       }
 
-      return (data as any[]) || [];
+      const assignments = ((data as any[]) || []).filter(a => a.active !== false);
+      const assignedSectionIds = new Set(assignments.map(a => a.section_id));
+
+      // Also check inactive assignments so we NEVER resurrect deactivated coordinators
+      let inactivePairs = new Set<string>();
+      try {
+        let inactQ = supabase
+          .from('class_coordinator_assignments')
+          .select('section_id, faculty_id')
+          .eq('active', false);
+        if (facultyId) {
+          inactQ = inactQ.eq('faculty_id', facultyId);
+        }
+        const { data: inactData } = await inactQ;
+        if (inactData) {
+          inactivePairs = new Set(inactData.map((d: any) => `${d.faculty_id}-${d.section_id}`));
+        }
+      } catch {}
+
+      // Complement with any direct sections.class_coordinator_id pointers that aren't deactivated
+      try {
+        let secQ = supabase
+          .from('sections')
+          .select(`
+            id,
+            name,
+            room_number,
+            class_coordinator_id,
+            active,
+            class_coordinator:faculty(*),
+            semester:semesters(
+              id,
+              name,
+              semester_number,
+              academic_year:academic_years(
+                id,
+                name,
+                year_number
+              )
+            )
+          `)
+          .eq('active', true);
+
+        if (facultyId) {
+          secQ = secQ.eq('class_coordinator_id', facultyId);
+        } else {
+          secQ = secQ.not('class_coordinator_id', 'is', null);
+        }
+
+        const { data: secData } = await secQ;
+        for (const sec of ((secData as any[]) || [])) {
+          const sem = Array.isArray(sec.semester) ? sec.semester[0] : sec.semester;
+          const ay = Array.isArray(sem?.academic_year) ? sem.academic_year[0] : sem?.academic_year;
+          if (
+            sec.class_coordinator_id && 
+            !assignedSectionIds.has(sec.id) &&
+            !inactivePairs.has(`${sec.class_coordinator_id}-${sec.id}`)
+          ) {
+            assignments.push({
+              id: `sec-${sec.id}`,
+              faculty_id: sec.class_coordinator_id,
+              section_id: sec.id,
+              active: true,
+              faculty: sec.class_coordinator,
+              section: sec,
+              academic_year: ay,
+              academic_year_id: ay?.id,
+            });
+            assignedSectionIds.add(sec.id);
+          }
+        }
+      } catch (secErr) {
+        console.warn('Notice querying supplemental coordinator sections:', secErr);
+      }
+
+      return assignments;
     } catch (err) {
       console.error('Error in fetchClassCoordinatorAssignments:', err);
       return [];
@@ -6123,6 +6257,11 @@ export const supabaseService = {
         .update({ class_coordinator_id: facultyId, updated_at: new Date().toISOString() })
         .eq('id', sectionId);
 
+      // Sync erpStorage
+      try {
+        erpStorage.updateSection(sectionId, { class_coordinator_id: facultyId });
+      } catch {}
+
       this.invalidateMasterCache();
       return { success: true };
     } catch (err: any) {
@@ -6132,38 +6271,37 @@ export const supabaseService = {
 
   async removeClassCoordinator(facultyId: string, sectionId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Try Atomic RPC first (Migration 038)
+      // 1. Try Atomic RPC first (Migration 054 / 038)
       const { data: rpcRes, error: rpcErr } = await supabase.rpc('remove_class_coordinator_atomic', {
         p_faculty_id: facultyId,
         p_section_id: sectionId,
       });
 
-      if (!rpcErr && rpcRes && rpcRes.success) {
-        this.invalidateMasterCache();
-        return { success: true };
-      }
-
       if (rpcErr) {
-        console.warn('remove_class_coordinator_atomic RPC fallback:', rpcErr.message);
+        console.warn('remove_class_coordinator_atomic RPC notice:', rpcErr.message);
       }
 
-      // Fallback Direct Mutation
-      const { error } = await supabase
-        .from('class_coordinator_assignments')
-        .update({ active: false, updated_at: new Date().toISOString() })
-        .eq('faculty_id', facultyId)
-        .eq('section_id', sectionId);
+      // 2. Direct mutation as guaranteed defense-in-depth regardless of RPC status
+      try {
+        await supabase
+          .from('class_coordinator_assignments')
+          .update({ active: false, updated_at: new Date().toISOString() })
+          .eq('section_id', sectionId)
+          .eq('faculty_id', facultyId);
 
-      if (error) {
-        console.error('Failed to remove class coordinator assignment:', error.message);
-        return { success: false, error: error.message };
+        await supabase
+          .from('sections')
+          .update({ class_coordinator_id: null, updated_at: new Date().toISOString() })
+          .eq('id', sectionId)
+          .eq('class_coordinator_id', facultyId);
+      } catch (directErr: any) {
+        console.warn('Direct coordinator removal defense-in-depth notice:', directErr?.message);
       }
 
-      await supabase
-        .from('sections')
-        .update({ class_coordinator_id: null, updated_at: new Date().toISOString() })
-        .eq('id', sectionId)
-        .eq('class_coordinator_id', facultyId);
+      // 3. Update local erpStorage so stale cache never restores old coordinator
+      try {
+        erpStorage.updateSection(sectionId, { class_coordinator_id: undefined });
+      } catch {}
 
       this.invalidateMasterCache();
       return { success: true };

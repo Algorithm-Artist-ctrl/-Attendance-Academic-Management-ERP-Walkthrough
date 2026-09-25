@@ -55,6 +55,9 @@ export const FacultyDirectoryPage: React.FC = () => {
     setFacultyStatus,
     safeDeleteFaculty,
     refreshData,
+    refreshSections,
+    refreshCoordinatorAssignments,
+    refreshFaculty,
   } = useAcademic();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,9 +82,10 @@ export const FacultyDirectoryPage: React.FC = () => {
       cca => cca.active && cca.faculty_id === fId
     );
 
-    // 2. Check direct sections.class_coordinator_id pointer
+    // 2. Check direct sections.class_coordinator_id pointer (excluding any explicitly deactivated assignments)
     const directSecs = (sections || []).filter(
-      s => s.active && s.class_coordinator_id === fId
+      s => s.active && s.class_coordinator_id === fId &&
+        !(classCoordinatorAssignments || []).some(cca => cca.faculty_id === fId && cca.section_id === s.id && !cca.active)
     );
 
     const processSection = (secId: string, fallbackSec?: any) => {
@@ -593,6 +597,12 @@ export const FacultyDirectoryPage: React.FC = () => {
         })),
         actorName: user?.full_name || 'Administrator',
       });
+
+      await Promise.all([
+        refreshSections(),
+        refreshCoordinatorAssignments(),
+        refreshFaculty(),
+      ]);
 
       setEditingFaculty(null);
     } catch (err: any) {

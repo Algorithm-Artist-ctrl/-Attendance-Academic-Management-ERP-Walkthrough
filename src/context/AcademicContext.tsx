@@ -2941,19 +2941,19 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     actorName?: string;
   }) => {
     const res = await supabaseService.updateFacultyWithAssignments(params);
-    await Promise.all([refreshFaculty(), refreshAssignments(), refreshCoordinatorAssignments()]);
+    await Promise.all([refreshFaculty(), refreshAssignments(), refreshCoordinatorAssignments(), refreshSections()]);
     return res;
   };
 
   const assignCoordinator = async (facultyId: string, sectionId: string, sessionId?: string, assignedBy?: string) => {
     const res = await supabaseService.assignClassCoordinator(facultyId, sectionId, sessionId, assignedBy);
-    await refreshCoordinatorAssignments();
+    await Promise.all([refreshCoordinatorAssignments(), refreshSections()]);
     return res;
   };
 
   const removeCoordinator = async (facultyId: string, sectionId: string) => {
     const res = await supabaseService.removeClassCoordinator(facultyId, sectionId);
-    await refreshCoordinatorAssignments();
+    await Promise.all([refreshCoordinatorAssignments(), refreshSections()]);
     return res;
   };
 
@@ -4416,10 +4416,14 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             : s
         ));
       }
-      await refreshAdminAccounts();
+      await Promise.all([
+        refreshAdminAccounts(),
+        refreshFaculty(),
+        refreshStudents(),
+      ]);
     }
     return res;
-  }, [refreshAdminAccounts]);
+  }, [refreshAdminAccounts, refreshFaculty, refreshStudents]);
 
   const requestPasswordReset = useCallback(async (
     email: string,

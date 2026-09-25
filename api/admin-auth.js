@@ -1,10 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
+import pg from 'pg';
+const { Pool } = pg;
 
 const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || dummyKey;
 
+const pgPool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+    })
+  : null;
 
 // Server-side privileged client (if service role key provided)
 const supabaseAdmin = supabaseServiceKey
@@ -367,7 +375,10 @@ export default async function handleAdminAuth(req, res) {
       }
 
       // Authoritative database update via SECURITY DEFINER RPC
-      const { data: rpcData, error: rpcErr } = await supabaseRpc.rpc('admin_update_account_credentials', {
+      let rpcData = null;
+      let rpcErr = null;
+
+      const rpcResult = await supabaseRpc.rpc('admin_update_account_credentials', {
         p_target_user_id: target_user_id,
         p_new_email: cleanEmail,
         p_new_password: cleanPassword,
@@ -376,29 +387,77 @@ export default async function handleAdminAuth(req, res) {
         p_actor_name: callerProfile?.full_name || 'Super Admin',
         p_actor_role: 'super_admin',
       });
+      rpcData = rpcResult.data;
+      rpcErr = rpcResult.error;
+
+      // Fallback via direct pg connection if RPC encountered issue
+      if (rpcErr && pgPool) {
+        try {
+          const pgRes = await pgPool.query(
+            'SELECT public.admin_update_account_credentials($1, $2, $3, $4, $5, $6, $7) AS res',
+            [
+              target_user_id,
+              cleanEmail,
+              cleanPassword,
+              Boolean(is_default_password),
+              callerUserId,
+              callerProfile?.full_name || 'Super Admin',
+              'super_admin',
+            ]
+          );
+          if (pgRes.rows && pgRes.rows[0]?.res) {
+            rpcData = pgRes.rows[0].res;
+            rpcErr = null;
+          }
+        } catch (pgError) {
+          console.error('pgPool fallback admin_update_account_credentials error:', pgError);
+          rpcErr = pgError;
+        }
+      }
 
       if (rpcErr) {
         return sendJson(res, 500, { success: false, error: rpcErr.message }, req);
       }
 
+      const authUserId = rpcData?.user_id || target_user_id;
+
       // If Supabase Admin client is available (service role), sync Auth User directly following RPC
-      if (supabaseAdmin) {
+      if (supabaseAdmin && authUserId) {
         try {
           const updatePayload = {};
           if (cleanEmail) {
             updatePayload.email = cleanEmail;
             updatePayload.email_confirm = true;
+            updatePayload.user_metadata = { email: cleanEmail };
           }
           if (cleanPassword) {
             updatePayload.password = cleanPassword;
           }
-          const authUserId = rpcData?.user_id || target_user_id;
+
           const { error: adminAuthErr } = await supabaseAdmin.auth.admin.updateUserById(
             authUserId,
             updatePayload
           );
           if (adminAuthErr) {
             console.warn('Supabase Admin updateUserById notice:', adminAuthErr.message);
+            // If user doesn't exist yet in Supabase Auth, attempt to create
+            if (adminAuthErr.message.includes('not found') || adminAuthErr.status === 404) {
+              const { error: createErr } = await supabaseAdmin.auth.admin.createUser({
+                id: authUserId,
+                email: cleanEmail || rpcData?.email,
+                password: cleanPassword || (rpcData?.faculty_id ? 'faculty@123' : 'student123'),
+                email_confirm: true,
+                user_metadata: { email: cleanEmail || rpcData?.email },
+              });
+              if (createErr && !createErr.message.includes('already exists')) {
+                console.error('Supabase Admin createUser fallback error:', createErr.message);
+              }
+            } else if (!adminAuthErr.message.includes('same')) {
+              return sendJson(res, 400, {
+                success: false,
+                error: `Supabase Auth error: ${adminAuthErr.message}`,
+              }, req);
+            }
           }
         } catch (adminErr) {
           console.warn('Supabase Admin API call notice:', adminErr.message);

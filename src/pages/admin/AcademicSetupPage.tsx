@@ -510,7 +510,7 @@ export const AcademicSetupPage: React.FC = () => {
         semester_id: editSecSemesterId || editingSection.semester_id,
         name: editSecName.trim().toUpperCase(),
         room_number: editSecRoom.trim() || undefined,
-        class_coordinator_id: editSecCoordinatorId || undefined,
+        class_coordinator_id: editSecCoordinatorId ? editSecCoordinatorId : null,
       });
       setEditingSection(null);
     } catch (err: any) {

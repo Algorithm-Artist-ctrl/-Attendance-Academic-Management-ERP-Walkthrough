@@ -432,7 +432,7 @@ export const AcademicManagementPage: React.FC<AcademicManagementPageProps> = ({ 
       await updateSection(editingSection.id, {
         name: editSecName.trim() || editingSection.name,
         room_number: editSecRoom.trim() || editingSection.room_number,
-        class_coordinator_id: editSecCoordinatorId || undefined,
+        class_coordinator_id: editSecCoordinatorId ? editSecCoordinatorId : null,
       });
       setEditingSection(null);
       await refreshSections();

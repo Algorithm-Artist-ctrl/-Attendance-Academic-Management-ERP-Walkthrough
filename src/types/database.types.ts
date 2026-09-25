@@ -107,9 +107,9 @@ export interface Section {
   name: string;
   room_number: string;
   classroom_id?: string;
-  class_coordinator_id?: string;
+  class_coordinator_id?: string | null;
   active: boolean;
-  class_coordinator?: Faculty;
+  class_coordinator?: Faculty | null;
   classroom?: Classroom;
 }
 

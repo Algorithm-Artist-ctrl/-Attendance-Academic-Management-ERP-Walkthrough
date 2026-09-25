@@ -200,7 +200,8 @@ export const StudentAccountsPage: React.FC = () => {
     setIsUpdatingEmail(true);
     setActionMessage(null);
     try {
-      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+      const targetId = selectedAccount.auth_user_id || selectedAccount.id;
+      const res = await updateAccountCredentials(targetId, {
         email: clean,
       });
 
@@ -240,7 +241,8 @@ export const StudentAccountsPage: React.FC = () => {
     setIsUpdatingPassword(true);
     setActionMessage(null);
     try {
-      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+      const targetId = selectedAccount.auth_user_id || selectedAccount.id;
+      const res = await updateAccountCredentials(targetId, {
         password: cleanPass,
         isDefaultPassword: false,
       });
@@ -273,7 +275,8 @@ export const StudentAccountsPage: React.FC = () => {
     setIsSettingDefaultPass(true);
     setActionMessage(null);
     try {
-      const res = await updateAccountCredentials(selectedAccount.auth_user_id, {
+      const targetId = selectedAccount.auth_user_id || selectedAccount.id;
+      const res = await updateAccountCredentials(targetId, {
         password: 'VctmStudent@2026',
         isDefaultPassword: true,
       });
