@@ -1471,7 +1471,7 @@ export const supabaseService = {
             .maybeSingle();
 
           if (!existingNotif) {
-            await supabase.from('notifications').insert([{
+            const { data: inserted } = await supabase.from('notifications').insert([{
               recipient_user_id: fac?.auth_user_id || null,
               recipient_faculty_id: sess.faculty_id,
               recipient_role: 'faculty',
@@ -1483,7 +1483,10 @@ export const supabaseService = {
               is_read: false,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-            }]);
+            }]).select('id');
+            if (inserted?.[0]?.id) {
+              this.dispatchNotificationEmailsAsync([inserted[0].id]);
+            }
           }
         }
       }
@@ -1537,7 +1540,7 @@ export const supabaseService = {
     try {
       if (res?.studentId) {
         const { data: st } = await supabase.from('students').select('auth_user_id').eq('id', res.studentId).maybeSingle();
-        await supabase.from('notifications').insert([{
+        const { data: inserted } = await supabase.from('notifications').insert([{
           recipient_user_id: st?.auth_user_id || null,
           recipient_student_id: res.studentId,
           recipient_role: 'student',
@@ -1549,7 +1552,10 @@ export const supabaseService = {
           is_read: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }]);
+        }]).select('id');
+        if (inserted?.[0]?.id) {
+          this.dispatchNotificationEmailsAsync([inserted[0].id]);
+        }
       }
     } catch (notifErr) {
       console.warn('Notice: Background notification dispatch for claim approval:', notifErr);
@@ -1591,7 +1597,7 @@ export const supabaseService = {
     try {
       if (res?.studentId) {
         const { data: st } = await supabase.from('students').select('auth_user_id').eq('id', res.studentId).maybeSingle();
-        await supabase.from('notifications').insert([{
+        const { data: inserted } = await supabase.from('notifications').insert([{
           recipient_user_id: st?.auth_user_id || null,
           recipient_student_id: res.studentId,
           recipient_role: 'student',
@@ -1603,7 +1609,10 @@ export const supabaseService = {
           is_read: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }]);
+        }]).select('id');
+        if (inserted?.[0]?.id) {
+          this.dispatchNotificationEmailsAsync([inserted[0].id]);
+        }
       }
     } catch (notifErr) {
       console.warn('Notice: Background notification dispatch for claim rejection:', notifErr);
@@ -1678,8 +1687,9 @@ export const supabaseService = {
       if (facId) {
         const { data: fac } = await supabase.from('faculty').select('auth_user_id').eq('id', facId).maybeSingle();
         if (fac?.auth_user_id) {
-          await supabase.from('notifications').insert([{
+          const { data: inserted } = await supabase.from('notifications').insert([{
             recipient_user_id: fac.auth_user_id,
+            recipient_faculty_id: facId,
             recipient_role: 'faculty',
             type: 'ATTENDANCE_CLAIM' as NotificationType,
             title: 'New Attendance Claim Submitted',
@@ -1689,7 +1699,10 @@ export const supabaseService = {
             is_read: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          }]);
+          }]).select('id');
+          if (inserted?.[0]?.id) {
+            this.dispatchNotificationEmailsAsync([inserted[0].id]);
+          }
         }
       }
     } catch (notifErr) {
@@ -4072,7 +4085,10 @@ export const supabaseService = {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             }));
-            await supabase.from('notifications').insert(notifs);
+            const { data: inserted } = await supabase.from('notifications').insert(notifs).select('id');
+            if (inserted && inserted.length > 0) {
+              this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+            }
           }
         } catch (notifErr) {
           console.warn('Notice: Background notification dispatch for timetable:', notifErr);
@@ -4518,7 +4534,10 @@ export const supabaseService = {
             updated_at: new Date().toISOString(),
           }));
 
-          await supabase.from('notifications').insert(notifRows);
+          const { data: inserted } = await supabase.from('notifications').insert(notifRows).select('id');
+          if (inserted && inserted.length > 0) {
+            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+          }
         }
       }
     } catch (notifErr) {
@@ -4566,7 +4585,10 @@ export const supabaseService = {
             updated_at: new Date().toISOString(),
           }));
 
-          await supabase.from('notifications').insert(notifRows);
+          const { data: inserted } = await supabase.from('notifications').insert(notifRows).select('id');
+          if (inserted && inserted.length > 0) {
+            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+          }
         }
       }
     } catch (notifErr) {
@@ -4806,7 +4828,10 @@ export const supabaseService = {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }));
-          await supabase.from('notifications').insert(notifs);
+          const { data: inserted } = await supabase.from('notifications').insert(notifs).select('id');
+          if (inserted && inserted.length > 0) {
+            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+          }
         }
       }
     } catch (notifErr) {
@@ -4945,7 +4970,10 @@ export const supabaseService = {
         }));
 
         if (notifs.length > 0) {
-          await supabase.from('notifications').insert(notifs);
+          const { data: inserted } = await supabase.from('notifications').insert(notifs).select('id');
+          if (inserted && inserted.length > 0) {
+            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+          }
         }
       }
     } catch (notifErr) {
@@ -5518,7 +5546,10 @@ export const supabaseService = {
         });
 
         if (notifRows.length > 0) {
-          await supabase.from('notifications').insert(notifRows);
+          const { data: inserted } = await supabase.from('notifications').insert(notifRows).select('id');
+          if (inserted && inserted.length > 0) {
+            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+          }
         }
       }
     } catch (notifErr) {
@@ -6481,12 +6512,57 @@ export const supabaseService = {
     }
   },
 
+  dispatchNotificationEmailsAsync(notificationIds: string[]): void {
+    if (!notificationIds || notificationIds.length === 0) return;
+    try {
+      const cleanIds = Array.from(new Set(notificationIds.filter(id => Boolean(id))));
+      if (cleanIds.length === 0) return;
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const token = session?.access_token;
+        if (!token) return;
+
+        fetch('/api/notifications/dispatch-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ notification_ids: cleanIds }),
+        }).catch(err => {
+          console.warn('[Notification Email Dispatch] Non-blocking dispatch notice:', err?.message || err);
+        });
+      }).catch(() => {});
+    } catch (err) {
+      console.warn('[Notification Email Dispatch] Non-blocking dispatch error:', err);
+    }
+  },
+
+  async dispatchLeaveNotificationAsync(applicationId: string): Promise<void> {
+    if (!applicationId) return;
+    try {
+      const { data: notifs } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('reference_id', applicationId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (notifs && notifs.length > 0) {
+        this.dispatchNotificationEmailsAsync(notifs.map(n => n.id));
+      }
+    } catch (err) {
+      console.warn('[Leave Notification Email] Non-blocking lookup notice:', err);
+    }
+  },
+
   async createNotifications(notifications: Partial<StudentNotification>[]): Promise<void> {
     if (!notifications || notifications.length === 0) return;
     try {
       const cleanRows = notifications.map(n => ({
         recipient_user_id: n.recipient_user_id || null,
         recipient_student_id: n.recipient_student_id || null,
+        recipient_faculty_id: (n as any).recipient_faculty_id || null,
         recipient_role: n.recipient_role || null,
         type: n.type || 'GENERAL',
         title: n.title,
@@ -6497,8 +6573,11 @@ export const supabaseService = {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
-      await supabase.from('notifications').insert(cleanRows);
+      const { data: inserted } = await supabase.from('notifications').insert(cleanRows).select('id');
       queryCache.invalidatePattern('notifs:');
+      if (inserted && inserted.length > 0) {
+        this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+      }
     } catch (err) {
       console.warn('Notice: Error inserting notifications:', err);
     }
@@ -7316,7 +7395,12 @@ export const supabaseService = {
         return { success: false, error: error.message };
       }
 
-      return { success: true, data: data as LeaveApplication };
+      const leaveApp = data as LeaveApplication;
+      if (leaveApp && leaveApp.id) {
+        this.dispatchLeaveNotificationAsync(leaveApp.id);
+      }
+
+      return { success: true, data: leaveApp };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to submit leave application' };
     }
@@ -7337,6 +7421,8 @@ export const supabaseService = {
       if (error) {
         return { success: false, error: error.message };
       }
+
+      this.dispatchLeaveNotificationAsync(params.applicationId);
 
       return { success: true, data: data as LeaveApplication };
     } catch (err: any) {
@@ -7359,6 +7445,8 @@ export const supabaseService = {
       if (error) {
         return { success: false, error: error.message };
       }
+
+      this.dispatchLeaveNotificationAsync(params.applicationId);
 
       return { success: true, data: data as LeaveApplication };
     } catch (err: any) {

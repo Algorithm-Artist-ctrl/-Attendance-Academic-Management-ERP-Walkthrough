@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import handleAdminAuth from './api/admin-auth.js';
+import { handleNotificationRoutes } from './api/notification-routes.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -733,6 +734,9 @@ export async function requestHandler(req, res) {
     }
     if (pathname.startsWith('/api/auth/')) {
       return await handleAdminAuth(req, res);
+    }
+    if (pathname.startsWith('/api/notifications/')) {
+      return await handleNotificationRoutes(req, res, urlObj);
     }
     if (req.method === 'GET' || req.method === 'HEAD') {
       return serveStatic(req, res);

@@ -760,8 +760,30 @@ export interface StudentNotification {
   reference_id?: string;
   is_read: boolean;
   read_at?: string | null;
+  email_status?: 'pending' | 'sent' | 'failed' | 'skipped';
+  email_sent_at?: string | null;
+  email_recipient?: string | null;
+  email_error?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface NotificationEmailDelivery {
+  id: string;
+  notification_id: string;
+  recipient_user_id?: string | null;
+  recipient_student_id?: string | null;
+  recipient_faculty_id?: string | null;
+  recipient_role?: string | null;
+  recipient_email: string;
+  recipient_name: string;
+  notification_type: string;
+  notification_title: string;
+  status: 'sent' | 'failed' | 'skipped';
+  resend_email_id?: string | null;
+  error_message?: string | null;
+  created_at: string;
+  sent_at?: string | null;
 }
 
 export type ConversationCategory =
