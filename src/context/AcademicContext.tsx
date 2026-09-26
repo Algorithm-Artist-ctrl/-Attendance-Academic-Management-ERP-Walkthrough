@@ -1019,11 +1019,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Fetch Class Coordinator Assignments (Section-Specific)
         try {
           const rawCoordAssignments = await supabaseService.fetchClassCoordinatorAssignments();
-          const enrichedCoordAssignments = rawCoordAssignments.filter(c => {
-            const yrNum = (c.section as any)?.semester?.academic_year?.year_number;
-            return yrNum !== 1;
-          });
-          setClassCoordinatorAssignments(enrichedCoordAssignments);
+          setClassCoordinatorAssignments(rawCoordAssignments);
         } catch (coordErr) {
           console.warn('Could not load class coordinator assignments:', coordErr);
         }
@@ -1378,12 +1374,15 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const refreshCoordinatorAssignments = useCallback(async (facultyId?: string) => {
     try {
       const raw = await supabaseService.fetchClassCoordinatorAssignments(facultyId);
-      const filtered = raw.filter(c => {
-        const yrNum = (c.section as any)?.semester?.academic_year?.year_number;
-        return yrNum !== 1;
-      });
-      setClassCoordinatorAssignments(filtered);
-      return filtered;
+      if (facultyId) {
+        setClassCoordinatorAssignments(prev => [
+          ...prev.filter(c => c.faculty_id !== facultyId),
+          ...raw,
+        ]);
+      } else {
+        setClassCoordinatorAssignments(raw);
+      }
+      return raw;
     } catch (err) {
       console.error('Failed to refresh coordinator assignments:', err);
       return [];

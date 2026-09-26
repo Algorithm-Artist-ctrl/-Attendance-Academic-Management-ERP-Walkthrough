@@ -52,6 +52,8 @@ export const FacultyDirectoryPage: React.FC = () => {
     classrooms,
     createFacultyWithAssignments,
     updateFacultyWithAssignments,
+    assignCoordinator,
+    removeCoordinator,
     setFacultyStatus,
     safeDeleteFaculty,
     refreshData,
@@ -63,6 +65,8 @@ export const FacultyDirectoryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'BLOCKED' | 'ARCHIVED'>('ALL');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [coordActionLoading, setCoordActionLoading] = useState<string | null>(null);
+  const [coordSuccessMsg, setCoordSuccessMsg] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
 
   const isSuperAdmin = role === 'super_admin';
@@ -399,17 +403,14 @@ export const FacultyDirectoryPage: React.FC = () => {
     setEditAssignSubjectId('');
   };
 
-  // Add coordinator to Edit Modal
-  const handleAddEditCoordinator = () => {
+  // Add / Assign coordinator in Edit Modal (Persisted directly to Supabase)
+  const handleAddEditCoordinator = async () => {
     setEditModalError(null);
+    setCoordSuccessMsg(null);
+    if (!editingFaculty) return;
+
     if (!editAssignCoordYearId || !editAssignCoordSectionId) {
       setEditModalError('Please select Academic Year and Section to assign as Class Coordinator.');
-      return;
-    }
-
-    const exists = editCoordinators.some(c => c.section_id === editAssignCoordSectionId);
-    if (exists) {
-      setEditModalError('This Section is already assigned as a Coordinator role.');
       return;
     }
 
@@ -418,24 +419,45 @@ export const FacultyDirectoryPage: React.FC = () => {
     const yearName = yr?.name || 'Academic Year';
     const secName = (sec?.name || '').replace(/^section\s*/i, '').trim() || 'A';
 
+    // Check if this faculty is already coordinator for this section
+    const isAlreadyThisFaculty = editCoordinators.some(c => c.section_id === editAssignCoordSectionId);
+    if (isAlreadyThisFaculty) {
+      setEditModalError(`${editingFaculty.full_name} is already assigned as Class Coordinator for ${yearName} Section ${secName}.`);
+      return;
+    }
+
     // Check if section already has an active coordinator in database other than this faculty
     const existingCoord = (classCoordinatorAssignments || []).find(
       ca => ca.active && ca.section_id === editAssignCoordSectionId && ca.faculty_id !== editingFaculty?.id
     );
-    const existingFacId = existingCoord?.faculty_id || (sec?.class_coordinator_id !== editingFaculty?.id ? sec?.class_coordinator_id : null);
+    const existingFacId = existingCoord?.faculty_id || (sec?.class_coordinator_id && sec.class_coordinator_id !== editingFaculty?.id ? sec.class_coordinator_id : null);
     const existingFac = existingFacId ? faculty.find(f => f.id === existingFacId) : null;
 
-    const doAdd = () => {
-      setEditCoordinators(prev => [
-        ...prev,
-        {
-          section_id: editAssignCoordSectionId,
-          academic_year_id: editAssignCoordYearId,
-          year_name: yearName,
-          section_name: secName,
+    const executeAssignment = async () => {
+      try {
+        setCoordActionLoading('assigning');
+        const res = await assignCoordinator(editingFaculty.id, editAssignCoordSectionId);
+        if (res.success) {
+          // Immediately update local modal list
+          setEditCoordinators(prev => [
+            ...prev.filter(c => c.section_id !== editAssignCoordSectionId),
+            {
+              section_id: editAssignCoordSectionId,
+              academic_year_id: editAssignCoordYearId,
+              year_name: yearName,
+              section_name: secName,
+            }
+          ]);
+          setEditAssignCoordSectionId('');
+          setCoordSuccessMsg(`Successfully assigned ${editingFaculty.full_name} as Class Coordinator for ${yearName} Section ${secName}.`);
+        } else {
+          setEditModalError(res.error || 'Failed to assign class coordinator.');
         }
-      ]);
-      setEditAssignCoordSectionId('');
+      } catch (err: any) {
+        setEditModalError(err?.message || 'Failed to assign class coordinator.');
+      } finally {
+        setCoordActionLoading(null);
+      }
     };
 
     if (existingFac) {
@@ -445,13 +467,38 @@ export const FacultyDirectoryPage: React.FC = () => {
         yearName,
         currentFacultyName: existingFac.full_name,
         newFacultyName: editFullName.trim() || editingFaculty?.full_name || 'Faculty',
-        onConfirm: () => {
-          doAdd();
+        onConfirm: async () => {
           setConfirmReplacementModal(null);
+          await executeAssignment();
         }
       });
     } else {
-      doAdd();
+      await executeAssignment();
+    }
+  };
+
+  // Remove coordinator in Edit Modal (Persisted directly to Supabase)
+  const handleRemoveEditCoordinator = async (coord: { section_id: string; year_name: string; section_name: string }) => {
+    if (!editingFaculty) return;
+    setEditModalError(null);
+    setCoordSuccessMsg(null);
+
+    const confirmMsg = `Remove ${editingFaculty.full_name} as Class Coordinator for ${coord.year_name} Section ${coord.section_name}?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setCoordActionLoading(`remove_${coord.section_id}`);
+      const res = await removeCoordinator(editingFaculty.id, coord.section_id);
+      if (res.success) {
+        setEditCoordinators(prev => prev.filter(c => c.section_id !== coord.section_id));
+        setCoordSuccessMsg(`Successfully removed class coordinator assignment for ${coord.year_name} Section ${coord.section_name}.`);
+      } else {
+        setEditModalError(res.error || 'Failed to remove class coordinator.');
+      }
+    } catch (err: any) {
+      setEditModalError(err?.message || 'Failed to remove class coordinator.');
+    } finally {
+      setCoordActionLoading(null);
     }
   };
 
@@ -465,6 +512,8 @@ export const FacultyDirectoryPage: React.FC = () => {
     setEditEmail(f.email || '');
     setEditPhone(f.phone || '');
     setEditModalError(null);
+    setCoordSuccessMsg(null);
+    setCoordActionLoading(null);
 
     // Populate active database assignments
     const currentFsa = (assignments || []).filter(a => a.faculty_id === f.id && a.active);
@@ -1550,6 +1599,14 @@ export const FacultyDirectoryPage: React.FC = () => {
                 </span>
               </div>
 
+              {/* Coordinator Feedback Banner */}
+              {coordSuccessMsg && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2 text-xs">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span className="font-medium">{coordSuccessMsg}</span>
+                </div>
+              )}
+
               {/* Current Coordinator Assignments */}
               {editCoordinators.length > 0 ? (
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
@@ -1568,8 +1625,9 @@ export const FacultyDirectoryPage: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setEditCoordinators(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-slate-500 hover:text-rose-500 p-1 cursor-pointer"
+                        onClick={() => handleRemoveEditCoordinator(c)}
+                        disabled={coordActionLoading === `remove_${c.section_id}`}
+                        className="text-slate-500 hover:text-rose-500 p-1 cursor-pointer disabled:opacity-50"
                         title="Remove coordinator role"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1620,10 +1678,10 @@ export const FacultyDirectoryPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleAddEditCoordinator}
-                    disabled={!editAssignCoordYearId || !editAssignCoordSectionId}
+                    disabled={!editAssignCoordYearId || !editAssignCoordSectionId || coordActionLoading === 'assigning'}
                     className="text-xs"
                   >
-                    + Assign Coordinator Role
+                    {coordActionLoading === 'assigning' ? 'Assigning...' : '+ Assign Coordinator Role'}
                   </Button>
                 </div>
               </div>

@@ -3303,11 +3303,7 @@ export const supabaseService = {
     if (updates.class_coordinator_id !== undefined) {
       if (!updates.class_coordinator_id) {
         // Coordinator cleared
-        await supabase
-          .from('class_coordinator_assignments')
-          .update({ active: false, updated_at: new Date().toISOString() })
-          .eq('section_id', id)
-          .eq('active', true);
+        await this.removeClassCoordinator(null, id);
       } else {
         // Coordinator assigned
         await this.assignClassCoordinator(updates.class_coordinator_id, id);
@@ -6244,7 +6240,7 @@ export const supabaseService = {
         effectiveSessionId = session?.id;
       }
 
-      // Try Atomic RPC first (Migration 038)
+      // Try Atomic RPC first (Migration 055 / 038)
       const { data: rpcRes, error: rpcErr } = await supabase.rpc('assign_class_coordinator_atomic', {
         p_faculty_id: facultyId,
         p_section_id: sectionId,
@@ -6253,6 +6249,9 @@ export const supabaseService = {
       });
 
       if (!rpcErr && rpcRes && rpcRes.success) {
+        try {
+          erpStorage.updateSection(sectionId, { class_coordinator_id: facultyId });
+        } catch {}
         this.invalidateMasterCache();
         return { 
           success: true, 
@@ -6262,31 +6261,53 @@ export const supabaseService = {
       }
 
       if (rpcErr) {
-        console.warn('assign_class_coordinator_atomic RPC fallback:', rpcErr.message);
+        console.warn('assign_class_coordinator_atomic RPC fallback notice:', rpcErr.message);
+        if (rpcErr.message?.includes('Unauthorized') || rpcErr.message?.includes('required')) {
+          return { success: false, error: rpcErr.message };
+        }
       }
 
-      // Fallback Direct Mutation
-      // Deactivate any existing active coordinator for this section and session if different faculty
+      // Fallback Direct Mutation (if RPC was not callable)
+      // Deactivate any existing active coordinator for this section if different faculty
       await supabase
         .from('class_coordinator_assignments')
         .update({ active: false, updated_at: new Date().toISOString() })
         .eq('section_id', sectionId)
-        .eq('academic_session_id', effectiveSessionId || '')
         .eq('active', true)
         .neq('faculty_id', facultyId);
 
-      const { error: ccaErr } = await supabase
+      const { data: existingCCA } = await supabase
         .from('class_coordinator_assignments')
-        .upsert({
-          faculty_id: facultyId,
-          section_id: sectionId,
-          academic_session_id: effectiveSessionId || null,
-          assigned_by: assignedBy || null,
-          active: true,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'section_id,academic_session_id'
-        });
+        .select('id')
+        .eq('section_id', sectionId)
+        .eq('faculty_id', facultyId)
+        .maybeSingle();
+
+      let ccaErr = null;
+      if (existingCCA) {
+        const { error } = await supabase
+          .from('class_coordinator_assignments')
+          .update({
+            active: true,
+            academic_session_id: effectiveSessionId || null,
+            assigned_by: assignedBy || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingCCA.id);
+        ccaErr = error;
+      } else {
+        const { error } = await supabase
+          .from('class_coordinator_assignments')
+          .insert({
+            faculty_id: facultyId,
+            section_id: sectionId,
+            academic_session_id: effectiveSessionId || null,
+            assigned_by: assignedBy || null,
+            active: true,
+            updated_at: new Date().toISOString()
+          });
+        ccaErr = error;
+      }
 
       if (ccaErr) {
         console.error('Failed to assign in class_coordinator_assignments:', ccaErr.message);
@@ -6310,31 +6331,43 @@ export const supabaseService = {
     }
   },
 
-  async removeClassCoordinator(facultyId: string, sectionId: string): Promise<{ success: boolean; error?: string }> {
+  async removeClassCoordinator(facultyId: string | null | undefined, sectionId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // 1. Try Atomic RPC first (Migration 054 / 038)
+      const cleanFacId = facultyId && isValidUuid(facultyId) ? facultyId : null;
+      // 1. Try Atomic RPC first (Migration 055 / 054 / 038)
       const { data: rpcRes, error: rpcErr } = await supabase.rpc('remove_class_coordinator_atomic', {
-        p_faculty_id: facultyId,
+        p_faculty_id: cleanFacId,
         p_section_id: sectionId,
       });
 
       if (rpcErr) {
         console.warn('remove_class_coordinator_atomic RPC notice:', rpcErr.message);
+        if (rpcErr.message?.includes('Unauthorized') || rpcErr.message?.includes('required')) {
+          return { success: false, error: rpcErr.message };
+        }
       }
 
       // 2. Direct mutation as guaranteed defense-in-depth regardless of RPC status
       try {
-        await supabase
+        let ccaQ = supabase
           .from('class_coordinator_assignments')
           .update({ active: false, updated_at: new Date().toISOString() })
-          .eq('section_id', sectionId)
-          .eq('faculty_id', facultyId);
+          .eq('section_id', sectionId);
 
-        await supabase
+        if (cleanFacId) {
+          ccaQ = ccaQ.eq('faculty_id', cleanFacId);
+        }
+        await ccaQ;
+
+        let secQ = supabase
           .from('sections')
           .update({ class_coordinator_id: null, updated_at: new Date().toISOString() })
-          .eq('id', sectionId)
-          .eq('class_coordinator_id', facultyId);
+          .eq('id', sectionId);
+
+        if (cleanFacId) {
+          secQ = secQ.eq('class_coordinator_id', cleanFacId);
+        }
+        await secQ;
       } catch (directErr: any) {
         console.warn('Direct coordinator removal defense-in-depth notice:', directErr?.message);
       }
