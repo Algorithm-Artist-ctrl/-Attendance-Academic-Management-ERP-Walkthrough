@@ -414,7 +414,7 @@ export async function sendEmailViaResend({
     };
   }
 
-  const primaryFromEmail = (process.env.RESEND_FROM_EMAIL || 'VCTM ERP <notifications@vctmerp.in>').trim();
+  const primaryFromEmail = (process.env.RESEND_FROM_EMAIL || 'VCTM ERP <team@vctmerp.in>').trim();
 
   // Timeout guard (10 seconds)
   const controller = new AbortController();
@@ -591,3 +591,141 @@ export async function dispatchNotificationEmails(notificationIds, options = {}) 
 
   return { processed: uniqueIds.length, sent, skipped, failed };
 }
+
+/**
+ * Dispatch pending notification emails by entity reference
+ * (e.g., leave_application, attendance_claim, notice, etc.)
+ */
+export async function dispatchNotificationEmailsByReference(referenceType, referenceId) {
+  if (!referenceType || !referenceId) return { processed: 0, sent: 0, skipped: 0, failed: 0 };
+  const pool = getPgPool();
+  if (!pool) return { processed: 0, sent: 0, skipped: 0, failed: 0 };
+  try {
+    const res = await pool.query(
+      `SELECT id FROM public.notifications 
+       WHERE reference_type = $1 AND reference_id = $2 
+         AND email_status = 'pending' 
+         AND (recipient_role IS NULL OR LOWER(recipient_role) != 'student') 
+         AND recipient_student_id IS NULL 
+       LIMIT 20;`,
+      [referenceType, referenceId]
+    );
+    const ids = res.rows.map(r => r.id);
+    if (ids.length > 0) {
+      return await dispatchNotificationEmails(ids);
+    }
+  } catch (err) {
+    console.warn('[Email Service] Query by reference notice:', err?.message || err);
+  }
+  return { processed: 0, sent: 0, skipped: 0, failed: 0 };
+}
+
+/**
+ * Sweep any pending notification emails from database
+ */
+export async function sweepPendingNotificationEmails(limit = 25) {
+  const pool = getPgPool();
+  if (!pool) return { processed: 0, sent: 0, skipped: 0, failed: 0 };
+  try {
+    const res = await pool.query(
+      `SELECT id FROM public.notifications 
+       WHERE email_status = 'pending' 
+         AND (recipient_role IS NULL OR LOWER(recipient_role) != 'student') 
+         AND recipient_student_id IS NULL 
+       ORDER BY created_at ASC 
+       LIMIT $1;`,
+      [limit]
+    );
+    const ids = res.rows.map(r => r.id);
+    if (ids.length > 0) {
+      console.log(`[Email Dispatcher] Found ${ids.length} pending notification emails, dispatching...`);
+      return await dispatchNotificationEmails(ids);
+    }
+  } catch (err) {
+    console.warn('[Email Service] Sweep pending error:', err?.message || err);
+  }
+  return { processed: 0, sent: 0, skipped: 0, failed: 0 };
+}
+
+/**
+ * Real-time PostgreSQL LISTEN/NOTIFY Background Listener
+ * Auto-subscribes to p_notification_created channel.
+ * Batches incoming notifications with 300ms debounce and dispatches them asynchronously.
+ */
+let isListenerActive = false;
+let listenerClient = null;
+const pendingQueue = new Set();
+let debounceTimer = null;
+
+export function initEmailNotificationListener() {
+  if (isListenerActive) return;
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.log('[Email Listener] DATABASE_URL not present, background LISTEN skipped.');
+    return;
+  }
+
+  isListenerActive = true;
+
+  function flushQueue() {
+    if (pendingQueue.size === 0) return;
+    const ids = Array.from(pendingQueue);
+    pendingQueue.clear();
+    dispatchNotificationEmails(ids).catch(err => {
+      console.warn('[Email Listener] Batch dispatch notice:', err?.message || err);
+    });
+  }
+
+  async function startListening() {
+    try {
+      const { Client } = pg;
+      listenerClient = new Client({
+        connectionString: dbUrl,
+        ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+      });
+
+      await listenerClient.connect();
+      await listenerClient.query('LISTEN p_notification_created');
+
+      listenerClient.on('notification', (msg) => {
+        if (msg.channel === 'p_notification_created' && msg.payload) {
+          pendingQueue.add(msg.payload.trim());
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(flushQueue, 300);
+        }
+      });
+
+      listenerClient.on('error', (err) => {
+        console.warn('[Email Listener] Connection notice, reconnecting in 5s:', err?.message || err);
+        try { listenerClient.end(); } catch {}
+        listenerClient = null;
+        setTimeout(startListening, 5000);
+      });
+
+      listenerClient.on('end', () => {
+        listenerClient = null;
+        setTimeout(startListening, 5000);
+      });
+
+      console.log('[Email Listener] ✅ Connected to PostgreSQL LISTEN p_notification_created');
+
+      // Initial sweep for any pending emails after connecting
+      setTimeout(() => {
+        sweepPendingNotificationEmails(25).catch(() => {});
+      }, 2000);
+
+    } catch (err) {
+      console.warn('[Email Listener] Initial connect notice, retrying in 5s:', err?.message || err);
+      listenerClient = null;
+      setTimeout(startListening, 5000);
+    }
+  }
+
+  startListening();
+
+  // Periodic backup sweep every 60 seconds to ensure 100% reliability
+  setInterval(() => {
+    sweepPendingNotificationEmails(25).catch(() => {});
+  }, 60000);
+}
+

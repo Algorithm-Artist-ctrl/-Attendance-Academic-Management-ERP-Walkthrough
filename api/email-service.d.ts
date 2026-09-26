@@ -50,5 +50,8 @@ export interface DispatchSummary {
 export function buildNotificationEmail(params: NotificationEmailPayload): FormattedEmail;
 export function fetchNotificationsForDelivery(notificationIds: string[]): Promise<NotificationDeliveryCandidate[]>;
 export function recordDelivery(params: DeliveryRecordParams): Promise<void>;
-export function sendEmailViaResend(params: { to: string; subject: string; html: string; text: string }): Promise<{ success: boolean; id?: string; code?: string; error?: string }>;
 export function dispatchNotificationEmails(notificationIds: string[], options?: Record<string, any>): Promise<DispatchSummary>;
+export function dispatchNotificationEmailsByReference(referenceType: string, referenceId: string): Promise<DispatchSummary>;
+export function sweepPendingNotificationEmails(limit?: number): Promise<DispatchSummary>;
+export function initEmailNotificationListener(): void;
+

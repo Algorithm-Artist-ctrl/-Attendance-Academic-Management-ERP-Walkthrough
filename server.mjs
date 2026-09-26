@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import handleAdminAuth from './api/admin-auth.js';
 import { handleNotificationRoutes } from './api/notification-routes.js';
+import { initEmailNotificationListener } from './api/email-service.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -753,5 +754,12 @@ export const server = http.createServer(requestHandler);
 
 // Start listener only when executed directly (not when imported in tests)
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  server.listen(port, '0.0.0.0', () => console.log(`VCTM ERP server listening on ${port}`));
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`VCTM ERP server listening on ${port}`);
+    try {
+      initEmailNotificationListener();
+    } catch (err) {
+      console.warn('Failed to start email notification listener:', err?.message || err);
+    }
+  });
 }

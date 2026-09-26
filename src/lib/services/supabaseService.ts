@@ -3533,13 +3533,99 @@ export const supabaseService = {
     const { data, error } = await supabase.from('faculty_subject_assignments').insert(assign).select().single();
     if (error) throw new Error(error.message);
     this.invalidateMasterCache();
+
+    if (data?.faculty_id) {
+      (async () => {
+        try {
+          const [{ data: fac }, { data: subj }, { data: sec }] = await Promise.all([
+            supabase.from('faculty').select('auth_user_id, full_name').eq('id', data.faculty_id).maybeSingle(),
+            data.subject_id ? supabase.from('subjects').select('subject_name, subject_code').eq('id', data.subject_id).maybeSingle() : Promise.resolve({ data: null }),
+            data.section_id ? supabase.from('sections').select('name').eq('id', data.section_id).maybeSingle() : Promise.resolve({ data: null }),
+          ]);
+
+          const subjectTitle = subj?.subject_name ? `${subj.subject_name}${subj.subject_code ? ` (${subj.subject_code})` : ''}` : 'New Subject';
+          const sectionTitle = sec?.name ? ` for Section ${sec.name}` : '';
+
+          const notifRow = {
+            recipient_user_id: fac?.auth_user_id || null,
+            recipient_faculty_id: data.faculty_id,
+            recipient_role: 'faculty',
+            type: 'ACCOUNT_UPDATE' as NotificationType,
+            title: 'New Subject Assigned',
+            message: `You have been assigned to teach ${subjectTitle}${sectionTitle}.`,
+            reference_type: 'subject_assignment',
+            reference_id: data.id,
+            is_read: false,
+            email_status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          const { data: insertedNotif } = await supabase.from('notifications').insert([notifRow]).select('id').maybeSingle();
+          if (insertedNotif?.id) {
+            this.dispatchNotificationEmailsAsync([insertedNotif.id]);
+          }
+        } catch (notifErr) {
+          console.warn('[addAssignment Notification Dispatch] Non-blocking notice:', notifErr);
+        }
+      })();
+    }
+
     return data as FacultySubjectAssignment;
   },
 
   async deleteAssignment(id: string) {
+    let assignmentToNotify: any = null;
+    try {
+      const { data: existing } = await supabase
+        .from('faculty_subject_assignments')
+        .select('id, faculty_id, subject_id, section_id')
+        .eq('id', id)
+        .maybeSingle();
+      assignmentToNotify = existing;
+    } catch {}
+
     const { error } = await supabase.from('faculty_subject_assignments').delete().eq('id', id);
     if (error) throw new Error(error.message);
     this.invalidateMasterCache();
+
+    if (assignmentToNotify?.faculty_id) {
+      (async () => {
+        try {
+          const [{ data: fac }, { data: subj }, { data: sec }] = await Promise.all([
+            supabase.from('faculty').select('auth_user_id, full_name').eq('id', assignmentToNotify.faculty_id).maybeSingle(),
+            assignmentToNotify.subject_id ? supabase.from('subjects').select('subject_name, subject_code').eq('id', assignmentToNotify.subject_id).maybeSingle() : Promise.resolve({ data: null }),
+            assignmentToNotify.section_id ? supabase.from('sections').select('name').eq('id', assignmentToNotify.section_id).maybeSingle() : Promise.resolve({ data: null }),
+          ]);
+
+          const subjectTitle = subj?.subject_name ? `${subj.subject_name}` : 'Subject';
+          const sectionTitle = sec?.name ? ` for Section ${sec.name}` : '';
+
+          const notifRow = {
+            recipient_user_id: fac?.auth_user_id || null,
+            recipient_faculty_id: assignmentToNotify.faculty_id,
+            recipient_role: 'faculty',
+            type: 'ACCOUNT_UPDATE' as NotificationType,
+            title: 'Subject Assignment Removed',
+            message: `Your assignment for ${subjectTitle}${sectionTitle} has been removed.`,
+            reference_type: 'subject_assignment',
+            reference_id: id,
+            is_read: false,
+            email_status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          const { data: insertedNotif } = await supabase.from('notifications').insert([notifRow]).select('id').maybeSingle();
+          if (insertedNotif?.id) {
+            this.dispatchNotificationEmailsAsync([insertedNotif.id]);
+          }
+        } catch (notifErr) {
+          console.warn('[deleteAssignment Notification Dispatch] Non-blocking notice:', notifErr);
+        }
+      })();
+    }
+
     return true;
   },
 
@@ -6652,7 +6738,13 @@ export const supabaseService = {
           if (userId) conditions.push(`recipient_user_id.eq.${userId}`);
           if (studentId) conditions.push(`recipient_student_id.eq.${studentId}`);
           if (facultyId) conditions.push(`recipient_faculty_id.eq.${facultyId}`);
-          if (userRole) conditions.push(`recipient_role.eq.${userRole}`);
+          if (userRole) {
+            if (facultyId || studentId || userId) {
+              conditions.push(`and(recipient_role.eq.${userRole},recipient_student_id.is.null,recipient_faculty_id.is.null,recipient_user_id.is.null)`);
+            } else {
+              conditions.push(`recipient_role.eq.${userRole}`);
+            }
+          }
 
           if (conditions.length > 0) {
             query = query.or(conditions.join(','));
@@ -6724,11 +6816,23 @@ export const supabaseService = {
     }
   },
 
-  dispatchNotificationEmailsAsync(notificationIds: string[]): void {
-    if (!notificationIds || notificationIds.length === 0) return;
+  dispatchNotificationEmailsAsync(
+    target: string[] | { reference_type: string; reference_id: string }
+  ): void {
+    if (!target) return;
     try {
-      const cleanIds = Array.from(new Set(notificationIds.filter(id => Boolean(id))));
-      if (cleanIds.length === 0) return;
+      let payload: any = null;
+      if (Array.isArray(target)) {
+        const cleanIds = Array.from(new Set(target.filter(id => Boolean(id))));
+        if (cleanIds.length === 0) return;
+        payload = { notification_ids: cleanIds };
+      } else if (typeof target === 'object' && (target as any).reference_type && (target as any).reference_id) {
+        payload = {
+          reference_type: (target as any).reference_type,
+          reference_id: (target as any).reference_id,
+        };
+      }
+      if (!payload) return;
 
       supabase.auth.getSession().then(({ data: { session } }) => {
         const token = session?.access_token || (typeof process !== 'undefined' ? process.env.SUPABASE_SERVICE_ROLE_KEY : '');
@@ -6746,7 +6850,7 @@ export const supabaseService = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ notification_ids: cleanIds }),
+          body: JSON.stringify(payload),
         }).catch(err => {
           console.warn('[Notification Email Dispatch] Non-blocking dispatch notice:', err?.message || err);
         });
@@ -6759,6 +6863,10 @@ export const supabaseService = {
   async dispatchLeaveNotificationAsync(applicationId: string): Promise<void> {
     if (!applicationId) return;
     try {
+      // 1. Dispatch by reference directly via API (so server-side query runs with service role and can see coordinator rows!)
+      this.dispatchNotificationEmailsAsync({ reference_type: 'leave_application', reference_id: applicationId });
+
+      // 2. Also check if there are client-visible notification rows to dispatch by ID
       const { data: notifs } = await supabase
         .from('notifications')
         .select('id, recipient_role, recipient_student_id')

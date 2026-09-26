@@ -1524,14 +1524,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
-    await supabaseService.markNotificationAsRead(notificationId);
-  }, []);
+    const activeUser = erpStorage.getCurrentSessionUser() || user;
+    await supabaseService.markNotificationAsRead(notificationId, activeUser?.faculty_id || activeUser?.faculty?.id);
+  }, [user]);
 
   const markAllNotificationsAsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    const activeUser = erpStorage.getCurrentSessionUser();
-    await supabaseService.markAllNotificationsAsRead(activeUser?.id, activeUser?.student_id || activeUser?.student?.id);
-  }, []);
+    const activeUser = erpStorage.getCurrentSessionUser() || user;
+    await supabaseService.markAllNotificationsAsRead(
+      activeUser?.id, 
+      activeUser?.student_id || activeUser?.student?.id,
+      (activeUser?.role || role || undefined),
+      activeUser?.faculty_id || activeUser?.faculty?.id
+    );
+  }, [user, role]);
 
   // Table-specific debouncing to prevent event storms while remaining responsive
   const debounceTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
@@ -1702,12 +1708,20 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const targetStudId = newNotif.recipient_student_id || newNotif.student_id;
           const targetUserId = newNotif.recipient_user_id || newNotif.user_id;
           const targetFacId = (newNotif as any).recipient_faculty_id;
-          const isTargetUser = 
-            (targetStudId && targetStudId === curStudentId) ||
-            (targetUserId && targetUserId === curUserId) ||
-            (targetFacId && targetFacId === curFacultyId) ||
-            (newNotif.recipient_role && curRole && newNotif.recipient_role.toUpperCase() === curRole.toUpperCase()) ||
-            (!targetStudId && !targetUserId && !targetFacId && !newNotif.recipient_role);
+          const hasSpecificTarget = Boolean(targetStudId || targetUserId || targetFacId);
+          let isTargetUser = false;
+
+          if (hasSpecificTarget) {
+            isTargetUser = 
+              Boolean(targetStudId && curStudentId && targetStudId === curStudentId) ||
+              Boolean(targetUserId && curUserId && targetUserId === curUserId) ||
+              Boolean(targetFacId && curFacultyId && targetFacId === curFacultyId);
+          } else if (newNotif.recipient_role) {
+            isTargetUser = Boolean(curRole && newNotif.recipient_role.toUpperCase() === curRole.toUpperCase());
+          } else {
+            // General broadcast with no specific recipient or role
+            isTargetUser = true;
+          }
 
           if (isTargetUser) {
             setNotifications(prev => {

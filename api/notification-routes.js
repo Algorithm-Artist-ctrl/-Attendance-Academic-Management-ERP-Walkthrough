@@ -1,4 +1,9 @@
-import { dispatchNotificationEmails, fetchNotificationsForDelivery } from './email-service.js';
+import { 
+  dispatchNotificationEmails, 
+  fetchNotificationsForDelivery,
+  dispatchNotificationEmailsByReference,
+  sweepPendingNotificationEmails 
+} from './email-service.js';
 import { createClient } from '@supabase/supabase-js';
 
 const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy';
@@ -106,6 +111,44 @@ export async function handleNotificationRoutes(req, res, urlObj) {
       return sendResponse(res, 400, { error: 'Invalid JSON body: ' + err.message }, req);
     }
 
+    // Check if dispatching by entity reference (e.g. leave_application, attendance_claim)
+    if (body?.reference_type && body?.reference_id) {
+      sendResponse(res, 202, {
+        success: true,
+        message: 'Reference-based email dispatch accepted for asynchronous processing.',
+        reference_type: body.reference_type,
+        reference_id: body.reference_id,
+      }, req);
+
+      setImmediate(async () => {
+        try {
+          const result = await dispatchNotificationEmailsByReference(body.reference_type, body.reference_id);
+          console.log(`[Email Route] Dispatched emails by reference (${body.reference_type} ${body.reference_id}):`, result);
+        } catch (err) {
+          console.error('[Email Route Error]:', err?.message || err);
+        }
+      });
+      return;
+    }
+
+    // Check if triggering pending sweep
+    if (body?.pending_sweep) {
+      sendResponse(res, 202, {
+        success: true,
+        message: 'Pending email sweep accepted for asynchronous processing.',
+      }, req);
+
+      setImmediate(async () => {
+        try {
+          const result = await sweepPendingNotificationEmails(50);
+          console.log('[Email Route] Pending email sweep completed:', result);
+        } catch (err) {
+          console.error('[Email Route Error]:', err?.message || err);
+        }
+      });
+      return;
+    }
+
     const rawIds = Array.isArray(body?.notification_ids) 
       ? body.notification_ids 
       : (body?.notification_id ? [body.notification_id] : []);
@@ -113,7 +156,7 @@ export async function handleNotificationRoutes(req, res, urlObj) {
     const validIds = rawIds.filter(id => typeof id === 'string' && UUID_REGEX.test(id.trim())).map(id => id.trim());
 
     if (validIds.length === 0) {
-      return sendResponse(res, 400, { error: 'No valid notification IDs provided.' }, req);
+      return sendResponse(res, 400, { error: 'No valid notification IDs or references provided.' }, req);
     }
 
     const boundedIds = validIds.slice(0, 100);
