@@ -1,6 +1,7 @@
 -- ==============================================================================
 -- Migration 053: Role-Based + Recipient-Scoped Email Notification Delivery
 -- Vivekananda College of Technology & Management (VCTM) ERP
+-- STRICT SCOPE: Faculty, HOD, Super Admin (STUDENTS EXCLUDED)
 -- ==============================================================================
 
 -- 1. Enhance public.notifications with email delivery tracking columns
@@ -81,7 +82,6 @@ DROP POLICY IF EXISTS "notif_deliveries_select" ON public.notification_email_del
 CREATE POLICY "notif_deliveries_select" ON public.notification_email_deliveries FOR SELECT TO authenticated
     USING (
         recipient_user_id = auth.uid()
-        OR (recipient_student_id IS NOT NULL AND recipient_student_id = public.current_user_student_id())
         OR (recipient_faculty_id IS NOT NULL AND recipient_faculty_id = public.current_user_faculty_id())
         OR public.current_user_role() IN ('super_admin'::user_role, 'hod'::user_role)
         OR auth.role() = 'service_role'
@@ -90,11 +90,13 @@ CREATE POLICY "notif_deliveries_select" ON public.notification_email_deliveries 
 DROP POLICY IF EXISTS "notif_deliveries_insert" ON public.notification_email_deliveries;
 CREATE POLICY "notif_deliveries_insert" ON public.notification_email_deliveries FOR INSERT TO authenticated
     WITH CHECK (
-        public.current_user_role() IN ('super_admin'::user_role, 'hod'::user_role, 'faculty'::user_role, 'student'::user_role)
+        public.current_user_role() IN ('super_admin'::user_role, 'hod'::user_role, 'faculty'::user_role)
         OR auth.role() = 'service_role'
     );
 
 -- 4. Atomic Recipient Resolution & Pre-Flight Check RPC
+-- STRICT: Resolves Faculty, HOD, Super Admin ONLY.
+-- STUDENTS ARE EXCLUDED END-TO-END.
 CREATE OR REPLACE FUNCTION public.get_notifications_for_email_delivery(p_notification_ids UUID[])
 RETURNS TABLE (
     notification_id UUID,
@@ -130,7 +132,7 @@ BEGIN
             n.message AS r_message,
             n.reference_type AS r_ref_type,
             n.reference_id AS r_ref_id,
-            n.email_status AS r_email_status
+            COALESCE(n.email_status, 'pending') AS r_email_status
         FROM public.notifications n
         WHERE n.id = ANY(p_notification_ids)
     ),
@@ -146,68 +148,68 @@ BEGIN
             rn.r_ref_type,
             rn.r_ref_id,
             rn.r_email_status,
-            -- Resolved Role
-            COALESCE(
-                p.role::text,
-                CASE 
-                    WHEN rn.r_student_id IS NOT NULL THEN 'student'
-                    WHEN rn.r_faculty_id IS NOT NULL THEN 'faculty'
-                    ELSE rn.r_role
-                END
-            ) AS final_role,
-            -- Resolved Email (strictly scoped from official profile, faculty, or student record)
-            COALESCE(
-                p.email,
-                f.email,
-                s.email,
-                u.email
-            ) AS final_email,
+            -- Resolved Role: Identify student vs staff roles
+            CASE 
+                WHEN rn.r_student_id IS NOT NULL OR LOWER(COALESCE(rn.r_role, '')) = 'student' OR p.role = 'student' THEN 'student'
+                ELSE COALESCE(p.role::text, rn.r_role, 'faculty')
+            END AS final_role,
+            -- Resolved Email: Staff ONLY (students strictly NULL)
+            CASE 
+                WHEN rn.r_student_id IS NOT NULL OR LOWER(COALESCE(rn.r_role, '')) = 'student' OR p.role = 'student' THEN NULL
+                ELSE COALESCE(p.email, f.email, u.email)
+            END AS final_email,
             -- Resolved Name
-            COALESCE(
-                p.full_name,
-                f.full_name,
-                s.full_name,
-                'VCTM Campus Member'
-            ) AS final_name
+            CASE 
+                WHEN rn.r_student_id IS NOT NULL OR LOWER(COALESCE(rn.r_role, '')) = 'student' OR p.role = 'student' THEN 'Student Member'
+                ELSE COALESCE(p.full_name, f.full_name, 'VCTM Staff Member')
+            END AS final_name
         FROM raw_notifs rn
         LEFT JOIN auth.users u ON u.id = rn.r_user_id
-        LEFT JOIN public.profiles p ON (p.id = rn.r_user_id OR (rn.r_faculty_id IS NOT NULL AND p.faculty_id = rn.r_faculty_id) OR (rn.r_student_id IS NOT NULL AND p.student_id = rn.r_student_id))
-        LEFT JOIN public.faculty f ON (f.id = rn.r_faculty_id OR (rn.r_user_id IS NOT NULL AND f.auth_user_id = rn.r_user_id))
-        LEFT JOIN public.students s ON (s.id = rn.r_student_id OR (rn.r_user_id IS NOT NULL AND s.auth_user_id = rn.r_user_id))
+        LEFT JOIN public.profiles p ON (
+            p.id = rn.r_user_id 
+            OR (rn.r_faculty_id IS NOT NULL AND p.faculty_id = rn.r_faculty_id)
+        )
+        LEFT JOIN public.faculty f ON (
+            f.id = rn.r_faculty_id 
+            OR (rn.r_user_id IS NOT NULL AND f.auth_user_id = rn.r_user_id)
+        )
     )
     SELECT 
         res.r_notif_id AS notification_id,
         res.r_user_id AS recipient_user_id,
         res.r_student_id AS recipient_student_id,
         res.r_faculty_id AS recipient_faculty_id,
-        res.final_role AS recipient_role,
-        res.final_email AS recipient_email,
-        res.final_name AS recipient_name,
-        res.r_type AS notification_type,
-        res.r_title AS notification_title,
-        res.r_message AS notification_message,
-        res.r_ref_type AS reference_type,
+        res.final_role::text AS recipient_role,
+        res.final_email::text AS recipient_email,
+        res.final_name::text AS recipient_name,
+        res.r_type::text AS notification_type,
+        res.r_title::text AS notification_title,
+        res.r_message::text AS notification_message,
+        res.r_ref_type::text AS reference_type,
         res.r_ref_id AS reference_id,
-        res.r_email_status AS email_status,
+        res.r_email_status::text AS email_status,
         -- can_send conditions:
-        -- 1. Not already sent
-        -- 2. Must be individually scoped (at least one recipient ID specified)
-        -- 3. Must have a valid registered email
+        -- 1. Not already sent (checked via notification email_status AND notification_email_deliveries)
+        -- 2. Must NOT be student (students strictly out of scope for emails)
+        -- 3. Must be individually scoped to faculty or user
+        -- 4. Must have a valid registered email
         CASE 
             WHEN res.r_email_status = 'sent' THEN false
             WHEN EXISTS (SELECT 1 FROM public.notification_email_deliveries ned WHERE ned.notification_id = res.r_notif_id AND ned.status = 'sent') THEN false
-            WHEN res.r_user_id IS NULL AND res.r_student_id IS NULL AND res.r_faculty_id IS NULL THEN false
+            WHEN res.final_role = 'student' OR res.r_student_id IS NOT NULL THEN false
+            WHEN res.r_user_id IS NULL AND res.r_faculty_id IS NULL THEN false
             WHEN res.final_email IS NULL OR TRIM(res.final_email) = '' OR res.final_email NOT LIKE '%@%.%' THEN false
             ELSE true
         END AS can_send,
         -- skip_reason
-        CASE 
+        (CASE 
             WHEN res.r_email_status = 'sent' THEN 'ALREADY_SENT'
             WHEN EXISTS (SELECT 1 FROM public.notification_email_deliveries ned WHERE ned.notification_id = res.r_notif_id AND ned.status = 'sent') THEN 'ALREADY_SENT'
-            WHEN res.r_user_id IS NULL AND res.r_student_id IS NULL AND res.r_faculty_id IS NULL THEN 'NO_INDIVIDUAL_RECIPIENT_SCOPED'
+            WHEN res.final_role = 'student' OR res.r_student_id IS NOT NULL THEN 'STUDENT_EMAIL_OUT_OF_SCOPE'
+            WHEN res.r_user_id IS NULL AND res.r_faculty_id IS NULL THEN 'NO_INDIVIDUAL_RECIPIENT_SCOPED'
             WHEN res.final_email IS NULL OR TRIM(res.final_email) = '' OR res.final_email NOT LIKE '%@%.%' THEN 'NO_VALID_REGISTERED_EMAIL'
             ELSE NULL
-        END AS skip_reason
+        END)::text AS skip_reason
     FROM resolved res;
 END;
 $$;
@@ -269,7 +271,7 @@ BEGIN
         v_notif.recipient_faculty_id,
         p_recipient_role,
         COALESCE(p_recipient_email, 'unknown@vctm.in'),
-        COALESCE(p_recipient_name, 'Campus Member'),
+        COALESCE(p_recipient_name, 'Staff Member'),
         v_notif.type,
         v_notif.title,
         p_status,

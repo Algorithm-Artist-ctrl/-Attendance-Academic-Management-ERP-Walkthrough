@@ -1,6 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 
+import fs from 'node:fs';
+
+// Auto-load .env in Node/development environments if process.env.DATABASE_URL is not already set
+if (!process.env.DATABASE_URL && fs.existsSync('.env')) {
+  try {
+    for (const line of fs.readFileSync('.env', 'utf-8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        const val = trimmed.slice(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+        if (!process.env[key]) process.env[key] = val;
+      }
+    }
+  } catch {}
+}
+
 const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,20 +35,25 @@ const supabaseRpc = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 let pgPool = null;
-if (process.env.DATABASE_URL) {
+export function getPgPool() {
+  if (pgPool) return pgPool;
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return null;
   try {
     const { Pool } = pg;
     pgPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+      connectionString: dbUrl,
+      ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
       max: 5,
       idleTimeoutMillis: 30000,
     });
     pgPool.on('error', (err) => {
       console.warn('[Email DB Pool] Warning:', err?.message || err);
     });
+    return pgPool;
   } catch (err) {
     console.warn('[Email DB Pool] pg initialization notice:', err?.message || err);
+    return null;
   }
 }
 
@@ -166,9 +189,10 @@ export async function fetchNotificationsForDelivery(notificationIds) {
   if (!notificationIds || notificationIds.length === 0) return [];
 
   // Try PostgreSQL pooler first (fastest, direct, supports SECURITY DEFINER logic)
-  if (pgPool) {
+  const pool = getPgPool();
+  if (pool) {
     try {
-      const res = await pgPool.query(
+      const res = await pool.query(
         `SELECT * FROM public.get_notifications_for_email_delivery($1::uuid[])`,
         [notificationIds]
       );
@@ -177,17 +201,26 @@ export async function fetchNotificationsForDelivery(notificationIds) {
       }
     } catch (dbErr) {
       console.warn('[Email Service] get_notifications_for_email_delivery RPC query notice:', dbErr.message);
-      // Fallback: direct SELECT from notifications + profiles + faculty + students
+      // Fallback: direct SELECT from notifications + profiles + faculty (STUDENTS STRICTLY EXCLUDED)
       try {
-        const fallbackRes = await pgPool.query(
+        const fallbackRes = await pool.query(
           `SELECT 
             n.id AS notification_id,
             n.recipient_user_id,
             n.recipient_student_id,
             n.recipient_faculty_id,
-            COALESCE(p.role::text, n.recipient_role) AS recipient_role,
-            COALESCE(p.email, f.email, s.email) AS recipient_email,
-            COALESCE(p.full_name, f.full_name, s.full_name, 'Campus Member') AS recipient_name,
+            CASE 
+              WHEN n.recipient_student_id IS NOT NULL OR LOWER(COALESCE(n.recipient_role, '')) = 'student' OR p.role = 'student' THEN 'student'
+              ELSE COALESCE(p.role::text, n.recipient_role, 'faculty')
+            END AS recipient_role,
+            CASE 
+              WHEN n.recipient_student_id IS NOT NULL OR LOWER(COALESCE(n.recipient_role, '')) = 'student' OR p.role = 'student' THEN NULL
+              ELSE COALESCE(p.email, f.email, u.email)
+            END AS recipient_email,
+            CASE 
+              WHEN n.recipient_student_id IS NOT NULL OR LOWER(COALESCE(n.recipient_role, '')) = 'student' OR p.role = 'student' THEN 'Student Member'
+              ELSE COALESCE(p.full_name, f.full_name, 'VCTM Staff Member')
+            END AS recipient_name,
             n.type AS notification_type,
             n.title AS notification_title,
             n.message AS notification_message,
@@ -196,20 +229,22 @@ export async function fetchNotificationsForDelivery(notificationIds) {
             COALESCE(n.email_status, 'pending') AS email_status,
             CASE 
               WHEN n.email_status = 'sent' THEN false
-              WHEN n.recipient_user_id IS NULL AND n.recipient_student_id IS NULL AND n.recipient_faculty_id IS NULL THEN false
-              WHEN COALESCE(p.email, f.email, s.email) IS NULL THEN false
+              WHEN n.recipient_student_id IS NOT NULL OR LOWER(COALESCE(n.recipient_role, '')) = 'student' OR p.role = 'student' THEN false
+              WHEN n.recipient_user_id IS NULL AND n.recipient_faculty_id IS NULL THEN false
+              WHEN COALESCE(p.email, f.email, u.email) IS NULL THEN false
               ELSE true
             END AS can_send,
             CASE 
               WHEN n.email_status = 'sent' THEN 'ALREADY_SENT'
-              WHEN n.recipient_user_id IS NULL AND n.recipient_student_id IS NULL AND n.recipient_faculty_id IS NULL THEN 'NO_INDIVIDUAL_RECIPIENT_SCOPED'
-              WHEN COALESCE(p.email, f.email, s.email) IS NULL THEN 'NO_VALID_REGISTERED_EMAIL'
+              WHEN n.recipient_student_id IS NOT NULL OR LOWER(COALESCE(n.recipient_role, '')) = 'student' OR p.role = 'student' THEN 'STUDENT_EMAIL_OUT_OF_SCOPE'
+              WHEN n.recipient_user_id IS NULL AND n.recipient_faculty_id IS NULL THEN 'NO_INDIVIDUAL_RECIPIENT_SCOPED'
+              WHEN COALESCE(p.email, f.email, u.email) IS NULL THEN 'NO_VALID_REGISTERED_EMAIL'
               ELSE NULL
             END AS skip_reason
           FROM public.notifications n
-          LEFT JOIN public.profiles p ON (p.id = n.recipient_user_id OR (n.recipient_faculty_id IS NOT NULL AND p.faculty_id = n.recipient_faculty_id) OR (n.recipient_student_id IS NOT NULL AND p.student_id = n.recipient_student_id))
+          LEFT JOIN auth.users u ON u.id = n.recipient_user_id
+          LEFT JOIN public.profiles p ON (p.id = n.recipient_user_id OR (n.recipient_faculty_id IS NOT NULL AND p.faculty_id = n.recipient_faculty_id))
           LEFT JOIN public.faculty f ON (f.id = n.recipient_faculty_id OR (n.recipient_user_id IS NOT NULL AND f.auth_user_id = n.recipient_user_id))
-          LEFT JOIN public.students s ON (s.id = n.recipient_student_id OR (n.recipient_user_id IS NOT NULL AND s.auth_user_id = n.recipient_user_id))
           WHERE n.id = ANY($1::uuid[])`,
           [notificationIds]
         );
@@ -249,9 +284,10 @@ export async function recordDelivery({
 }) {
   if (!notificationId) return;
 
-  if (pgPool) {
+  const pool = getPgPool();
+  if (pool) {
     try {
-      await pgPool.query(
+      await pool.query(
         `SELECT public.record_notification_email_delivery(
           $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::text, $7::text
         )`,
@@ -270,7 +306,7 @@ export async function recordDelivery({
       console.warn('[Email Service] record_notification_email_delivery RPC error:', dbErr.message);
       // Fallback direct update
       try {
-        await pgPool.query(
+        await pool.query(
           `UPDATE public.notifications 
            SET email_status = $1, email_sent_at = CASE WHEN $1 = 'sent' THEN now() ELSE email_sent_at END, email_error = $2
            WHERE id = $3::uuid`,
@@ -315,21 +351,21 @@ export async function sendEmailViaResend({
     };
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'VCTM ERP <onboarding@resend.dev>';
+  const primaryFromEmail = (process.env.RESEND_FROM_EMAIL || 'VCTM ERP <notifications@vctm.in>').trim();
 
   // Timeout guard (10 seconds)
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    let response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey.trim()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: fromEmail,
+        from: primaryFromEmail,
         to: [to.trim()],
         subject,
         html,
@@ -337,9 +373,30 @@ export async function sendEmailViaResend({
       }),
       signal: controller.signal,
     });
-    clearTimeout(timer);
 
-    const data = await response.json().catch(() => ({}));
+    let data = await response.json().catch(() => ({}));
+
+    // If unverified domain error and no explicit RESEND_FROM_EMAIL was configured, retry once with onboarding@resend.dev
+    if (!response.ok && response.status === 403 && !process.env.RESEND_FROM_EMAIL && primaryFromEmail !== 'VCTM ERP <onboarding@resend.dev>') {
+      console.warn(`[Email Service] Sender ${primaryFromEmail} unverified in Resend, attempting fallback to onboarding@resend.dev...`);
+      response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'VCTM ERP <onboarding@resend.dev>',
+          to: [to.trim()],
+          subject,
+          html,
+          text,
+        }),
+      });
+      data = await response.json().catch(() => ({}));
+    }
+
+    clearTimeout(timer);
 
     if (!response.ok) {
       const errMsg = data?.message || `HTTP ${response.status}: Failed to send email via Resend.`;

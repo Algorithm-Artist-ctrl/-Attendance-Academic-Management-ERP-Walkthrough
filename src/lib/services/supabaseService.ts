@@ -1564,9 +1564,7 @@ export const supabaseService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }]).select('id');
-        if (inserted?.[0]?.id) {
-          this.dispatchNotificationEmailsAsync([inserted[0].id]);
-        }
+        // Student notification is strictly in-app (emails excluded for students)
       }
     } catch (notifErr) {
       console.warn('Notice: Background notification dispatch for claim approval:', notifErr);
@@ -1621,9 +1619,7 @@ export const supabaseService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }]).select('id');
-        if (inserted?.[0]?.id) {
-          this.dispatchNotificationEmailsAsync([inserted[0].id]);
-        }
+        // Student notification is strictly in-app (emails excluded for students)
       }
     } catch (notifErr) {
       console.warn('Notice: Background notification dispatch for claim rejection:', notifErr);
@@ -2989,6 +2985,28 @@ export const supabaseService = {
 
       if (!rpcErr && rpcData) {
         queryCache.invalidatePattern('notices:');
+        const noticeId = (rpcData as any)?.id;
+        if (noticeId) {
+          // Asynchronously query generated faculty/staff notifications and dispatch emails
+          // STUDENTS EXCLUDED: strictly filter out students
+          void (async () => {
+            try {
+              const { data: notifs } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('reference_id', noticeId)
+                .neq('recipient_role', 'student')
+                .is('recipient_student_id', null);
+
+              if (notifs && notifs.length > 0) {
+                const ids = notifs.map(n => n.id);
+                this.dispatchNotificationEmailsAsync(ids);
+              }
+            } catch (err: any) {
+              console.warn('[Notice Notification Dispatch] Non-blocking lookup notice:', err);
+            }
+          })();
+        }
         return rpcData;
       }
 
@@ -3018,6 +3036,41 @@ export const supabaseService = {
 
       if (directErr) throw new Error(directErr.message);
       queryCache.invalidatePattern('notices:');
+
+      if (directData?.id) {
+        // If notice is targeted to faculty or all, generate notifications for active faculty and dispatch
+        if (notice.targetRole !== 'student' && (!notice.targetAudience || notice.targetAudience === 'ALL' || notice.targetAudience === 'FACULTY')) {
+          void (async () => {
+            try {
+              let facQuery = supabase.from('faculty').select('id, auth_user_id').eq('active', true);
+              if (notice.targetDepartmentId) {
+                facQuery = facQuery.eq('department_id', notice.targetDepartmentId);
+              }
+              const { data: activeFacs } = await facQuery;
+              if (activeFacs && activeFacs.length > 0) {
+                const notifRows = activeFacs.map(f => ({
+                  recipient_user_id: f.auth_user_id || null,
+                  recipient_faculty_id: f.id,
+                  recipient_role: 'faculty',
+                  type: 'NOTICE' as NotificationType,
+                  title: notice.title.trim(),
+                  message: notice.content.trim().slice(0, 180),
+                  reference_type: 'notice',
+                  reference_id: directData.id,
+                  is_read: false,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }));
+                const { data: insertedNotifs } = await supabase.from('notifications').insert(notifRows).select('id');
+                if (insertedNotifs && insertedNotifs.length > 0) {
+                  this.dispatchNotificationEmailsAsync(insertedNotifs.map(n => n.id));
+                }
+              }
+            } catch {}
+          })();
+        }
+      }
+
       return directData;
     } catch (err: any) {
       console.error('Error in publishNotice:', err);
@@ -4144,10 +4197,8 @@ export const supabaseService = {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             }));
-            const { data: inserted } = await supabase.from('notifications').insert(notifs).select('id');
-            if (inserted && inserted.length > 0) {
-              this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
-            }
+            await supabase.from('notifications').insert(notifs);
+            // Student notifications remain in-app only (emails strictly excluded for students)
           }
         } catch (notifErr) {
           console.warn('Notice: Background notification dispatch for timetable:', notifErr);
@@ -4593,10 +4644,8 @@ export const supabaseService = {
             updated_at: new Date().toISOString(),
           }));
 
-          const { data: inserted } = await supabase.from('notifications').insert(notifRows).select('id');
-          if (inserted && inserted.length > 0) {
-            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
-          }
+          await supabase.from('notifications').insert(notifRows);
+          // Student notifications remain in-app only (emails strictly excluded for students)
         }
       }
     } catch (notifErr) {
@@ -4644,10 +4693,8 @@ export const supabaseService = {
             updated_at: new Date().toISOString(),
           }));
 
-          const { data: inserted } = await supabase.from('notifications').insert(notifRows).select('id');
-          if (inserted && inserted.length > 0) {
-            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
-          }
+          await supabase.from('notifications').insert(notifRows);
+          // Student notifications remain in-app only (emails strictly excluded for students)
         }
       }
     } catch (notifErr) {
@@ -4887,10 +4934,8 @@ export const supabaseService = {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }));
-          const { data: inserted } = await supabase.from('notifications').insert(notifs).select('id');
-          if (inserted && inserted.length > 0) {
-            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
-          }
+          await supabase.from('notifications').insert(notifs);
+          // Student notifications remain in-app only (emails strictly excluded for students)
         }
       }
     } catch (notifErr) {
@@ -5029,10 +5074,8 @@ export const supabaseService = {
         }));
 
         if (notifs.length > 0) {
-          const { data: inserted } = await supabase.from('notifications').insert(notifs).select('id');
-          if (inserted && inserted.length > 0) {
-            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
-          }
+          await supabase.from('notifications').insert(notifs);
+          // Student notifications remain in-app only (emails strictly excluded for students)
         }
       }
     } catch (notifErr) {
@@ -5605,10 +5648,8 @@ export const supabaseService = {
         });
 
         if (notifRows.length > 0) {
-          const { data: inserted } = await supabase.from('notifications').insert(notifRows).select('id');
-          if (inserted && inserted.length > 0) {
-            this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
-          }
+          await supabase.from('notifications').insert(notifRows);
+          // Student notifications remain in-app only (emails strictly excluded for students)
         }
       }
     } catch (notifErr) {
@@ -6657,10 +6698,16 @@ export const supabaseService = {
       if (cleanIds.length === 0) return;
 
       supabase.auth.getSession().then(({ data: { session } }) => {
-        const token = session?.access_token;
+        const token = session?.access_token || (typeof process !== 'undefined' ? process.env.SUPABASE_SERVICE_ROLE_KEY : '');
         if (!token) return;
 
-        fetch('/api/notifications/dispatch-email', {
+        const baseUrl = typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : (typeof process !== 'undefined' && (process.env.APP_URL || `http://localhost:${process.env.PORT || 10000}`)) || '';
+
+        const dispatchUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/api/notifications/dispatch-email` : '/api/notifications/dispatch-email';
+
+        fetch(dispatchUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -6681,13 +6728,17 @@ export const supabaseService = {
     try {
       const { data: notifs } = await supabase
         .from('notifications')
-        .select('id')
+        .select('id, recipient_role, recipient_student_id')
         .eq('reference_id', applicationId)
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (notifs && notifs.length > 0) {
-        this.dispatchNotificationEmailsAsync(notifs.map(n => n.id));
+        // STUDENTS EXCLUDED: only dispatch for faculty / HOD / super admin
+        const staffNotifs = notifs.filter(n => n.recipient_role !== 'student' && !n.recipient_student_id);
+        if (staffNotifs.length > 0) {
+          this.dispatchNotificationEmailsAsync(staffNotifs.map(n => n.id));
+        }
       }
     } catch (err) {
       console.warn('[Leave Notification Email] Non-blocking lookup notice:', err);
@@ -6711,10 +6762,17 @@ export const supabaseService = {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
-      const { data: inserted } = await supabase.from('notifications').insert(cleanRows).select('id');
+      const { data: inserted } = await supabase
+        .from('notifications')
+        .insert(cleanRows)
+        .select('id, recipient_role, recipient_student_id');
       queryCache.invalidatePattern('notifs:');
       if (inserted && inserted.length > 0) {
-        this.dispatchNotificationEmailsAsync(inserted.map(i => i.id));
+        // STUDENTS EXCLUDED: only dispatch for staff / faculty / admin
+        const staffNotifs = inserted.filter(i => i.recipient_role !== 'student' && !i.recipient_student_id);
+        if (staffNotifs.length > 0) {
+          this.dispatchNotificationEmailsAsync(staffNotifs.map(i => i.id));
+        }
       }
     } catch (err) {
       console.warn('Notice: Error inserting notifications:', err);

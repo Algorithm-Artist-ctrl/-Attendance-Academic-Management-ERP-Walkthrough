@@ -63,6 +63,10 @@ async function authenticateRequest(req) {
     return { authenticated: false, status: 401, error: 'Authentication token required.' };
   }
 
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && token === process.env.SUPABASE_SERVICE_ROLE_KEY.trim()) {
+    return { authenticated: true, user: { id: '00000000-0000-0000-0000-000000000000', role: 'service_role' } };
+  }
+
   const { data: authUser, error: authUserErr } = await supabaseServer.auth.getUser(token);
   if (authUserErr || !authUser?.user) {
     return { authenticated: false, status: 401, error: 'Invalid or expired session token.' };
