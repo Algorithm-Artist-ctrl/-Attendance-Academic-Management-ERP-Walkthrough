@@ -219,7 +219,7 @@ async function runPipelineTests() {
     assert(preflightAfterSent[0].skip_reason === 'ALREADY_SENT', 'Duplicate dispatch preflight skip_reason is ALREADY_SENT');
 
     // -------------------------------------------------------------
-    // Test 7: Email Content Builder (Information Only, No action buttons)
+    // Test 7: Email Content Builder (Information Only, Open VCTM ERP button)
     // -------------------------------------------------------------
     console.log('\n--- TEST 7: Information-Only Email Template Formatting ---');
     const emailPayload = buildNotificationEmail({
@@ -229,11 +229,32 @@ async function runPipelineTests() {
       message: 'Mid-term evaluation scores must be finalized by Friday.',
       notificationType: 'NOTICE',
     });
-    assert(emailPayload.subject === 'VCTM ERP - Official Academic Circular', 'Email subject properly formatted');
+    assert(emailPayload.subject === 'VCTM ERP — New Notice: Official Academic Circular', 'Email subject properly formatted with type prefix');
     assert(emailPayload.html.includes('Dr. Abhishek Garg'), 'Email html contains recipient name');
     assert(emailPayload.html.includes('Mid-term evaluation scores must be finalized by Friday.'), 'Email html contains notice text');
-    assert(!emailPayload.html.includes('<button'), 'Email html contains NO action buttons (Information only)');
-    assert(!emailPayload.html.includes('href="http'), 'Email html contains NO external links');
+    assert(!emailPayload.html.includes('<button'), 'Email html contains NO form action buttons');
+    assert(emailPayload.html.includes('href="https://vctmerp.in"'), 'Email html contains Open VCTM ERP link to https://vctmerp.in');
+    assert(emailPayload.html.includes('Open VCTM ERP'), 'Email html contains Open VCTM ERP button text');
+    assert(!emailPayload.html.includes('approve') && !emailPayload.html.includes('reject'), 'Email contains NO bypass approval/rejection links');
+
+    // Test dynamic subject prefixes
+    const leavePayload = buildNotificationEmail({
+      recipientName: 'Dr. Abhishek Garg',
+      recipientRole: 'faculty',
+      title: 'Leave request from Rahul',
+      message: 'Applied for leave',
+      notificationType: 'LEAVE_APPLICATION_SUBMITTED',
+    });
+    assert(leavePayload.subject === 'VCTM ERP — New Leave Application: Leave request from Rahul', 'Leave notification subject has New Leave Application prefix');
+
+    const messagePayload = buildNotificationEmail({
+      recipientName: 'Dr. Abhishek Garg',
+      recipientRole: 'faculty',
+      title: 'New message from Student',
+      message: 'Query regarding lab test',
+      notificationType: 'NEW_MESSAGE',
+    });
+    assert(messagePayload.subject === 'VCTM ERP — New Direct Message: New message from Student', 'Direct message subject has New Direct Message prefix');
 
     // Cleanup test notifications
     await client.query("DELETE FROM public.notifications WHERE id IN ($1, $2, $3);", [abhishekNotifId, hodNotif.rows[0].id, adminNotif.rows[0].id]);

@@ -7124,6 +7124,28 @@ export const supabaseService = {
         return { data: null, error };
       }
 
+      // Asynchronously trigger email dispatch for staff recipients (Faculty / HOD / Super Admin)
+      // Students are strictly excluded by the email dispatch engine
+      setTimeout(async () => {
+        try {
+          const { data: notifRows } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('reference_type', 'conversation')
+            .eq('reference_id', params.conversationId)
+            .in('recipient_role', ['faculty', 'hod', 'super_admin'])
+            .eq('email_status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (notifRows && notifRows.length > 0) {
+            this.dispatchNotificationEmailsAsync([notifRows[0].id]);
+          }
+        } catch (dispatchErr) {
+          console.warn('[supabaseService] Message email dispatch notice:', dispatchErr);
+        }
+      }, 50);
+
       return { data: data as Message, error: null };
     } catch (err: any) {
       console.error('Exception in sendMessage:', err);

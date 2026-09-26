@@ -71,8 +71,41 @@ function escapeHtml(text) {
 }
 
 /**
+ * Dynamic subject generator based on notification type and title
+ */
+export function getSubjectForNotification(notificationType, rawTitle) {
+  const typeMap = {
+    LEAVE_APPLICATION_SUBMITTED: 'New Leave Application',
+    LEAVE_FORWARDED_HOD: 'Leave Application Forwarded',
+    LEAVE_APPROVED: 'Leave Application Approved',
+    LEAVE_REJECTED: 'Leave Application Rejected',
+    NOTICE: 'New Notice',
+    ATTENDANCE_CLAIM: 'Correction Request',
+    ATTENDANCE_UPDATE: 'Attendance Update',
+    NEW_MESSAGE: 'New Direct Message',
+    TIMETABLE_UPDATE: 'Timetable Update',
+    ACCOUNT_UPDATE: 'Account Update',
+  };
+
+  const prefix = typeMap[(notificationType || '').toUpperCase()];
+  const cleanTitle = (rawTitle || '')
+    .replace(/^VCTM ERP\s*[-—:]\s*/i, '')
+    .trim();
+
+  if (prefix) {
+    if (cleanTitle && !cleanTitle.toLowerCase().includes(prefix.toLowerCase())) {
+      return `VCTM ERP — ${prefix}: ${cleanTitle}`;
+    }
+    return `VCTM ERP — ${cleanTitle || prefix}`;
+  }
+
+  return `VCTM ERP — ${cleanTitle || 'Notification'}`;
+}
+
+/**
  * Format notification email payload
- * Strictly Information Only - NO action buttons
+ * Strictly Information Only - includes [Open VCTM ERP] link to https://vctmerp.in
+ * NO action buttons that bypass the ERP
  */
 export function buildNotificationEmail({
   recipientName,
@@ -81,23 +114,46 @@ export function buildNotificationEmail({
   message,
   notificationType,
 }) {
-  const cleanName = recipientName || 'Campus Member';
-  const cleanTitle = title || 'Notification';
-  const cleanMessage = message || 'You have received a new notification.';
+  const cleanName = (recipientName || '').trim();
+  const isGenericName = !cleanName || cleanName.toLowerCase().includes('staff') || cleanName.toLowerCase().includes('member');
+  const cleanTitle = (title || 'Notification').trim();
+  const cleanMessage = (message || 'You have received a new notification in VCTM ERP.').trim();
 
-  const subject = `VCTM ERP - ${cleanTitle}`;
+  const subject = getSubjectForNotification(notificationType, cleanTitle);
 
-  const text = `Hello ${cleanName},
+  let htmlGreeting = 'Hello,';
+  let textGreeting = 'Hello,';
+  if (!isGenericName) {
+    htmlGreeting = `Hello <strong>${escapeHtml(cleanName)}</strong>,`;
+    textGreeting = `Hello ${cleanName},`;
+  } else if (recipientRole) {
+    const roleMap = {
+      faculty: 'Faculty Member',
+      hod: 'Head of Department',
+      super_admin: 'Administrator',
+    };
+    const roleLabel = roleMap[recipientRole.toLowerCase()] || 'Campus Member';
+    htmlGreeting = `Dear <strong>${escapeHtml(roleLabel)}</strong>,`;
+    textGreeting = `Dear ${roleLabel},`;
+  } else {
+    htmlGreeting = 'Dear <strong>Campus Member</strong>,';
+    textGreeting = 'Dear Campus Member,';
+  }
 
-You have a new notification in VCTM ERP.
+  const text = `${textGreeting}
 
+You have received a new notification in VCTM ERP.
+
+--------------------------------------------------
 ${cleanTitle}
-
+--------------------------------------------------
 ${cleanMessage}
+--------------------------------------------------
 
-Please open VCTM ERP to view the complete details and take any required action.
+Please open VCTM ERP to view the complete details and take any required action:
+https://vctmerp.in
 
-This is an automated notification. Please do not reply.
+This is an automated notification from VCTM ERP. Please do not reply directly to this email.
 `;
 
   const html = `<!DOCTYPE html>
@@ -135,30 +191,37 @@ This is an automated notification. Please do not reply.
           <tr>
             <td style="padding: 32px 28px 24px 28px;">
               <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">
-                Hello <strong>${escapeHtml(cleanName)}</strong>,
+                ${htmlGreeting}
               </p>
               
               <p style="margin: 0 0 20px 0; font-size: 14px; color: #475569;">
-                You have a new notification in VCTM ERP.
+                You have received a new notification in VCTM ERP.
               </p>
 
               <!-- Notification Card -->
-              <div style="background-color: #f1f5f9; border-left: 4px solid #2563eb; border-radius: 6px; padding: 16px 18px; margin-bottom: 24px;">
-                <div style="font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 6px;">
+              <div style="background-color: #f1f5f9; border-left: 4px solid #2563eb; border-radius: 6px; padding: 18px 20px; margin-bottom: 24px;">
+                <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
                   ${escapeHtml(cleanTitle)}
                 </div>
-                <div style="font-size: 14px; color: #334155; white-space: pre-wrap; word-break: break-word;">
+                <div style="font-size: 14px; color: #334155; white-space: pre-wrap; word-break: break-word; line-height: 1.6;">
                   ${escapeHtml(cleanMessage)}
                 </div>
               </div>
 
               <!-- Information-Only Notice -->
-              <p style="margin: 0 0 20px 0; font-size: 13px; color: #475569;">
-                Please open VCTM ERP to view the complete details and take any required action.
+              <p style="margin: 0 0 16px 0; font-size: 13px; color: #475569; text-align: center;">
+                Please open VCTM ERP to view complete details and take any required action.
               </p>
 
-              <p style="margin: 0; font-size: 12px; color: #94a3b8; font-style: italic;">
-                This is an automated notification. Please do not reply.
+              <!-- Open VCTM ERP Button -->
+              <div style="margin: 20px 0 28px 0; text-align: center;">
+                <a href="https://vctmerp.in" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 28px; border-radius: 6px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);">
+                  Open VCTM ERP
+                </a>
+              </div>
+
+              <p style="margin: 0; font-size: 12px; color: #94a3b8; font-style: italic; text-align: center;">
+                This is an automated notification from VCTM ERP. Please do not reply directly to this email.
               </p>
             </td>
           </tr>
@@ -351,7 +414,7 @@ export async function sendEmailViaResend({
     };
   }
 
-  const primaryFromEmail = (process.env.RESEND_FROM_EMAIL || 'VCTM ERP <notifications@vctm.in>').trim();
+  const primaryFromEmail = (process.env.RESEND_FROM_EMAIL || 'VCTM ERP <notifications@vctmerp.in>').trim();
 
   // Timeout guard (10 seconds)
   const controller = new AbortController();
